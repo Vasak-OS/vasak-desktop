@@ -1,0 +1,28 @@
+{
+  "name": "lynx-desktop",
+  "id":"ar.net.lynx.os.desktop",
+  "version": "0.0.1",
+  "description": "Desktop for Lynx OS",
+  "domain":"lynxos",
+  "chromium-args" : "--disable-accelerated-video --force-cpu-draw",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "window": {
+    "id":"ar.net.lynx.os.desktop",
+    "show": true,
+    "title": "Lynx Desktop",
+    "as_desktop": true,
+    "icon": "icon.svg",
+    "frame": false,
+    "show_in_taskbar": false,
+    "visible_on_all_workspaces": true
+  },
+  "category" : "System & Tools",
+  "author": "Lynx Software Design",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "child_process": "^1.0.2"
+  }
+}
