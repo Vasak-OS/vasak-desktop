@@ -1,1 +1,1 @@
-lynx-nw /usr/share/Lynx/lynx-desktop/ --disable-gpu-compositing --force-cpu-draw 
+lynx-nw /usr/share/Lynx/lynx-desktop/
