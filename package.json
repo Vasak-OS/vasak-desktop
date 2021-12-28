@@ -1,6 +1,5 @@
 {
   "name": "lynx-desktop",
-  "id":"ar.net.lynx.os.desktop",
   "version": "0.0.1",
   "description": "Desktop for Lynx OS",
   "domain":"lynxos",
