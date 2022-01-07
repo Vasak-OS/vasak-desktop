@@ -8,3 +8,7 @@
 .navbar-brand{
   padding: 0;
 }
+
+body{
+  overflow: auto;
+}
