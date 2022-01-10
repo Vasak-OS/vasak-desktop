@@ -6,4 +6,4 @@ win.setResizable(false);
 exec('python', ["/usr/share/Lynx/lynx-desktop-service/Setters/setDesktop.py", `${process.pid.toString()}`]);
 
 const video = document.getElementById('video-background');
-video.src = `file://${homePath}.config/lynx/background/tropical-sunset.mp4`;
+video.src = `file://${homePath}.background.video`;
