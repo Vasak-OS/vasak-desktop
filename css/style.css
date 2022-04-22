@@ -1,14 +1,15 @@
-.navbar{
-  margin: 0px;
-  max-height: 34px;
-  background: var(--system-background);
-  border-radius: var(--system-border) var(--system-border) 0px 0px;
-}
-
-.navbar-brand{
-  padding: 0;
-}
-
 body{
   overflow: auto;
+}
+
+#video-background {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: -1;
 }
