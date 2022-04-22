@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "description": "Desktop for Lynx OS",
   "domain":"lynxos",
-  "single-instance": true,
   "chromium-args" : "--disable-accelerated-video --force-cpu-draw",
   "main": "index.html",
   "scripts": {
@@ -17,7 +16,9 @@
     "icon": "icon.svg",
     "frame": false,
     "show_in_taskbar": false,
-    "visible_on_all_workspaces": true
+    "visible_on_all_workspaces": true,
+    "resizable": false,
+    "fullscreen": true
   },
   "category" : "System & Tools",
   "author": "Lynx Software Design",
