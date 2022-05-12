@@ -1,6 +1,5 @@
 // Set windows Properties
 win.setShowInTaskbar(false);
-win.resizeTo(Math.round(screen.width)-1, Math.round(screen.height)-1);
 win.setResizable(false);
 win.setVisibleOnAllWorkspaces(true);
 
