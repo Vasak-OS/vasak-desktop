@@ -1,6 +1,6 @@
 // Set windows Properties
 win.setShowInTaskbar(false);
-win.resizeTo(Math.round(screen.width - 1), Math.round(screen.height - 1));
+win.resizeTo(Math.round(screen.width), Math.round(screen.height));
 win.setResizable(false);
 win.y = 0;
 win.x = 0;

@@ -17,8 +17,7 @@
     "frame": false,
     "show_in_taskbar": false,
     "transparent": true,
-    "visible_on_all_workspaces": true,
-    "resizable": false
+    "visible_on_all_workspaces": true
   },
   "category" : "System & Tools",
   "author": "Lynx Software Design",
