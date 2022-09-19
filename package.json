@@ -1,26 +1,26 @@
 {
-  "name": "lynx-desktop",
+  "name": "vasak-desktop",
   "version": "0.0.1",
-  "description": "Desktop for Lynx OS",
-  "domain":"lynxos",
+  "description": "Desktop for Vasak OS",
+  "domain":"vasakos",
   "chromium-args" : "--disable-accelerated-video --force-cpu-draw",
   "main": "index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "window": {
-    "id":"ar.net.lynx.os.desktop",
+    "id":"ar.net.vasak.os.desktop",
     "show": true,
-    "title": "Lynx Desktop",
+    "title": "Vasak Desktop",
     "as_desktop": true,
-    "icon": "icon.svg",
+    "icon": "icon.png",
     "frame": false,
     "show_in_taskbar": false,
     "transparent": true,
     "visible_on_all_workspaces": true
   },
   "category" : "System & Tools",
-  "author": "Lynx Software Design",
+  "author": "Vasak group",
   "license": "GPL-3.0-or-later",
   "dependencies": {
     "child_process": "^1.0.2"

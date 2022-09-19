@@ -1,28 +1,39 @@
 <!DOCTYPE html>
 <html lang="es">
-	<head>
-		<meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <title>lynx-desktop</title>
 
-    <link href="file:///usr/share/Lynx/lynx-bootstrap/css/bootstrap.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="file:///usr/share/Lynx/lynx-base-css/variables.css" />
-		<link rel="stylesheet" href="file:///usr/share/Lynx/lynx-desktop/css/style.css" />
-	</head>
-	<body>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-		<video
-			style="border-radius:0px;"
-			id="video-background"
-			type="video/mp4"
-			loop
-			autoplay
-			muted>
-		</video>
+	<title>Vasak Desktop</title>
 
-		<script src="file:///usr/share/Lynx/lynx-bootstrap/js/bootstrap.min.js"></script>
-		<script src="file:///usr/share/Lynx/lynx-desktop/js/global.js"></script>
-    <script src="file:///usr/share/Lynx/lynx-desktop/js/main.js"></script>
-	</body>
+	<link href="file:///usr/share/Lynx/lynx-bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+	<link rel="stylesheet" href="file:///usr/share/Lynx/lynx-base-css/variables.css" />
+	<link rel="stylesheet" href="file:///usr/share/Lynx/lynx-desktop/css/style.css" />
+</head>
+
+<body>
+
+	<div id="app"></div>
+
+	<!--Dev-->
+	<!--<script type="importmap">
+		{
+		  "imports": {
+			"vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+		  }
+		}
+	</script>-->
+	<!-- Prod -->
+	<script type="importmap">
+		{
+		  "imports": {
+			"vue": "file:///usr/share/Lynx/lynx-vue/vue.esm-browser.prod.js"
+		  }
+		}
+	</script>
+	<script src="file:///usr/share/Lynx/lynx-bootstrap/js/bootstrap.min.js"></script>
+	<script src="/js/App.js"></script>
+</body>
+
 </html>
