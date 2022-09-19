@@ -7,8 +7,8 @@
    viewBox="0 0 121.94755 119.69505"
    version="1.1"
    id="svg8"
-   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
-   sodipodi:docname="Lynx-icon-clean.svg"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14, custom)"
+   sodipodi:docname="icon.svg"
    inkscape:export-filename="/home/dinimixis/Imágenes/Lynx-icon-clean.png"
    inkscape:export-xdpi="96"
    inkscape:export-ydpi="96"
@@ -101,22 +101,24 @@
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.98994949"
-     inkscape:cx="229.30463"
+     inkscape:cx="206.5762"
      inkscape:cy="213.14219"
      inkscape:document-units="mm"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1366"
-     inkscape:window-height="700"
+     inkscape:window-width="1920"
+     inkscape:window-height="1002"
      inkscape:window-x="0"
-     inkscape:window-y="32"
+     inkscape:window-y="42"
      inkscape:window-maximized="1"
      inkscape:snap-midpoints="false"
      inkscape:snap-smooth-nodes="false"
      inkscape:snap-bbox="false"
      inkscape:pagecheckerboard="0"
      inkscape:snap-nodes="false"
-     showguides="false" />
+     showguides="false"
+     inkscape:showpageshadow="2"
+     inkscape:deskcolor="#1a1a1a" />
   <metadata
      id="metadata5">
     <rdf:RDF>
@@ -231,11 +233,6 @@
            ry="0.20155792" />
       </g>
     </g>
-    <text
-       xml:space="preserve"
-       transform="matrix(0.26458333,0,0,0.26458333,57.69389,75.721691)"
-       id="text44155"
-       style="fill:black;fill-opacity:1;line-height:1.25;stroke:none;font-family:sans-serif;font-style:normal;font-weight:normal;font-size:40px;white-space:pre;shape-inside:url(#rect44157)" />
     <g
        id="g63875-6"
        style="display:inline;opacity:0.25374082;fill:#000000;fill-opacity:1;stroke:#030303;stroke-opacity:1;filter:url(#filter64520)"
@@ -462,20 +459,6 @@
          transform="matrix(0.15321634,0.98819267,-0.53691496,0.84363637,0,0)"
          ry="0.20155792" />
     </g>
-    <text
-       xml:space="preserve"
-       transform="matrix(0.12762951,0,0,0.12618164,82.514515,128.51001)"
-       id="text72823"
-       style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;white-space:pre;shape-inside:url(#rect72825);fill:#ffffff;fill-opacity:1;stroke:none"><tspan
-         x="52.943359"
-         y="442.23828"
-         id="tspan5870"><tspan
-           style="font-family:'Font Awesome 6 Brands';-inkscape-font-specification:'Font Awesome 6 Brands'"
-           id="tspan5868">L Y N X OS</tspan></tspan></text>
-    <path
-       style="fill:none;stroke:#ffffff;stroke-width:0.58065;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m 116.05683,179.66329 0.0558,5.88451"
-       id="path84516" />
   </g>
   <script
      id="mesh_polyfill"
