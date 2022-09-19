@@ -2,7 +2,7 @@
   "name": "vasak-desktop",
   "version": "0.0.1",
   "description": "Desktop for Vasak OS",
-  "domain":"vasakos",
+  "domain":"vasak",
   "chromium-args" : "--disable-accelerated-video --force-cpu-draw",
   "main": "index.html",
   "scripts": {
