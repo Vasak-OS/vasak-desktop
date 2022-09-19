@@ -3,11 +3,11 @@ import { createApp } from 'vue';
 
 /* Init APP VueJS */
 const app = createApp({
-    data() {
-        return {
-            background: `file://${homePath}.background.video`
-        };
-    },
+	data() {
+		return {
+			background: `file://${homePath}.background.video`
+		};
+	},
 	async beforeMount() {
 		// Set windows Properties
 		this.$win.setShowInTaskbar(false);
