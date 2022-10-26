@@ -17,8 +17,8 @@ const app = createApp({
 		this.$win.x = 0;
 		this.$win.setVisibleOnAllWorkspaces(true);
 		this.$exec('python', [
-			'/usr/share/Lynx/lynx-desktop-service/Setters/setDesktop.py',
-			`${this.$pid.toString()}`
+			'/usr/share/vasak-desktop-service/setters/set_desktop.py',
+			this.$pid.toString()
 		]);
 	},
 	template: `
