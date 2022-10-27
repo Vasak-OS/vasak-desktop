@@ -1,6 +1,6 @@
 {
   "name": "vasak-desktop",
-  "version": "0.2.9",
+  "version": "0.2.11",
   "description": "Desktop for Vasak OS",
   "domain":"vasak",
   "main": "index.html",
