@@ -1,5 +1,9 @@
-body {
+body,
+#app,
+.global {
   overflow: auto;
+  width: 100vw;
+  height: 100vh;
 }
 
 #video-background {
