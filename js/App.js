@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 import { createApp } from 'vue';
+import ClockWidget from './components/ClockWidget.js';
 
 /* Init APP VueJS */
 const app = createApp({
@@ -22,15 +23,21 @@ const app = createApp({
 		]);
 	},
 	template: `
-    <video
-        style="border-radius:0px;"
-        id="video-background"
-        type="video/mp4"
-        :src="background"
-        loop
-        autoplay
-        muted>
-	</video>`,
+	<div class="global">
+		<video
+			style="border-radius:0px;"
+			id="video-background"
+			type="video/mp4"
+			:src="background"
+			loop
+			autoplay
+			muted>
+		</video>
+		<ClockWidget />
+	</div>`,
+	components: {
+		ClockWidget
+	}
 });
 
 /* Add Services aditional to VueJS in Global Properties */
