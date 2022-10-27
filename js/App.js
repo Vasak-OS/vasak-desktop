@@ -5,7 +5,7 @@ import { createApp } from 'vue';
 const app = createApp({
 	data() {
 		return {
-			background: `file://${homePath}.background.video`
+			background: `file://${this.$homePath}.background.video`
 		};
 	},
 	async beforeMount() {
@@ -31,20 +31,15 @@ const app = createApp({
         autoplay
         muted>
 	</video>`,
-	components: {
-		MenuButtom,
-		NotificationArea,
-		WindowsSections,
-	},
 });
 
 /* Add Services aditional to VueJS in Global Properties */
 app.config.globalProperties.$execSynx = require('child_process').spawnSync;
 app.config.globalProperties.$exec = require('child_process').spawn;
-app.config.globalProperties.$systeminformation = require('systeminformation');
 app.config.globalProperties.$win = nw.Window.get();
 app.config.globalProperties.$process = process;
 app.config.globalProperties.$pid = process.pid;
 app.config.globalProperties.$homePath = nw.App.dataPath.concat('/../../../');
+app.config.globalProperties.$screen = window.screen;
 
 app.mount('#app');
