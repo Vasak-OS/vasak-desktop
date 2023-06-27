@@ -6,21 +6,24 @@ import ClockWidget from './components/ClockWidget.js';
 const app = createApp({
 	data() {
 		return {
-			background: `file://${this.$homePath}.background.video`
+			background: `file://${this.$homePath}.background.video`,
 		};
 	},
 	async beforeMount() {
 		// Set windows Properties
 		this.$win.setShowInTaskbar(false);
-		this.$win.resizeTo(Math.round(this.$screen.width), Math.round(this.$screen.height));
+		this.$win.resizeTo(
+			Math.round(this.$screen.width),
+			Math.round(this.$screen.height)
+		);
 		this.$win.setResizable(false);
 		this.$win.y = 0;
 		this.$win.x = 0;
 		this.$win.setVisibleOnAllWorkspaces(true);
-		this.$exec('python', [
+		/*this.$exec('python', [
 			'/usr/share/vasak-desktop-service/setters/set_desktop.py',
-			this.$pid.toString()
-		]);
+			this.$pid.toString(),
+		]);*/ //deprecated
 	},
 	template: `
 	<div class="global">
@@ -36,8 +39,8 @@ const app = createApp({
 		<ClockWidget />
 	</div>`,
 	components: {
-		ClockWidget
-	}
+		ClockWidget,
+	},
 });
 
 /* Add Services aditional to VueJS in Global Properties */
