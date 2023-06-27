@@ -2,15 +2,15 @@ export default {
 	props: {
 		day: {
 			type: Number,
-			required: true
+			required: true,
 		},
 		month: {
 			type: Number,
-			required: true
+			required: true,
 		},
 		year: {
 			type: Number,
-			required: true
+			required: true,
 		},
 	},
 	template: `
@@ -21,5 +21,5 @@ export default {
         <span>/</span>
         <span class="clock-date-year">{{ year }}</span>
     </div>
-    `
+    `,
 };

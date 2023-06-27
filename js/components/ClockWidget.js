@@ -39,9 +39,10 @@ export default {
 
 			this.hour = this.hour < 10 ? `0${this.hour}` : this.hour;
 			this.min = this.min < 10 ? `0${this.min}` : this.min;
-			this.seconds = this.seconds < 10 ? `0${this.seconds}` : this.seconds;
+			this.seconds =
+				this.seconds < 10 ? `0${this.seconds}` : this.seconds;
 		},
-	}, 
+	},
 	template: `
     <div class="clock-warp">
         <div class="clock-widget">
@@ -52,6 +53,6 @@ export default {
     `,
 	components: {
 		ClockDate,
-		ClockTime
-	}
+		ClockTime,
+	},
 };

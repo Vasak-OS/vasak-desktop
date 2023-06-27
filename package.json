@@ -1,31 +1,31 @@
 {
-  "name": "vasak-desktop",
-  "version": "0.2.11",
-  "description": "Desktop for Vasak OS",
-  "domain":"vasak",
-  "main": "index.html",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "window": {
-    "id":"ar.net.vasak.os.desktop",
-    "show": true,
-    "title": "Vasak Desktop",
-    "as_desktop": true,
-    "icon": "icon.png",
-    "frame": false,
-    "show_in_taskbar": false,
-    "transparent": true,
-    "visible_on_all_workspaces": true
-  },
-  "category" : "System & Tools",
-  "author": "Vasak group",
-  "license": "GPL-3.0-or-later",
-  "dependencies": {
-    "child_process": "^1.0.2"
-  },
-  "devDependencies": {
-    "eslint": "^8.23.1",
-    "eslint-plugin-vue": "^9.5.0"
-  }
+	"name": "vasak-desktop",
+	"version": "0.2.12",
+	"description": "Desktop for Vasak OS",
+	"domain": "vasak",
+	"main": "index.html",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"window": {
+		"id": "ar.net.vasak.os.desktop",
+		"show": true,
+		"title": "Vasak Desktop",
+		"as_desktop": true,
+		"icon": "icon.png",
+		"frame": false,
+		"show_in_taskbar": false,
+		"transparent": true,
+		"visible_on_all_workspaces": true
+	},
+	"category": "System & Tools",
+	"author": "Vasak group",
+	"license": "GPL-3.0-or-later",
+	"dependencies": {
+		"child_process": "^1.0.2"
+	},
+	"devDependencies": {
+		"eslint": "^8.23.1",
+		"eslint-plugin-vue": "^9.5.0"
+	}
 }

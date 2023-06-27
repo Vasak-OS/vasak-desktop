@@ -2,19 +2,19 @@ export default {
 	props: {
 		hours: {
 			type: Number,
-			required: true
+			required: true,
 		},
 		minutes: {
 			type: Number,
-			required: true
+			required: true,
 		},
 		amPm: {
 			type: String,
-			required: true
+			required: true,
 		},
 		seconds: {
 			type: Number,
-			required: true
+			required: true,
 		},
 	},
 	template: `
@@ -29,5 +29,5 @@ export default {
             </div>
         </div>
     `,
-	components: {}
+	components: {},
 };
