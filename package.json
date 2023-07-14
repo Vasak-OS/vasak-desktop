@@ -3,6 +3,7 @@
 	"version": "0.2.12",
 	"description": "Desktop for Vasak OS",
 	"domain": "vasak",
+	"chromium-flags": "--enable-features=UseOzonePlatform --ozone-platform=wayland",
 	"main": "index.html",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
