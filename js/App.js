@@ -20,10 +20,6 @@ const app = createApp({
 		this.$win.y = 0;
 		this.$win.x = 0;
 		this.$win.setVisibleOnAllWorkspaces(true);
-		/*this.$exec('python', [
-			'/usr/share/vasak-desktop-service/setters/set_desktop.py',
-			this.$pid.toString(),
-		]);*/ //deprecated
 	},
 	template: `
 	<div class="global">
@@ -49,7 +45,7 @@ app.config.globalProperties.$exec = require('child_process').spawn;
 app.config.globalProperties.$win = nw.Window.get();
 app.config.globalProperties.$process = process;
 app.config.globalProperties.$pid = process.pid;
-app.config.globalProperties.$homePath = nw.App.dataPath.concat('/../../../');
+app.config.globalProperties.$homePath = process.env.HOME + '/';
 app.config.globalProperties.$screen = window.screen;
 
 app.mount('#app');

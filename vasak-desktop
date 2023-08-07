@@ -1,1 +1,12 @@
-LD_PRELOAD=/opt/nwjs/libffmpeg.so nw /usr/share/vasak-desktop/ &
+#!/bin/bash
+path="/usr/share/vasak-desktop/"
+echo "Starting Vasak Desktop..."
+echo "Path: $path"
+echo "Dev: $1"
+echo "----------------------"
+
+if [ $1 == "--dev" ]; then
+    LD_PRELOAD=/opt/nwjs/libffmpeg.so nw-sdk $path
+else
+    LD_PRELOAD=/opt/nwjs/libffmpeg.so nw $path
+fi
