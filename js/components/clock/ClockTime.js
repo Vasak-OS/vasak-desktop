@@ -1,11 +1,11 @@
 const ClockTime = {
 	props: {
 		hours: {
-			type: Number,
+			type: String,
 			required: true,
 		},
 		minutes: {
-			type: Number,
+			type: String,
 			required: true,
 		},
 		amPm: {
@@ -13,7 +13,7 @@ const ClockTime = {
 			required: true,
 		},
 		seconds: {
-			type: Number,
+			type: String,
 			required: true,
 		},
 	},
