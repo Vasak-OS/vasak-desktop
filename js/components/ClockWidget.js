@@ -4,9 +4,9 @@ const ClockWidget = {
 			day: 0,
 			month: 0,
 			year: 0,
-			min: 0,
-			hour: 0,
-			seconds: 0,
+			min: '00',
+			hour: '00',
+			seconds: '00',
 			amPm: 'AM',
 		};
 	},
@@ -16,28 +16,27 @@ const ClockWidget = {
 	methods: {
 		setTime() {
 			const date = new Date();
-			this.hour = date.getHours(); // 0 - 23
-			this.min = date.getMinutes(); // 0 - 59
-			this.seconds = date.getSeconds(); // 0 - 59
+			var hour = date.getHours(); // 0 - 23
+			var min = date.getMinutes(); // 0 - 59
+			var seconds = date.getSeconds(); // 0 - 59
 			this.day = date.getDate();
 			this.month = date.getMonth() + 1;
 			this.year = date.getFullYear();
 
-			if (this.hour > 12) {
-				this.hour = this.hour - 12;
+			if (hour > 12) {
+				hour = hour - 12;
 				this.amPm = 'PM';
 			} else {
 				this.amPm = 'AM';
 			}
 
-			if (this.hour == 0) {
-				this.hour = 12;
+			if (hour == 0) {
+				hour = 12;
 			}
 
-			this.hour = this.hour < 10 ? `0${this.hour}` : this.hour;
-			this.min = this.min < 10 ? `0${this.min}` : this.min;
-			this.seconds =
-				this.seconds < 10 ? `0${this.seconds}` : this.seconds;
+			this.hour = hour < 10 ? `0${hour}` : `${hour}`;
+			this.min = min < 10 ? `0${min}` : `${min}`;
+			this.seconds = seconds < 10 ? `0${seconds}` : `${seconds}`;
 		},
 	},
 	template: `
