@@ -1,4 +1,4 @@
-export default {
+const ClockDate = {
 	props: {
 		day: {
 			type: Number,

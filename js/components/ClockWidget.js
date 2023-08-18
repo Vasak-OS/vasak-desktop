@@ -1,7 +1,4 @@
-import ClockDate from './clock/ClockDate.js';
-import ClockTime from './clock/ClockTime.js';
-
-export default {
+const ClockWidget = {
 	data() {
 		return {
 			day: 0,

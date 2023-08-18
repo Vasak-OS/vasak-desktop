@@ -1,4 +1,4 @@
-export default {
+const ClockTime = {
 	props: {
 		hours: {
 			type: Number,
