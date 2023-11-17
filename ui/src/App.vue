@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import ClockWidget from "./components/widgets/ClockWidgert.vue";
-import background from "./assets/background.mp4";
+//import background from "./assets/background.mp4";
+
+const background = '/home/pato/.backgroud.mp4';
 </script>
 
 <template>
@@ -15,5 +17,15 @@ import background from "./assets/background.mp4";
 			muted>
 		</video>
 		<ClockWidget />
-	</div>`,
+	</div>
 </template>
+
+<style>
+body,
+#app,
+.global {
+	overflow: auto;
+	width: 100vw;
+	height: 100vh;
+}
+</style>
