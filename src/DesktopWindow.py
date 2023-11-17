@@ -8,7 +8,7 @@ class DesktopWindow(VSKWindow):
         self.shareObject = DesktopBinding(self)
         self.channel.registerObject("vsk", self.shareObject)
         self.move_to_screen() # Mover la ventana a una pantalla específica
-        self.set_as_dock() # Hacer que la ventana se comporte como un dock
+        self.set_as_desktop() # Hacer que la ventana se comporte como un dock
         self.load_html("ui/dist/index.html") # Cargar un HTML en el WebView
         
     
