@@ -1,7 +1,7 @@
 <script lang="ts">
 import { defineComponent } from "vue";
 import ClockDate from "./components/ClockDate.vue";
-import ClockTime from "./components/ClockDate.vue";
+import ClockTime from "./components/ClockTime.vue";
 
 export default defineComponent({
   name: "ClockWidget",
