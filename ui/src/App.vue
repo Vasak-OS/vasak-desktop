@@ -1,8 +1,27 @@
-<script setup lang="ts">
+<script lang="ts">
 import ClockWidget from "./components/widgets/ClockWidgert.vue";
 //import background from "./assets/background.mp4";
 
 const background = '/home/pato/.backgroud.mp4';
+export default {
+	name: "App",
+	components: {
+		ClockWidget,
+	},
+	data() {
+		return {
+			background: '',
+		};
+	},
+	methods: {
+		async setBackground() : Promise<void>  {
+			this.background = await (this as any).$vsk.getHome() + '/.config/vsk/background.mp4';
+		},
+	},
+	mounted() {
+		this.setBackground();	
+	},
+};
 </script>
 
 <template>
