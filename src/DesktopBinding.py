@@ -1,4 +1,3 @@
-import json
 import os
 from Vasak.system.VSKIconManager import VSKIconManager
 from PyQt6.QtCore import pyqtSlot, QObject
