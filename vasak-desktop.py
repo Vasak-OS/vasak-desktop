@@ -1,6 +1,6 @@
 import sys
 import signal
-from src.DesktopWindow import DesktopWindow
+from src.desktop_window import DesktopWindow
 from PyQt6.QtWidgets import QApplication
 
 

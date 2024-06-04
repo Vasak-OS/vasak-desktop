@@ -1,5 +1,5 @@
 import os
-from Vasak.system.VSKIconManager import VSKIconManager
+from Vasak.system.vsk_icon_manager import VSKIconManager
 from PyQt6.QtCore import pyqtSlot, QObject
 
 class DesktopBinding(QObject):
