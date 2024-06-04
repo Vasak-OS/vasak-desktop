@@ -1,7 +1,7 @@
-from Vasak.VSKWindow import VSKWindow
+from Vasak.vsk_window import VSKWindow
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
-from src.DesktopBinding import DesktopBinding
+from src.desktop_binding import DesktopBinding
 
 class DesktopWindow(VSKWindow):
     def __init__(self):
