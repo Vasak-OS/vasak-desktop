@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, Ref, ref } from "vue";
 import ClockWidget from "./components/widgets/ClockWidgert.vue";
-//import background from "./assets/background.mp4";
 
 const background: Ref<string> = ref("/home/pato/.backgroud.mp4");
 

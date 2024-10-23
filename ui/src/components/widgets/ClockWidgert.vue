@@ -1,85 +1,64 @@
-<script lang="ts">
-import { defineComponent } from "vue";
+<script lang="ts" setup>
+import { computed, onMounted, Ref, ref } from "vue";
 import ClockDate from "./components/ClockDate.vue";
 import ClockTime from "./components/ClockTime.vue";
 
-export default defineComponent({
-  name: "ClockWidget",
-  data() {
-    return {
-      day: 0,
-      month: 0,
-      year: 0,
-      min: "00",
-      hour: "00",
-      seconds: "00",
-      amPm: "AM",
-    };
-  },
-  methods: {
-    setTime() {
-      const date = new Date();
-      let hour = date.getHours(); // 0 - 23
-      let min = date.getMinutes(); // 0 - 59
-      let seconds = date.getSeconds(); // 0 - 59
-      this.day = date.getDate();
-      this.month = date.getMonth() + 1;
-      this.year = date.getFullYear();
+const day: Ref<number> = ref(0);
+const month: Ref<number> = ref(0);
+const year: Ref<number> = ref(0);
+const min: Ref<string> = ref("00");
+const hour: Ref<string> = ref("00");
+const seconds: Ref<string> = ref("00");
+const amPm: Ref<string> = ref("AM");
 
-      if (hour > 12) {
-        hour = hour - 12;
-        this.amPm = "PM";
-      } else {
-        this.amPm = "AM";
-      }
+const setTime = () => {
+  const date = new Date();
+  let dateHour = date.getHours(); // 0 - 23
+  let dateMin = date.getMinutes(); // 0 - 59
+  let dateSeconds = date.getSeconds(); // 0 - 59
+  day.value = date.getDate();
+  month.value = date.getMonth() + 1;
+  year.value = date.getFullYear();
 
-      if (hour == 0) {
-        hour = 12;
-      }
+  if (dateHour > 12) {
+    dateHour = dateHour - 12;
+    amPm.value = "PM";
+  } else {
+    amPm.value = "AM";
+  }
 
-      this.hour = hour < 10 ? `0${hour}` : `${hour}`;
-      this.min = min < 10 ? `0${min}` : `${min}`;
-      this.seconds = seconds < 10 ? `0${seconds}` : `${seconds}`;
-    },
-  },
-  computed:{
-    cDay(): number{
-      return this.day
-    },
-    cMonth(): number{
-      return this.month
-    },
-    cYear(): number{
-      return this.year
-    },
-    cHour(): string{
-      return this.hour
-    },
-    cMin(): string{
-      return this.min
-    },
-    cSeconds(): string{
-      return this.seconds
-    },
-    cAmPm(): string{
-      return this.amPm
-    }
-  },
-  mounted() {
-    setInterval(() => this.setTime(), 1000);
-  },
-  components: {
-    ClockDate,
-    ClockTime,
-  },
+  if (dateHour == 0) {
+    dateHour = 12;
+  }
+
+  hour.value = dateHour < 10 ? `0${dateHour}` : `${dateHour}`;
+  min.value = dateMin < 10 ? `0${dateMin}` : `${dateMin}`;
+  seconds.value = dateSeconds < 10 ? `0${dateSeconds}` : `${dateSeconds}`;
+};
+
+const cDay = computed(() => day.value);
+const cMonth = computed(() => month.value);
+const cYear = computed(() => year.value);
+const cHour = computed(() => hour.value);
+const cMin = computed(() => min.value);
+const cSeconds = computed(() => seconds.value);
+const cAmPm = computed(() => amPm.value);
+
+onMounted(() => {
+  setInterval(() => setTime(), 1000);
 });
 </script>
 
 <template>
-  <div class="clock-warp">
-    <div class="clock-widget">
+  <div class="clock-position">
+    <div class="widget-frame clock-widget">
       <ClockDate :day="cDay" :month="cMonth" :year="cYear" />
-      <ClockTime :hours="cHour" :minutes="cMin" :amPm="cAmPm" :seconds="cSeconds" />
+      <ClockTime
+        :hours="cHour"
+        :minutes="cMin"
+        :amPm="cAmPm"
+        :seconds="cSeconds"
+      />
     </div>
   </div>
 </template>
