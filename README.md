@@ -1,86 +1,16 @@
-# Vasak Desktop
+# Tauri + Vue + TypeScript
 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Vasak-OS_vasak-desktop&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Vasak-OS_vasak-desktop)
+This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
 
-Vasak is a desktop environment for Linux. It is designed to be simple, fast, and easy to use. It is written in JavaScript and uses HTML. It is currently in development. The goal is to have a desktop environment that is simple to use, but still has all the features you need.
+## Recommended IDE Setup
 
-## Dependencies
+- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 
-Vasak Desktop depends on the following packages:
+## Type Support For `.vue` Imports in TS
 
-* [Bootstrap](https://getbootstrap.com/) (bootstrap)
-* [NW.js](https://nwjs.io/) (nwjs)
-* nwjs-ffmpeg-codecs
-* [Vue](https://vuejs.org/) (libvasak-vue)
-* libvasak-ui
-* vasak-desktop-service
-* vasak-desktop-settings
-* navale
+Since TypeScript cannot handle type information for `.vue` imports, they are shimmed to be a generic Vue component type by default. In most cases this is fine if you don't really care about component prop types outside of templates. However, if you wish to get actual prop types in `.vue` imports (for example to get props validation when using manual `h(...)` calls), you can enable Volar's Take Over mode by following these steps:
 
-### Build Dependencies
+1. Run `Extensions: Show Built-in Extensions` from VS Code's command palette, look for `TypeScript and JavaScript Language Features`, then right click and select `Disable (Workspace)`. By default, Take Over mode will enable itself if the default TypeScript extension is disabled.
+2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
 
-* [Node.js](https://nodejs.org/)
-* [NPM](https://www.npmjs.com/)
-
-## Start Vasak Desktop
-
-To start Vasak Desktop, run the following steps:
-
-1. Clone the repository
-
-```bash
-git clone git@github.com:Vasak-OS/vasak-desktop.git
-```
-
-2. Move to the directory
-
-```bash
-cd vasak-desktop
-```
-
-3. Install dependencies
-
-```bash
-npm install
-```
-
-4. Start Vasak Desktop
-
-```bash
-nw ./
-```
-
-## Build Vasak Desktop
-
-[PKGBUILD](https://github.com/Vasak-OS/PKGBUILDS/blob/main/vasak-desktop/PKGBUILD)
-
-## Contributing
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change. Please make sure to update tests as appropriate.
-
-1. Fork it
-2. Create your feature branch
-
-```bash
-git checkout -b feature/battery-indicator
-```
-
-3. Commit your changes 
-
-```bash
-git commit -am 'Add some battery-indicator'
-```
-
-4. Push to the branch
-
-```bash
-git push origin feature/battery-indicator
-```
-
-5. Create a new Pull Request
-
-## Acknowledgements
-
-- [Bootstrap](https://getbootstrap.com/)
-- [Vue](https://vuejs.org/)
-- [NW.js](https://nwjs.io/)
+You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
