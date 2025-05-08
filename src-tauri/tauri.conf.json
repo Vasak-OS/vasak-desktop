@@ -13,10 +13,14 @@
     "windows": [
       {
         "title": "vasak-desktop",
-        "width": 800,
-        "height": 600,
         "decorations": false,
-        "transparent": true
+        "alwaysOnBottom": true,
+        "fullscreen": true,
+        "resizable": false,
+        "maximizable": false,
+        "skipTaskbar": true,
+        "visibleOnAllWorkspaces": true,
+        "zoomHotkeysEnabled": false
       }
     ],
     "security": {
