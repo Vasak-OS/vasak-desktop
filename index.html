@@ -1,36 +1,14 @@
-<!DOCTYPE html>
-<html lang="es">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vasak-desktop</title>
+  </head>
 
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-	<title>Vasak Desktop</title>
-
-	<link href="file:///usr/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
-	<link rel="stylesheet" href="file:///usr/lib/libvasak-ui/css/style.min.css" />
-	<link rel="stylesheet" href="./css/style.css" />
-</head>
-
-<body>
-
-	<div id="app"></div>
-
-	<!--Dev-->
-	<!--<script type="importmap">
-		{
-		  "imports": {
-			"vue": "file:///usr/lib/libvasak-vue/vue.esm-browser.min.js"
-		  }
-		}
-	</script>-->
-	<!-- Prod -->
-	<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-	<script src="file:///usr/lib/bootstrap/js/bootstrap.min.js"></script>
-	<script src="./js/components/clock/ClockDate.js"></script>
-	<script src="./js/components/clock/ClockTime.js"></script>
-	<script src="./js/components/ClockWidget.js"></script>
-	<script src="./js/App.js"></script>
-</body>
-
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>
