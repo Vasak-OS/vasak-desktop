@@ -3,12 +3,21 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": [
-    "main"
+    "desktop",
+    "panel"
   ],
   "permissions": [
     "core:default",
     "shell:allow-open",
     "core:window:default",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-set-max-size",
+    "core:window:allow-set-min-size",
+    "positioner:allow-move-window",
+    "positioner:allow-set-tray-icon-state",
+    "vicons:default",
+    "config-manager:default"
   ]
 }
