@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import DesktopClockWidget from "@/components/widgets/DesktopClockWidget.vue";
-import { ref } from "vue";
+import { ref, Ref } from "vue";
 
-const background = ref(
+const background: Ref<string> = ref(
   "https://png.pngtree.com/background/20250102/original/pngtree-planetary-glow-stunning-celestial-view-pc-wallpaper-picture-image_15736228.jpg"
 );
-const backgroundType = ref("image/jpeg");
+const backgroundType: Ref<string> = ref("image/jpeg");
 </script>
 
 <template>
