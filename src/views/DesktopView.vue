@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import ClockWidget from "@/components/widgets/ClockWidget.vue";
+import DesktopClockWidget from "@/components/widgets/DesktopClockWidget.vue";
 import { ref } from "vue";
 
 const background = ref(
@@ -28,6 +28,6 @@ const backgroundType = ref("image/jpeg");
   <main
     class="w-screen h-screen flex items-center justify-center absolute z-20"
   >
-    <ClockWidget />
+    <DesktopClockWidget />
   </main>
 </template>
