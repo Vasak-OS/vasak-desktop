@@ -10,19 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "windows": [
-      {
-        "title": "vasak-desktop",
-        "decorations": false,
-        "alwaysOnBottom": true,
-        "fullscreen": true,
-        "resizable": false,
-        "maximizable": false,
-        "skipTaskbar": true,
-        "visibleOnAllWorkspaces": true,
-        "zoomHotkeysEnabled": false
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }
