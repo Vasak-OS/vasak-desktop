@@ -49,18 +49,15 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![get_windows, toggle_window,])
         .setup(move |app| {
             // Crear una ventana temporal para acceder a los monitores
-            let temp_window = WebviewWindowBuilder::new(
-                app,
-                "temp",
-                WebviewUrl::App("index.html".into()),
-            )
-            .title("Temp")
-            .inner_size(1.0, 1.0)
-            .visible(false)
-            .build()?;
+            let temp_window =
+                WebviewWindowBuilder::new(app, "temp", WebviewUrl::App("index.html".into()))
+                    .title("Temp")
+                    .inner_size(1.0, 1.0)
+                    .visible(false)
+                    .build()?;
 
             let available_monitors = temp_window.available_monitors()?;
-            
+
             let primary_monitor = available_monitors
                 .iter()
                 .find(|monitor| monitor.position().x == 0 && monitor.position().y == 0)
@@ -72,34 +69,35 @@ pub fn run() {
             // Cerrar la ventana temporal
             temp_window.close()?;
 
-            // Crear la ventana del escritorio
-            WebviewWindowBuilder::new(
-                app,
-                "desktop",
-                WebviewUrl::App("index.html#/desktop".into()),
-            )
-            .title("Vasak Desktop")
-            .fullscreen(true)
-            .decorations(false)
-            // ... otras propiedades
-            .build()?;
+            // Crear la ventana del escritorio para cada monitor
+            for (index, monitor) in available_monitors.iter().enumerate() {
+                let desktop_window = WebviewWindowBuilder::new(
+                    app,
+                    &format!("desktop_{}", index),
+                    WebviewUrl::App(format!("index.html#/desktop?monitor={}", index).into()),
+                )
+                .title(&format!("Vasak Desktop {}", index))
+                .decorations(false)
+                .position(monitor.position().x as f64, monitor.position().y as f64)
+                .inner_size(monitor.size().width as f64, monitor.size().height as f64)
+                .build()?;
 
-            // Crear la ventana del panel
+                set_window_properties(&desktop_window);
+            }
+
+            // Crear la ventana del panel solo en el monitor primario
             WebviewWindowBuilder::new(app, "panel", WebviewUrl::App("index.html#/panel".into()))
                 .title("Vasak Panel")
                 .decorations(false)
                 .always_on_top(true)
                 .resizable(false)
                 .skip_taskbar(true)
-                .position(primary_monitor_position.x as f64, primary_monitor_position.y as f64)
+                .position(
+                    primary_monitor_position.x as f64,
+                    primary_monitor_position.y as f64,
+                )
                 .inner_size(primary_monitor_size.width as f64, 32.0)
                 .build()?;
-
-            let desktop_window = app
-                .get_webview_window("desktop")
-                .expect("desktop window not found");
-
-            set_window_properties(&desktop_window);
 
             setup_event_monitoring(window_manager.clone(), app.handle().clone())?;
             Ok(())
