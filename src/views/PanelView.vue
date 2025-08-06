@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, type Ref } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
-import { setPanelProperties } from "@/common/window";
 import WindowsArea from "@/components/areas/panel/WindowsArea.vue";
 import TrayBarArea from "@/components/areas/panel/TrayBarArea.vue";
 import PanelClockwidget from "@/components/widgets/PanelClockwidget.vue";
@@ -37,7 +36,6 @@ const openNotificationCenter = () => {
 onMounted(async () => {
   setMenuIcon();
   setNotifyIcon();
-  await setPanelProperties();
 });
 </script>
 
