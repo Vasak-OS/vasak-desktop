@@ -3,23 +3,17 @@ mod eventloops;
 mod structs;
 mod tray;
 mod window_manager;
+mod window_properties;
 
 use commands::{get_windows, toggle_window};
 use eventloops::setup_event_monitoring;
-use gtk::prelude::*;
 use std::sync::{Arc, Mutex};
 use structs::WMState;
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_config_manager;
-use tauri_plugin_positioner::{Position, WindowExt};
 use tray::create_tray_manager;
 use window_manager::WindowManager;
-
-fn set_window_properties(window: &tauri::WebviewWindow) {
-    let gtk_window = window.gtk_window().expect("Failed to get GTK window");
-
-    gtk_window.set_type_hint(gdk::WindowTypeHint::Desktop);
-}
+use window_properties::{set_desktop_window_properties, set_dock_window_properties};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -82,22 +76,28 @@ pub fn run() {
                 .inner_size(monitor.size().width as f64, monitor.size().height as f64)
                 .build()?;
 
-                set_window_properties(&desktop_window);
+                set_desktop_window_properties(&desktop_window);
             }
 
             // Crear la ventana del panel solo en el monitor primario
-            WebviewWindowBuilder::new(app, "panel", WebviewUrl::App("index.html#/panel".into()))
-                .title("Vasak Panel")
-                .decorations(false)
-                .always_on_top(true)
-                .resizable(false)
-                .skip_taskbar(true)
-                .position(
-                    primary_monitor_position.x as f64,
-                    primary_monitor_position.y as f64,
-                )
-                .inner_size(primary_monitor_size.width as f64, 32.0)
-                .build()?;
+            let panel_window = WebviewWindowBuilder::new(
+                app,
+                "panel",
+                WebviewUrl::App("index.html#/panel".into()),
+            )
+            .title("Vasak Panel")
+            .decorations(false)
+            .always_on_top(true)
+            .resizable(false)
+            .skip_taskbar(true)
+            .position(
+                primary_monitor_position.x as f64,
+                primary_monitor_position.y as f64,
+            )
+            .inner_size(primary_monitor_size.width as f64, 32.0)
+            .build()?;
+
+            set_dock_window_properties(&panel_window);
 
             setup_event_monitoring(window_manager.clone(), app.handle().clone())?;
             Ok(())
