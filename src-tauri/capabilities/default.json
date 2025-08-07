@@ -3,6 +3,7 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": [
+    "desktop",
     "desktop_0",
     "desktop_1",
     "desktop_2",
@@ -14,7 +15,8 @@
     "desktop_8",
     "desktop_9",
     "desktop_10",
-    "panel"
+    "panel",
+    "menu"
   ],
   "permissions": [
     "core:default",
