@@ -19,6 +19,15 @@
         "transparent": true,
         "skipTaskbar": true,
         "alwaysOnTop": true
+      },
+      {
+        "title": "Vasak Desktop",
+        "url": "index.html#/desktop",
+        "label": "desktop",
+        "decorations": false,
+        "transparent": true,
+        "skipTaskbar": true,
+        "alwaysOnBottom": true
       }
     ],
     "security": {
