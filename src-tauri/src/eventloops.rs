@@ -1,5 +1,4 @@
 use crate::window_manager;
-
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
