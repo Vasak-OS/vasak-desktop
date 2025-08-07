@@ -47,7 +47,7 @@ pub fn run() {
             let _ = get_monitors(app.handle()).ok_or("Failed to get monitors")?;
 
             let _ = create_desktops(app.handle());
-            let _ = create_panel(app.handle());
+            let _ = create_panel(app);
 
             setup_event_monitoring(window_manager.clone(), app.handle().clone())?;
             Ok(())
