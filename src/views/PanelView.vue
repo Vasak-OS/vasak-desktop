@@ -61,9 +61,10 @@ onMounted(async () => {
 
 .vpanel {
   @apply flex justify-between items-center mx-1 hover:bg-white/80 hover:dark:bg-black/80;
-  height: 30px;
-  padding: 2px;
+  height: 34px;
+  padding: 4px;
   border-radius: calc(var(--border-radius) + 2px);
+  margin-top: 4px;
 }
 
 .vpanel .app-icon {

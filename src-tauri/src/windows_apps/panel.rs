@@ -19,17 +19,17 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
     panel_window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
         width: primary_monitor_size.width,
-        height: 32,
+        height: 38,
     }))?;
 
     panel_window.set_max_size(Some(tauri::Size::Physical(tauri::PhysicalSize {
         width: primary_monitor_size.width,
-        height: 32,
+        height: 38,
     })))?;
 
     panel_window.set_min_size(Some(tauri::Size::Physical(tauri::PhysicalSize {
         width: primary_monitor_size.width,
-        height: 32,
+        height: 38,
     })))?;
 
     set_window_properties(&panel_window);
