@@ -74,6 +74,9 @@ pub fn run() {
                 .decorations(false)
                 .position(monitor.position().x as f64, monitor.position().y as f64)
                 .inner_size(monitor.size().width as f64, monitor.size().height as f64)
+                .max_inner_size(monitor.size().width as f64, monitor.size().height as f64)
+                .min_inner_size(monitor.size().width as f64, monitor.size().height as f64)
+                .skip_taskbar(true)
                 .build()?;
 
                 set_desktop_window_properties(&desktop_window);
@@ -88,13 +91,14 @@ pub fn run() {
             .title("Vasak Panel")
             .decorations(false)
             .always_on_top(true)
-            .resizable(false)
             .skip_taskbar(true)
             .position(
                 primary_monitor_position.x as f64,
                 primary_monitor_position.y as f64,
             )
             .inner_size(primary_monitor_size.width as f64, 32.0)
+            .max_inner_size(primary_monitor_size.width as f64, 32.0)
+            .min_inner_size(primary_monitor_size.width as f64, 32.0)
             .build()?;
 
             set_dock_window_properties(&panel_window);
