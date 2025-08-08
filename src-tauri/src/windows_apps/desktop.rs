@@ -4,7 +4,7 @@ use tauri::{App, Manager, WebviewUrl, WebviewWindowBuilder};
 use crate::monitor_manager::{get_monitors, get_primary_monitor};
 
 pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
-    let _monitors = get_monitors(app.handle()).ok_or("No monitors found")?;
+    let monitors = get_monitors(app.handle()).ok_or("No monitors found")?;
     let primary_monitor = get_primary_monitor(app.handle()).ok_or("No primary monitor found")?;
 
     let primary_monitor_size = primary_monitor.size();
@@ -36,31 +36,33 @@ pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
     set_window_properties(&primary_desktop_window);
 
-    // for (index, monitor) in monitors.iter().enumerate() {
-    //     if monitor.position() == primary_monitor_position {
-    //         continue; // Skip the primary monitor
-    //     }
+    let mut conf = app.config().app.windows.iter().find(|c| c.label == "desktop").unwrap().clone();
 
-    //     let monitor_size = monitor.size();
-    //     let monitor_position = monitor.position();
+    for (index, monitor) in monitors.iter().enumerate() {
+        if monitor.position() == primary_monitor_position {
+            continue; // Skip the primary monitor
+        }
+        conf.label = format!("desktop_{}", index);
 
-    //     let other_desktop_window = WebviewWindowBuilder::new(
-    //         app,
-    //         &format!("desktop_{}", index),
-    //         WebviewUrl::App(format!("index.html#/desktop?monitor={}", index).into()),
-    //     )
-    //     .title(&format!("Vasak Desktop {}", index))
-    //     .decorations(false)
-    //     .position(monitor_position.x as f64, monitor_position.y as f64)
-    //     .inner_size(monitor_size.width as f64, monitor_size.height as f64)
-    //     .max_inner_size(monitor_size.width as f64, monitor_size.height as f64)
-    //     .min_inner_size(monitor_size.width as f64, monitor_size.height as f64)
-    //     .skip_taskbar(true)
-    //     .parent(&primary_desktop_window)?
-    //     .build()?;
+        let monitor_size = monitor.size();
+        let monitor_position = monitor.position();
 
-    //     set_window_properties(&other_desktop_window);
-    // }
+        let other_desktop_window = WebviewWindowBuilder::from_config(
+            app,
+            &conf
+        )?
+        .title(&format!("Vasak Desktop {}", index))
+        .decorations(false)
+        .position(monitor_position.x as f64, monitor_position.y as f64)
+        .inner_size(monitor_size.width as f64, monitor_size.height as f64)
+        .max_inner_size(monitor_size.width as f64, monitor_size.height as f64)
+        .min_inner_size(monitor_size.width as f64, monitor_size.height as f64)
+        .skip_taskbar(true)
+        .parent(&primary_desktop_window)?
+        .build()?;
+
+        set_window_properties(&other_desktop_window);
+    }
 
     Ok(())
 }

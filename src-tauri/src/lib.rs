@@ -15,7 +15,7 @@ use tauri::Manager;
 use tauri_plugin_config_manager;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
-use windows_apps::{create_desktops, create_panel};
+use windows_apps::{create_desktops, create_panel, create_menu};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -44,10 +44,9 @@ pub fn run() {
         .plugin(tauri_plugin_vicons::init())
         .invoke_handler(tauri::generate_handler![get_windows, toggle_window,])
         .setup(move |app| {
-            let _ = get_monitors(app.handle()).ok_or("Failed to get monitors")?;
-
             let _ = create_desktops(app);
             let _ = create_panel(app);
+            let _ = create_menu(app);
 
             setup_event_monitoring(window_manager.clone(), app.handle().clone())?;
             Ok(())
