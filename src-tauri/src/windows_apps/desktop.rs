@@ -1,7 +1,7 @@
 use gtk::prelude::*;
 use tauri::{
     async_runtime::spawn, App, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, Size,
-    WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 };
 
 use crate::monitor_manager::{get_monitors, get_primary_monitor};
@@ -46,51 +46,48 @@ pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
         let app_handle = app.handle().clone();
         let monitor_clone = monitor.clone();
-        let primary_window_label = primary_desktop_window.label().to_string();
 
         spawn(async move {
-            let _ =
-                open_other_desktop(app_handle, index, monitor_clone, primary_window_label).await;
+            let _ = open_other_desktop(app_handle, index, monitor_clone).await;
         });
     }
 
     Ok(())
 }
 
-async fn open_other_desktop(
-    app_handle: tauri::AppHandle,
-    index: usize,
-    monitor: Monitor,
-    primary_window_label: String,
-) {
+async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor: Monitor) {
     let label = format!("desktop_{}", index);
 
     let monitor_size = monitor.size();
     let monitor_position = monitor.position();
 
-    if let Some(primary_desktop_window) = app_handle.get_webview_window(&primary_window_label) {
-        let other_desktop_window = WebviewWindowBuilder::new(
-            &app_handle,
-            &label,
-            WebviewUrl::App(format!("index.html#/desktop?monitor={}", label).into()).into(),
-        )
-        .title(&format!("Vasak Desktop {}", index))
-        .decorations(false)
-        .transparent(false)
-        .inner_size(monitor_size.width as f64, monitor_size.height as f64)
-        .max_inner_size(monitor_size.width as f64, monitor_size.height as f64)
-        .min_inner_size(monitor_size.width as f64, monitor_size.height as f64)
-        .position(monitor_position.x as f64, monitor_position.y as f64)
-        .visible(true)
-        .parent(&primary_desktop_window)
-        .expect("Failed to set parent")
-        .skip_taskbar(true)
-        .always_on_bottom(true)
-        .build()
-        .unwrap();
+    let other_desktop_window = WebviewWindowBuilder::new(
+        &app_handle,
+        &label,
+        WebviewUrl::App(format!("index.html#/desktop?monitor={}", label).into()).into(),
+    )
+    .title(&format!("Vasak Desktop {}", index))
+    .decorations(false)
+    .transparent(false)
+    .inner_size(monitor_size.width as f64, monitor_size.height as f64)
+    .max_inner_size(monitor_size.width as f64, monitor_size.height as f64)
+    .min_inner_size(monitor_size.width as f64, monitor_size.height as f64)
+    .position(monitor_position.x as f64, monitor_position.y as f64)
+    .visible(true)
+    .skip_taskbar(true)
+    .always_on_bottom(true)
+    .build()
+    .unwrap();
 
-        set_window_properties(&other_desktop_window);
-    }
+    // let webview_url = WebviewUrl::App(format!("index.html#/desktop?monitor={}", label).into()).to_string();
+    // println!("Opening desktop {} on monitor {} with URL: {}", index, label, webview_url);
+    // let url = Url::parse(&webview_url).expect("Failed to parse URL");
+
+    // println!("Opening desktop {} on monitor {} with URL: {} to webview {}", index, label, url, webview_url);
+
+    // let _ = other_desktop_window.navigate(url);
+
+    set_window_properties(&other_desktop_window);
 }
 
 fn set_window_properties(window: &tauri::WebviewWindow) {
