@@ -1,39 +1,50 @@
 use gtk::prelude::*;
-use tauri::{App, Manager, WebviewWindowBuilder};
+use tauri::{App, AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
-use crate::monitor_manager::get_primary_monitor;
+use crate::app_url::get_app_url;
 
 pub fn create_menu(app: &App) -> Result<(), Box<dyn std::error::Error>> {
-    let primary_monitor = get_primary_monitor(app.handle()).ok_or("No primary monitor found")?;
-
     let menu_window = app
         .get_webview_window("menu")
         .expect("menu window not found");
 
-    menu_window.center()?;
-
-    set_window_properties(&menu_window);
-
     let _ = menu_window.close();
 
-    let _ = create_menu_window(app);
     Ok(())
 }
 
-pub fn create_menu_window(app: &App) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let menu_window =
-        WebviewWindowBuilder::from_config(app, app.config().app.windows.get(2).unwrap())?
+        WebviewWindowBuilder::new(&app, "menu", WebviewUrl::App("index.html#/menu".into()))
             .title("Vasak Menu")
             .decorations(true)
             .transparent(false)
-            .inner_size(900.0, 900.0)
+            .inner_size(900.0, 620.0)
+            .max_inner_size(900.0, 620.0)
+            .min_inner_size(900.0, 620.0)
             .visible(true)
             .skip_taskbar(false)
             .always_on_top(true)
             .build()?;
 
-    menu_window.set_focus()?;
+    menu_window.on_window_event(move |event| match event {
+        WindowEvent::Focused(is_focused) => {
+            if !is_focused {
+                std::process::exit(0);
+            }
+        }
+        WindowEvent::CloseRequested { .. } => {
+            std::process::exit(0);
+        }
+        _ => {}
+    });
+
+    let complete_url = format!("{}{}", get_app_url(), "index.html#/menu");
+    let url = Url::parse(&complete_url).expect("Failed to parse URL");
+    let _ = menu_window.navigate(url);
+
     menu_window.center()?;
+    menu_window.set_focus()?;
 
     Ok(())
 }
