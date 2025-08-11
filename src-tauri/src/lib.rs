@@ -5,10 +5,10 @@ mod structs;
 mod tray;
 mod window_manager;
 mod windows_apps;
+mod app_url;
 
 use commands::{get_windows, toggle_window};
 use eventloops::setup_event_monitoring;
-use monitor_manager::get_monitors;
 use std::sync::{Arc, Mutex};
 use structs::WMState;
 use tauri::Manager;
