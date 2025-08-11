@@ -1,12 +1,10 @@
 use gtk::prelude::*;
-use tauri::{App, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{App, Manager, WebviewWindowBuilder};
 
-use crate::{monitor_manager::get_primary_monitor, windows_apps::menu};
+use crate::monitor_manager::get_primary_monitor;
 
 pub fn create_menu(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(app.handle()).ok_or("No primary monitor found")?;
-    let primary_monitor_size = primary_monitor.size();
-    let primary_monitor_position = primary_monitor.position();
 
     let menu_window = app
         .get_webview_window("menu")

@@ -1,7 +1,8 @@
+use crate::app_url::get_app_url;
 use gtk::prelude::*;
 use tauri::{
     async_runtime::spawn, App, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, Size,
-    Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    Url, WebviewUrl, WebviewWindowBuilder,
 };
 
 use crate::monitor_manager::{get_monitors, get_primary_monitor};
@@ -79,13 +80,10 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
     .build()
     .unwrap();
 
-    // let webview_url = WebviewUrl::App(format!("index.html#/desktop?monitor={}", label).into()).to_string();
-    // println!("Opening desktop {} on monitor {} with URL: {}", index, label, webview_url);
-    // let url = Url::parse(&webview_url).expect("Failed to parse URL");
 
-    // println!("Opening desktop {} on monitor {} with URL: {} to webview {}", index, label, url, webview_url);
-
-    // let _ = other_desktop_window.navigate(url);
+    let complete_url = format!("{}{}", get_app_url(), format!("index.html#/desktop?monitor={}", label));
+    let url = Url::parse(&complete_url).expect("Failed to parse URL");
+    let _ = other_desktop_window.navigate(url);
 
     set_window_properties(&other_desktop_window);
 }
