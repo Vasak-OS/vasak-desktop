@@ -1,5 +1,8 @@
 use gtk::prelude::*;
-use tauri::{App, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    async_runtime::spawn, App, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, Size,
+    WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+};
 
 use crate::monitor_manager::{get_monitors, get_primary_monitor};
 
@@ -14,57 +17,80 @@ pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .get_webview_window("desktop")
         .expect("desktop window not found");
 
-    primary_desktop_window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+    primary_desktop_window.set_position(Position::Physical(PhysicalPosition {
         x: primary_monitor_position.x,
         y: primary_monitor_position.y,
     }))?;
 
-    primary_desktop_window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+    primary_desktop_window.set_size(Size::Physical(PhysicalSize {
         width: primary_monitor_size.width,
         height: primary_monitor_size.height,
     }))?;
 
-    primary_desktop_window.set_max_size(Some(tauri::Size::Physical(tauri::PhysicalSize {
+    primary_desktop_window.set_max_size(Some(Size::Physical(PhysicalSize {
         width: primary_monitor_size.width,
         height: primary_monitor_size.height,
     })))?;
 
-    primary_desktop_window.set_min_size(Some(tauri::Size::Physical(tauri::PhysicalSize {
+    primary_desktop_window.set_min_size(Some(Size::Physical(PhysicalSize {
         width: primary_monitor_size.width,
         height: primary_monitor_size.height,
     })))?;
 
     set_window_properties(&primary_desktop_window);
 
-    let mut conf = app.config().app.windows.iter().find(|c| c.label == "desktop").unwrap().clone();
-
     for (index, monitor) in monitors.iter().enumerate() {
         if monitor.position() == primary_monitor_position {
             continue; // Skip the primary monitor
         }
-        conf.label = format!("desktop_{}", index);
 
-        let monitor_size = monitor.size();
-        let monitor_position = monitor.position();
+        let app_handle = app.handle().clone();
+        let monitor_clone = monitor.clone();
+        let primary_window_label = primary_desktop_window.label().to_string();
 
-        let other_desktop_window = WebviewWindowBuilder::from_config(
-            app,
-            &conf
-        )?
-        .title(&format!("Vasak Desktop {}", index))
-        .decorations(false)
-        .position(monitor_position.x as f64, monitor_position.y as f64)
-        .inner_size(monitor_size.width as f64, monitor_size.height as f64)
-        .max_inner_size(monitor_size.width as f64, monitor_size.height as f64)
-        .min_inner_size(monitor_size.width as f64, monitor_size.height as f64)
-        .skip_taskbar(true)
-        .parent(&primary_desktop_window)?
-        .build()?;
-
-        set_window_properties(&other_desktop_window);
+        spawn(async move {
+            let _ =
+                open_other_desktop(app_handle, index, monitor_clone, primary_window_label).await;
+        });
     }
 
     Ok(())
+}
+
+async fn open_other_desktop(
+    app_handle: tauri::AppHandle,
+    index: usize,
+    monitor: Monitor,
+    primary_window_label: String,
+) {
+    let label = format!("desktop_{}", index);
+
+    let monitor_size = monitor.size();
+    let monitor_position = monitor.position();
+
+    if let Some(primary_desktop_window) = app_handle.get_webview_window(&primary_window_label) {
+        let other_desktop_window = WebviewWindowBuilder::new(
+            &app_handle,
+            &label,
+            WebviewUrl::App(format!("index.html#/desktop?monitor={}", label).into()).into(),
+        )
+        .title(&format!("Vasak Desktop {}", index))
+        .decorations(false)
+        .transparent(false)
+        .inner_size(monitor_size.width as f64, monitor_size.height as f64)
+        .max_inner_size(monitor_size.width as f64, monitor_size.height as f64)
+        .min_inner_size(monitor_size.width as f64, monitor_size.height as f64)
+        .position(monitor_position.x as f64, monitor_position.y as f64)
+        .visible(true)
+        .parent(&primary_desktop_window)
+        .expect("Failed to set parent")
+        .skip_taskbar(true)
+        .always_on_bottom(true)
+        .build()
+        .unwrap();
+
+        set_window_properties(&other_desktop_window);
+    }
 }
 
 fn set_window_properties(window: &tauri::WebviewWindow) {
