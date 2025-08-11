@@ -3,12 +3,12 @@ import { ref, onMounted, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 
 import SearchMenuComponent from "@/components/SearchMenuComponent.vue";
-import MenuSection from "@/components/section/MenuSection.vue";
-import FilterSection from "@/components/section/FilterSection.vue";
-import UserMenuCard from "@/components/UserMenuCard.vue";
-import SessionButton from "@/components/button/SessionButton.vue";
-import CategoryMenuPill from "@/components/button/CategoryMenuPill.vue";
-import WeatherWidget from "@/components/widget/WeatherWidget.vue";
+import MenuArea from "@/components/areas/menu/MenuArea.vue";
+import FilterArea from "@/components/areas/menu/FilterArea.vue";
+import UserMenuCard from "@/components/cards/UserMenuCard.vue";
+import SessionButton from "@/components/buttons/SessionButton.vue";
+import CategoryMenuPill from "@/components/buttons/CategoryMenuPill.vue";
+import WeatherWidget from "@/components/widgets/WeatherWidget.vue";
 
 // Importar iconos de sesión
 import shutdownImg from "@/assets/img/shutdown.svg";
@@ -118,7 +118,7 @@ onMounted(async () => {
     <!-- Main Content -->
     <transition name="fade" mode="out-in">
       <div v-if="filter !== ''" key="filter-view" class="animate-fadeIn">
-        <FilterSection v-model:apps="apps" v-model:filter="filter" />
+        <FilterArea v-model:apps="apps" v-model:filter="filter" />
       </div>
       <div
         v-else
@@ -129,7 +129,7 @@ onMounted(async () => {
         <div
           class="background rounded-vsk p-4 h-full overflow-y-auto apps-container"
         >
-          <MenuSection v-model:apps="appsOfCategory" />
+          <MenuArea v-model:apps="appsOfCategory" />
         </div>
 
         <!-- Weather Widget -->

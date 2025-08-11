@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
-import CurrentWeatherCard from '@/components/card/CurrentWeatherCard.vue';
-import DailyWeatherCard from '@/components/card/DailyWeatherCard.vue';
+import CurrentWeatherCard from '@/components/cards/CurrentWeatherCard.vue';
+import DailyWeatherCard from '@/components/cards/DailyWeatherCard.vue';
 
 const weather = ref({
   latitude: 52.52,
