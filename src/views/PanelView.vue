@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, type Ref } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
+import { invoke } from "@tauri-apps/api/core";
 import WindowsArea from "@/components/areas/panel/WindowsArea.vue";
 import TrayBarArea from "@/components/areas/panel/TrayBarArea.vue";
 import PanelClockwidget from "@/components/widgets/PanelClockwidget.vue";
@@ -25,8 +26,12 @@ const setNotifyIcon = async () => {
   }
 };
 
-const openMenu = () => {
-  Command.create("vmenu").execute();
+const openMenu = async () => {
+   try {
+    await invoke("toggle_menu");
+  } catch (error) {
+    console.error("Error al abrir el menu:", error);
+  }
 };
 
 const openNotificationCenter = () => {
