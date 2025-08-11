@@ -1,5 +1,5 @@
 use crate::window_manager::WindowInfo;
-use crate::structs::WMState; // Use crate::structs if the module exists outside this folder
+use crate::structs::WMState;
 
 // Comandos de la API
 #[tauri::command]
