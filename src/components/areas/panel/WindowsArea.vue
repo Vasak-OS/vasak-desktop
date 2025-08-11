@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 
-import WindowButton from "@/components/buttons/WindowButton.vue";
+import WindowPanelButton from "@/components/buttons/WindowPanelButton.vue";
 
 interface WindowInfo {
   id: string;
@@ -40,7 +40,7 @@ onUnmounted(() => {
       tag="div"
       class="flex items-center justify-center gap-0.5"
     >
-      <WindowButton
+      <WindowPanelButton
         v-for="window in windows"
         :key="window.id"
         v-bind="window"
