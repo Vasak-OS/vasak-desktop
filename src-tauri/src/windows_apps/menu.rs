@@ -1,21 +1,10 @@
 use gtk::prelude::*;
 use std::sync::Arc;
 use tauri::{
-    App, AppHandle, Manager, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder,
-    WindowEvent,
+    AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
 use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
-
-pub fn create_menu(app: &App) -> Result<(), Box<dyn std::error::Error>> {
-    let menu_window = app
-        .get_webview_window("menu")
-        .expect("menu window not found");
-
-    let _ = menu_window.close();
-
-    Ok(())
-}
 
 pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;

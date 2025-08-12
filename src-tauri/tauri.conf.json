@@ -28,14 +28,6 @@
         "transparent": true,
         "skipTaskbar": true,
         "alwaysOnBottom": true
-      },
-      {
-        "title": "Vasak Menu",
-        "url": "index.html#/menu",
-        "label": "menu",
-        "decorations": true,
-        "transparent": false,
-        "skipTaskbar": false
       }
     ],
     "security": {
