@@ -60,7 +60,6 @@ pub fn run() {
         .setup(move |app| {
             let _ = create_desktops(app);
             let _ = create_panel(app);
-            let _ = create_menu(app);
 
             setup_event_monitoring(window_manager.clone(), app.handle().clone())?;
             Ok(())
