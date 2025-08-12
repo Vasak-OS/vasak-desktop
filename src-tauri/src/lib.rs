@@ -1,5 +1,6 @@
 mod app_url;
 mod audio;
+mod brightness;
 mod commands;
 mod eventloops;
 mod menu_manager;
@@ -59,7 +60,9 @@ pub fn run() {
             toggle_menu,
             get_audio_volume,
             set_audio_volume,
-            toggle_audio_mute
+            toggle_audio_mute,
+            get_brightness_info,
+            set_brightness_info,
         ])
         .setup(move |app| {
             let _ = create_desktops(app);
