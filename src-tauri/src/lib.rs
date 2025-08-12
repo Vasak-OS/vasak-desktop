@@ -1,12 +1,13 @@
 mod app_url;
+mod audio;
 mod commands;
 mod eventloops;
+mod menu_manager;
 mod monitor_manager;
 mod structs;
 mod tray;
 mod window_manager;
 mod windows_apps;
-mod menu_manager;
 
 use commands::*;
 use eventloops::setup_event_monitoring;
@@ -55,7 +56,10 @@ pub fn run() {
             suspend,
             detect_display_server,
             get_menu_items,
-            toggle_menu
+            toggle_menu,
+            get_audio_volume,
+            set_audio_volume,
+            toggle_audio_mute
         ])
         .setup(move |app| {
             let _ = create_desktops(app);
