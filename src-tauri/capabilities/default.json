@@ -31,6 +31,8 @@
     "positioner:allow-set-tray-icon-state",
     "vicons:default",
     "config-manager:default",
-    "user-data:default"
+    "user-data:default",
+    "network-manager:allow-get-network-state",
+    "network-manager:allow-toggle-network-state"
   ]
 }
