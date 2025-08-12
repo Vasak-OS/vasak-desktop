@@ -36,7 +36,7 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn set_window_properties(window: &tauri::WebviewWindow) {
+fn set_window_properties(window: &tauri::WebviewWindow) {
     let gtk_window = window.gtk_window().expect("Failed to get GTK window");
 
     gtk_window.set_type_hint(gdk::WindowTypeHint::Dock);
