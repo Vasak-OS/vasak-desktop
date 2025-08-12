@@ -1,6 +1,9 @@
-use gtk::{false_, prelude::*};
+use gtk::prelude::*;
 use std::sync::Arc;
-use tauri::{App, AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent, Position, PhysicalPosition};
+use tauri::{
+    App, AppHandle, Manager, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder,
+    WindowEvent,
+};
 
 use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
@@ -15,8 +18,7 @@ pub fn create_menu(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let primary_monitor = get_primary_monitor(&app)
-        .ok_or("No primary monitor found")?;
+    let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
 
     let menu_window = Arc::new(
         WebviewWindowBuilder::new(&app, "menu", WebviewUrl::App("index.html#/menu".into()))
@@ -38,10 +40,10 @@ pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error
 
     let monitor_size = primary_monitor.size();
     let monitor_position = primary_monitor.position();
-    
+
     let center_x = monitor_position.x + (monitor_size.width as i32 / 2) - (900 / 2);
     let center_y = monitor_position.y + (monitor_size.height as i32 / 2) - (620 / 2);
-    
+
     menu_window.set_position(Position::Physical(PhysicalPosition {
         x: center_x,
         y: center_y,
@@ -52,18 +54,17 @@ pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error
     set_window_properties(&menu_window);
 
     let menu_window_clone = Arc::clone(&menu_window);
-    menu_window.on_window_event(move |event| {
-        match event {
-            WindowEvent::Focused(is_focused) => {
-                if !is_focused {
-                    let _ = menu_window_clone.close();
-                }
-            }
-            WindowEvent::CloseRequested { .. } => {
+
+    menu_window.on_window_event(move |event| match event {
+        WindowEvent::Focused(is_focused) => {
+            if !is_focused {
                 let _ = menu_window_clone.close();
             }
-            _ => {}
         }
+        WindowEvent::CloseRequested { .. } => {
+            let _ = menu_window_clone.close();
+        }
+        _ => {}
     });
 
     Ok(())

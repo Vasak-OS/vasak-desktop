@@ -85,6 +85,16 @@ const appsOfCategory = computed(
 
 onMounted(async () => {
   setMenu();
+  // En el componente del menú en el frontend
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      try {
+        invoke("toggle_menu");
+      } catch (error) {
+        console.error("Error al cerrar:", error);
+      }
+    }
+  });
 });
 </script>
 
