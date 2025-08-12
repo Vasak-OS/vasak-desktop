@@ -1,8 +1,8 @@
-use gtk::prelude::*;
+use gtk::{false_, prelude::*};
 use std::sync::Arc;
-use tauri::{App, AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{App, AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent, Position, PhysicalPosition};
 
-use crate::{app_url::get_app_url};
+use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
 pub fn create_menu(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let menu_window = app
@@ -15,16 +15,19 @@ pub fn create_menu(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let primary_monitor = get_primary_monitor(&app)
+        .ok_or("No primary monitor found")?;
+
     let menu_window = Arc::new(
         WebviewWindowBuilder::new(&app, "menu", WebviewUrl::App("index.html#/menu".into()))
             .title("Vasak Menu")
-            .decorations(true)
-            .transparent(false)
+            .decorations(false)
+            .transparent(true)
             .inner_size(900.0, 620.0)
             .max_inner_size(900.0, 620.0)
             .min_inner_size(900.0, 620.0)
             .visible(true)
-            .skip_taskbar(false)
+            .skip_taskbar(true)
             .always_on_top(true)
             .build()?,
     );
@@ -33,7 +36,17 @@ pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
     let _ = menu_window.navigate(url);
 
-    menu_window.center()?;
+    let monitor_size = primary_monitor.size();
+    let monitor_position = primary_monitor.position();
+    
+    let center_x = monitor_position.x + (monitor_size.width as i32 / 2) - (900 / 2);
+    let center_y = monitor_position.y + (monitor_size.height as i32 / 2) - (620 / 2);
+    
+    menu_window.set_position(Position::Physical(PhysicalPosition {
+        x: center_x,
+        y: center_y,
+    }))?;
+
     menu_window.set_focus()?;
 
     set_window_properties(&menu_window);
