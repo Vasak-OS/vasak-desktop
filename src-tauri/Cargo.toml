@@ -35,7 +35,10 @@ tauri-plugin-vicons = "2"
 tauri-plugin-config-manager = "2"
 tauri-plugin-user-data = "2"
 tauri-plugin-opener = "2"
+tauri-plugin-network-manager = "2"
+tauri-plugin-bluetooth-manager = { path = "../../tauri-plugin-bluetooth-manager"}
 zbus = "4.0"
+once_cell = "1.8"
 tokio = { version = "1.0", features = ["full"] }
 image = "0.24"
 futures-util = "0.3"
