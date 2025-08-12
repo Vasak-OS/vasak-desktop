@@ -14,6 +14,7 @@
     "@tauri-apps/api": "^2.7.0",
     "@tauri-apps/plugin-shell": "^2.3.0",
     "@vasakgroup/plugin-config-manager": "^2.0.0",
+    "@vasakgroup/plugin-network-manager": "^0.1.0",
     "@vasakgroup/plugin-user-data": "^2.0.0",
     "@vasakgroup/plugin-vicons": "^2.0.0",
     "path": "^0.12.7",
