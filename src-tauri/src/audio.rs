@@ -1,13 +1,5 @@
-use serde::Serialize;
 use std::process::Command;
-
-#[derive(Serialize, Clone, Debug)]
-pub struct VolumeInfo {
-    current: i64,
-    min: i64,
-    max: i64,
-    is_muted: bool,
-}
+use crate::structs::VolumeInfo;
 
 // Función helper para ejecutar comandos de PipeWire/PulseAudio
 fn run_command(cmd: &str, args: &[&str]) -> Result<String, String> {
