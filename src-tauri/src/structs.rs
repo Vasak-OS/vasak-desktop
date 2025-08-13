@@ -53,3 +53,11 @@ pub struct BrightnessInfo {
     pub max: u32,
     pub min: u32,
 }
+
+#[derive(Serialize, Clone, Debug)]
+pub struct VolumeInfo {
+    pub current: i64,
+    pub min: i64,
+    pub max: i64,
+    pub is_muted: bool,
+}

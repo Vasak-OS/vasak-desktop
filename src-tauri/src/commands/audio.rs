@@ -1,4 +1,5 @@
-use crate::audio::{get_volume, set_volume, toggle_mute, VolumeInfo};
+use crate::audio::{get_volume, set_volume, toggle_mute};
+use crate::structs::VolumeInfo;
 
 #[tauri::command]
 pub fn get_audio_volume() -> Result<VolumeInfo, String> {
