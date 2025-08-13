@@ -97,13 +97,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-@reference '../style.css';
+@reference '../../style.css';
 
 /* Estilos personalizados para el slider de brillo */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  background: rgba(234, 179, 8, 0.2);
   cursor: pointer;
   height: 6px;
   border-radius: 9999px;

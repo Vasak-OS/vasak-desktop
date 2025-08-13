@@ -38,7 +38,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import NotificationGroupCard from '@components/cards/NotificationGroupCard.vue'
+import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue'
 
 interface Notification {
   id: number

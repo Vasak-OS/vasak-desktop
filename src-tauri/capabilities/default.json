@@ -15,7 +15,8 @@
     "desktop_9",
     "desktop_10",
     "panel",
-    "menu"
+    "menu",
+    "control_center"
   ],
   "permissions": [
     "core:default",

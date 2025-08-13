@@ -70,7 +70,7 @@
     >
       <div v-show="isExpanded" class="notifications-list bg-white/30 dark:bg-black/30 rounded-b-lg border-l-4 border-blue-500/30">
         <TransitionGroup name="notification-item" tag="div">
-          <NotificationItem
+          <NotificationCard
             v-for="notification in group.notifications"
             :key="notification.id"
             :notification="notification"
@@ -86,7 +86,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import NotificationItem from './NotificationItem.vue';
+import NotificationCard from '@/components/cards/NotificationCard.vue';
 
 interface Notification {
   id: number
