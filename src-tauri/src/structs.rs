@@ -29,6 +29,13 @@ pub enum NotificationUrgency {
     Critical,
 }
 
+#[derive(Default)]
+pub struct NotificationData {
+    pub app_name: String,
+    pub summary: String,
+    pub body: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AppEntry {
     pub category: String,
