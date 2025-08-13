@@ -77,7 +77,7 @@ watch([() => volumeInfo.value.is_muted, volumePercentage], updateIcon, {
 
 async function getVolumeInfo() {
   try {
-    const info: any = await invoke("get_volume");
+    const info: any = await invoke("get_audio_volume");
     volumeInfo.value = info;
     currentVolume.value = info.current;
     await updateIcon();
@@ -88,7 +88,7 @@ async function getVolumeInfo() {
 
 async function updateVolume() {
   try {
-    await invoke("set_volume", {
+    await invoke("set_audio_volume", {
       volume: Number(currentVolume.value),
     });
   } catch (error) {
@@ -98,7 +98,7 @@ async function updateVolume() {
 
 async function toggleMute() {
   try {
-    const isUnmuted = await invoke("toggle_mute");
+    const isUnmuted = await invoke("toggle_audio_mute");
     volumeInfo.value.is_muted = !isUnmuted;
   } catch (error) {
     console.error("Error toggling mute:", error);

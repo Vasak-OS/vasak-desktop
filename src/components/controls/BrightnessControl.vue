@@ -71,7 +71,7 @@ const brightnessPercentage = computed(() => {
 
 async function getBrightnessInfo() {
   try {
-    const info = await invoke("get_brightness");
+    const info = await invoke("get_brightness_info");
     brightnessInfo.value = info as any;
     currentBrightness.value = (info as any).current;
     await updateIcon();
@@ -82,7 +82,7 @@ async function getBrightnessInfo() {
 
 async function updateBrightness() {
   try {
-    await invoke("set_brightness", {
+    await invoke("set_brightness_info", {
       brightness: Number(currentBrightness.value),
     });
     await updateIcon();

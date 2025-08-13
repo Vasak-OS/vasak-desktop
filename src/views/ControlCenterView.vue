@@ -6,6 +6,20 @@ import NetworkControl from "@/components/controls/NetworkControl.vue";
 import BluetoothControl from "@/components/controls/BluetoothControl.vue";
 import UserControlCenterCard from "@/components/cards/UserControlCenterCard.vue";
 import ThemeToggle from "@/components/controls/ThemeToggle.vue";
+import { onMounted } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+
+onMounted(() => {
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      try {
+        invoke("toggle_control_center");
+      } catch (error) {
+        console.error("Error al cerrar:", error);
+      }
+    }
+  });
+});
 
 </script>
 
