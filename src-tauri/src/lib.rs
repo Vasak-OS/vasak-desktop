@@ -5,6 +5,7 @@ mod commands;
 mod eventloops;
 mod menu_manager;
 mod monitor_manager;
+mod notifications;
 mod structs;
 mod tray;
 mod window_manager;

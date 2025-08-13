@@ -1,4 +1,5 @@
-use crate::menu_manager::{get_menu, CategoryInfo};
+use crate::menu_manager::get_menu;
+use crate::structs::CategoryInfo;
 use crate::windows_apps::create_menu_window;
 use std::collections::HashMap;
 use tauri::{async_runtime::spawn, AppHandle, Manager};

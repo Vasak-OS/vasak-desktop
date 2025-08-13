@@ -1,4 +1,5 @@
-use crate::brightness::{get_brightness, set_brightness, BrightnessInfo};
+use crate::brightness::{get_brightness, set_brightness};
+use crate::structs::BrightnessInfo;
 
 #[tauri::command]
 pub fn get_brightness_info() -> Result<BrightnessInfo, String> {
