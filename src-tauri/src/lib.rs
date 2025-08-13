@@ -12,7 +12,7 @@ mod window_manager;
 mod windows_apps;
 
 use commands::*;
-use eventloops::setup_event_monitoring;
+use eventloops::{setup_windows_monitoring, setup_notification_monitoring};
 use std::sync::{Arc, Mutex};
 use structs::WMState;
 use tauri::Manager;
@@ -64,12 +64,18 @@ pub fn run() {
             toggle_audio_mute,
             get_brightness_info,
             set_brightness_info,
+            send_notify,
+            clear_notifications,
+            get_all_notifications,
+            delete_notification
         ])
         .setup(move |app| {
             let _ = create_desktops(app);
             let _ = create_panel(app);
 
-            setup_event_monitoring(window_manager.clone(), app.handle().clone())?;
+            setup_windows_monitoring(window_manager.clone(), app.handle().clone())?;
+            setup_notification_monitoring(app.handle().clone());
+
             Ok(())
         })
         .run(tauri::generate_context!())
