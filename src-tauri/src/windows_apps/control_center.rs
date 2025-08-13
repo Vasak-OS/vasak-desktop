@@ -50,11 +50,11 @@ pub async fn create_control_center_window(
     let monitor_size = primary_monitor.size();
     let monitor_position = primary_monitor.position();
 
-    let center_x = monitor_position.x + (monitor_size.width as i32 / 2) - (900 / 2);
-    let center_y = monitor_position.y + (monitor_size.height as i32 / 2) - (620 / 2);
+    let right_x = monitor_position.x + monitor_size.width as i32 - 350 - 4; // 350 es el ancho de la ventana, 4 es el margen
+    let center_y = monitor_position.y + 40 + (monitor_size.height as i32 / 2) - (app_height as i32 / 2);
 
     control_center_window.set_position(Position::Physical(PhysicalPosition {
-        x: center_x,
+        x: right_x,
         y: center_y,
     }))?;
 
