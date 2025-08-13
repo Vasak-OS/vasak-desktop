@@ -67,7 +67,8 @@ pub fn run() {
             send_notify,
             clear_notifications,
             get_all_notifications,
-            delete_notification
+            delete_notification,
+            toggle_control_center,
         ])
         .setup(move |app| {
             let _ = create_desktops(app);

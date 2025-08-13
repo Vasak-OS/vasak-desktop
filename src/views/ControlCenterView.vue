@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import VolumeControl from "@/components/VolumeControl.vue";
-import BrightnessControl from "@/components/BrightnessControl.vue";
+import VolumeControl from "@/components/controls/VolumeControl.vue";
+import BrightnessControl from "@/components/controls/BrightnessControl.vue";
 import NotificationArea from "@/components/areas/control-center/NotificationArea.vue";
-import NetworkControl from "@/components/NetworkControl.vue";
-import BluetoothControl from "@/components/BluetoothControl.vue";
+import NetworkControl from "@/components/controls/NetworkControl.vue";
+import BluetoothControl from "@/components/controls/BluetoothControl.vue";
 import UserControlCenterCard from "@/components/cards/UserControlCenterCard.vue";
-import ThemeToggle from "@/components/ThemeToggle.vue";
+import ThemeToggle from "@/components/controls/ThemeToggle.vue";
 
 </script>
 

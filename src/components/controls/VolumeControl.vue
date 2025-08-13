@@ -111,7 +111,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-@reference '../style.css';
+@reference '../../style.css';
 
 input[type="range"] {
   -webkit-appearance: none;
@@ -155,11 +155,11 @@ input[type="range"]:active::-webkit-slider-thumb {
   background: #00c951;
 }
 
-:global(.dark) input[type="range"]::-webkit-slider-track {
+.dark input[type="range"]::-webkit-slider-track {
   background: #4b5563;
 }
 
-:global(.dark) input[type="range"]::-webkit-slider-thumb {
+.dark input[type="range"]::-webkit-slider-thumb {
   background: #60a5fa;
   border-color: #1f2937;
 }

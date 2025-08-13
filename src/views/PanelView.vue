@@ -27,15 +27,19 @@ const setNotifyIcon = async () => {
 };
 
 const openMenu = async () => {
-   try {
+  try {
     await invoke("toggle_menu");
   } catch (error) {
     console.error("Error al abrir el menu:", error);
   }
 };
 
-const openNotificationCenter = () => {
-  Command.create("vasak-control-center").execute();
+const openNotificationCenter = async () => {
+  try {
+    await invoke("toggle_control_center");
+  } catch (error) {
+    console.error("Error al abrir el centro de control:", error);
+  }
 };
 
 onMounted(async () => {
