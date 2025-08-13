@@ -1,26 +1,8 @@
 use freedesktop_entry_parser::parse_entry;
-use serde::{Serialize, Deserialize};
 use std::fs;
 use std::path::Path;
 use std::collections::HashMap;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AppEntry {
-    category: String,
-    name: String,
-    generic: String,
-    description: String,
-    icon: String,
-    keywords: String,
-    path: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CategoryInfo {
-    icon: String,
-    description: String,
-    apps: Vec<AppEntry>,
-}
+use crate::structs::{AppEntry, CategoryInfo};
 
 fn normalize_category(categories: &str) -> String {
     let categories: Vec<&str> = categories.split(';').collect();
