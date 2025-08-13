@@ -1,13 +1,6 @@
-use serde::Serialize;
 use std::process::Command;
 use std::str::from_utf8;
-
-#[derive(Debug, Serialize, Clone)]
-pub struct BrightnessInfo {
-    current: u32,
-    max: u32,
-    min: u32,
-}
+use crate::structs::BrightnessInfo;
 
 pub fn get_brightness() -> Result<BrightnessInfo, String> {
     // Intentar obtener el brillo actual y máximo usando xrandr
