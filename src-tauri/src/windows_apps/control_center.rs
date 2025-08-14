@@ -67,11 +67,11 @@ pub async fn create_control_center_window(
     control_center_window.on_window_event(move |event| match event {
         WindowEvent::Focused(is_focused) => {
             if !is_focused {
-                let _ = control_center_window_clone.close();
+                //let _ = control_center_window_clone.close();
             }
         }
         WindowEvent::CloseRequested { .. } => {
-            let _ = control_center_window_clone.close();
+            //let _ = control_center_window_clone.close();
         }
         _ => {}
     });

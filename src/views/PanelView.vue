@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, type Ref } from "vue";
-import { Command } from "@tauri-apps/plugin-shell";
+import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import WindowsArea from "@/components/areas/panel/WindowsArea.vue";
 import TrayBarArea from "@/components/areas/panel/TrayBarArea.vue";
@@ -9,6 +9,9 @@ import { getIconSource } from "@vasakgroup/plugin-vicons";
 
 const menuIcon: Ref<string> = ref("");
 const notifyIcon: Ref<string> = ref("");
+const notifications = ref<Notification[]>([]);
+const hasNewNotifications = ref(false);
+let unlistenNotifications: (() => void) | null = null;
 
 const setMenuIcon = async () => {
   try {
@@ -42,10 +45,33 @@ const openNotificationCenter = async () => {
   }
 };
 
+async function loadNotifications() {
+  try {
+    notifications.value = await invoke("get_all_notifications");
+  } catch (error) {
+    console.error("Error loading notifications:", error);
+  }
+}
+
 onMounted(async () => {
   setMenuIcon();
   setNotifyIcon();
+  await loadNotifications();
+
+  unlistenNotifications = await listen("notifications-updated", (event) => {
+    const newNotifications = event.payload as Notification[];
+    hasNewNotifications.value = newNotifications.length > notifications.value.length;
+    notifications.value = newNotifications;
+    
+    // Reset animation after a short delay
+    if (hasNewNotifications.value) {
+      setTimeout(() => {
+        hasNewNotifications.value = false;
+      }, 1000);
+    }
+  });
 });
+
 </script>
 
 <template>
@@ -55,12 +81,20 @@ onMounted(async () => {
     <div class="flex content-center items-center">
       <TrayBarArea />
       <PanelClockwidget />
-      <img
-        :src="notifyIcon"
-        alt="Menu"
-        @click="openNotificationCenter"
-        class="app-icon"
-      />
+      <div class="notification-icon-wrapper" @click="openNotificationCenter">
+        <img
+          :src="notifyIcon"
+          alt="Notifications"
+          class="app-icon"
+          :class="{ 'bell-shake': hasNewNotifications }"
+        />
+        <div 
+          v-if="notifications.length > 0" 
+          class="notification-badge"
+        >
+          {{ notifications.length > 99 ? '99+' : notifications.length }}
+        </div>
+      </div>
     </div>
   </nav>
 </template>
@@ -78,5 +112,29 @@ onMounted(async () => {
 
 .vpanel .app-icon {
   @apply h-6 w-6 cursor-pointer p-0.5 rounded-vsk hover:bg-vsk-primary/30 transform hover:scale-110 active:scale-95 ease-in-out;
+}
+
+.notification-icon-wrapper {
+  @apply relative cursor-pointer;
+}
+
+.notification-badge {
+  @apply absolute -top-0.5 -right-0.5 bg-red-500 text-white rounded-full min-w-3 h-3 flex items-center justify-center;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0 2px;
+  box-shadow: 0 0 0 1px white, 0 1px 2px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+@keyframes bell-shake {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+  20%, 40%, 60%, 80% { transform: rotate(10deg); }
+}
+
+.bell-shake {
+  animation: bell-shake 0.8s ease-in-out;
 }
 </style>
