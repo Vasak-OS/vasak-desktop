@@ -15,9 +15,9 @@ use commands::*;
 use eventloops::{setup_windows_monitoring, setup_notification_monitoring};
 use std::sync::{Arc, Mutex};
 use structs::WMState;
-use tauri::Manager;
 use tauri_plugin_config_manager;
 use tauri_plugin_user_data;
+use tauri_plugin_network_manager;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
 use windows_apps::*;
@@ -42,11 +42,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_config_manager::init())
         .plugin(tauri_plugin_user_data::init())
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("panel") {
-                let _ = window.set_focus();
-            }
-        }))
+        .plugin(tauri_plugin_network_manager::init())
         .plugin(tauri_plugin_vicons::init())
         .invoke_handler(tauri::generate_handler![
             get_windows,
