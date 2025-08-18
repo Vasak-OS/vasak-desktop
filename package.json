@@ -10,7 +10,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.11",
+    "@tailwindcss/vite": "^4.1.12",
     "@tauri-apps/api": "^2.7.0",
     "@tauri-apps/plugin-shell": "^2.3.0",
     "@vasakgroup/plugin-config-manager": "^2.0.0",
@@ -24,14 +24,14 @@
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.11",
+    "@tailwindcss/postcss": "^4.1.12",
     "@tauri-apps/cli": "^2.7.1",
-    "@types/node": "^24.2.0",
+    "@types/node": "^24.3.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.11",
+    "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
-    "vite": "^7.0.6",
+    "vite": "^7.1.2",
     "vue-tsc": "^3.0.5"
   }
 }
