@@ -1,19 +1,26 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import ClockWidget from "@/components/widgets/ClockWidget.vue";
+import { RouterView } from "vue-router";
+import { useConfigStore } from "@vasakgroup/plugin-config-manager";
+import { listen } from "@tauri-apps/api/event";
+import { onMounted, onUnmounted } from "vue";
 
-const background = ref("https://png.pngtree.com/background/20250102/original/pngtree-planetary-glow-stunning-celestial-view-pc-wallpaper-picture-image_15736228.jpg");
-const backgroundType = ref("image/jpeg");
+const configStore = useConfigStore();
+let unlistenConfig: Function | null = null;
 
+onMounted(async () => {
+  configStore.loadConfig();
+  unlistenConfig = await listen("config-changed", async () => {
+    configStore.loadConfig();
+  });
+});
 
+onUnmounted(() => {
+  if (unlistenConfig !== null) {
+    unlistenConfig();
+  }
+});
 </script>
 
 <template>
-
-  <video v-if="backgroundType.includes('video')" style="border-radius: 0px" :type="backgroundType" :src="background"
-    class="w-screen h-screen object-cover absolute z-10" loop autoplay muted></video>
-  <img v-else :src="background" class="w-screen h-screen object-cover absolute z-10" style="border-radius: 0px" />
-  <main class="w-screen h-screen flex items-center justify-center absolute z-20">
-    <ClockWidget />
-  </main>
+  <RouterView />
 </template>

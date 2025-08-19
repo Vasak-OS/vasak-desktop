@@ -3,12 +3,40 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": [
-    "main"
+    "desktop",
+    "desktop_1",
+    "desktop_2",
+    "desktop_3",
+    "desktop_4",
+    "desktop_5",
+    "desktop_6",
+    "desktop_7",
+    "desktop_8",
+    "desktop_9",
+    "desktop_10",
+    "panel",
+    "menu",
+    "control_center"
   ],
   "permissions": [
     "core:default",
     "shell:allow-open",
+    "opener:default",
     "core:window:default",
-    "core:window:allow-start-dragging"
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-set-max-size",
+    "core:window:allow-set-min-size",
+    "positioner:allow-move-window",
+    "positioner:allow-set-tray-icon-state",
+    "vicons:default",
+    "config-manager:default",
+    "user-data:default",
+    "network-manager:allow-get-network-state",
+    "network-manager:allow-toggle-network-state",
+    "bluetooth-manager:allow-list-adapters",
+    "bluetooth-manager:allow-list-devices",
+    "bluetooth-manager:allow-set-adapter-powered"
   ]
 }

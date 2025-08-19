@@ -10,22 +10,29 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.5",
-    "@tauri-apps/api": "^2.5.0",
-    "@tauri-apps/plugin-shell": "^2.2.1",
+    "@tailwindcss/vite": "^4.1.12",
+    "@tauri-apps/api": "^2.7.0",
+    "@tauri-apps/plugin-shell": "^2.3.0",
+    "@vasakgroup/plugin-config-manager": "^2.0.0",
+    "@vasakgroup/plugin-network-manager": "^0.1.0",
+    "@vasakgroup/plugin-user-data": "^2.0.0",
+    "@vasakgroup/plugin-vicons": "^2.0.0",
+    "@vasakgroup/plugin-bluetooth-manager": "link:@vasakgroup/plugin-bluetooth-manager",
     "path": "^0.12.7",
+    "pinia": "^3.0.3",
     "url": "^0.11.4",
-    "vue": "^3.5.13"
+    "vue": "^3.5.18",
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.5",
-    "@tauri-apps/cli": "^2.5.0",
-    "@types/node": "^22.15.16",
-    "@vitejs/plugin-vue": "^5.2.3",
-    "postcss": "^8.5.3",
-    "tailwindcss": "^4.1.5",
-    "typescript": "^5.8.3",
-    "vite": "^6.3.5",
-    "vue-tsc": "^2.2.10"
+    "@tailwindcss/postcss": "^4.1.12",
+    "@tauri-apps/cli": "^2.7.1",
+    "@types/node": "^24.3.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.12",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2",
+    "vue-tsc": "^3.0.5"
   }
 }
