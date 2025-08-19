@@ -1,11 +1,10 @@
 use std::sync::{Mutex, OnceLock};
 use tauri::{AppHandle, Monitor, WebviewUrl, WebviewWindowBuilder};
 
-static mut AVAILABLE_MONITORS: OnceLock<Mutex<Option<Vec<Monitor>>>> = OnceLock::new();
+static AVAILABLE_MONITORS: OnceLock<Mutex<Option<Vec<Monitor>>>> = OnceLock::new();
 
 pub fn get_monitors(app: &AppHandle) -> Option<Vec<Monitor>> {
-    if unsafe { AVAILABLE_MONITORS.get().is_none() } {
-        // Crear una ventana temporal para acceder a los monitores
+    if AVAILABLE_MONITORS.get().is_none() {
         let temp_window =
             WebviewWindowBuilder::new(app, "temp", WebviewUrl::App("index.html".into()))
                 .title("Temp")
@@ -15,16 +14,14 @@ pub fn get_monitors(app: &AppHandle) -> Option<Vec<Monitor>> {
                 .ok()?;
 
         let monitors = temp_window.available_monitors().ok()?;
-        unsafe {
-            AVAILABLE_MONITORS
-                .set(Mutex::new(Some(monitors)))
-                .expect("Failed to set AVAILABLE_MONITORS");
-        }
+        AVAILABLE_MONITORS
+            .set(Mutex::new(Some(monitors)))
+            .expect("Failed to set AVAILABLE_MONITORS");
         // Cerrar la ventana temporal
         let _ = temp_window.close();
     }
 
-    let monitors = unsafe { AVAILABLE_MONITORS.get_or_init(|| Mutex::new(None)) };
+    let monitors = AVAILABLE_MONITORS.get_or_init(|| Mutex::new(None));
     monitors.lock().unwrap().clone()
 }
 
