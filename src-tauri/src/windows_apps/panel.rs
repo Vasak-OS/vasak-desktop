@@ -84,7 +84,6 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
         if let Some(monitor) = display.primary_monitor() {
             let geometry = monitor.geometry();
             let screen_width = geometry.width() as u32;
-            let screen_height = geometry.height() as u32;
 
             unsafe {
                 use gdk::ffi;
@@ -247,9 +246,7 @@ unsafe fn send_client_message(window_ptr: *mut gdk::ffi::GdkWindow, message_type
     use gdk::ffi;
     use std::ffi::CString;
 
-    if let Ok(msg_name) = CString::new(message_type) {
-        // Esto requeriría más código X11 directo para enviar un ClientMessage
-        // Por ahora, solo forzamos un flush
+    if let Ok(_msg_name) = CString::new(message_type) {
         let display = ffi::gdk_window_get_display(window_ptr);
         ffi::gdk_display_flush(display);
     }
