@@ -88,21 +88,16 @@ pub async fn add_real_notification(
 
     let notification_id = notification.id;
 
-    // Agregar a la lista
     {
         let mut notifications = NOTIFICATIONS.write().await;
         notifications.insert(0, notification);
 
-        // Mantener solo las últimas MAX_NOTIFICATIONS
         if notifications.len() > MAX_NOTIFICATIONS {
             notifications.truncate(MAX_NOTIFICATIONS);
         }
     }
-
-    // Emitir evento de nueva notificación
     emit_notifications_updated().await;
 
-    println!("📱 New notification: {} - {}", app_name, notification_id);
     Ok(notification_id)
 }
 
@@ -147,7 +142,6 @@ async fn monitor_dbus_notifications() -> Result<(), String> {
                     } else if notif.body.is_empty() {
                         notif.body = value;
 
-                        // Tenemos datos suficientes, crear la notificación
                         if !notif.app_name.is_empty() && !notif.summary.is_empty() {
                             let _ = add_real_notification(
                                 notif.app_name.clone(),
