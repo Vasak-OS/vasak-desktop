@@ -4362,6 +4362,8 @@ dependencies = [
 [[package]]
 name = "tauri-plugin-bluetooth-manager"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9247af2c2590dba45961fad8d2e9bd29e4c8a43d35be74e65608259d84706f0"
 dependencies = [
  "byteorder",
  "futures",
