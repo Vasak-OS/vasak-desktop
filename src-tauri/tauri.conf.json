@@ -12,15 +12,22 @@
   "app": {
     "windows": [
       {
-        "title": "vasak-desktop",
+        "title": "Vasak Panel",
+        "url": "index.html#/panel",
+        "label": "panel",
         "decorations": false,
-        "alwaysOnBottom": true,
-        "fullscreen": true,
-        "resizable": false,
-        "maximizable": false,
+        "transparent": true,
         "skipTaskbar": true,
-        "visibleOnAllWorkspaces": true,
-        "zoomHotkeysEnabled": false
+        "alwaysOnTop": true
+      },
+      {
+        "title": "Vasak Desktop",
+        "url": "index.html#/desktop",
+        "label": "desktop",
+        "decorations": false,
+        "transparent": true,
+        "skipTaskbar": true,
+        "alwaysOnBottom": true
       }
     ],
     "security": {
