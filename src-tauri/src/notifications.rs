@@ -76,6 +76,7 @@ pub async fn add_real_notification(
         body,
         app_icon: app_icon.unwrap_or_else(|| match app_name.to_lowercase().as_str() {
             name if name.contains("chrome") => "google-chrome".to_string(),
+            name if name.contains("kdeconnect") => "phone".to_string(),
             name => name.to_string(),
         }),
         timestamp,
