@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, type Ref } from "vue";
+import { onMounted, onUnmounted, ref, type Ref } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import WindowsArea from "@/components/areas/panel/WindowsArea.vue";
@@ -11,7 +11,7 @@ const menuIcon: Ref<string> = ref("");
 const notifyIcon: Ref<string> = ref("");
 const notifications = ref<Notification[]>([]);
 const hasNewNotifications = ref(false);
-let unlistenNotifications: (() => void) | null = null;
+let unlistenNotifications: Ref<(() => void) | null> = ref(null);
 
 const setMenuIcon = async () => {
   try {
@@ -58,7 +58,7 @@ onMounted(async () => {
   setNotifyIcon();
   await loadNotifications();
 
-  unlistenNotifications = await listen("notifications-updated", (event) => {
+  unlistenNotifications.value = await listen("notifications-updated", (event) => {
     const newNotifications = event.payload as Notification[];
     hasNewNotifications.value = newNotifications.length > notifications.value.length;
     notifications.value = newNotifications;
@@ -70,6 +70,12 @@ onMounted(async () => {
       }, 1000);
     }
   });
+});
+
+onUnmounted(() => {
+  if (unlistenNotifications.value) {
+    unlistenNotifications.value();
+  }
 });
 
 </script>
