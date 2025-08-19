@@ -1,6 +1,8 @@
 use gtk::prelude::*;
-use tauri::{AppHandle, Manager, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use std::sync::Arc;
+use tauri::{
+    AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+};
 
 use crate::app_url::get_app_url;
 use crate::monitor_manager::get_primary_monitor;
@@ -51,7 +53,8 @@ pub async fn create_control_center_window(
     let monitor_position = primary_monitor.position();
 
     let right_x = monitor_position.x + monitor_size.width as i32 - 350 - 4; // 350 es el ancho de la ventana, 4 es el margen
-    let center_y = monitor_position.y + 40 + (monitor_size.height as i32 / 2) - (app_height as i32 / 2);
+    let center_y =
+        monitor_position.y + 40 + (monitor_size.height as i32 / 2) - (app_height as i32 / 2);
 
     control_center_window.set_position(Position::Physical(PhysicalPosition {
         x: right_x,
