@@ -16,8 +16,6 @@ pub async fn open_app(path: &str) -> Result<(), String> {
                 Command::new(cmd)
                     .spawn()
                     .map_err(|e| e.to_string())?;
-                
-                std::process::exit(0);
             }
         }
     }
