@@ -6,20 +6,12 @@ import WindowsArea from "@/components/areas/panel/WindowsArea.vue";
 import TrayBarArea from "@/components/areas/panel/TrayBarArea.vue";
 import PanelClockwidget from "@/components/widgets/PanelClockwidget.vue";
 import { getIconSource } from "@vasakgroup/plugin-vicons";
+import menuIcon from "@/assets/img/icon.png";
 
-const menuIcon: Ref<string> = ref("");
 const notifyIcon: Ref<string> = ref("");
 const notifications = ref<Notification[]>([]);
 const hasNewNotifications = ref(false);
 let unlistenNotifications: Ref<(() => void) | null> = ref(null);
-
-const setMenuIcon = async () => {
-  try {
-    menuIcon.value = await getIconSource("menu-editor");
-  } catch (err) {
-    console.error("Error: finding icon menu");
-  }
-};
 
 const setNotifyIcon = async () => {
   try {
@@ -54,22 +46,25 @@ async function loadNotifications() {
 }
 
 onMounted(async () => {
-  setMenuIcon();
   setNotifyIcon();
   await loadNotifications();
 
-  unlistenNotifications.value = await listen("notifications-updated", (event) => {
-    const newNotifications = event.payload as Notification[];
-    hasNewNotifications.value = newNotifications.length > notifications.value.length;
-    notifications.value = newNotifications;
-    
-    // Reset animation after a short delay
-    if (hasNewNotifications.value) {
-      setTimeout(() => {
-        hasNewNotifications.value = false;
-      }, 1000);
+  unlistenNotifications.value = await listen(
+    "notifications-updated",
+    (event) => {
+      const newNotifications = event.payload as Notification[];
+      hasNewNotifications.value =
+        newNotifications.length > notifications.value.length;
+      notifications.value = newNotifications;
+
+      // Reset animation after a short delay
+      if (hasNewNotifications.value) {
+        setTimeout(() => {
+          hasNewNotifications.value = false;
+        }, 1000);
+      }
     }
-  });
+  );
 });
 
 onUnmounted(() => {
@@ -77,7 +72,6 @@ onUnmounted(() => {
     unlistenNotifications.value();
   }
 });
-
 </script>
 
 <template>
@@ -94,11 +88,8 @@ onUnmounted(() => {
           class="app-icon"
           :class="{ 'bell-shake': hasNewNotifications }"
         />
-        <div 
-          v-if="notifications.length > 0" 
-          class="notification-badge"
-        >
-          {{ notifications.length > 99 ? '99+' : notifications.length }}
+        <div v-if="notifications.length > 0" class="notification-badge">
+          {{ notifications.length > 99 ? "99+" : notifications.length }}
         </div>
       </div>
     </div>
@@ -135,9 +126,23 @@ onUnmounted(() => {
 }
 
 @keyframes bell-shake {
-  0%, 100% { transform: rotate(0deg); }
-  10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
-  20%, 40%, 60%, 80% { transform: rotate(10deg); }
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: rotate(-10deg);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: rotate(10deg);
+  }
 }
 
 .bell-shake {
