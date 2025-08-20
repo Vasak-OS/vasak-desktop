@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use tauri::{App, Manager};
+use tauri::{App, Manager, PhysicalPosition, PhysicalSize, Position, Size, WebviewWindow};
 
 use crate::monitor_manager::get_primary_monitor;
 
@@ -12,22 +12,22 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .get_webview_window("panel")
         .expect("panel window not found");
 
-    panel_window.set_position(tauri::Position::Physical(tauri::PhysicalPosition {
+    panel_window.set_position(Position::Physical(PhysicalPosition {
         x: primary_monitor_position.x,
         y: primary_monitor_position.y,
     }))?;
 
-    panel_window.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+    panel_window.set_size(Size::Physical(PhysicalSize {
         width: primary_monitor_size.width,
         height: 38,
     }))?;
 
-    panel_window.set_max_size(Some(tauri::Size::Physical(tauri::PhysicalSize {
+    panel_window.set_max_size(Some(Size::Physical(PhysicalSize {
         width: primary_monitor_size.width,
         height: 38,
     })))?;
 
-    panel_window.set_min_size(Some(tauri::Size::Physical(tauri::PhysicalSize {
+    panel_window.set_min_size(Some(Size::Physical(PhysicalSize {
         width: primary_monitor_size.width,
         height: 38,
     })))?;
@@ -36,7 +36,7 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn set_window_properties(window: &tauri::WebviewWindow) {
+fn set_window_properties(window: &WebviewWindow) {
     let gtk_window = window.gtk_window().expect("Failed to get GTK window");
 
     gtk_window.set_type_hint(gdk::WindowTypeHint::Dock);
@@ -91,16 +91,13 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
 
                 let window_ptr = gdk_window.as_ptr();
 
-                // Establecer tipo de ventana como DOCK primero
                 set_wm_atom_property(
                     window_ptr,
                     "_NET_WM_WINDOW_TYPE",
                     "_NET_WM_WINDOW_TYPE_DOCK",
                 );
 
-                // Establecer _NET_WM_STRUT (versión simple) para compatibilidad
-                let basic_strut: [u32; 4] = [0, 0, 38, 0]; // left, right, top, bottom
-
+                let basic_strut: [u32; 4] = [0, 0, 38, 0];
                 if let (Ok(strut_name), Ok(type_name)) =
                     (CString::new("_NET_WM_STRUT"), CString::new("CARDINAL"))
                 {
@@ -115,21 +112,7 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
                     );
                 }
 
-                let strut_partial: [u32; 12] = [
-                    0,                // left = 0 (no reservamos espacio izquierdo)
-                    0,                // right = 0 (no reservamos espacio derecho)
-                    38,               // top = 38 (reservamos 38 pixels arriba)
-                    0,                // bottom = 0 (no reservamos espacio abajo)
-                    0,                // left_start_y = 0 (no aplica)
-                    0,                // left_end_y = 0 (no aplica)
-                    0,                // right_start_y = 0 (no aplica)
-                    0,                // right_end_y = 0 (no aplica)
-                    0,                // top_start_x = 0 (empezamos desde el borde izquierdo)
-                    screen_width - 1, // top_end_x = ancho-1 (terminamos en el borde derecho)
-                    0,                // bottom_start_x = 0 (no aplica)
-                    0,                // bottom_end_x = 0 (no aplica)
-                ];
-
+                let strut_partial: [u32; 12] = [0, 0, 38, 0, 0, 0, 0, 0, 0, screen_width - 1, 0, 0];
                 if let (Ok(strut_partial_name), Ok(type_name)) = (
                     CString::new("_NET_WM_STRUT_PARTIAL"),
                     CString::new("CARDINAL"),
@@ -145,20 +128,9 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
                     );
                 }
 
-                // Establecer propiedades adicionales
                 let desktop_value: u32 = 0xFFFFFFFF;
                 set_wm_cardinal_property(window_ptr, "_NET_WM_DESKTOP", &[desktop_value]);
 
-                // Establecer estados de ventana
-                let state_atoms = [
-                    "_NET_WM_STATE_STICKY",
-                    "_NET_WM_STATE_ABOVE",
-                    "_NET_WM_STATE_SKIP_TASKBAR",
-                    "_NET_WM_STATE_SKIP_PAGER",
-                ];
-                set_wm_state_property(window_ptr, &state_atoms);
-
-                // Forzar actualización final
                 ffi::gdk_display_sync(display.as_ptr());
                 ffi::gdk_display_flush(display.as_ptr());
             }
@@ -210,44 +182,5 @@ unsafe fn set_wm_cardinal_property(
             values.as_ptr() as *const u8,
             values.len() as i32,
         );
-    }
-}
-
-#[cfg(feature = "x11")]
-unsafe fn set_wm_state_property(window_ptr: *mut gdk::ffi::GdkWindow, states: &[&str]) {
-    use gdk::ffi;
-    use std::ffi::CString;
-
-    if let Ok(prop_name) = CString::new("_NET_WM_STATE") {
-        let prop_atom = ffi::gdk_atom_intern(prop_name.as_ptr(), 0);
-        let atom_type = ffi::gdk_atom_intern(CString::new("ATOM").unwrap().as_ptr(), 0);
-
-        let mut state_atoms = Vec::new();
-        for state in states {
-            if let Ok(state_name) = CString::new(*state) {
-                state_atoms.push(ffi::gdk_atom_intern(state_name.as_ptr(), 0));
-            }
-        }
-
-        ffi::gdk_property_change(
-            window_ptr,
-            prop_atom,
-            atom_type,
-            32,
-            ffi::GDK_PROP_MODE_REPLACE,
-            state_atoms.as_ptr() as *const u8,
-            state_atoms.len() as i32,
-        );
-    }
-}
-
-#[cfg(feature = "x11")]
-unsafe fn send_client_message(window_ptr: *mut gdk::ffi::GdkWindow, message_type: &str) {
-    use gdk::ffi;
-    use std::ffi::CString;
-
-    if let Ok(_msg_name) = CString::new(message_type) {
-        let display = ffi::gdk_window_get_display(window_ptr);
-        ffi::gdk_display_flush(display);
     }
 }
