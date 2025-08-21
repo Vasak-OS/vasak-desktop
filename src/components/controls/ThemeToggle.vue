@@ -49,7 +49,8 @@
     
     <img 
       :src="icon" 
-      :alt="theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'"
+      :alt="theme === 'dark' ? 'Toggle light theme' : 'Toggle dark theme'"
+      :title="theme === 'dark' ? 'Toggle light theme' : 'Toggle dark theme'"
       class="m-auto w-[50px] h-[50px] transition-all duration-500 group-hover:scale-110 relative z-10"
       :class="{ 
         'animate-spin': isSwitching,

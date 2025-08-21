@@ -9,6 +9,7 @@
       <img
         :src="currentIcon"
         :alt="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
+        :title="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
         class="w-6 h-6 transition-all duration-200"
         :class="{ 'opacity-60': volumeInfo.is_muted }"
       />

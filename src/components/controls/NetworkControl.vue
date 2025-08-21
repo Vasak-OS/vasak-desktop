@@ -42,6 +42,7 @@
     <img
       :src="networkIconSrc"
       :alt="networkAlt"
+      :title="networkAlt"
       class="m-auto w-[50px] h-[50px] transition-all duration-300 group-hover:scale-110 relative z-10"
       :class="{
         'animate-spin': isLoading,
