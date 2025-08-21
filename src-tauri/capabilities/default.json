@@ -37,6 +37,7 @@
     "network-manager:allow-toggle-network-state",
     "bluetooth-manager:allow-list-adapters",
     "bluetooth-manager:allow-list-devices",
-    "bluetooth-manager:allow-set-adapter-powered"
+    "bluetooth-manager:allow-set-adapter-powered",
+    "bluetooth-manager:allow-bluetooth-plugin-status"
   ]
 }
