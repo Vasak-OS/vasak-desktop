@@ -1,8 +1,6 @@
 use gtk::prelude::*;
 use std::sync::Arc;
-use tauri::{
-    AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
-};
+use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
 
 use crate::app_url::get_app_url;
 use crate::monitor_manager::get_primary_monitor;
@@ -64,20 +62,6 @@ pub async fn create_control_center_window(
     control_center_window.set_focus()?;
 
     set_window_properties(&control_center_window)?;
-
-    let control_center_window_clone = Arc::clone(&control_center_window);
-
-    control_center_window.on_window_event(move |event| match event {
-        WindowEvent::Focused(is_focused) => {
-            if !is_focused {
-                let _ = control_center_window_clone.close();
-            }
-        }
-        WindowEvent::CloseRequested { .. } => {
-            let _ = control_center_window_clone.close();
-        }
-        _ => {}
-    });
 
     Ok(())
 }
