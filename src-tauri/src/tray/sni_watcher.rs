@@ -7,7 +7,6 @@ use tauri::AppHandle;
 use zbus::{Connection, MatchRule, MessageStream, MessageType};
 
 const SNI_WATCHER_SERVICE: &str = "org.kde.StatusNotifierWatcher";
-const SNI_WATCHER_PATH: &str = "/StatusNotifierWatcher";
 const SNI_WATCHER_INTERFACE: &str = "org.kde.StatusNotifierWatcher";
 
 pub struct SniWatcher {
