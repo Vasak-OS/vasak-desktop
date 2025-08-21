@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, Ref } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import TrayIconBluethoot from "@/components/buttons/TrayIconBluethoot.vue";
+import { isBluetoothPluginInitialized } from "@vasakgroup/plugin-bluetooth-manager";
+
+const bluetoothInitialized: Ref<boolean> = ref(false);
 
 interface TrayItem {
   id: string;
@@ -137,6 +141,7 @@ const getItemStatusClass = (item: TrayItem) => {
 onMounted(async () => {
   await refreshTrayItems();
   unlisten = await listen("tray-update", refreshTrayItems);
+  bluetoothInitialized.value = await isBluetoothPluginInitialized();
 
   // Initialize SNI watcher
   try {
@@ -189,6 +194,7 @@ onUnmounted(() => {
         <!-- Status indicator -->
         <div v-if="item.status === 'NeedsAttention'" class="status-indicator" />
       </div>
+      <TrayIconBluethoot />
     </TransitionGroup>
 
     <!-- Context Menu -->

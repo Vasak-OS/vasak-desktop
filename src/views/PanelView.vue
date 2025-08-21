@@ -116,7 +116,7 @@ onUnmounted(() => {
 }
 
 .notification-badge {
-  @apply absolute -top-0.5 -right-0.5 bg-red-500 text-white rounded-full min-w-3 h-3 flex items-center justify-center;
+  @apply absolute -top-0.5 -right-0.5 bg-vsk-primary text-white rounded-full min-w-3 h-3 flex items-center justify-center;
   font-size: 8px;
   font-weight: 600;
   line-height: 1;
