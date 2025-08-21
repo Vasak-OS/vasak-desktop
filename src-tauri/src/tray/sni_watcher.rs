@@ -1,9 +1,10 @@
-use super::{TrayManager, TrayItem, TrayStatus, TrayCategory, emit_tray_update};
+use super::{emit_tray_update, TrayManager};
+use crate::structs::{TrayCategory, TrayItem, TrayStatus};
 use crate::tray::sni_item::SniItemProxy;
-use tauri::AppHandle;
-use zbus::{Connection, MessageStream, MatchRule, MessageType};
+use base64::{engine::general_purpose, Engine as _};
 use futures_util::stream::StreamExt;
-use base64::{Engine as _, engine::general_purpose};
+use tauri::AppHandle;
+use zbus::{Connection, MatchRule, MessageStream, MessageType};
 
 const SNI_WATCHER_SERVICE: &str = "org.kde.StatusNotifierWatcher";
 const SNI_WATCHER_PATH: &str = "/StatusNotifierWatcher";
@@ -16,13 +17,14 @@ pub struct SniWatcher {
 }
 
 impl SniWatcher {
-    pub async fn new(tray_manager: TrayManager, app_handle: AppHandle) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new(
+        tray_manager: TrayManager,
+        app_handle: AppHandle,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
         let connection = Connection::session().await?;
-        
+
         // Register as StatusNotifierWatcher
-        connection
-            .request_name(SNI_WATCHER_SERVICE)
-            .await?;
+        connection.request_name(SNI_WATCHER_SERVICE).await?;
 
         Ok(Self {
             connection,
@@ -48,13 +50,14 @@ impl SniWatcher {
             .member("NameOwnerChanged")?
             .build();
 
-        let mut name_stream = MessageStream::for_match_rule(name_owner_rule, &self.connection, None).await?;
+        let mut name_stream =
+            MessageStream::for_match_rule(name_owner_rule, &self.connection, None).await?;
 
         tokio::spawn({
             let tray_manager = self.tray_manager.clone();
             let app_handle = self.app_handle.clone();
             let connection = self.connection.clone();
-            
+
             async move {
                 loop {
                     tokio::select! {
@@ -119,9 +122,13 @@ impl SniWatcher {
         Ok(())
     }
 
-    async fn unregister_item(tray_manager: &TrayManager, app_handle: &AppHandle, service_name: &str) {
+    async fn unregister_item(
+        tray_manager: &TrayManager,
+        app_handle: &AppHandle,
+        service_name: &str,
+    ) {
         println!("[SNI] Desregistrando item: {}", service_name);
-        
+
         {
             let mut manager = tray_manager.write().await;
             manager.remove(service_name);
@@ -134,11 +141,14 @@ impl SniWatcher {
         proxy: &SniItemProxy<'_>,
         service_name: &str,
     ) -> Result<TrayItem, Box<dyn std::error::Error>> {
-        let id = proxy.id().await.unwrap_or_else(|_| service_name.to_string());
+        let id = proxy
+            .id()
+            .await
+            .unwrap_or_else(|_| service_name.to_string());
         let title = proxy.title().await.ok();
         let tooltip = proxy.tool_tip().await.ok();
         let icon_name = proxy.icon_name().await.ok();
-        
+
         let status = match proxy.status().await.unwrap_or_default().as_str() {
             "Active" => TrayStatus::Active,
             "Passive" => TrayStatus::Passive,
@@ -188,9 +198,11 @@ impl SniWatcher {
         None
     }
 
-    fn convert_pixmap_to_base64(pixmap: &(i32, i32, Vec<u8>)) -> Result<String, Box<dyn std::error::Error>> {
+    fn convert_pixmap_to_base64(
+        pixmap: &(i32, i32, Vec<u8>),
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let (width, height, data) = pixmap;
-        
+
         // Convert ARGB to RGBA
         let mut rgba_data = Vec::with_capacity(data.len());
         for chunk in data.chunks(4) {
@@ -201,10 +213,13 @@ impl SniWatcher {
 
         let img = image::RgbaImage::from_raw(*width as u32, *height as u32, rgba_data)
             .ok_or("Failed to create image")?;
-        
+
         let mut buffer = Vec::new();
-        img.write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Png)?;
-        
+        img.write_to(
+            &mut std::io::Cursor::new(&mut buffer),
+            image::ImageFormat::Png,
+        )?;
+
         Ok(general_purpose::STANDARD.encode(&buffer))
     }
 
@@ -233,13 +248,21 @@ impl SniWatcher {
             "org.freedesktop.DBus",
             "/org/freedesktop/DBus",
             "org.freedesktop.DBus",
-        ).await?;
+        )
+        .await?;
 
         let names: Vec<String> = proxy.call("ListNames", &()).await?;
-        
+
         for name in names {
             if name.starts_with("org.kde.StatusNotifierItem") {
-                if let Err(e) = Self::register_item(&self.connection, &self.tray_manager, &self.app_handle, &name).await {
+                if let Err(e) = Self::register_item(
+                    &self.connection,
+                    &self.tray_manager,
+                    &self.app_handle,
+                    &name,
+                )
+                .await
+                {
                     eprintln!("[SNI] Error registrando item existente {}: {}", name, e);
                 }
             }

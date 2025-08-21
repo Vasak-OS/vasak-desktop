@@ -1,4 +1,4 @@
-use super::TrayMenu;
+use crate::structs::TrayMenu;
 use zbus::{Connection, Proxy, zvariant::Value};
 
 pub struct MenuParser;
