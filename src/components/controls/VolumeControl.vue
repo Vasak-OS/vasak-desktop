@@ -35,7 +35,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, Ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { getSymbolSource } from "@vasakgroup/plugin-vicons";
 
 const volumeInfo: Ref<any> = ref({
   current: 0,
@@ -58,7 +58,7 @@ async function updateIcon() {
   };
 
   try {
-    currentIcon.value = await getIconSource(getIconName());
+    currentIcon.value = await getSymbolSource(getIconName());
   } catch (error) {
     console.error("Error loading icon:", error);
   }
