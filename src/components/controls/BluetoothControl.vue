@@ -4,7 +4,7 @@
     class="p-2 rounded-xl bg-white/50 dark:bg-black/50 hover:bg-white/70 dark:hover:bg-black/70 transition-all duration-300 h-[70px] w-[70px] group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95"
     :class="{
       'animate-pulse': isTogglingBluetooth,
-      'ring-2 ring-blue-400/50': isBluetoothOn,
+      'ring-2 ring-vsk-primary/50': isBluetoothOn,
       'opacity-60': !isBluetoothOn,
     }"
     :disabled="isTogglingBluetooth"
@@ -38,10 +38,10 @@
       class="absolute inset-0 flex items-center justify-center"
     >
       <div
-        class="absolute w-8 h-8 border-2 border-blue-400/30 rounded-full animate-ping"
+        class="absolute w-8 h-8 border-2 border-vsk-primary/30 rounded-full animate-ping"
       ></div>
       <div
-        class="absolute w-12 h-12 border-2 border-blue-400/20 rounded-full animate-ping"
+        class="absolute w-12 h-12 border-2 border-vsk-primary/20 rounded-full animate-ping"
         style="animation-delay: 0.5s"
       ></div>
     </div>

@@ -2,8 +2,9 @@
 import { ref, onMounted, onUnmounted, Ref } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import TrayIconBluethoot from "@/components/buttons/TrayIconBluethoot.vue";
+import TrayIconBluetooth from "@/components/buttons/TrayIconBluetooth.vue";
 import { isBluetoothPluginInitialized } from "@vasakgroup/plugin-bluetooth-manager";
+import TrayIconNetwork from "@/components/buttons/TrayIconNetwork.vue";
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 
@@ -194,7 +195,8 @@ onUnmounted(() => {
         <!-- Status indicator -->
         <div v-if="item.status === 'NeedsAttention'" class="status-indicator" />
       </div>
-      <TrayIconBluethoot />
+      <TrayIconBluetooth />
+      <TrayIconNetwork />
     </TransitionGroup>
 
     <!-- Context Menu -->
