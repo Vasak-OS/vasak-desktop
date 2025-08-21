@@ -83,6 +83,7 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
 
         if let Some(monitor) = display.primary_monitor() {
             let geometry = monitor.geometry();
+            let screen_x = geometry.x() as u32;
             let screen_width = geometry.width() as u32;
 
             unsafe {
@@ -91,13 +92,22 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
 
                 let window_ptr = gdk_window.as_ptr();
 
+                // Elimina primero cualquier STRUT previo para evitar conflictos
+                if let Ok(strut_name) = CString::new("_NET_WM_STRUT") {
+                    ffi::gdk_property_delete(window_ptr, ffi::gdk_atom_intern(strut_name.as_ptr(), 0));
+                }
+                if let Ok(strut_partial_name) = CString::new("_NET_WM_STRUT_PARTIAL") {
+                    ffi::gdk_property_delete(window_ptr, ffi::gdk_atom_intern(strut_partial_name.as_ptr(), 0));
+                }
+
                 set_wm_atom_property(
                     window_ptr,
                     "_NET_WM_WINDOW_TYPE",
                     "_NET_WM_WINDOW_TYPE_DOCK",
                 );
 
-                let basic_strut: [u32; 4] = [0, 0, 38, 0];
+                // STRUT simple: no reservar espacio global, solo usar STRUT_PARTIAL
+                let basic_strut: [u32; 4] = [0, 0, 0, 0];
                 if let (Ok(strut_name), Ok(type_name)) =
                     (CString::new("_NET_WM_STRUT"), CString::new("CARDINAL"))
                 {
@@ -112,7 +122,12 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
                     );
                 }
 
-                let strut_partial: [u32; 12] = [0, 0, 38, 0, 0, 0, 0, 0, 0, screen_width - 1, 0, 0];
+                // STRUT_PARTIAL: reservar solo el área del panel en el monitor principal
+                let mut strut_partial: [u32; 12] = [0; 12];
+                strut_partial[2] = 38; // top
+                strut_partial[8] = screen_x; // top_start_x
+                strut_partial[9] = screen_x + screen_width - 1; // top_end_x
+
                 if let (Ok(strut_partial_name), Ok(type_name)) = (
                     CString::new("_NET_WM_STRUT_PARTIAL"),
                     CString::new("CARDINAL"),
@@ -131,6 +146,7 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
                 let desktop_value: u32 = 0xFFFFFFFF;
                 set_wm_cardinal_property(window_ptr, "_NET_WM_DESKTOP", &[desktop_value]);
 
+                // Forzar actualización final
                 ffi::gdk_display_sync(display.as_ptr());
                 ffi::gdk_display_flush(display.as_ptr());
             }

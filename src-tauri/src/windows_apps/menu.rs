@@ -1,8 +1,6 @@
 use gtk::prelude::*;
 use std::sync::Arc;
-use tauri::{
-    AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
-};
+use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
 
 use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
@@ -41,20 +39,6 @@ pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error
     menu_window.set_focus()?;
 
     set_window_properties(&menu_window);
-
-    let menu_window_clone = Arc::clone(&menu_window);
-
-    menu_window.on_window_event(move |event| match event {
-        WindowEvent::Focused(is_focused) => {
-            if !is_focused {
-                let _ = menu_window_clone.close();
-            }
-        }
-        WindowEvent::CloseRequested { .. } => {
-            let _ = menu_window_clone.close();
-        }
-        _ => {}
-    });
 
     Ok(())
 }
