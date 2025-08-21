@@ -128,7 +128,7 @@ const getBluetoothIcon = async () => {
 };
 </script>
 <template>
-  <div class="m-1 p-auto relative">
+  <div class="px-auto relative">
     <img
       :src="bluetoothIcon"
       class="m-auto h-[22px] w-auto transition-all duration-300 "
