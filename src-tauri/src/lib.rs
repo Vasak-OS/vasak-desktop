@@ -67,6 +67,8 @@ pub fn run() {
             get_all_notifications,
             delete_notification,
             toggle_control_center,
+            init_sni_watcher,
+            get_tray_items
         ])
         .setup(move |app| {
             let _ = create_desktops(app);
