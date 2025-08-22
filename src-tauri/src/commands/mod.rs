@@ -17,8 +17,5 @@ pub use notifications::{
 };
 pub use runner::open_app;
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};
-pub use tray::{
-    init_sni_watcher, get_tray_items, tray_item_activate, tray_item_secondary_activate,
-    get_tray_menu, tray_menu_item_click,
-};
+pub use tray::{get_tray_items, init_sni_watcher};
 pub use window_manager::{get_windows, toggle_window};
