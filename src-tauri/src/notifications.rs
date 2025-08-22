@@ -69,16 +69,65 @@ pub async fn add_real_notification(
         .unwrap_or_default()
         .as_secs();
 
+    // Log para debug
+    println!(
+        "[add_real_notification] app_name: '{}', app_icon: {:?}, summary: '{}'",
+        app_name, app_icon, summary
+    );
+
+    // Función auxiliar para mapear nombres de app a iconos conocidos
+    fn map_app_icon(app_name: &str) -> Option<String> {
+        let name = app_name.to_lowercase();
+        if name.contains("chrome") {
+            Some("google-chrome".to_string())
+        } else if name.contains("kdeconnect") || name.contains("kde connect") {
+            Some("phone".to_string())
+        } else if name.contains("telegram desktop") {
+            Some("telegram-desktop".to_string())
+        } else if name.contains("calendar") {
+            Some("x-office-calendar".to_string())
+        } else {
+            None
+        }
+    }
+
+    // Detectar si el summary parece un icono (ej: "view-calendar-upcoming")
+    fn summary_as_icon(summary: &str) -> bool {
+        summary.contains("calendar") || summary.contains("alarm") || summary.contains("reminder")
+    }
+
+    // Detectar si el summary es una ruta a un archivo de imagen
+    fn summary_is_image_path(summary: &str) -> bool {
+        let summary_lower = summary.to_lowercase();
+        summary_lower.ends_with(".png")
+            || summary_lower.ends_with(".svg")
+            || summary_lower.ends_with(".jpg")
+            || summary_lower.ends_with(".jpeg")
+            || summary_lower.ends_with(".bmp")
+            || summary_lower.ends_with(".ico")
+    }
+
+    let icon_final = match app_icon {
+        Some(ref icon) if !icon.is_empty() => icon.clone(),
+        _ => {
+            if summary_is_image_path(&summary) {
+                summary.clone()
+            } else if summary_as_icon(&summary) {
+                summary.clone()
+            } else if let Some(mapped) = map_app_icon(&app_name) {
+                mapped
+            } else {
+                app_name.to_lowercase()
+            }
+        }
+    };
+
     let notification = Notification {
         id: timestamp as u32,
         app_name: app_name.clone(),
         summary,
         body,
-        app_icon: app_icon.unwrap_or_else(|| match app_name.to_lowercase().as_str() {
-            name if name.contains("chrome") => "google-chrome".to_string(),
-            name if name.contains("kdeconnect") => "phone".to_string(),
-            name => name.to_string(),
-        }),
+        app_icon: icon_final,
         timestamp,
         seen: false,
         urgency: urgency.unwrap_or(NotificationUrgency::Normal),
