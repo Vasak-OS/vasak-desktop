@@ -1,15 +1,22 @@
 import { createWebHashHistory, createRouter } from "vue-router";
 
-import ControlCenterView from "@/views/ControlCenterView.vue";
-import DesktopView from "../views/DesktopView.vue";
-import MenuView from "../views/MenuView.vue";
-import PanelView from "../views/PanelView.vue";
-
 const routes = [
-  { path: "/desktop", component: DesktopView },
-  { path: "/panel", component: PanelView },
-  { path: "/menu", component: MenuView },
-  { path: "/control_center", component: ControlCenterView },
+  { path: "/desktop", component: () => import("@/views/DesktopView.vue") },
+  { path: "/panel", component: () => import("@/views/PanelView.vue") },
+  { path: "/menu", component: () => import("@/views/MenuView.vue") },
+  {
+    path: "/control_center",
+    component: () => import("@/views/ControlCenterView.vue"),
+  },
+  {
+    path: "/applets",
+    children: [
+      {
+        path: "bluetooth",
+        component: () => import("@/views/applets/BluetoothAppletView.vue"),
+      },
+    ],
+  },
 ];
 
 export const router = createRouter({
