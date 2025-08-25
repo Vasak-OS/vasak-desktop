@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, Ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 
 import SearchMenuComponent from "@/components/SearchMenuComponent.vue";
@@ -9,17 +9,16 @@ import UserMenuCard from "@/components/cards/UserMenuCard.vue";
 import SessionButton from "@/components/buttons/SessionButton.vue";
 import CategoryMenuPill from "@/components/buttons/CategoryMenuPill.vue";
 import WeatherWidget from "@/components/widgets/WeatherWidget.vue";
-
-// Importar iconos de sesión
-import shutdownImg from "@/assets/img/shutdown.svg";
-import rebootImg from "@/assets/img/reboot.svg";
-import logoutImg from "@/assets/img/logout.svg";
-import suspendImg from "@/assets/img/suspend.svg";
+import { getIconSource } from "@vasakgroup/plugin-vicons";
 
 // Estado global
-const menuData = ref<Array<any>>([]);
-const categorySelected = ref<any>("all");
-const filter = ref<string>("");
+const menuData: Ref<Array<any>> = ref([]);
+const categorySelected: Ref<any> = ref("all");
+const filter: Ref<string> = ref("");
+const logoutImg: Ref<string> = ref("");
+const shutdownImg: Ref<string> = ref("");
+const rebootImg: Ref<string> = ref("");
+const suspendImg: Ref<string> = ref("");
 
 // Cargar menú
 const setMenu = async () => {
@@ -83,8 +82,20 @@ const appsOfCategory = computed(
   () => (menuData.value as any)[categorySelected.value]?.apps
 );
 
+const setImages = async () => {
+  try {
+    logoutImg.value = await getIconSource("system-log-out");
+    shutdownImg.value = await getIconSource("system-shutdown");
+    rebootImg.value = await getIconSource("system-reboot");
+    suspendImg.value = await getIconSource("system-suspend");
+  } catch (error) {
+    console.error("Error: finding logout icon");
+  }
+};
+
 onMounted(async () => {
   setMenu();
+  setImages();
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       try {
@@ -119,7 +130,7 @@ onMounted(async () => {
           :title="action.title"
           :img="action.img"
           @click="action.handler"
-          class="session-button"
+          class="w-10 h-10 hover:bg-vsk-primary/30 rounded-vsk p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3"
         />
       </div>
     </div>
@@ -188,10 +199,6 @@ onMounted(async () => {
   @apply w-2/5 border-b-2 border-vsk-primary;
 }
 
-.session-button {
-  @apply w-10 h-10 hover:bg-vsk-primary/30 rounded-vsk p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3;
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -218,10 +225,6 @@ onMounted(async () => {
 
 .animate-slideUpPlus {
   animation: slideUpPlus 0.5s ease-out forwards;
-}
-
-.session-button img {
-  @apply brightness-0 invert opacity-75 group-hover:opacity-100 transition-opacity duration-200;
 }
 
 .fade-enter-active,
