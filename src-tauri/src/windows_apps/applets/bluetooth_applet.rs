@@ -22,8 +22,6 @@ pub async fn create_applet_bluetooth_window(
         .max_inner_size(700.0, 620.0)
         .min_inner_size(700.0, 620.0)
         .visible(true)
-        .skip_taskbar(true)
-        .always_on_top(true)
         .build()?,
     );
 
@@ -52,6 +50,6 @@ pub async fn create_applet_bluetooth_window(
 fn set_window_properties(window: &tauri::WebviewWindow) {
     let gtk_window = window.gtk_window().expect("Failed to get GTK window");
 
-    gtk_window.set_type_hint(gdk::WindowTypeHint::Menu);
+    gtk_window.set_type_hint(gdk::WindowTypeHint::Utility);
     gtk_window.set_skip_taskbar_hint(true);
 }
