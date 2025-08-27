@@ -1,16 +1,62 @@
-# Tauri + Vue + TypeScript
+<center>
+  <img width="200" src="https://icon.icepanel.io/Technology/svg/Tauri.svg">
+   <img width="200" src="https://icon.icepanel.io/Technology/svg/Vue.js.svg">
+   <img width="200" src="https://icon.icepanel.io/Technology/svg/TypeScript.svg">
+   <img width="200" src="https://icon.icepanel.io/Technology/svg/Bun.svg">
+</center>
+<br />
+Vasak Desktop is a modern desktop environment built with Tauri (Rust backend + Vue.js frontend) that provides a comprehensive Linux desktop shell. It implements a multi-window desktop interface with system panel, application launcher, control center, and desktop background management across multiple monitors.
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+This document covers the overall system architecture, core components, and technology stack.
 
-## Recommended IDE Setup
+## Getting Started
 
-- [VS Code](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+### Prerequisites and System Requirements
+The vasak-desktop application requires both Node.js/JavaScript and Rust toolchains due to its hybrid Tauri architecture.
 
-## Type Support For `.vue` Imports in TS
+#### Required Dependencies
+* JavaScript Runtime (Bun Recommended):
+  * Node.js 18+ or Bun runtime
+  * Package manager: npm, yarn, pnpm, or bun
+* Rust Toolchain:
+  * Rust 1.70+ with Cargo
+  * Tauri CLI 2.8+
+* System Libraries: The application requires system libraries for desktop integration:
+  * GTK 3.0+ development libraries
+  * D-Bus development libraries
+  * X11 development libraries (for X11 support)
+  * Wayland development libraries (for Wayland support)
 
-Since TypeScript cannot handle type information for `.vue` imports, they are shimmed to be a generic Vue component type by default. In most cases this is fine if you don't really care about component prop types outside of templates. However, if you wish to get actual prop types in `.vue` imports (for example to get props validation when using manual `h(...)` calls), you can enable Volar's Take Over mode by following these steps:
+### Recommended IDE Setup
 
-1. Run `Extensions: Show Built-in Extensions` from VS Code's command palette, look for `TypeScript and JavaScript Language Features`, then right click and select `Disable (Workspace)`. By default, Take Over mode will enable itself if the default TypeScript extension is disabled.
-2. Reload the VS Code window by running `Developer: Reload Window` from the command palette.
+- [VS Code](https://code.visualstudio.com/) 
+- [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar)
+- [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
+- [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 
-You can learn more about Take Over mode [here](https://github.com/johnsoncodehk/volar/discussions/471).
+## System Architecture
+
+Vasak Desktop follows a hybrid web-native architecture where Vue.js handles the user interface layer while Rust manages system-level operations through Tauri's IPC bridge.
+
+## Technology Stack
+### Build and Development Stack
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Frontend Framework | Vue.js 3.5.18 | Reactive user interface |
+| Backend Runtime | Rust + Tauri 2.x | System integration and window management |
+| Styling | Tailwind CSS 4.1.12 | Utility-first CSS framework |
+| Build Tool | Vite 7.1.3 | Frontend build and development server |
+| State Management | Pinia 3.0.3 | Vue.js state management |
+| Routing | Vue Router 4.5.1 | Client-side routing |
+| Type System | TypeScript 5.9.2 | Static type checking |
+
+### System Integration Technologies
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Display Server | X11 + Wayland | Multi-protocol display server support |
+| GUI Toolkit | GTK 0.18 + GDK 0.18 | Native Linux widget integration |
+| IPC/DBus | zbus 4.x | D-Bus communication for system services |
+| Image Processing | image 0.25 | Icon and image handling |
+| Desktop Entries | freedesktop_entry_parser 1.3 | .desktop file parsing |
+| Async Runtime | Tokio 1.x | Asynchronous task execution |
