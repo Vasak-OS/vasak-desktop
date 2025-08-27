@@ -16,7 +16,8 @@
     "desktop_10",
     "panel",
     "menu",
-    "control_center"
+    "control_center",
+    "applet_bluetooth"
   ],
   "permissions": [
     "core:default",
@@ -38,6 +39,8 @@
     "bluetooth-manager:allow-list-adapters",
     "bluetooth-manager:allow-list-devices",
     "bluetooth-manager:allow-set-adapter-powered",
-    "bluetooth-manager:allow-bluetooth-plugin-status"
+    "bluetooth-manager:allow-bluetooth-plugin-status",
+    "bluetooth-manager:allow-start-scan",
+    "bluetooth-manager:allow-stop-scan"
   ]
 }
