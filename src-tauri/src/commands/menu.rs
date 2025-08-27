@@ -13,17 +13,13 @@ pub fn get_menu_items() -> HashMap<String, CategoryInfo> {
 #[tauri::command]
 pub fn toggle_menu(app: AppHandle) -> Result<(), ()> {
     if let Some(menu_window) = app.get_webview_window("menu") {
-        // La ventana existe, verificar si está visible
         if menu_window.is_visible().unwrap_or(false) {
-            // Está visible, cerrarla
             menu_window.close().expect("Failed to close menu window");
         } else {
-            // Existe pero no está visible, mostrarla
             let _ = menu_window.show();
             let _ = menu_window.set_focus();
         }
     } else {
-        // La ventana no existe, crearla
         spawn(async move {
             let _ = create_menu_window(app).await;
         });
