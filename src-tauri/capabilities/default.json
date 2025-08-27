@@ -17,7 +17,8 @@
     "panel",
     "menu",
     "control_center",
-    "applet_bluetooth"
+    "applet_bluetooth",
+    "app_terminal"
   ],
   "permissions": [
     "core:default",
@@ -29,6 +30,9 @@
     "core:window:allow-set-size",
     "core:window:allow-set-max-size",
     "core:window:allow-set-min-size",
+    "core:window:allow-close",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-minimize",
     "positioner:allow-move-window",
     "positioner:allow-set-tray-icon-state",
     "vicons:default",
