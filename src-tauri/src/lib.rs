@@ -12,13 +12,13 @@ mod window_manager;
 mod windows_apps;
 
 use commands::*;
-use eventloops::{setup_windows_monitoring, setup_notification_monitoring};
+use eventloops::{setup_notification_monitoring, setup_windows_monitoring};
 use std::sync::{Arc, Mutex};
 use structs::WMState;
-use tauri_plugin_config_manager;
-use tauri_plugin_user_data;
-use tauri_plugin_network_manager;
 use tauri_plugin_bluetooth_manager;
+use tauri_plugin_config_manager;
+use tauri_plugin_network_manager;
+use tauri_plugin_user_data;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
 use windows_apps::*;
@@ -68,7 +68,8 @@ pub fn run() {
             delete_notification,
             toggle_control_center,
             init_sni_watcher,
-            get_tray_items
+            get_tray_items,
+            toggle_bluetooth_applet
         ])
         .setup(move |app| {
             let _ = create_desktops(app);
