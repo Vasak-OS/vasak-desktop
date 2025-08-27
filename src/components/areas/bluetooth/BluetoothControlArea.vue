@@ -9,7 +9,7 @@ import {
   disconnectDevice,
   getConnectedDevices,
   getAvailableDevices,
-  scanForDevices
+  scanForDevices,
 } from "@vasakgroup/plugin-bluetooth-manager";
 import { listen } from "@tauri-apps/api/event";
 import BluetoothDeviceCard from "@/components/cards/BluetoothDeviceCard.vue";
@@ -18,6 +18,7 @@ const connectedDevices: Ref<any[]> = ref([]);
 const availableDevices: Ref<any[]> = ref([]);
 const isTogglingBluetooth: Ref<boolean> = ref(false);
 const bluetoothIcon: Ref<string> = ref("");
+const syncIcon: Ref<string> = ref("");
 const defaultAdapter = ref<AdapterInfo | null>(null);
 const connectedDevicesCount: Ref<number> = ref(0);
 const loading: Ref<boolean> = ref(true);
@@ -121,8 +122,12 @@ const refreshDevices = async () => {
   if (!defaultAdapter.value) return;
   loading.value = true;
   try {
-    connectedDevices.value = await getConnectedDevices(defaultAdapter.value.path);
-    availableDevices.value = await getAvailableDevices(defaultAdapter.value.path);
+    connectedDevices.value = await getConnectedDevices(
+      defaultAdapter.value.path
+    );
+    availableDevices.value = await getAvailableDevices(
+      defaultAdapter.value.path
+    );
     connectedDevicesCount.value = connectedDevices.value.length;
   } catch (e) {
     connectedDevices.value = [];
@@ -138,7 +143,7 @@ const scanDevices = async () => {
     await scanForDevices(defaultAdapter.value.path);
     await refreshDevices();
   } catch (e) {
-    // Manejo de error opcional
+    console.error("Error scanning for devices:", e);
   }
   isScanning.value = false;
 };
@@ -146,9 +151,13 @@ const scanDevices = async () => {
 // Lifecycle hooks
 onMounted(async () => {
   defaultAdapter.value = await getDefaultAdapter();
+  syncIcon.value = await getIconSource("emblem-synchronizing");
   await refreshDevices();
   await getBluetoothIcon();
-  unlistenBluetooth.value = await listen("bluetooth-change", handleBluetoothChange);
+  unlistenBluetooth.value = await listen(
+    "bluetooth-change",
+    handleBluetoothChange
+  );
 });
 
 onUnmounted(() => {
@@ -181,7 +190,7 @@ const disconnect = async (device: any) => {
 
 <template>
   <div>
-    <div class="flex mb-1 items-center mb-4">
+    <div class="flex items-center mb-4">
       <button
         type="button"
         class="relative inline-flex items-center h-7 w-12 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-vsk-primary mr-2"
@@ -197,19 +206,27 @@ const disconnect = async (device: any) => {
       <img :src="bluetoothIcon" alt="Bluetooth" class="h-8 w-auto mr-3" />
       <span class="font-bold text-2xl flex-1">Bluetooth</span>
       <button
-        class="bg-vsk-primary text-white rounded-vsk px-4 py-2 active:bg-vsk-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
+        class="bg-vsk-primary text-white rounded-vsk px-1 py-0.5 active:bg-vsk-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
         @click="scanDevices"
         :disabled="!isBluetoothOn || isScanning"
       >
-        <span v-if="isScanning">Escaneando...</span>
-        <span v-else>Escanear</span>
+        <img
+          :src="syncIcon"
+          class="h-6 w-6"
+          :class="{ 'animate-spin': isScanning }"
+        />
       </button>
     </div>
     <div v-if="loading" class="text-center px-6">Cargando...</div>
     <div v-else>
       <div class="mb-8 h-[240px] overflow-y-auto">
         <div class="mb-4 font-semibold text-xl">Disponibles</div>
-        <div v-if="availableDevices.length === 0" class="text-gray-500 text-sm px-1.5 text-center">No hay dispositivos disponibles</div>
+        <div
+          v-if="availableDevices.length === 0"
+          class="text-gray-500 text-sm px-1.5 text-center"
+        >
+          No hay dispositivos disponibles
+        </div>
         <ul v-else class="list-none p-0 m-0">
           <li v-for="dev in availableDevices" :key="dev.path">
             <BluetoothDeviceCard
@@ -222,7 +239,12 @@ const disconnect = async (device: any) => {
       </div>
       <div class="mb-8 h-[240px] overflow-y-auto">
         <div class="mb-4 font-semibold text-xl">Dispositivos conectados</div>
-        <div v-if="connectedDevices.length === 0" class="text-gray-500 text-sm px-1.5 text-center">Ningún dispositivo conectado</div>
+        <div
+          v-if="connectedDevices.length === 0"
+          class="text-gray-500 text-sm px-1.5 text-center"
+        >
+          Ningún dispositivo conectado
+        </div>
         <ul v-else class="list-none p-0 m-0">
           <li v-for="dev in connectedDevices" :key="dev.path">
             <BluetoothDeviceCard
@@ -238,5 +260,4 @@ const disconnect = async (device: any) => {
   </div>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>
