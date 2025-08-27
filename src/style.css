@@ -9,6 +9,7 @@
 
 @theme {
   --radius-vsk: var(--border-radius);
+  --radius-window: calc(var(--border-radius) + 16px);
   --color-vsk-primary: var(--primary-color);
 }
 
@@ -54,12 +55,3 @@ body * {
   border-radius: calc(var(--radius-vsk) + 32px);
 }
 
-.rounded-t-window {
-  border-top-left-radius: calc(var(--radius-vsk)+ 16px);
-  border-top-right-radius: calc(var(--radius-vsk)+ 16px);
-}
-
-.rounded-b-window {
-  border-radius: calc(var(--radius-vsk)+ 16px);
-  border-bottom-right-radius: calc(var(--radius-vsk)+ 16px);
-}

@@ -24,6 +24,6 @@ const getTemperature = computed(() => current.temperature_2m);
 <template>
   <div class="flex flex-row items-center justify-around">
     <h3 class="text-2xl font-bold">{{ getTemperature }} {{ getTemUnit }}</h3>
-    <WeatherIcon :code="current.weather_code" :dayOrNight="dayOrNight" />
+    <WeatherIcon :code="current.weather_code" :dayOrNight="dayOrNight as 'day' | 'night'" />
   </div>
 </template>
