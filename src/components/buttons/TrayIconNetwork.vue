@@ -59,7 +59,7 @@ onUnmounted(() => {
 });
 </script>
 <template>
-  <div class="px-auto relative">
+  <div class="p-1 rounded-vsk relative">
     <img
       :src="networkIconSrc"
       :alt="networkAlt"
@@ -69,7 +69,7 @@ onUnmounted(() => {
       }"
     />
     <div
-      class="absolute top-3 -right-2 w-3 h-3 rounded-full transition-all duration-300"
+      class="absolute top-3 right-0.5 w-3 h-3 rounded-full transition-all duration-300"
       :class="
         networkState.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'
       "

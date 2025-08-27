@@ -138,7 +138,7 @@ const getBluetoothIcon = async () => {
 </script>
 <template>
   <div
-    class="px-auto relative hover:bg-vsk-primary/30"
+    class="p-1 relative hover:bg-vsk-primary/30 rounded-vsk"
     :title="isBluetoothOn ? 'Bluetooth On' : 'Bluetooth Off'"
     @click="toggleBluetooth"
   >
