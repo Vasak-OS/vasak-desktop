@@ -41,6 +41,7 @@
     "bluetooth-manager:allow-set-adapter-powered",
     "bluetooth-manager:allow-bluetooth-plugin-status",
     "bluetooth-manager:allow-start-scan",
-    "bluetooth-manager:allow-stop-scan"
+    "bluetooth-manager:allow-stop-scan",
+    "bluetooth-manager:allow-connect-device"
   ]
 }
