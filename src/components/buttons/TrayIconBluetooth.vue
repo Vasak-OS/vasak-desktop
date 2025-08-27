@@ -7,6 +7,7 @@ import {
   getConnectedDevicesCount,
 } from "@vasakgroup/plugin-bluetooth-manager";
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 
 const connectedDevices: Ref<any[]> = ref([]);
 const availableDevices: Ref<any[]> = ref([]);
@@ -110,6 +111,14 @@ onUnmounted(() => {
   }
 });
 
+const toggleBluetooth = async () => {
+  try {
+    await invoke("toggle_bluetooth_applet");
+  } catch (error) {
+    console.error("Error toggling bluetooth applet:", error);
+  }
+};
+
 const getBluetoothIcon = async () => {
   try {
     connectedDevicesCount.value = await getConnectedDevicesCount(
@@ -128,10 +137,14 @@ const getBluetoothIcon = async () => {
 };
 </script>
 <template>
-  <div class="px-auto relative">
+  <div
+    class="px-auto relative hover:bg-vsk-primary/30"
+    :title="isBluetoothOn ? 'Bluetooth On' : 'Bluetooth Off'"
+    @click="toggleBluetooth"
+  >
     <img
       :src="bluetoothIcon"
-      class="m-auto h-[22px] w-auto transition-all duration-300 "
+      class="m-auto h-[22px] w-auto transition-all duration-300"
       :class="{
         'filter brightness-75': !isBluetoothOn,
       }"
