@@ -13,6 +13,7 @@
     "@tailwindcss/vite": "^4.1.12",
     "@tauri-apps/api": "^2.8.0",
     "@tauri-apps/plugin-shell": "^2.3.0",
+    "@vasakgroup/vue-libvasak": "link:@vasakgroup/vue-libvasak",
     "@vasakgroup/plugin-bluetooth-manager": "^2.0.0",
     "@vasakgroup/plugin-config-manager": "^2.0.0",
     "@vasakgroup/plugin-network-manager": "^0.1.0",

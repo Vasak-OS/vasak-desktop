@@ -1,3 +1,4 @@
+import path from "path";
 import { createWebHashHistory, createRouter } from "vue-router";
 
 const routes = [
@@ -14,6 +15,15 @@ const routes = [
       {
         path: "bluetooth",
         component: () => import("@/views/applets/BluetoothAppletView.vue"),
+      },
+    ],
+  },
+  {
+    path: "/apps",
+    children: [
+      {
+        path: "terminal",
+        component: () => import("@/views/apps/TerminalView.vue"),
       },
     ],
   },

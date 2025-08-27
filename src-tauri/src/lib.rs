@@ -77,6 +77,7 @@ pub fn run() {
 
             setup_windows_monitoring(window_manager.clone(), app.handle().clone())?;
             setup_notification_monitoring(app.handle().clone());
+            //create_app_terminal_window(app.handle().clone());
 
             Ok(())
         })

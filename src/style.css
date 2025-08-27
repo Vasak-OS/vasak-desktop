@@ -12,7 +12,7 @@
   --color-vsk-primary: var(--primary-color);
 }
 
-body *{
+body * {
   @apply text-gray-900 dark:text-gray-100 transition-all duration-300;
 }
 
@@ -52,4 +52,14 @@ body *{
 .applet {
   @apply p-8;
   border-radius: calc(var(--radius-vsk) + 32px);
+}
+
+.rounded-t-window {
+  border-top-left-radius: calc(var(--radius-vsk)+ 16px);
+  border-top-right-radius: calc(var(--radius-vsk)+ 16px);
+}
+
+.rounded-b-window {
+  border-radius: calc(var(--radius-vsk)+ 16px);
+  border-bottom-right-radius: calc(var(--radius-vsk)+ 16px);
 }
