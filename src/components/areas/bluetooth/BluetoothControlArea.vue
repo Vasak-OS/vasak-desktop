@@ -12,6 +12,7 @@ import {
   scanForDevices
 } from "@vasakgroup/plugin-bluetooth-manager";
 import { listen } from "@tauri-apps/api/event";
+import BluetoothDeviceCard from "@/components/cards/BluetoothDeviceCard.vue";
 
 const connectedDevices: Ref<any[]> = ref([]);
 const availableDevices: Ref<any[]> = ref([]);
@@ -181,16 +182,20 @@ const disconnect = async (device: any) => {
 <template>
   <div>
     <div class="flex mb-1 items-center mb-4">
-      <img :src="bluetoothIcon" alt="Bluetooth" class="h-8 w-auto mr-3" />
-      <span class="font-bold text-2xl flex-1">Bluetooth</span>
       <button
-        class="bg-vsk-primary text-white rounded-vsk px-4 py-2 active:bg-vsk-primary/80 disabled:cursor-not-allowed disabled:opacity-50 mr-2"
-        :class="{ on: isBluetoothOn }"
+        type="button"
+        class="relative inline-flex items-center h-7 w-12 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-vsk-primary mr-2"
+        :class="isBluetoothOn ? 'bg-vsk-primary' : 'bg-gray-400'"
         @click="toggleBT"
         :disabled="isTogglingBluetooth"
       >
-        {{ isBluetoothOn ? 'Desactivar' : 'Activar' }}
+        <span
+          class="inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform"
+          :class="isBluetoothOn ? 'translate-x-5' : 'translate-x-1'"
+        ></span>
       </button>
+      <img :src="bluetoothIcon" alt="Bluetooth" class="h-8 w-auto mr-3" />
+      <span class="font-bold text-2xl flex-1">Bluetooth</span>
       <button
         class="bg-vsk-primary text-white rounded-vsk px-4 py-2 active:bg-vsk-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
         @click="scanDevices"
@@ -206,20 +211,26 @@ const disconnect = async (device: any) => {
         <div class="mb-4 font-semibold text-xl">Disponibles</div>
         <div v-if="availableDevices.length === 0" class="text-gray-500 text-sm px-1.5 text-center">No hay dispositivos disponibles</div>
         <ul v-else class="list-none p-0 m-0">
-          <li v-for="dev in availableDevices" :key="dev.path" class="flex items-center justify-between background rounded-vsk px-6 py-3 mb-4">
-            <span>{{ dev.alias || dev.name || dev.address }}</span>
-            <button class="bg-vsk-primary rounded-vsk px-4 py-2 text-sm font-semibold cursor-pointer hover:opacity-70" @click="connect(dev)">Conectar</button>
+          <li v-for="dev in availableDevices" :key="dev.path">
+            <BluetoothDeviceCard
+              :device="dev"
+              action-label="Conectar"
+              @action="connect(dev)"
+            />
           </li>
         </ul>
       </div>
-      
       <div class="mb-8 h-[240px] overflow-y-auto">
         <div class="mb-4 font-semibold text-xl">Dispositivos conectados</div>
         <div v-if="connectedDevices.length === 0" class="text-gray-500 text-sm px-1.5 text-center">Ningún dispositivo conectado</div>
         <ul v-else class="list-none p-0 m-0">
-          <li v-for="dev in connectedDevices" :key="dev.path" class="flex items-center justify-between background rounded-vsk px-6 py-3 mb-4 border-l-4 border-green-500">
-            <span>{{ dev.alias || dev.name || dev.address }}</span>
-            <button class="bg-vsk-primary rounded-vsk px-4 py-2 text-sm font-semibold cursor-pointer hover:opacity-70" @click="disconnect(dev)">Desconectar</button>
+          <li v-for="dev in connectedDevices" :key="dev.path">
+            <BluetoothDeviceCard
+              :device="dev"
+              action-label="Desconectar"
+              connected
+              @action="disconnect(dev)"
+            />
           </li>
         </ul>
       </div>
@@ -228,14 +239,4 @@ const disconnect = async (device: any) => {
 </template>
 
 <style scoped>
-.empty {
-  color: #aaa;
-  font-size: 0.98rem;
-  padding: 0.3rem 0;
-}
-.loading {
-  text-align: center;
-  color: #aaa;
-  padding: 1.5rem 0;
-}
 </style>
