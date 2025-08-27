@@ -1,9 +1,9 @@
-<center>
+<p align="center">
   <img width="200" src="https://icon.icepanel.io/Technology/svg/Tauri.svg" style="block-display: inline;">
    <img width="200" src="https://icon.icepanel.io/Technology/svg/Vue.js.svg" style="block-display: inline;">
    <img width="200" src="https://icon.icepanel.io/Technology/svg/TypeScript.svg" style="block-display: inline;">
    <img width="200" src="https://icon.icepanel.io/Technology/svg/Bun.svg" style="block-display: inline;">
-</center>
+</p>
 <br />
 Vasak Desktop is a modern desktop environment built with Tauri (Rust backend + Vue.js frontend) that provides a comprehensive Linux desktop shell. It implements a multi-window desktop interface with system panel, application launcher, control center, and desktop background management across multiple monitors.
 
