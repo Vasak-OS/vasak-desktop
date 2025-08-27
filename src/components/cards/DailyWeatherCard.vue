@@ -20,7 +20,7 @@ const props = defineProps({
     required: true
   },
   dayOrNight: {
-    type: String,
+    type: String as () => "day" | "night",
     required: true
   },
   weatherCode: {
@@ -38,7 +38,7 @@ const formattedDate = computed(() => {
 <template>
   <div class="daily-weather-card-layout">
     <div class="date-display">{{ formattedDate }}</div>
-    <WeatherIcon :code="weatherCode" :dayOrNight="dayOrNight" class="weather-icon" />
+    <WeatherIcon :code="weatherCode" :dayOrNight="dayOrNight as 'day' | 'night'" class="weather-icon" />
     <div class="temperatures">
       <span class="temp-max">{{ max }}°</span>
       <span class="temp-min">{{ min }}°</span>
