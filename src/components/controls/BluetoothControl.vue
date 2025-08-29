@@ -1,7 +1,7 @@
 <template>
   <button
     @click="toggleBT"
-    class="p-2 rounded-xl bg-white/50 dark:bg-black/50 hover:bg-white/70 dark:hover:bg-black/70 transition-all duration-300 h-[70px] w-[70px] group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95"
+    class="p-2 rounded-vsk background hover:opacity-50 transition-all duration-300 h-[70px] w-[70px] group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95"
     :class="{
       'animate-pulse': isTogglingBluetooth,
       'ring-2 ring-vsk-primary/50': isBluetoothOn,
@@ -11,7 +11,7 @@
   >
     <!-- Background glow effect -->
     <div
-      class="absolute inset-0 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+      class="absolute inset-0 rounded-vsk bg-gradient-to-br from-blue-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
     ></div>
 
     <!-- Status indicator -->
