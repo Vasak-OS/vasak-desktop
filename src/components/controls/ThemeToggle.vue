@@ -1,16 +1,17 @@
 <template>
   <button
     @click="toggleTheme"
-    class="p-2 rounded-xl bg-white/50 dark:bg-black/50 hover:bg-white/70 dark:hover:bg-black/70 transition-all duration-500 h-[70px] w-[70px] group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95"
+    class="p-2 rounded-vsk background hover:opacity-50 transition-all duration-500 h-[70px] w-[70px] group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95"
     :class="{ 'theme-switching': isSwitching }"
   >
     <!-- Background gradient effect -->
     <div
-      class="absolute inset-0 rounded-xl transition-all duration-500"
+      class="absolute inset-0 rounded-vsk transition-all duration-500"
       :class="{
         'bg-gradient-to-br from-orange-400/20 to-yellow-400/20':
-          theme === 'light',
-        'bg-gradient-to-br from-purple-500/20 to-blue-600/20': theme === 'dark',
+          !configStore.config?.style.darkmode,
+        'bg-gradient-to-br from-purple-500/20 to-blue-600/20':
+          configStore.config?.style.darkmode,
       }"
       style="opacity: 0"
     ></div>
@@ -19,14 +20,14 @@
     <div
       class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-500"
       :class="{
-        'bg-yellow-400 animate-pulse': theme === 'light',
-        'bg-blue-400 animate-pulse': theme === 'dark',
+        'bg-yellow-400 animate-pulse': !configStore.config?.style.darkmode,
+        'bg-blue-400 animate-pulse': configStore.config?.style.darkmode,
       }"
     ></div>
 
     <!-- Animated rays for sun (light mode) -->
     <div
-      v-if="theme === 'light'"
+      v-if="!configStore.config?.style.darkmode"
       class="absolute inset-0 flex items-center justify-center"
     >
       <div
@@ -46,7 +47,7 @@
     </div>
 
     <!-- Twinkling stars for moon (dark mode) -->
-    <div v-if="theme === 'dark'" class="absolute inset-0">
+    <div v-if="configStore.config?.style.darkmode" class="absolute inset-0">
       <div
         v-for="i in 6"
         :key="i"
@@ -62,30 +63,39 @@
 
     <img
       :src="icon"
-      :alt="theme === 'dark' ? 'Toggle light theme' : 'Toggle dark theme'"
-      :title="theme === 'dark' ? 'Toggle light theme' : 'Toggle dark theme'"
+      :alt="
+        configStore.config?.style.darkmode
+          ? 'Toggle light theme'
+          : 'Toggle dark theme'
+      "
+      :title="
+        configStore.config?.style.darkmode
+          ? 'Toggle light theme'
+          : 'Toggle dark theme'
+      "
       class="m-auto w-[50px] h-[50px] transition-all duration-500 group-hover:scale-110 relative z-10"
       :class="{
         'animate-spin': isSwitching,
         'drop-shadow-lg group-hover:drop-shadow-xl': true,
-        'filter brightness-110': theme === 'light',
+        'filter brightness-110': !configStore.config?.style.darkmode,
       }"
     />
   </button>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { setDarkMode } from "@vasakgroup/plugin-config-manager";
+import { useConfigStore } from "@vasakgroup/plugin-config-manager";
 import dark from "@/assets/img/dark.png";
 import light from "@/assets/img/light.png";
 
-const theme = ref("");
+const configStore = useConfigStore();
 const isSwitching = ref(false);
 
 const icon = computed(() => {
-  return theme.value === "dark" ? light : dark;
+  return configStore.config?.style.darkmode ? light : dark;
 });
 
 const toggleTheme = async () => {
@@ -94,28 +104,19 @@ const toggleTheme = async () => {
   isSwitching.value = true;
   try {
     await invoke("toggle_system_theme");
-    await setDarkMode(theme.value === "dark");
-    theme.value = theme.value === "dark" ? "light" : "dark";
+    await setDarkMode(!configStore.config?.style.darkmode || false);
+    console.info(
+      "System theme toggled. New dark mode:",
+      configStore.config?.style.darkmode || false
+    );
   } catch (error) {
     console.error("Error toggling system theme:", error);
   } finally {
-    // Delay para mostrar la animación
     setTimeout(() => {
       isSwitching.value = false;
     }, 800);
   }
 };
-
-onMounted(async () => {
-  if (
-    window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-  ) {
-    theme.value = "dark";
-  } else {
-    theme.value = "light";
-  }
-});
 </script>
 
 <style scoped>
@@ -143,7 +144,7 @@ onMounted(async () => {
 }
 
 /* Efecto de hover en el fondo */
-.group:hover .absolute.inset-0.rounded-xl {
+.group:hover .absolute.inset-0.rounded-vsk {
   opacity: 1 !important;
 }
 
