@@ -3,7 +3,7 @@
     class="background rounded-vsk flex flex-row items-center gap-2 justify-between w-full h-auto p-4 transition-all duration-200 hover:bg-white/60 dark:hover:bg-black/60"
   >
     <button
-      class="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:bg-white/30 dark:hover:bg-black/30 hover:scale-110 active:scale-95"
+      class="w-8 h-8 flex items-center justify-center rounded-vsk transition-all duration-200 hover:bg-white/30 dark:hover:bg-black/30 hover:scale-110 active:scale-95"
     >
       <img
         :src="currentIcon"
