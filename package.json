@@ -12,28 +12,28 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.12",
     "@tauri-apps/api": "^2.8.0",
-    "@tauri-apps/plugin-shell": "^2.3.0",
+    "@tauri-apps/plugin-shell": "^2.3.1",
     "@vasakgroup/vue-libvasak": "link:@vasakgroup/vue-libvasak",
     "@vasakgroup/plugin-bluetooth-manager": "^2.0.0",
-    "@vasakgroup/plugin-config-manager": "^2.0.0",
+    "@vasakgroup/plugin-config-manager": "^2.0.1",
     "@vasakgroup/plugin-network-manager": "^0.1.0",
     "@vasakgroup/plugin-user-data": "^2.0.0",
     "@vasakgroup/plugin-vicons": "^2.0.0",
     "path": "^0.12.7",
     "pinia": "^3.0.3",
     "url": "^0.11.4",
-    "vue": "^3.5.18",
+    "vue": "^3.5.20",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.12",
-    "@tauri-apps/cli": "^2.8.1",
+    "@tauri-apps/cli": "^2.8.3",
     "@types/node": "^24.3.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.12",
     "typescript": "^5.9.2",
     "vite": "^7.1.3",
-    "vue-tsc": "^3.0.5"
+    "vue-tsc": "^3.0.6"
   }
 }
