@@ -100,7 +100,7 @@ onUnmounted(() => {
 @reference "../style.css";
 
 .vpanel {
-  @apply flex justify-between items-center mx-1 hover:bg-white/80 hover:dark:bg-black/80;
+  @apply flex justify-between items-center mx-1;
   height: 34px;
   padding: 4px;
   border-radius: calc(var(--border-radius) + 2px);
