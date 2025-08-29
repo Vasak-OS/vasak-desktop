@@ -28,7 +28,7 @@ onMounted(async () => {
 
 <template>
   <main
-    class="bg-white/70 dark:bg-black/70 text-black dark:text-white h-screen w-screen rounded-vsk flex flex-row flex-wrap justify-between"
+    class="bg-white/70 dark:bg-black/70 text-black dark:text-white h-screen w-screen rounded-window flex flex-row flex-wrap justify-between"
   >
     <div class="flex flex-col w-full gap-2 p-2">
       <UserControlCenterCard />
