@@ -1,7 +1,7 @@
 <template>
   <button
     @click="toggleTheme"
-    class="p-2 rounded-vsk background hover:opacity-50 transition-all duration-500 h-[70px] w-[70px] group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95"
+    class="p-2 rounded-vsk background hover:opacity-50 transition-all duration-500 h-[70px] w-[70px] group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95 ring-2 ring-vsk-primary/50"
     :class="{ 'theme-switching': isSwitching }"
   >
     <!-- Background gradient effect -->
