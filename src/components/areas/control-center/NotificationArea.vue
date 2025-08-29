@@ -18,7 +18,7 @@
       </span>
       <button
         @click="clearAllNotifications"
-        class="text-xs px-2 py-1 background rounded-vsk hover:bg-vsk-primary transition-colors"
+        class="text-xs px-4 py-2 bg-vsk-primary rounded-vsk hover:bg-vsk-primary/80 transition-colors"
       >
         Limpiar todo
       </button>
@@ -85,7 +85,6 @@ const groupedNotifications = computed<NotificationGroupData[]>(() => {
     group.has_unread = group.has_unread || !notification.seen;
   });
 
-  // Ordenar grupos por timestamp más reciente
   return Array.from(groups.values()).sort(
     (a, b) => b.latest_timestamp - a.latest_timestamp
   );
