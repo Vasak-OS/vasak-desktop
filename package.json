@@ -15,7 +15,7 @@
     "@tauri-apps/plugin-shell": "^2.3.1",
     "@vasakgroup/vue-libvasak": "link:@vasakgroup/vue-libvasak",
     "@vasakgroup/plugin-bluetooth-manager": "^2.0.0",
-    "@vasakgroup/plugin-config-manager": "^2.0.1",
+    "@vasakgroup/plugin-config-manager": "^2.0.2",
     "@vasakgroup/plugin-network-manager": "^0.1.0",
     "@vasakgroup/plugin-user-data": "^2.0.0",
     "@vasakgroup/plugin-vicons": "^2.0.0",
