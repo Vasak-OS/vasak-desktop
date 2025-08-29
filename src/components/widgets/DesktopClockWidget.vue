@@ -9,7 +9,7 @@ setInterval(() => {
 </script>
 
 <template>
-    <div class="flex flex-col items-center justify-center h-auto p-4 rounded-vsk bg-gray-900/50 backdrop-blur-lg shadow-lg mb-4">
+    <div class="flex flex-col items-center justify-center h-auto p-4 rounded-vsk background backdrop-blur-lg shadow-lg mb-4">
         <h1 class="text-6xl font-bold text-white">{{ time }}</h1>
     </div>
 </template>
