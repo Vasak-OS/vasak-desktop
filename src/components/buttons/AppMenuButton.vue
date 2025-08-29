@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, onMounted, Ref } from "vue";
 import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 
 const props = defineProps({
@@ -11,12 +12,15 @@ const props = defineProps({
 });
 
 const appIcon: Ref<string> = ref(props.app.icon);
+const appWindow = getCurrentWindow();
 
 const openApp = async () => {
   try {
     await invoke("open_app", { path: props.app.path });
   } catch (error) {
     console.error("Error al abrir la aplicación:", error);
+  } finally {
+    appWindow.close();
   }
 };
 

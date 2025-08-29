@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, onMounted, Ref } from "vue";
 import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 
 const props = defineProps({
@@ -11,12 +12,15 @@ const props = defineProps({
 });
 
 const appIcon: Ref<string> = ref(props.app.icon);
+const appWindow = getCurrentWindow();
 
 const openApp = async (path: string) => {
   try {
     await invoke("open_app", { path });
   } catch (error) {
     console.error("Error al abrir la aplicación:", error);
+  } finally {
+    appWindow.close();
   }
 };
 
@@ -35,7 +39,12 @@ onMounted(() => {
     @click="openApp(app.path)"
     :title="app.description"
   >
-    <img :src="appIcon" :alt="app.name" :title="app.name" class="img-fluid h-10" />
+    <img
+      :src="appIcon"
+      :alt="app.name"
+      :title="app.name"
+      class="img-fluid h-10"
+    />
     <div class="col-10 app-card-info ps-2">
       {{ app.name }}
       <span class="text-muted" style="display: none">{{
