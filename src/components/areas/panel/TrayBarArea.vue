@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import TrayIconBluetooth from "@/components/buttons/TrayIconBluetooth.vue";
 import { isBluetoothPluginInitialized } from "@vasakgroup/plugin-bluetooth-manager";
 import TrayIconNetwork from "@/components/buttons/TrayIconNetwork.vue";
+import TrayIconSound from "@/components/buttons/TrayIconSound.vue";
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 
@@ -195,6 +196,7 @@ onUnmounted(() => {
         <!-- Status indicator -->
         <div v-if="item.status === 'NeedsAttention'" class="status-indicator" />
       </div>
+      <TrayIconSound />
       <TrayIconBluetooth />
       <TrayIconNetwork />
     </TransitionGroup>
