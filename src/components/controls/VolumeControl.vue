@@ -101,6 +101,8 @@ async function toggleMute() {
   try {
     const isUnmuted = await invoke("toggle_audio_mute");
     volumeInfo.value.is_muted = !isUnmuted;
+    await getVolumeInfo();
+    await updateIcon();
   } catch (error) {
     console.error("Error toggling mute:", error);
   }
