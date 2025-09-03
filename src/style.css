@@ -13,8 +13,26 @@
   --color-vsk-primary: var(--primary-color);
 }
 
+::view-transition-old(root) {
+  animation-delay: 500ms;
+}
+
+::view-transition-new(root) {
+  animation: circle-in 500ms;
+}
+
+@keyframes move-in {
+  from { translate: 0 -100%; }
+  to { translate: 0  0; }
+}
+
+@keyframes circle-in {
+  from { clip-path: circle(0% at 50% 0%); }
+  to { clip-path: circle(120% at 50% 0%); }
+}
+
 body * {
-  @apply text-gray-900 dark:text-gray-100 transition-all duration-300;
+  @apply text-gray-900 dark:text-gray-100 transition-colors duration-300;
 }
 
 .background {

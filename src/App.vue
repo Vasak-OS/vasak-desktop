@@ -10,7 +10,9 @@ let unlistenConfig: Function | null = null;
 onMounted(async () => {
   configStore.loadConfig();
   unlistenConfig = await listen("config-changed", async () => {
-    configStore.loadConfig();
+    document.startViewTransition(() => {
+      configStore.loadConfig();
+    });
   });
 });
 
