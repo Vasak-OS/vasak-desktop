@@ -37,6 +37,7 @@
 import { ref, computed, onMounted, watch, Ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { getSymbolSource } from "@vasakgroup/plugin-vicons";
+import { listen } from "@tauri-apps/api/event";
 
 const volumeInfo: Ref<any> = ref({
   current: 0,
@@ -46,6 +47,7 @@ const volumeInfo: Ref<any> = ref({
 });
 const currentVolume: Ref<number> = ref(0);
 const currentIcon: Ref<string> = ref("");
+const unlistenVolume: Ref<Function | null> = ref(null);
 
 async function updateIcon() {
   const getIconName = () => {
@@ -109,6 +111,11 @@ async function toggleMute() {
 }
 
 onMounted(async () => {
+  unlistenVolume.value = await listen("volume-changed", (event) => {
+    volumeInfo.value = event.payload;
+    currentVolume.value = (event.payload as any).current;
+    updateIcon();
+  });
   await getVolumeInfo();
 });
 </script>

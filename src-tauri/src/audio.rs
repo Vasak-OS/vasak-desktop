@@ -1,5 +1,6 @@
-use std::process::Command;
 use crate::structs::VolumeInfo;
+use std::process::Command;
+use tauri::{AppHandle, Emitter};
 
 // Función helper para ejecutar comandos de PipeWire/PulseAudio
 fn run_command(cmd: &str, args: &[&str]) -> Result<String, String> {
@@ -22,7 +23,7 @@ fn run_command(cmd: &str, args: &[&str]) -> Result<String, String> {
 // Función helper para encontrar el ID del sink por defecto
 fn get_default_sink_id() -> Result<String, String> {
     let status_output = run_command("wpctl", &["status"])?;
-    
+
     // Buscar el sink por defecto
     let mut in_sinks_section = false;
     let default_sink_id = status_output
@@ -42,21 +43,19 @@ fn get_default_sink_id() -> Result<String, String> {
                 if let Some(asterisk_pos) = line.find("*") {
                     let after_asterisk = &line[asterisk_pos + 1..];
                     // Buscar el primer número en la línea después del asterisco
-                    after_asterisk
-                        .split_whitespace()
-                        .find_map(|part| {
-                            if part.ends_with('.') {
-                                // Remover el punto final y verificar que sea un número
-                                let num_part = &part[..part.len() - 1];
-                                if num_part.chars().all(|c| c.is_ascii_digit()) {
-                                    Some(num_part.to_string())
-                                } else {
-                                    None
-                                }
+                    after_asterisk.split_whitespace().find_map(|part| {
+                        if part.ends_with('.') {
+                            // Remover el punto final y verificar que sea un número
+                            let num_part = &part[..part.len() - 1];
+                            if num_part.chars().all(|c| c.is_ascii_digit()) {
+                                Some(num_part.to_string())
                             } else {
                                 None
                             }
-                        })
+                        } else {
+                            None
+                        }
+                    })
                 } else {
                     None
                 }
@@ -75,7 +74,7 @@ pub fn get_volume() -> Result<VolumeInfo, String> {
 
     // Obtener información del volumen
     let volume_output = run_command("wpctl", &["get-volume", &default_sink_id])?;
-    
+
     // Parsear la salida: "Volume: 0.50 [MUTED]" o "Volume: 0.50"
     let parts: Vec<&str> = volume_output.trim().split_whitespace().collect();
     if parts.len() < 2 {
@@ -97,29 +96,33 @@ pub fn get_volume() -> Result<VolumeInfo, String> {
     })
 }
 
-#[tauri::command]
-pub fn set_volume(volume: i64) -> Result<(), String> {
+pub fn set_volume(volume: i64, app: AppHandle) -> Result<(), String> {
     // Obtener el sink por defecto usando la función helper
     let default_sink_id = get_default_sink_id()?;
 
     let volume_percent = format!("{}%", volume);
     run_command("wpctl", &["set-volume", &default_sink_id, &volume_percent])?;
-    
+
+    // Si se aplicó correctamente, leer estado y notificar al frontend
+    if let Ok(info) = get_volume() {
+        let _ = app.emit("volume-changed", info.clone());
+    }
     Ok(())
 }
 
-#[tauri::command]
-pub fn toggle_mute() -> Result<bool, String> {
+pub fn toggle_mute(app: AppHandle) -> Result<bool, String> {
     // Obtener el sink por defecto usando la función helper
     let default_sink_id = get_default_sink_id()?;
 
     // Obtener estado actual
     let current_info = get_volume()?;
-    
+
     // Toggle mute
     run_command("wpctl", &["set-mute", &default_sink_id, "toggle"])?;
-    
+    // Después del toggle, obtener estado actualizado y notificar al frontend
+    if let Ok(info) = get_volume() {
+        let _ = app.emit("volume-changed", info.clone());
+    }
     // Retornar el nuevo estado (opuesto al actual)
     Ok(!current_info.is_muted)
 }
-

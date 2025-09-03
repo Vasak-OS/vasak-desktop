@@ -1,3 +1,5 @@
+use tauri::AppHandle;
+
 use crate::audio::{get_volume, set_volume, toggle_mute};
 use crate::structs::VolumeInfo;
 
@@ -7,11 +9,11 @@ pub fn get_audio_volume() -> Result<VolumeInfo, String> {
 }
 
 #[tauri::command]
-pub fn set_audio_volume(volume: i64) -> Result<(), String> {
-    set_volume(volume)
+pub fn set_audio_volume(volume: i64, app: AppHandle) -> Result<(), String> {
+    set_volume(volume, app)
 }
 
 #[tauri::command]
-pub fn toggle_audio_mute() -> Result<bool, String> {
-    toggle_mute()
+pub fn toggle_audio_mute(app: AppHandle) -> Result<bool, String> {
+    toggle_mute(app)
 }
