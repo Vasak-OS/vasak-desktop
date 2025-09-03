@@ -5,6 +5,7 @@ mod commands;
 mod eventloops;
 mod menu_manager;
 mod monitor_manager;
+mod music;
 mod notifications;
 mod structs;
 mod tray;
@@ -12,7 +13,7 @@ mod window_manager;
 mod windows_apps;
 
 use commands::*;
-use eventloops::{setup_notification_monitoring, setup_windows_monitoring};
+use eventloops::{setup_music_monitoring, setup_notification_monitoring, setup_windows_monitoring};
 use std::sync::{Arc, Mutex};
 use structs::WMState;
 use tauri_plugin_bluetooth_manager;
@@ -78,7 +79,7 @@ pub fn run() {
 
             setup_windows_monitoring(window_manager.clone(), app.handle().clone())?;
             setup_notification_monitoring(app.handle().clone());
-            //create_app_terminal_window(app.handle().clone());
+            setup_music_monitoring(app.handle().clone());
 
             Ok(())
         })

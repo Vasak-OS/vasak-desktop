@@ -6,6 +6,7 @@ import TrayIconBluetooth from "@/components/buttons/TrayIconBluetooth.vue";
 import { isBluetoothPluginInitialized } from "@vasakgroup/plugin-bluetooth-manager";
 import TrayIconNetwork from "@/components/buttons/TrayIconNetwork.vue";
 import TrayIconSound from "@/components/buttons/TrayIconSound.vue";
+import TrayMusicControl from "@/components/controls/TrayMusicControl.vue";
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 
@@ -165,6 +166,7 @@ onUnmounted(() => {
 <template>
   <div class="tray-panel">
     <TransitionGroup name="tray-list" tag="div" class="flex items-center gap-1">
+      <TrayMusicControl />
       <div
         v-for="item in trayItems"
         :key="item.service_name"

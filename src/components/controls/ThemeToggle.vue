@@ -105,10 +105,6 @@ const toggleTheme = async () => {
   try {
     await invoke("toggle_system_theme");
     await setDarkMode(!configStore.config?.style.darkmode || false);
-    console.info(
-      "System theme toggled. New dark mode:",
-      configStore.config?.style.darkmode || false
-    );
   } catch (error) {
     console.error("Error toggling system theme:", error);
   } finally {

@@ -22,7 +22,6 @@ const isBluetoothOn = computed(() => {
 
 const handleBluetoothChange = (event: any) => {
   const { change_type, data } = event.payload;
-  console.info(`${change_type}: ${JSON.stringify(data)}`);
 
   switch (change_type) {
     case "adapter-property-changed":
@@ -98,7 +97,6 @@ onMounted(async () => {
   connectedDevicesCount.value = await getConnectedDevicesCount(
     defaultAdapter.value?.path as string
   );
-  console.info("Default Bluetooth Adapter:", connectedDevicesCount.value);
   unlistenBluetooth.value = await listen(
     "bluetooth-change",
     handleBluetoothChange
