@@ -1,3 +1,4 @@
+use crate::music::start_mpris_monitor;
 use crate::notifications::{initialize_app_handle, start_notification_monitor};
 use crate::window_manager;
 use std::sync::mpsc::channel;
@@ -32,4 +33,8 @@ pub fn setup_notification_monitoring(app_handle: tauri::AppHandle) {
             eprintln!("Error starting notification monitor: {}", e);
         }
     });
+}
+
+pub fn setup_music_monitoring(app_handle: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move { start_mpris_monitor(app_handle) });
 }

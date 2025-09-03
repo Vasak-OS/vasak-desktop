@@ -45,7 +45,6 @@ onMounted(async () => {
   ulisten.value = await listen<NetworkInfo>(
     "network-changed",
     async (event) => {
-      console.log("Network changed", event.payload);
       networkState.value = event.payload;
       networkIconSrc.value = await getSymbolSource(event.payload.icon);
     }
