@@ -54,6 +54,7 @@ onMounted(async () => {
   nextIcon.value = await getSymbolSource("media-skip-forward");
   playIcon.value = await getSymbolSource("media-playback-start");
   pauseIcon.value = await getSymbolSource("media-playback-pause");
+  musicInfo.value = await invoke("music_now_playing");
   listen("music-playing-update", (event) => {
     const payload = (event.payload || {}) as Record<string, unknown>;
     for (const key of Object.keys(payload)) {

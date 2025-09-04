@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import DesktopClockWidget from "@/components/widgets/DesktopClockWidget.vue";
+import MusicWidget from "@/components/widgets/MusicWidget.vue";
 import { ref, Ref } from "vue";
 
 const background: Ref<string> = ref(
@@ -26,8 +27,9 @@ const backgroundType: Ref<string> = ref("image/jpeg");
     style="border-radius: 0px"
   />
   <main
-    class="w-screen h-screen flex items-center justify-center absolute z-20"
+    class="w-screen h-screen flex flex-col items-center justify-center absolute z-20"
   >
+    <MusicWidget />
     <DesktopClockWidget />
   </main>
 </template>

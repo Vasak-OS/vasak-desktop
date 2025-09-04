@@ -124,7 +124,7 @@ impl Default for MediaInfo {
     }
 }
 
-fn fetch_now_playing() -> Result<serde_json::Value, String> {
+pub fn fetch_now_playing() -> Result<serde_json::Value, String> {
     let conn = Connection::session().map_err(|e| format!("zbus connect error: {}", e))?;
     let dbus = DBusProxy::new(&conn).map_err(|e| format!("DBus proxy creation failed: {}", e))?;
     let owned_names = dbus

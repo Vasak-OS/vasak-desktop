@@ -16,7 +16,7 @@ pub use bluetooth::toggle_bluetooth_applet;
 pub use brightness::{get_brightness_info, set_brightness_info};
 pub use control_center::toggle_control_center;
 pub use menu::{get_menu_items, toggle_menu};
-pub use music::{music_play_pause, music_next_track, music_previous_track};
+pub use music::{music_play_pause, music_next_track, music_previous_track, music_now_playing};
 pub use notifications::{
     clear_notifications, delete_notification, get_all_notifications, send_notify,
 };
