@@ -471,3 +471,37 @@ fn normalize_json_value(mut v: JsonValue) -> JsonValue {
         }
     }
 }
+
+fn call_player_method(player: &str, method: &str) -> Result<(), String> {
+    let conn = Connection::session().map_err(|e| format!("zbus connect error: {}", e))?;
+    let proxy = Proxy::new(
+        &conn,
+        player,
+        "/org/mpris/MediaPlayer2",
+        "org.mpris.MediaPlayer2.Player",
+    )
+    .map_err(|e| format!("Proxy creation failed for {}: {}", player, e))?;
+    proxy
+        .call_method(method, &())
+        .map_err(|e| format!("Call {} failed: {}", method, e))?;
+    Ok(())
+}
+
+
+// Play/Pause (toggle) sobre el player indicado por el frontend.
+#[tauri::command]
+pub fn mpris_playpause(player: String) -> Result<(), String> {
+    call_player_method(&player, "PlayPause")
+}
+
+// Siguiente pista sobre el player indicado por el frontend.
+#[tauri::command]
+pub fn mpris_next(player: String) -> Result<(), String> {
+    call_player_method(&player, "Next")
+}
+
+// Pista anterior sobre el player indicado por el frontend.
+#[tauri::command]
+pub fn mpris_previous(player: String) -> Result<(), String> {
+    call_player_method(&player, "Previous")
+}
