@@ -138,7 +138,7 @@ pub fn fetch_now_playing() -> Result<serde_json::Value, String> {
         .into_iter()
         .filter(|n| n.starts_with("org.mpris.MediaPlayer2."))
     {
-        let proxy = Proxy::new( 
+        let proxy = Proxy::new(
             &conn,
             name.as_str(),
             "/org/mpris/MediaPlayer2",
@@ -215,7 +215,6 @@ pub fn fetch_now_playing() -> Result<serde_json::Value, String> {
     // Ningún reproductor MPRIS encontrado
     Ok(json!({ "title": "Nothing playing" }))
 }
-
 
 pub fn start_mpris_monitor(app: AppHandle) {
     let app_for_thread = app.clone();
@@ -470,7 +469,6 @@ fn call_player_method(player: &str, method: &str) -> Result<(), String> {
         .map_err(|e| format!("Call {} failed: {}", method, e))?;
     Ok(())
 }
-
 
 pub fn mpris_playpause(player: String) -> Result<(), String> {
     call_player_method(&player, "PlayPause")
