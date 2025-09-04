@@ -9,6 +9,7 @@ import ThemeToggle from "@/components/controls/ThemeToggle.vue";
 import { onMounted, Ref, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { isBluetoothPluginInitialized } from "@vasakgroup/plugin-bluetooth-manager";
+import MusicWidget from "@/components/widgets/MusicWidget.vue";
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 
@@ -35,6 +36,7 @@ onMounted(async () => {
       <NotificationArea />
     </div>
     <div class="flex flex-wrap w-full justify-around items-end self-end p-2">
+      <MusicWidget class="w-full" />
       <NetworkControl />
       <BluetoothControl v-if="bluetoothInitialized" />
       <ThemeToggle />

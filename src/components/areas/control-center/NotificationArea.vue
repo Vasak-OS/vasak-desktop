@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col gap-2 w-full h-[calc(100vh-390px)] overflow-y-auto p-4"
+    class="flex flex-col gap-2 w-full h-[calc(100vh-550px)] overflow-y-auto p-4"
   >
     <div
       class="flex items-center justify-between mb-2"
