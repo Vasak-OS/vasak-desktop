@@ -42,7 +42,6 @@ const isBluetoothOn = computed(() => defaultAdapter.value?.powered);
 
 const handleBluetoothChange = async (event: any) => {
   const { change_type, data } = event.payload;
-  console.info(`${change_type}: ${JSON.stringify(data)}`);
 
   switch (change_type) {
     case "adapter-property-changed":
