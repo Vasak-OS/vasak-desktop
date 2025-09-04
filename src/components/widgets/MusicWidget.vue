@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onMounted, ref, computed, Ref } from "vue";
+import { onMounted, ref, computed, Ref, nextTick, watch } from "vue";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { getIconSource, getSymbolSource } from "@vasakgroup/plugin-vicons";
@@ -66,11 +66,62 @@ onMounted(async () => {
       musicInfo.value[key] = val;
     }
   });
+  // medir posible overflow del título inicialmente
+  await nextTick();
+  updateTitleOverflow();
 });
+
+// Refs y estado para la animación del título (marquee)
+const titleContainer = ref<HTMLElement | null>(null);
+const titleInner = ref<HTMLElement | null>(null);
+const titleOverflow = ref(false);
+const marqueeDistance = ref(0); // px
+const marqueeDuration = ref(6); // s, calculado dinámicamente
+const TITLE_MAX_PX = 150;
+
+function updateTitleOverflow() {
+  // Esperar al siguiente tick si es necesario (usar cuando se llame desde watch)
+  const container = titleContainer.value;
+  const inner = titleInner.value;
+  if (!container || !inner) {
+    titleOverflow.value = false;
+    return;
+  }
+  // Forzar ancho máximo del contenedor a 150px
+  container.style.width = `${TITLE_MAX_PX}px`;
+  // Medir
+  const cw = container.clientWidth;
+  const iw = inner.scrollWidth;
+  if (iw > cw + 2) {
+    titleOverflow.value = true;
+    marqueeDistance.value = iw - cw;
+    // duración proporcional a distancia, mínimo 4s, máximo 20s
+    marqueeDuration.value = Math.min(
+      20,
+      Math.max(4, marqueeDistance.value / 30)
+    );
+  } else {
+    titleOverflow.value = false;
+    marqueeDistance.value = 0;
+    marqueeDuration.value = 0;
+  }
+}
+
+// Volver a medir cuando cambie el título (se ejecuta tras cada actualización de DOM)
+watch(
+  () => musicInfo.value?.title,
+  async () => {
+    await nextTick();
+    updateTitleOverflow();
+  }
+);
 </script>
 
 <template>
-  <div class="p-4 rounded-vsk background flex mb-4 ring-2 ring-vsk-primary/50 items-center">
+  <!-- contenedor con imagen + columna de info + controles -->
+  <div
+    class="p-4 rounded-vsk background flex mb-4 ring-2 ring-vsk-primary/50 items-center"
+  >
     <img
       :src="imgSrc"
       :alt="musicInfo.title"
@@ -79,20 +130,37 @@ onMounted(async () => {
       :class="{ 'animate-pulse': isPlaying }"
     />
 
+    <!-- columna con título arriba y controls debajo -->
     <div class="ml-4 flex flex-col justify-center min-w-0">
       <!-- Título y artista -->
       <div class="mb-2 min-w-0">
+        <!-- contenedor fijo a 150px y ocultar overflow -->
         <div
-          class="text-sm font-medium truncate"
+          ref="titleContainer"
+          class="overflow-hidden"
           :title="musicInfo.title || ''"
         >
-          {{ musicInfo.title || 'Unknown' }}
+          <span
+            ref="titleInner"
+            class="text-sm font-medium inline-block whitespace-nowrap"
+            :class="{ marquee: titleOverflow }"
+            :style="
+              titleOverflow
+                ? {
+                    '--marquee-distance': `${marqueeDistance}px`,
+                    '--marquee-duration': `${marqueeDuration}s`,
+                  }
+                : {}
+            "
+          >
+            {{ musicInfo.title || "Unknown" }}
+          </span>
         </div>
         <div
           class="text-xs text-muted truncate"
           :title="musicInfo.artist || ''"
         >
-          {{ musicInfo.artist || '' }}
+          {{ musicInfo.artist || "" }}
         </div>
       </div>
 
@@ -136,3 +204,56 @@ onMounted(async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Animaciones de entrada/salida: fade + slight scale/translate */
+@keyframes controlsIn {
+  from {
+    opacity: 0;
+    transform: translateX(6px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+@keyframes controlsOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(6px) scale(0.95);
+  }
+}
+
+.controls-anim-in {
+  animation: controlsIn 180ms ease-out forwards;
+}
+
+.controls-anim-out {
+  animation: controlsOut 160ms ease-in forwards;
+}
+
+/* Marquee: mueve el span horizontalmente según variables CSS:
+   --marquee-distance (px) y --marquee-duration (s). */
+.marquee {
+  display: inline-block;
+  /* usar animation alternate para ir y volver */
+  animation-name: marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-duration: var(--marquee-duration, 6s);
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(var(--marquee-distance, 0px) * -1));
+  }
+}
+</style>
