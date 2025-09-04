@@ -74,7 +74,8 @@ pub fn run() {
             toggle_bluetooth_applet,
             music_play_pause,
             music_next_track,
-            music_previous_track
+            music_previous_track,
+            music_now_playing
         ])
         .setup(move |app| {
             let _ = create_desktops(app);
