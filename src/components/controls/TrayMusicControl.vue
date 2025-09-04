@@ -106,8 +106,8 @@ onMounted(async () => {
     <!-- imagen del disco -->
     <img
       :src="imgSrc"
-      :alt="musicInfo.value?.title"
-      :title="musicInfo.value?.title"
+      :alt="musicInfo.title"
+      :title="musicInfo.title"
       class="w-6 h-6 rounded-full origin-center"
       :class="{ 'animate-spin': isPlaying }"
     />
