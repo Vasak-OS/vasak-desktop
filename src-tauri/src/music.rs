@@ -1,5 +1,4 @@
 use futures_util::StreamExt; // <- necesario para .next().await en MessageStream
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Map as JsonMap;
 use serde_json::Value as JsonValue;
@@ -14,6 +13,8 @@ use zbus::{
     MessageStream,
     MessageType,
 };
+
+use crate::structs::MediaInfo;
 
 // Intenta extraer el vector de bytes decimales desde el debug del Body ("bytes: [ ... ]").
 fn parse_bytes_from_debug(body_debug: &str) -> Vec<u8> {
@@ -77,8 +78,6 @@ fn extract_metadata_from_bytes(bytes: &[u8], key: &str, max_len: usize) -> Optio
     None
 }
 
-// Intento más robusto: tras la clave DBus en el stream de bytes, buscar la letra 's' (signature)
-// y extraer un string según la codificación D-Bus: uint32 little-endian length + bytes.
 fn extract_dbus_string_after_signature(bytes: &[u8], key: &str, max_len: usize) -> Option<String> {
     let key_b = key.as_bytes();
     // buscar la key en el stream
@@ -111,15 +110,6 @@ fn extract_dbus_string_after_signature(bytes: &[u8], key: &str, max_len: usize) 
         }
     }
     None
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MediaInfo {
-    pub title: Option<String>,
-    pub artist: Option<String>,
-    pub album_art_url: Option<String>,
-    pub player: Option<String>,
-    pub status: Option<String>,
 }
 
 impl Default for MediaInfo {
@@ -227,10 +217,8 @@ fn fetch_now_playing() -> Result<serde_json::Value, String> {
     Ok(json!({ "title": "Nothing playing" }))
 }
 
-/// Arranca un monitor que escucha señales D-Bus (PropertiesChanged) y emite eventos Tauri.
-/// Usa un runtime tokio en un hilo separado y la API async de zbus para recibir mensajes.
+
 pub fn start_mpris_monitor(app: AppHandle) {
-    // Arranca un hilo con un runtime tokio que escucha señales PropertiesChanged y emite eventos Tauri.
     let app_for_thread = app.clone();
     thread::spawn(move || {
         let rt = TokioBuilder::new_current_thread()

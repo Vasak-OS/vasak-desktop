@@ -112,3 +112,12 @@ pub struct TrayMenu {
 }
 
 pub type TrayManager = Arc<RwLock<HashMap<String, TrayItem>>>;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MediaInfo {
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub album_art_url: Option<String>,
+    pub player: Option<String>,
+    pub status: Option<String>,
+}
