@@ -71,7 +71,10 @@ pub fn run() {
             toggle_control_center,
             init_sni_watcher,
             get_tray_items,
-            toggle_bluetooth_applet
+            toggle_bluetooth_applet,
+            music_play_pause,
+            music_next_track,
+            music_previous_track
         ])
         .setup(move |app| {
             let _ = create_desktops(app);

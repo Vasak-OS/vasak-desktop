@@ -39,13 +39,13 @@ async function sendCommand(cmd: string) {
   }
 }
 function onPrev() {
-  sendCommand("mpris_previous");
+  sendCommand("music_previous_track");
 }
 function onNext() {
-  sendCommand("mpris_next");
+  sendCommand("music_next_track");
 }
 function onPlayPause() {
-  sendCommand("mpris_playpause");
+  sendCommand("music_play_pause");
 }
 
 // Nuevo: control de visibilidad con display (v-show) y animación de entrada/salida
@@ -82,8 +82,16 @@ onMounted(async () => {
   playIcon.value = await getSymbolSource("media-playback-start");
   pauseIcon.value = await getSymbolSource("media-playback-pause");
   listen("music-playing-update", (event) => {
-    musicInfo.value = event.payload;
-    console.log("Music info updated:", musicInfo.value);
+    const payload = (event.payload || {}) as Record<string, unknown>;
+    for (const key of Object.keys(payload)) {
+      const val = payload[key];
+      if (val === undefined || val === null) continue;
+      if (typeof val === "string") {
+        if (val.trim() === "") continue;
+      }
+      // asignar individualmente para mantener la referencia reactiva
+      musicInfo.value[key] = val;
+    }
   });
 });
 </script>
@@ -111,7 +119,10 @@ onMounted(async () => {
         visible && !isHiding ? 'controls-anim-in' : '',
         isHiding ? 'controls-anim-out' : '',
       ]"
-      :style="{ pointerEvents: (visible || isHiding) ? 'auto' : 'none', display: (visible || isHiding) ? 'flex' : 'none' }"
+      :style="{
+        pointerEvents: visible || isHiding ? 'auto' : 'none',
+        display: visible || isHiding ? 'flex' : 'none',
+      }"
       aria-hidden="false"
     >
       <!-- anterior -->
@@ -152,12 +163,24 @@ onMounted(async () => {
 <style scoped>
 /* Animaciones de entrada/salida: fade + slight scale/translate */
 @keyframes controlsIn {
-  from { opacity: 0; transform: translateX(6px) scale(0.95); }
-  to   { opacity: 1; transform: translateX(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateX(6px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
 }
 @keyframes controlsOut {
-  from { opacity: 1; transform: translateX(0) scale(1); }
-  to   { opacity: 0; transform: translateX(6px) scale(0.95); }
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(6px) scale(0.95);
+  }
 }
 
 .controls-anim-in {

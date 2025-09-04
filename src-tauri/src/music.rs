@@ -124,7 +124,6 @@ impl Default for MediaInfo {
     }
 }
 
-// Helper blocking: consulta MPRIS para un servicio concreto y devuelve JSON con los campos que encuentre.
 fn fetch_now_playing() -> Result<serde_json::Value, String> {
     let conn = Connection::session().map_err(|e| format!("zbus connect error: {}", e))?;
     let dbus = DBusProxy::new(&conn).map_err(|e| format!("DBus proxy creation failed: {}", e))?;
@@ -139,7 +138,7 @@ fn fetch_now_playing() -> Result<serde_json::Value, String> {
         .into_iter()
         .filter(|n| n.starts_with("org.mpris.MediaPlayer2."))
     {
-        let proxy = Proxy::new(
+        let proxy = Proxy::new( 
             &conn,
             name.as_str(),
             "/org/mpris/MediaPlayer2",
@@ -233,11 +232,8 @@ pub fn start_mpris_monitor(app: AppHandle) {
     });
 }
 
-// Función async que se suscribe a PropertiesChanged y emite actualizaciones al frontend
 async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let conn = zbus::Connection::session().await?;
-
-    // Registrar match rule vía org.freedesktop.DBus.AddMatch para asegurarnos de recibir las señales.
     let match_rule =
         "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'";
     match conn
@@ -476,20 +472,14 @@ fn call_player_method(player: &str, method: &str) -> Result<(), String> {
 }
 
 
-// Play/Pause (toggle) sobre el player indicado por el frontend.
-#[tauri::command]
 pub fn mpris_playpause(player: String) -> Result<(), String> {
     call_player_method(&player, "PlayPause")
 }
 
-// Siguiente pista sobre el player indicado por el frontend.
-#[tauri::command]
 pub fn mpris_next(player: String) -> Result<(), String> {
     call_player_method(&player, "Next")
 }
 
-// Pista anterior sobre el player indicado por el frontend.
-#[tauri::command]
 pub fn mpris_previous(player: String) -> Result<(), String> {
     call_player_method(&player, "Previous")
 }
