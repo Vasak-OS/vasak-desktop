@@ -9,7 +9,8 @@ import TrayIconSound from "@/components/buttons/TrayIconSound.vue";
 import TrayMusicControl from "@/components/controls/TrayMusicControl.vue";
 import TrayIconBattery from "@/components/buttons/TrayIconBattery.vue";
 import { TrayItem, TrayMenu } from "@/interfaces/tray";
-import { batteryExists } from "@/tools/battery.controler";
+import { batteryExists } from "@/tools/battery.controller";
+import { getTrayItems, startSNIWatcher } from "@/tools/tray.controller";
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
@@ -32,7 +33,7 @@ let unlisten: (() => void) | null = null;
 
 const refreshTrayItems = async (): Promise<void> => {
   try {
-    trayItems.value = await invoke("get_tray_items");
+    trayItems.value = await getTrayItems();
   } catch (error) {
     console.error("[TrayPanel Error] Error obteniendo items del tray:", error);
   }
@@ -122,14 +123,8 @@ onMounted(async () => {
   unlisten = await listen("tray-update", refreshTrayItems);
   bluetoothInitialized.value = await isBluetoothPluginInitialized();
   existBattery.value = await batteryExists();
+  await startSNIWatcher();
 
-  try {
-    await invoke("init_sni_watcher");
-  } catch (error) {
-    console.error("[TrayPanel Error] Error inicializando SNI watcher:", error);
-  }
-
-  // Hide context menu on outside click
   document.addEventListener("click", hideContextMenu);
 });
 

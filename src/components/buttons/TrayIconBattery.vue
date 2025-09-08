@@ -39,7 +39,7 @@ import { ref, computed, onMounted, watch, Ref, onUnmounted } from "vue";
 import { getSymbolSource } from "@vasakgroup/plugin-vicons";
 import { listen } from "@tauri-apps/api/event";
 import type { BatteryInfo } from "@/interfaces/battery";
-import { fetchBatteryInfo } from "@/tools/battery.controler";
+import { fetchBatteryInfo } from "@/tools/battery.controller";
 
 const batteryInfo: Ref<BatteryInfo> = ref({
   has_battery: false,
