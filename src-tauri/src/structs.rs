@@ -121,3 +121,23 @@ pub struct MediaInfo {
     pub player: Option<String>,
     pub status: Option<String>,
 }
+
+#[derive(Debug, Serialize, Clone)]
+pub struct BatteryInfo {
+    pub has_battery: bool,
+    pub percentage: f64,
+    pub state: String,
+    pub time_to_empty: Option<u64>,
+    pub time_to_full: Option<u64>,
+    pub is_present: bool,
+    pub is_charging: bool,
+    pub vendor: Option<String>,
+    pub model: Option<String>,
+    pub technology: Option<String>,
+    pub energy: Option<f64>,
+    pub energy_full: Option<f64>,
+    pub energy_full_design: Option<f64>,
+    pub voltage: Option<f64>,
+    pub temperature: Option<f64>,
+    pub serial: Option<String>,
+}

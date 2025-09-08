@@ -1,6 +1,7 @@
 use crate::music::start_mpris_monitor;
 use crate::notifications::{initialize_app_handle, start_notification_monitor};
 use crate::window_manager;
+use crate::battery::start_battery_monitor;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
@@ -37,4 +38,8 @@ pub fn setup_notification_monitoring(app_handle: tauri::AppHandle) {
 
 pub fn setup_music_monitoring(app_handle: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move { start_mpris_monitor(app_handle) });
+}
+
+pub fn setup_battery_monitoring(app_handle: tauri::AppHandle) {
+    start_battery_monitor(app_handle);
 }
