@@ -30,35 +30,16 @@
       }"
     >
       {{ Math.round(batteryInfo.percentage) }}%
-      <span v-if="batteryInfo.is_charging" class="ml-1">⚡</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, Ref, onUnmounted } from "vue";
-import { invoke } from "@tauri-apps/api/core";
 import { getSymbolSource } from "@vasakgroup/plugin-vicons";
 import { listen } from "@tauri-apps/api/event";
-
-interface BatteryInfo {
-  has_battery: boolean;
-  percentage: number;
-  state: string;
-  time_to_empty?: number;
-  time_to_full?: number;
-  is_present: boolean;
-  is_charging: boolean;
-  vendor?: string;
-  model?: string;
-  technology?: string;
-  energy?: number;
-  energy_full?: number;
-  energy_full_design?: number;
-  voltage?: number;
-  temperature?: number;
-  serial?: string;
-}
+import type { BatteryInfo } from "@/interfaces/battery";
+import { fetchBatteryInfo } from "@/tools/battery.controler";
 
 const batteryInfo: Ref<BatteryInfo> = ref({
   has_battery: false,
@@ -67,7 +48,6 @@ const batteryInfo: Ref<BatteryInfo> = ref({
   is_present: false,
   is_charging: false,
 });
-
 const currentIcon: Ref<string> = ref("");
 const showPercentage: Ref<boolean> = ref(true);
 const showTooltip: Ref<boolean> = ref(false);
@@ -132,7 +112,6 @@ async function updateIcon() {
     currentIcon.value = await getSymbolSource(getIconName());
   } catch (error) {
     console.error("Error loading battery icon:", error);
-    // Fallback icon
     try {
       currentIcon.value = await getSymbolSource("battery-symbolic");
     } catch (fallbackError) {
@@ -150,7 +129,7 @@ watch([
 
 async function getBatteryInfo() {
   try {
-    const info: BatteryInfo | null = await invoke("battery_fetch_info");
+    const info: BatteryInfo | null = await fetchBatteryInfo();
     if (info) {
       batteryInfo.value = info;
     } else {
