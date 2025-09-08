@@ -1,5 +1,6 @@
 mod app_url;
 mod audio;
+mod battery;
 mod brightness;
 mod commands;
 mod eventloops;
@@ -13,7 +14,10 @@ mod window_manager;
 mod windows_apps;
 
 use commands::*;
-use eventloops::{setup_music_monitoring, setup_notification_monitoring, setup_windows_monitoring};
+use eventloops::{
+    setup_battery_monitoring, setup_music_monitoring, setup_notification_monitoring,
+    setup_windows_monitoring,
+};
 use std::sync::{Arc, Mutex};
 use structs::WMState;
 use tauri_plugin_bluetooth_manager;
@@ -75,7 +79,9 @@ pub fn run() {
             music_play_pause,
             music_next_track,
             music_previous_track,
-            music_now_playing
+            music_now_playing,
+            battery_exists,
+            battery_fetch_info
         ])
         .setup(move |app| {
             let _ = create_desktops(app);
@@ -84,6 +90,7 @@ pub fn run() {
             setup_windows_monitoring(window_manager.clone(), app.handle().clone())?;
             setup_notification_monitoring(app.handle().clone());
             setup_music_monitoring(app.handle().clone());
+            setup_battery_monitoring(app.handle().clone());
 
             Ok(())
         })

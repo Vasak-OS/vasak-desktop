@@ -1,4 +1,5 @@
 mod audio;
+mod battery;
 mod bluetooth;
 mod brightness;
 mod control_center;
@@ -12,6 +13,7 @@ mod tray;
 mod window_manager;
 
 pub use audio::{get_audio_volume, set_audio_volume, toggle_audio_mute};
+pub use battery::{battery_exists, battery_fetch_info};
 pub use bluetooth::toggle_bluetooth_applet;
 pub use brightness::{get_brightness_info, set_brightness_info};
 pub use control_center::toggle_control_center;
