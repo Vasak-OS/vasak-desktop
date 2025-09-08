@@ -17,12 +17,51 @@ pub async fn has_battery() -> bool {
 
 pub async fn get_battery_info() -> Option<BatteryInfo> {
     let conn = Connection::system().await.ok()?;
+    
+    // Primero intentar obtener la lista de dispositivos de UPower
+    let upower_proxy = zbus::Proxy::new(
+        &conn,
+        "org.freedesktop.UPower",
+        "/org/freedesktop/UPower",
+        "org.freedesktop.UPower"
+    ).await.ok()?;
+    
+    // Obtener todos los dispositivos
+    let devices: Vec<zbus::zvariant::OwnedObjectPath> = upower_proxy
+        .call_method("EnumerateDevices", &())
+        .await
+        .ok()?
+        .body()
+        .deserialize()
+        .ok()?;
+    
+    // Buscar el primer dispositivo de batería
+    for device_path in devices {
+        let device_proxy = zbus::Proxy::new(
+            &conn,
+            "org.freedesktop.UPower",
+            device_path.as_str(),
+            "org.freedesktop.UPower.Device"
+        ).await.ok()?;
+        
+        // Verificar si es una batería
+        let device_type: u32 = device_proxy.get_property("Type").await.unwrap_or(0);
+        if device_type == 2 { 
+            return get_battery_info_from_proxy(device_proxy).await;
+        }
+    }
+    
     let proxy = zbus::Proxy::new(
         &conn,
         "org.freedesktop.UPower",
         "/org/freedesktop/UPower/devices/battery_BAT0",
         "org.freedesktop.UPower.Device"
     ).await.ok()?;
+    
+    get_battery_info_from_proxy(proxy).await
+}
+
+async fn get_battery_info_from_proxy(proxy: zbus::Proxy<'_>) -> Option<BatteryInfo> {
     let is_present: bool = proxy.get_property("IsPresent").await.ok()?;
     let percentage: f64 = proxy.get_property("Percentage").await.unwrap_or(0.0);
     let state: u32 = proxy.get_property("State").await.unwrap_or(0);
@@ -70,31 +109,145 @@ pub async fn get_battery_info() -> Option<BatteryInfo> {
 pub fn start_battery_monitor(app_handle: AppHandle) {
     tauri::async_runtime::spawn(async move {
         let conn = match Connection::system().await {
-            Ok(c) => Arc::new(c),
-            Err(_) => return,
+            Ok(c) => {
+                Arc::new(c)
+            },
+            Err(e) => {
+                return;
+            }
         };
         BATTERY_CONN.set(conn.clone()).ok();
-        let _proxy = match zbus::Proxy::new(
-            &conn,
-            "org.freedesktop.UPower",
-            "/org/freedesktop/UPower/devices/battery_BAT0",
-            "org.freedesktop.UPower.Device"
-        ).await {
-            Ok(p) => p,
-            Err(_) => return,
-        };
-        let mut stream = MessageStream::from(&*conn);
-        while let Some(msg_result) = stream.next().await {
-            if let Ok(msg) = msg_result {
-                let header = msg.header();
-                if let Some(member) = header.member() {
-                    if member.as_str() == "PropertiesChanged" {
-                        if let Some(info) = get_battery_info().await {
-                            let _ = app_handle.emit("battery-update", info);
+        
+        let battery_path = find_battery_path(&conn).await;
+        let battery_path = match battery_path {
+            Some(path) => {
+                path
+            }
+            _none => {
+                let mut last_info: Option<BatteryInfo> = None;
+                
+                loop {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    
+                    if let Some(current_info) = get_battery_info().await {
+                        let should_emit = match &last_info {
+                            _none => true,
+                            Some(last) => {
+                                last.percentage != current_info.percentage || 
+                                last.is_charging != current_info.is_charging ||
+                                last.state != current_info.state
+                            }
+                        };
+                        
+                        if should_emit {
+                            if let Err(e) = app_handle.emit("battery-update", &current_info) {
+                                println!("Failed to emit battery-update: {}", e);
+                            }
+                            last_info = Some(current_info);
                         }
+                    }
+                }
+            }
+        };
+        
+        use std::path::Path;
+        use std::time::Duration;
+        
+        let battery_sysfs_path = "/sys/class/power_supply/BAT0";
+        let ac_sysfs_path = "/sys/class/power_supply/AC0";
+        
+        let use_sysfs = Path::new(battery_sysfs_path).exists() || Path::new(ac_sysfs_path).exists();
+        
+        if use_sysfs {
+            
+            let mut last_info: Option<BatteryInfo> = None;
+            
+            loop {
+                tokio::time::sleep(Duration::from_millis(1000)).await; // Check every second
+                
+                if let Some(current_info) = get_battery_info().await {
+                    let should_emit = match &last_info {
+                        _none => true,
+                        Some(last) => {
+                            (last.percentage - current_info.percentage).abs() > 0.1 || // Cambio de más de 0.1%
+                            last.is_charging != current_info.is_charging ||
+                            last.state != current_info.state
+                        }
+                    };
+                    
+                    if should_emit {
+                        if let Err(e) = app_handle.emit("battery-update", &current_info) {
+                            println!("Failed to emit battery-update: {}", e);
+                        }
+                        last_info = Some(current_info);
+                    }
+                }
+            }
+        } else {
+            let mut stream = MessageStream::from(&*conn);
+            
+            while let Some(msg_result) = stream.next().await {
+                match msg_result {
+                    Ok(msg) => {
+                        let header = msg.header();
+                        
+                        if let Some(interface) = header.interface() {
+                            if let Some(member) = header.member() {
+                                if let Some(path) = header.path() {
+                                    
+                                    if interface.as_str() == "org.freedesktop.DBus.Properties" &&
+                                       member.as_str() == "PropertiesChanged" &&
+                                       path.as_str() == battery_path {
+                                        if let Some(info) = get_battery_info().await {
+                                            if let Err(e) = app_handle.emit("battery-update", &info) {
+                                                println!("Failed to emit battery-update: {}", e);
+                                            }
+                                        } else {
+                                            println!("Failed to get battery info after PropertiesChanged");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        println!("Error receiving D-Bus message: {}", e);
                     }
                 }
             }
         }
     });
+}
+
+async fn find_battery_path(conn: &Connection) -> Option<String> {
+    let upower_proxy = zbus::Proxy::new(
+        conn,
+        "org.freedesktop.UPower",
+        "/org/freedesktop/UPower",
+        "org.freedesktop.UPower"
+    ).await.ok()?;
+    
+    let devices: Vec<zbus::zvariant::OwnedObjectPath> = upower_proxy
+        .call_method("EnumerateDevices", &())
+        .await
+        .ok()?
+        .body()
+        .deserialize()
+        .ok()?;
+    
+    for device_path in devices {
+        let device_proxy = zbus::Proxy::new(
+            conn,
+            "org.freedesktop.UPower",
+            device_path.as_str(),
+            "org.freedesktop.UPower.Device"
+        ).await.ok()?;
+        
+        let device_type: u32 = device_proxy.get_property("Type").await.unwrap_or(0);
+        if device_type == 2 {
+            return Some(device_path.to_string());
+        }
+    }
+    
+    None
 }
