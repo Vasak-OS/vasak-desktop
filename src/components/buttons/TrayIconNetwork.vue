@@ -7,6 +7,7 @@ import {
   type NetworkInfo,
   WiFiSecurityType,
 } from "@vasakgroup/plugin-network-manager";
+import { toggleNetworkApplet } from "@/tools/network.controller";
 
 let ulisten: Ref<Function | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
@@ -58,7 +59,7 @@ onUnmounted(() => {
 });
 </script>
 <template>
-  <div class="p-1 rounded-vsk relative">
+  <div class="p-1 rounded-vsk relative hover:bg-vsk-primary/30" @click="toggleNetworkApplet">
     <img
       :src="networkIconSrc"
       :alt="networkAlt"
