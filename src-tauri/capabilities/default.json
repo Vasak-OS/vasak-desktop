@@ -18,6 +18,7 @@
     "menu",
     "control_center",
     "applet_bluetooth",
+    "applet_network",
     "app_terminal"
   ],
   "permissions": [

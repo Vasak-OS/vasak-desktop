@@ -73,6 +73,7 @@ pub fn run() {
             get_all_notifications,
             delete_notification,
             toggle_control_center,
+            toggle_network_applet,
             init_sni_watcher,
             get_tray_items,
             toggle_bluetooth_applet,
