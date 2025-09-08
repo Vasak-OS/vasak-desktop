@@ -7,36 +7,12 @@ import { isBluetoothPluginInitialized } from "@vasakgroup/plugin-bluetooth-manag
 import TrayIconNetwork from "@/components/buttons/TrayIconNetwork.vue";
 import TrayIconSound from "@/components/buttons/TrayIconSound.vue";
 import TrayMusicControl from "@/components/controls/TrayMusicControl.vue";
+import TrayIconBattery from "@/components/buttons/TrayIconBattery.vue";
+import { TrayItem, TrayMenu } from "@/interfaces/tray";
+import { batteryExists } from "@/tools/battery.controler";
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
-
-interface TrayItem {
-  id: string;
-  service_name: string;
-  icon_name?: string;
-  icon_data?: string;
-  title?: string;
-  tooltip?: string;
-  status: "Active" | "Passive" | "NeedsAttention";
-  category:
-    | "ApplicationStatus"
-    | "Communications"
-    | "SystemServices"
-    | "Hardware";
-  menu_path?: string;
-}
-
-interface TrayMenu {
-  id: number;
-  label: string;
-  enabled: boolean;
-  visible: boolean;
-  type: "standard" | "separator" | "submenu";
-  checked?: boolean;
-  icon?: string;
-  children?: TrayMenu[];
-}
-
+const existBattery: Ref<boolean> = ref(false);
 const trayItems = ref<TrayItem[]>([]);
 const contextMenu = ref<{
   visible: boolean;
@@ -145,8 +121,8 @@ onMounted(async () => {
   await refreshTrayItems();
   unlisten = await listen("tray-update", refreshTrayItems);
   bluetoothInitialized.value = await isBluetoothPluginInitialized();
+  existBattery.value = await batteryExists();
 
-  // Initialize SNI watcher
   try {
     await invoke("init_sni_watcher");
   } catch (error) {
@@ -199,6 +175,7 @@ onUnmounted(() => {
         <div v-if="item.status === 'NeedsAttention'" class="status-indicator" />
       </div>
       <TrayIconSound />
+      <TrayIconBattery :exists="existBattery" />
       <TrayIconBluetooth />
       <TrayIconNetwork />
     </TransitionGroup>
