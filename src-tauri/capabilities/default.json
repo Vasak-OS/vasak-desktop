@@ -41,6 +41,7 @@
     "user-data:default",
     "network-manager:allow-get-network-state",
     "network-manager:allow-toggle-network-state",
+    "network-manager:allow-list-wifi-networks",
     "bluetooth-manager:allow-list-adapters",
     "bluetooth-manager:allow-list-devices",
     "bluetooth-manager:allow-set-adapter-powered",
