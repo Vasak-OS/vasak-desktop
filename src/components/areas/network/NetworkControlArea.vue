@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full p-4">
+  <div class="flex flex-col h-full p-2">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-semibold text-vsk-text">Network Settings</h2>
@@ -14,7 +14,7 @@
     </div>
 
     <!-- WiFi Toggle -->
-    <div class="flex items-center justify-between mb-4 p-3 rounded-vsk border border-vsk-border">
+    <div class="flex items-center justify-between mb-4 p-3 rounded-vsk border border-vsk-primary/70 background">
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-full bg-vsk-primary/10">
           <svg class="w-5 h-5 text-vsk-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -29,6 +29,7 @@
       </div>
       <button
         @click="toggleWifi"
+        disabled
         :class="[
           'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
           wifiEnabled ? 'bg-vsk-primary' : 'bg-vsk-border'
@@ -52,70 +53,22 @@
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-vsk-primary"></div>
       </div>
 
-      <!-- Networks List -->
       <div v-else class="space-y-2 overflow-y-auto max-h-96">
-        <div
-          v-for="network in availableNetworks"
-          :key="network.ssid"
-          @click="connectToNetwork(network)"
-          class="flex items-center justify-between p-3 rounded-vsk border border-vsk-border hover:bg-vsk-primary/5 cursor-pointer transition-colors"
-        >
-          <div class="flex items-center gap-3">
-            <!-- Signal Strength Icon -->
-            <div class="relative">
-              <svg class="w-5 h-5 text-vsk-text" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21L24 8.98C20.93 5.9 16.69 4 12 4M2.92 10.8C5.31 8.89 8.54 7.8 12 7.8S18.69 8.89 21.08 10.8L12 19.9L2.92 10.8Z"/>
-              </svg>
-              <!-- Signal bars overlay -->
-              <div class="absolute inset-0 flex items-end justify-center">
-                <div class="flex gap-px">
-                  <div
-                    v-for="i in 4"
-                    :key="i"
-                    :class="[
-                      'w-0.5 bg-current transition-opacity',
-                      i <= getSignalBars(network.signal) ? 'opacity-100' : 'opacity-30'
-                    ]"
-                    :style="{ height: `${i * 2 + 2}px` }"
-                  />
-                </div>
-              </div>
-            </div>
-            
-            <div>
-              <div class="font-medium text-vsk-text">{{ network.ssid }}</div>
-              <div class="text-xs text-vsk-text/60">
-                {{ network.security || 'Open' }}
-                {{ network.connected ? '• Connected' : '' }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Connection Status -->
-          <div class="flex items-center gap-2">
-            <div
-              v-if="network.connected"
-              class="w-2 h-2 rounded-full bg-green-500"
-            />
-            <svg v-if="network.security" class="w-4 h-4 text-vsk-text/60" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11H16V18H8V11H9.2V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.4,8.7 10.4,10V11H13.6V10C13.6,8.7 12.8,8.2 12,8.2Z"/>
-            </svg>
-          </div>
-        </div>
+        <NetworkWiFiCard v-for="network in availableNetworks" :key="network.ssid" v-bind="network" />
       </div>
 
       <!-- Refresh Button -->
       <button
         @click="refreshNetworks"
-        class="w-full mt-4 p-2 rounded-vsk border border-vsk-border hover:bg-vsk-primary/5 transition-colors text-sm text-vsk-text"
+        class="w-full mt-4 p-2 rounded-vsk border border-vsk-primary/70 hover:bg-vsk-primary/5 transition-colors text-sm text-vsk-text"
       >
         Refresh Networks
       </button>
     </div>
 
     <!-- Ethernet Section -->
-    <div class="mt-6 pt-4 border-t border-vsk-border">
-      <div class="flex items-center gap-3 p-3 rounded-vsk border border-vsk-border">
+    <div class="mt-6 pt-4 border-t border-vsk-primary/70">
+      <div class="flex items-center gap-3 p-3 background rounded-vsk border border-vsk-primary/70">
         <div class="p-2 rounded-full bg-vsk-primary/10">
           <svg class="w-5 h-5 text-vsk-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
@@ -134,27 +87,14 @@
 <script setup lang="ts">
 import { ref, onMounted, Ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentNetworkState } from "@vasakgroup/plugin-network-manager"
-
-interface Network {
-  ssid: string;
-  signal: number;
-  security?: string;
-  connected: boolean;
-}
+import { listWifiNetworks, NetworkInfo } from "@vasakgroup/plugin-network-manager"
+import NetworkWiFiCard from "@/components/cards/NetworkWiFiCard.vue";
 
 const wifiEnabled: Ref<boolean> = ref(true);
 const loading: Ref<boolean> = ref(false);
-const availableNetworks: Ref<Network[]> = ref([]);
+const availableNetworks: Ref<NetworkInfo[]> = ref([]);
 const wifiStatus: Ref<string> = ref("Connected");
 const ethernetStatus: Ref<string> = ref("Not connected");
-
-const getSignalBars = (signal: number): number => {
-  if (signal >= -50) return 4;
-  if (signal >= -60) return 3;
-  if (signal >= -70) return 2;
-  return 1;
-};
 
 const toggleWifi = async () => {
   try {
@@ -174,33 +114,11 @@ const refreshNetworks = async () => {
   
   loading.value = true;
   try {
-    // Aquí llamarías al comando del plugin para obtener redes
-    // const networks = await invoke("get_available_networks");
-    // availableNetworks.value = networks;
-    
-    // Mock data por ahora
-    availableNetworks.value = [
-      { ssid: "Home WiFi", signal: -45, security: "WPA2", connected: true },
-      { ssid: "Office Network", signal: -55, security: "WPA3", connected: false },
-      { ssid: "Public WiFi", signal: -65, connected: false },
-      { ssid: "Neighbor's WiFi", signal: -75, security: "WPA2", connected: false },
-    ];
+    availableNetworks.value = await listWifiNetworks();
   } catch (error) {
     console.error("Error refreshing networks:", error);
   } finally {
     loading.value = false;
-  }
-};
-
-const connectToNetwork = async (network: Network) => {
-  if (network.connected) return;
-  
-  try {
-    // Aquí llamarías al comando del plugin para conectar
-    // await invoke("connect_to_network", { ssid: network.ssid });
-    console.log("Connecting to:", network.ssid);
-  } catch (error) {
-    console.error("Error connecting to network:", error);
   }
 };
 
@@ -213,11 +131,6 @@ const closeApplet = async () => {
 };
 
 onMounted(async () => {
-  // Escuchar eventos del plugin de network
-  // await listen("network-status-changed", (event) => {
-  //   console.log("Network status changed:", event.payload);
-  // });
-  
   await refreshNetworks();
 });
 </script>
