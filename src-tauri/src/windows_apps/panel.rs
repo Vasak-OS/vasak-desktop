@@ -81,75 +81,74 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
     if let Some(gdk_window) = gtk_window.window() {
         let display = gdk_window.display();
 
-        if let Some(monitor) = display.primary_monitor() {
-            let geometry = monitor.geometry();
-            let screen_x = geometry.x() as u32;
-            let screen_width = geometry.width() as u32;
+        // Obtener dimensiones de pantalla completa usando el método correcto
+        let monitor = display.primary_monitor().unwrap();
+        let workarea = monitor.workarea();
+        let screen_width = workarea.width() as u32;
 
-            unsafe {
-                use gdk::ffi;
-                use std::ffi::CString;
+        unsafe {
+            use gdk::ffi;
+            use std::ffi::CString;
 
-                let window_ptr = gdk_window.as_ptr();
+            let window_ptr = gdk_window.as_ptr();
 
-                // Elimina primero cualquier STRUT previo para evitar conflictos
-                if let Ok(strut_name) = CString::new("_NET_WM_STRUT") {
-                    ffi::gdk_property_delete(window_ptr, ffi::gdk_atom_intern(strut_name.as_ptr(), 0));
-                }
-                if let Ok(strut_partial_name) = CString::new("_NET_WM_STRUT_PARTIAL") {
-                    ffi::gdk_property_delete(window_ptr, ffi::gdk_atom_intern(strut_partial_name.as_ptr(), 0));
-                }
+            // Asegurar que la ventana esté completamente mapeada
+            ffi::gdk_window_ensure_native(window_ptr);
+            
+            // Establecer tipo de ventana primero
+            set_wm_atom_property(
+                window_ptr,
+                "_NET_WM_WINDOW_TYPE",
+                "_NET_WM_WINDOW_TYPE_DOCK",
+            );
 
-                set_wm_atom_property(
+            // Estados necesarios para XFWM4
+            let states = [
+                ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_STICKY").unwrap().as_ptr(), 0),
+                ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_SKIP_TASKBAR").unwrap().as_ptr(), 0),
+                ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_SKIP_PAGER").unwrap().as_ptr(), 0),
+                ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_ABOVE").unwrap().as_ptr(), 0),
+            ];
+
+            if let (Ok(state_name), Ok(atom_type)) = (
+                CString::new("_NET_WM_STATE"),
+                CString::new("ATOM")
+            ) {
+                ffi::gdk_property_change(
                     window_ptr,
-                    "_NET_WM_WINDOW_TYPE",
-                    "_NET_WM_WINDOW_TYPE_DOCK",
+                    ffi::gdk_atom_intern(state_name.as_ptr(), 0),
+                    ffi::gdk_atom_intern(atom_type.as_ptr(), 0),
+                    32,
+                    ffi::GDK_PROP_MODE_REPLACE,
+                    states.as_ptr() as *const u8,
+                    states.len() as i32,
                 );
-
-                // STRUT simple: no reservar espacio global, solo usar STRUT_PARTIAL
-                let basic_strut: [u32; 4] = [0, 0, 0, 0];
-                if let (Ok(strut_name), Ok(type_name)) =
-                    (CString::new("_NET_WM_STRUT"), CString::new("CARDINAL"))
-                {
-                    ffi::gdk_property_change(
-                        window_ptr,
-                        ffi::gdk_atom_intern(strut_name.as_ptr(), 0),
-                        ffi::gdk_atom_intern(type_name.as_ptr(), 0),
-                        32,
-                        ffi::GDK_PROP_MODE_REPLACE,
-                        basic_strut.as_ptr() as *const u8,
-                        4,
-                    );
-                }
-
-                // STRUT_PARTIAL: reservar solo el área del panel en el monitor principal
-                let mut strut_partial: [u32; 12] = [0; 12];
-                strut_partial[2] = 38; // top
-                strut_partial[8] = screen_x; // top_start_x
-                strut_partial[9] = screen_x + screen_width - 1; // top_end_x
-
-                if let (Ok(strut_partial_name), Ok(type_name)) = (
-                    CString::new("_NET_WM_STRUT_PARTIAL"),
-                    CString::new("CARDINAL"),
-                ) {
-                    ffi::gdk_property_change(
-                        window_ptr,
-                        ffi::gdk_atom_intern(strut_partial_name.as_ptr(), 0),
-                        ffi::gdk_atom_intern(type_name.as_ptr(), 0),
-                        32,
-                        ffi::GDK_PROP_MODE_REPLACE,
-                        strut_partial.as_ptr() as *const u8,
-                        12,
-                    );
-                }
-
-                let desktop_value: u32 = 0xFFFFFFFF;
-                set_wm_cardinal_property(window_ptr, "_NET_WM_DESKTOP", &[desktop_value]);
-
-                // Forzar actualización final
-                ffi::gdk_display_sync(display.as_ptr());
-                ffi::gdk_display_flush(display.as_ptr());
             }
+
+            // Desktop sticky
+            let desktop_value: u32 = 0xFFFFFFFF;
+            set_wm_cardinal_property(window_ptr, "_NET_WM_DESKTOP", &[desktop_value]);
+
+            // Forzar sync antes de STRUT
+            ffi::gdk_display_sync(display.as_ptr());
+
+            // SOLUCIÓN DEFINITIVA: Usar solo propiedades básicas sin STRUT
+            // XFWM4 tiene problemas irreparables con STRUT, mejor solución alternativa
+            
+            // NO usar STRUT - causa problemas en XFWM4
+            // En su lugar, implementar un workaround para ventanas maximizadas
+            
+            // Propiedad especial para indicar que es un panel que debe ser respetado
+            let panel_height: u32 = 40;
+            set_wm_cardinal_property(window_ptr, "_NET_WM_STRUT", &[0, panel_height, 0, 0]);
+
+            // Usar propiedades específicas de XFWM4 para mejor compatibilidad
+            let layer_value: u32 = 6; // Above normal windows
+            set_wm_cardinal_property(window_ptr, "_WIN_LAYER", &[layer_value]);
+
+            // Sync final
+            ffi::gdk_display_sync(display.as_ptr());
+            ffi::gdk_display_flush(display.as_ptr());
         }
     }
 }

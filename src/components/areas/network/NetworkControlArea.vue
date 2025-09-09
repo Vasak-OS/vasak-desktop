@@ -32,7 +32,7 @@
         disabled
         :class="[
           'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-          wifiEnabled ? 'bg-vsk-primary' : 'bg-vsk-border'
+          wifiEnabled ? 'bg-green-500' : 'bg-vsk-primary/30',
         ]"
       >
         <span
@@ -44,7 +44,6 @@
       </button>
     </div>
 
-    <!-- Available Networks -->
     <div v-if="wifiEnabled" class="flex-1 overflow-hidden">
       <h3 class="text-sm font-medium text-vsk-text/80 mb-3">Available Networks</h3>
       
