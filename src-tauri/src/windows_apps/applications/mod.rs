@@ -1,3 +1,3 @@
-pub mod terminal;
+pub mod configuration;
 
-pub use terminal::create_app_terminal_window;
+pub use configuration::create_app_configuration_window;
