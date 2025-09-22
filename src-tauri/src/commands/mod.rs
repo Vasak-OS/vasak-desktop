@@ -1,3 +1,4 @@
+mod applications;
 mod audio;
 mod battery;
 mod bluetooth;
@@ -13,13 +14,14 @@ mod theme;
 mod tray;
 mod window_manager;
 
+pub use applications::toggle_config_app;
 pub use audio::{get_audio_volume, set_audio_volume, toggle_audio_mute};
 pub use battery::{battery_exists, battery_fetch_info};
 pub use bluetooth::toggle_bluetooth_applet;
 pub use brightness::{get_brightness_info, set_brightness_info};
 pub use control_center::toggle_control_center;
 pub use menu::{get_menu_items, toggle_menu};
-pub use music::{music_play_pause, music_next_track, music_previous_track, music_now_playing};
+pub use music::{music_next_track, music_now_playing, music_play_pause, music_previous_track};
 pub use network::toggle_network_applet;
 pub use notifications::{
     clear_notifications, delete_notification, get_all_notifications, send_notify,
