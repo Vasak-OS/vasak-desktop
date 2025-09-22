@@ -3,6 +3,7 @@ mod audio;
 mod battery;
 mod brightness;
 mod commands;
+mod dbus_service;
 mod eventloops;
 mod menu_manager;
 mod monitor_manager;
@@ -15,8 +16,8 @@ mod windows_apps;
 
 use commands::*;
 use eventloops::{
-    setup_battery_monitoring, setup_music_monitoring, setup_notification_monitoring,
-    setup_windows_monitoring,
+    setup_battery_monitoring, setup_dbus_service, setup_music_monitoring,
+    setup_notification_monitoring, setup_windows_monitoring,
 };
 use std::sync::{Arc, Mutex};
 use structs::WMState;
@@ -62,6 +63,7 @@ pub fn run() {
             detect_display_server,
             get_menu_items,
             toggle_menu,
+            toggle_config_app,
             get_audio_volume,
             set_audio_volume,
             toggle_audio_mute,
@@ -92,6 +94,7 @@ pub fn run() {
             setup_notification_monitoring(app.handle().clone());
             setup_music_monitoring(app.handle().clone());
             setup_battery_monitoring(app.handle().clone());
+            setup_dbus_service(app.handle().clone());
 
             Ok(())
         })
