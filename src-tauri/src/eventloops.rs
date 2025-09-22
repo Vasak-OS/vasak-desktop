@@ -43,3 +43,11 @@ pub fn setup_music_monitoring(app_handle: tauri::AppHandle) {
 pub fn setup_battery_monitoring(app_handle: tauri::AppHandle) {
     start_battery_monitor(app_handle);
 }
+
+pub fn setup_dbus_service(app_handle: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = crate::dbus_service::start_dbus_service(app_handle).await {
+            eprintln!("Error starting D-Bus service: {}", e);
+        }
+    });
+}
