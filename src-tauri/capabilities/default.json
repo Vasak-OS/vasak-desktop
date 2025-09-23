@@ -19,7 +19,8 @@
     "control_center",
     "applet_bluetooth",
     "applet_network",
-    "app_terminal"
+    "app_terminal",
+    "app_config"
   ],
   "permissions": [
     "core:default",
