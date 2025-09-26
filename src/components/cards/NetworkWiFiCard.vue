@@ -43,7 +43,7 @@ onMounted(async () => {
     class="flex items-center justify-between background p-3 rounded-vsk border border-vsk-primary/70 hover:bg-vsk-primary/5 cursor-pointer transition-colors"
   >
     <div class="flex items-center gap-3">
-      <img :src="netIcon" :alt="props.ssid" />
+      <img :src="netIcon" :alt="props.ssid" class="w-8 h-8" />
 
       <div>
         <div class="font-medium text-vsk-text">{{ props.ssid }}</div>
