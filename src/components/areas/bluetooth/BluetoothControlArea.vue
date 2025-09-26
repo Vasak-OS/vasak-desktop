@@ -188,7 +188,7 @@ const disconnect = async (device: any) => {
 </script>
 
 <template>
-  <div>
+  <div class="flex flex-col h-full">
     <div class="flex items-center mb-4">
       <button
         type="button"
@@ -216,44 +216,48 @@ const disconnect = async (device: any) => {
         />
       </button>
     </div>
-    <div v-if="loading" class="text-center px-6">Cargando...</div>
-    <div v-else>
-      <div class="mb-8 h-[240px] overflow-y-auto">
+    <div v-if="loading" class="text-center px-6 flex-1">Cargando...</div>
+    <div v-else class="flex-1 flex gap-4 flex-col">
+      <div class="flex-1 flex flex-col overflow-hidden">
         <div class="mb-4 font-semibold text-xl">Disponibles</div>
-        <div
-          v-if="availableDevices.length === 0"
-          class="text-gray-500 text-sm px-1.5 text-center"
-        >
-          No hay dispositivos disponibles
+        <div class="flex-1 overflow-y-auto">
+          <div
+            v-if="availableDevices.length === 0"
+            class="text-gray-500 text-sm px-1.5 text-center"
+          >
+            No hay dispositivos disponibles
+          </div>
+          <ul v-else class="list-none p-0 m-0">
+            <li v-for="dev in availableDevices" :key="dev.path">
+              <BluetoothDeviceCard
+                :device="dev"
+                action-label="Conectar"
+                @action="connect(dev)"
+              />
+            </li>
+          </ul>
         </div>
-        <ul v-else class="list-none p-0 m-0">
-          <li v-for="dev in availableDevices" :key="dev.path">
-            <BluetoothDeviceCard
-              :device="dev"
-              action-label="Conectar"
-              @action="connect(dev)"
-            />
-          </li>
-        </ul>
       </div>
-      <div class="mb-8 h-[240px] overflow-y-auto">
+      <div class="flex-1 flex flex-col overflow-hidden">
         <div class="mb-4 font-semibold text-xl">Dispositivos conectados</div>
-        <div
-          v-if="connectedDevices.length === 0"
-          class="text-gray-500 text-sm px-1.5 text-center"
-        >
-          Ningún dispositivo conectado
+        <div class="flex-1 overflow-y-auto">
+          <div
+            v-if="connectedDevices.length === 0"
+            class="text-gray-500 text-sm px-1.5 text-center"
+          >
+            Ningún dispositivo conectado
+          </div>
+          <ul v-else class="list-none p-0 m-0">
+            <li v-for="dev in connectedDevices" :key="dev.path">
+              <BluetoothDeviceCard
+                :device="dev"
+                action-label="Desconectar"
+                connected
+                @action="disconnect(dev)"
+              />
+            </li>
+          </ul>
         </div>
-        <ul v-else class="list-none p-0 m-0">
-          <li v-for="dev in connectedDevices" :key="dev.path">
-            <BluetoothDeviceCard
-              :device="dev"
-              action-label="Desconectar"
-              connected
-              @action="disconnect(dev)"
-            />
-          </li>
-        </ul>
       </div>
     </div>
   </div>

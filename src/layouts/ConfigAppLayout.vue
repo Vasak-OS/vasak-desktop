@@ -1,13 +1,18 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 import ConfigSidebarArea from "@/components/areas/configuration/ConfigSidebarArea.vue";
 import { WindowFrame } from "@vasakgroup/vue-libvasak";
 </script>
+
 <template>
   <WindowFrame class="rounded-t-window">
     <div class="h-[calc(100vh-32px)] rounded-b-window background">
-      <div class="h-full w-full flex flex-wrap p-4 gap-4">
+      <div class="h-full w-full flex p-4 gap-4">
         <ConfigSidebarArea />
-        <slot />
+        <div class="flex-1 min-h-0">
+          <div class="h-full overflow-auto">
+            <slot />
+          </div>
+        </div>
       </div>
     </div>
   </WindowFrame>

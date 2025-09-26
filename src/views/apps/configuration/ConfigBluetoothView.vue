@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import NetworkControlArea from '@/components/areas/network/NetworkControlArea.vue';
+import BluetoothControlArea from '@/components/areas/bluetooth/BluetoothControlArea.vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 
 </script>
 
 <template>
   <ConfigAppLayout>
-    <NetworkControlArea hide-x />
+    <BluetoothControlArea class="w-full" />
   </ConfigAppLayout>
 </template>

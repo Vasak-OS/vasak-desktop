@@ -42,6 +42,16 @@ const routes = [
             component: () =>
               import("@/views/apps/configuration/ConfigNetworkView.vue"),
           },
+          {
+            path: "bluetooth",
+            component: () =>
+              import("@/views/apps/configuration/ConfigBluetoothView.vue"),
+          },
+          {
+            path: "style",
+            component: () =>
+              import("@/views/apps/configuration/ConfigStyleView.vue"),
+          },
         ],
       },
     ],
