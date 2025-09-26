@@ -14,10 +14,11 @@ const routes = [
       {
         path: "bluetooth",
         component: () => import("@/views/applets/BluetoothAppletView.vue"),
-      },{
+      },
+      {
         path: "network",
         component: () => import("@/views/applets/NetworkAppletView.vue"),
-      }
+      },
     ],
   },
   {
@@ -26,6 +27,22 @@ const routes = [
       {
         path: "terminal",
         component: () => import("@/views/apps/TerminalView.vue"),
+      },
+      {
+        path: "configuration",
+        redirect: "/apps/configuration/info",
+        children: [
+          {
+            path: "info",
+            component: () =>
+              import("@/views/apps/configuration/ConfigInfoView.vue"),
+          },
+          {
+            path: "network",
+            component: () =>
+              import("@/views/apps/configuration/ConfigNetworkView.vue"),
+          },
+        ],
       },
     ],
   },
