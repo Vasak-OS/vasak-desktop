@@ -4,6 +4,7 @@
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-semibold text-vsk-text">Network Settings</h2>
       <button
+        v-if="!hideX"
         @click="closeApplet"
         class="p-2 rounded-vsk hover:bg-vsk-primary/10 transition-colors"
       >
@@ -94,6 +95,13 @@ const loading: Ref<boolean> = ref(false);
 const availableNetworks: Ref<NetworkInfo[]> = ref([]);
 const wifiStatus: Ref<string> = ref("Connected");
 const ethernetStatus: Ref<string> = ref("Not connected");
+
+defineProps({
+  hideX: {
+    type: Boolean,
+    default: false,
+  },
+});
 
 const toggleWifi = async () => {
   try {
