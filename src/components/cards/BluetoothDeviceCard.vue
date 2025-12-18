@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { defineProps, defineEmits, Ref, ref, onMounted } from "vue";
+import { Ref, ref, onMounted } from "vue";
 import { getIconSource } from "@vasakgroup/plugin-vicons";
 import { getDeviceInfo } from "@vasakgroup/plugin-bluetooth-manager";
 
