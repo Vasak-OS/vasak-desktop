@@ -4,11 +4,13 @@ use std::error::Error;
 
 pub mod manager;
 
-// Modules for specific applets (will be populated)
+// Modules for specific applets
 pub mod audio;
 pub mod battery;
+pub mod bluetooth;
 pub mod brightness;
 pub mod music;
+pub mod network;
 pub mod notifications;
 pub mod tray;
 
