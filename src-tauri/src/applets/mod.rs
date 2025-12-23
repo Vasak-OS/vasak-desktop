@@ -5,10 +5,12 @@ use std::error::Error;
 pub mod manager;
 
 // Modules for specific applets (will be populated)
+pub mod audio;
 pub mod battery;
+pub mod brightness;
 pub mod music;
 pub mod notifications;
-// pub mod tray;
+pub mod tray;
 
 #[async_trait]
 pub trait Applet: Send + Sync {
