@@ -34,13 +34,26 @@
         <span>•</span>
         <span>{{ formatTime(notification.timestamp) }}</span>
       </div>
+
+      <!-- Actions -->
+      <div v-if="parsedActions.length > 0" class="flex flex-wrap gap-2 mt-2">
+        <button
+          v-for="action in parsedActions"
+          :key="action.key"
+          @click.stop="handleAction(action.key)"
+          class="px-3 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200 rounded transition-colors"
+        >
+          {{ action.label }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { invoke } from '@tauri-apps/api/core';
 
 const props = defineProps<{
   notification: {
@@ -64,9 +77,35 @@ defineEmits<{
 const iconSrc = ref('')
 const closeIconSrc = ref('')
 
+// Parse standard DBus actions [key, label, key, label...]
+const parsedActions = computed(() => {
+  const acts = props.notification.actions || [];
+  const result = [];
+  for (let i = 0; i < acts.length; i += 2) {
+    const key = acts[i];
+    const label = acts[i + 1] || key;
+    // Skip 'default' action as it is usually the body click
+    if (key !== 'default') {
+      result.push({ key, label });
+    }
+  }
+  return result;
+});
+
 function formatTime(timestamp: number): string {
   const date = new Date(timestamp * 1000)
   return date.toLocaleTimeString()
+}
+
+async function handleAction(actionKey: string) {
+  try {
+    await invoke('invoke_notification_action', { 
+      id: props.notification.id, 
+      actionKey 
+    });
+  } catch (error) {
+    console.error('Failed to invoke action:', error);
+  }
 }
 
 onMounted(async () => {

@@ -74,6 +74,7 @@ pub fn run() {
             clear_notifications,
             get_all_notifications,
             delete_notification,
+            invoke_notification_action,
             toggle_control_center,
             toggle_network_applet,
             init_sni_watcher,
