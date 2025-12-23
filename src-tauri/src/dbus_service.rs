@@ -16,7 +16,7 @@ impl DesktopService {
     /// Maneja llamadas a métodos D-Bus
     pub async fn handle_method_call(&self, msg: &Message) -> ZbusResult<()> {
         let header = msg.header();
-        let member = header.member().unwrap().as_str();
+        let member = header.member().map(|m| m.as_str()).unwrap_or("Unknown");
 
         match member {
             "OpenMenu" => {

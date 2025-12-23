@@ -22,7 +22,7 @@ pub fn get_monitors(app: &AppHandle) -> Option<Vec<Monitor>> {
     }
 
     let monitors = AVAILABLE_MONITORS.get_or_init(|| Mutex::new(None));
-    monitors.lock().unwrap().clone()
+    monitors.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
 
 pub fn get_primary_monitor(app: &AppHandle) -> Option<Monitor> {

@@ -77,15 +77,18 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
     .visible(true)
     .skip_taskbar(true)
     .always_on_bottom(true)
-    .build()
-    .unwrap();
+    .build();
 
-
+    if let Ok(other_desktop_window) = other_desktop_window {
+ 
     let complete_url = format!("{}{}", get_app_url(), format!("index.html#/desktop?monitor={}", label));
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
     let _ = other_desktop_window.navigate(url);
 
     set_window_properties(&other_desktop_window);
+    } else {
+        eprintln!("Failed to create desktop window for monitor {}", index);
+    }
 }
 
 fn set_window_properties(window: &tauri::WebviewWindow) {

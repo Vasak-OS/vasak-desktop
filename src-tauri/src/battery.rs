@@ -11,7 +11,7 @@ static BATTERY_CONN: OnceCell<Arc<Connection>> = OnceCell::new();
 pub async fn has_battery() -> bool {
     match get_battery_info().await {
         Some(info) => info.has_battery,
-        _none => false,
+        None => false,
     }
 }
 
@@ -123,7 +123,7 @@ pub fn start_battery_monitor(app_handle: AppHandle) {
             Some(path) => {
                 path
             }
-            _none => {
+            None => {
                 let mut last_info: Option<BatteryInfo> = None;
                 
                 loop {
@@ -131,7 +131,7 @@ pub fn start_battery_monitor(app_handle: AppHandle) {
                     
                     if let Some(current_info) = get_battery_info().await {
                         let should_emit = match &last_info {
-                            _none => true,
+                            None => true,
                             Some(last) => {
                                 last.percentage != current_info.percentage || 
                                 last.is_charging != current_info.is_charging ||
@@ -167,7 +167,7 @@ pub fn start_battery_monitor(app_handle: AppHandle) {
                 
                 if let Some(current_info) = get_battery_info().await {
                     let should_emit = match &last_info {
-                        _none => true,
+                        None => true,
                         Some(last) => {
                             (last.percentage - current_info.percentage).abs() > 0.1 || // Cambio de más de 0.1%
                             last.is_charging != current_info.is_charging ||
