@@ -28,7 +28,15 @@ use tray::create_tray_manager;
 use window_manager::WindowManager;
 use windows_apps::*;
 
-use applets::{manager::AppletManager, battery::BatteryApplet, music::MusicApplet, notifications::NotificationApplet};
+use applets::{
+    manager::AppletManager, 
+    audio::AudioApplet,
+    battery::BatteryApplet, 
+    brightness::BrightnessApplet,
+    music::MusicApplet, 
+    notifications::NotificationApplet, 
+    tray::TrayApplet
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -98,8 +106,11 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let manager = AppletManager::new();
+                manager.register(AudioApplet).await;
                 manager.register(BatteryApplet).await;
+                manager.register(BrightnessApplet).await;
                 manager.register(MusicApplet).await;
+                manager.register(TrayApplet).await;
                 manager.register(NotificationApplet).await;
                 
                 manager.start_all(app_handle).await;
