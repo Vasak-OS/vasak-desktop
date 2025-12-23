@@ -229,29 +229,44 @@ pub async fn invoke_action(id: u32, action_key: String) -> Result<(), String> {
 pub async fn start_notification_server() -> Result<(), Box<dyn std::error::Error>> {
     let connection = Connection::session().await?;
     
-    // Request the org.freedesktop.Notifications name
-    connection.request_name("org.freedesktop.Notifications").await?;
+    // Request the org.freedesktop.Notifications name with ReplaceExisting
+    use zbus::fdo::{RequestNameFlags, RequestNameReply};
     
+    let reply = connection.request_name_with_flags(
+        "org.freedesktop.Notifications",
+        RequestNameFlags::ReplaceExisting | RequestNameFlags::DoNotQueue,
+    ).await?;
+    
+    match reply {
+        RequestNameReply::PrimaryOwner => {
+            println!("Acquired org.freedesktop.Notifications successfully.");
+        },
+        RequestNameReply::InQueue => {
+             println!("Queued for org.freedesktop.Notifications (another service is holding it).");
+        },
+        RequestNameReply::Exists => {
+             println!("Failed to acquire org.freedesktop.Notifications: Name exists and replacement failed.");
+        },
+        RequestNameReply::AlreadyOwner => {
+             println!("Already owner of org.freedesktop.Notifications.");
+        },
+    }
+
     // Register the object
     connection.object_server().at("/org/freedesktop/Notifications", NotificationServer).await?;
     
+    // Also request a custom name for testing if primary fails (or always)
+    let _ = connection.request_name("org.vasakos.Notifications").await;
+
     // Store connection
     {
         let mut guard = DBUS_CONNECTION.write().await;
         *guard = Some(connection.clone());
     }
     
-    println!("Notification Server started on org.freedesktop.Notifications");
+    println!("Notification Server started on org.freedesktop.Notifications (and org.vasakos.Notifications)");
     
-    // Keep the connection execution loop alive?
-    // zbus::Connection::session() creates a connection that runs in background if strictly async... 
-    // actually we might need to await verification. 
-    // But since we are spawning in start_notification_monitor, we should be fine if we hold the connection.
-    
-    // We need to keep the future alive if it's not purely background.
-    // zbus 4 Connection is cloneable and handle-like.
-    
-    // Wait forever
+    // Keep the connection execution loop alive
     std::future::pending::<()>().await;
     
     Ok(())
