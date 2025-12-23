@@ -24,7 +24,8 @@ pub use menu::{get_menu_items, toggle_menu};
 pub use music::{music_next_track, music_now_playing, music_play_pause, music_previous_track};
 pub use network::toggle_network_applet;
 pub use notifications::{
-    clear_notifications, delete_notification, get_all_notifications, send_notify,
+    clear_notifications, delete_notification, get_all_notifications, invoke_notification_action,
+    send_notify,
 };
 pub use runner::open_app;
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};

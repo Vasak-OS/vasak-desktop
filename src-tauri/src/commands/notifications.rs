@@ -26,3 +26,8 @@ pub async fn get_all_notifications() -> Result<Vec<Notification>, String> {
 pub async fn delete_notification(id: u32) -> Result<bool, String> {
     remove_notification(id).await
 }
+
+#[tauri::command]
+pub async fn invoke_notification_action(id: u32, action_key: String) -> Result<(), String> {
+    crate::notifications::invoke_action(id, action_key).await
+}

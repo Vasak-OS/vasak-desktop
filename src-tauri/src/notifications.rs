@@ -1,14 +1,15 @@
-use crate::structs::{Notification, NotificationData, NotificationUrgency};
+use crate::structs::{Notification, NotificationUrgency};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
+use zbus::{interface, Connection};
+use zbus::zvariant::Value;
 
+// Global stores
 static APP_HANDLE: Lazy<Arc<RwLock<Option<AppHandle>>>> = Lazy::new(|| Arc::new(RwLock::new(None)));
-
-static NOTIFICATIONS: Lazy<Arc<RwLock<Vec<Notification>>>> =
-    Lazy::new(|| Arc::new(RwLock::new(Vec::new())));
+static NOTIFICATIONS: Lazy<Arc<RwLock<Vec<Notification>>>> = Lazy::new(|| Arc::new(RwLock::new(Vec::new())));
 
 const MAX_NOTIFICATIONS: usize = 50;
 
@@ -34,11 +35,10 @@ pub async fn get_notifications() -> Result<Vec<Notification>, String> {
 pub async fn remove_notification(id: u32) -> Result<bool, String> {
     let mut notifications = NOTIFICATIONS.write().await;
     let initial_len = notifications.len();
-
     notifications.retain(|n| n.id != id);
 
     if notifications.len() < initial_len {
-        drop(notifications); // Liberar el lock antes de emitir
+        drop(notifications);
         emit_notifications_updated().await;
         Ok(true)
     } else {
@@ -51,176 +51,8 @@ pub async fn clear_all_notifications() -> Result<u32, String> {
     let count = notifications.len() as u32;
     notifications.clear();
     drop(notifications);
-
     emit_notifications_updated().await;
     Ok(count)
-}
-
-/// Función para agregar una notificación real al store
-pub async fn add_real_notification(
-    app_name: String,
-    summary: String,
-    body: String,
-    app_icon: Option<String>,
-    urgency: Option<NotificationUrgency>,
-) -> Result<u32, String> {
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-
-    // Log para debug
-    println!(
-        "[add_real_notification] app_name: '{}', app_icon: {:?}, summary: '{}'",
-        app_name, app_icon, summary
-    );
-
-    // Función auxiliar para mapear nombres de app a iconos conocidos
-    fn map_app_icon(app_name: &str) -> Option<String> {
-        let name = app_name.to_lowercase();
-        if name.contains("chrome") {
-            Some("google-chrome".to_string())
-        } else if name.contains("kdeconnect") || name.contains("kde connect") {
-            Some("phone".to_string())
-        } else if name.contains("telegram desktop") {
-            Some("telegram-desktop".to_string())
-        } else if name.contains("calendar") {
-            Some("x-office-calendar".to_string())
-        } else {
-            None
-        }
-    }
-
-    // Detectar si el summary parece un icono (ej: "view-calendar-upcoming")
-    fn summary_as_icon(summary: &str) -> bool {
-        summary.contains("calendar") || summary.contains("alarm") || summary.contains("reminder")
-    }
-
-    // Detectar si el summary es una ruta a un archivo de imagen
-    fn summary_is_image_path(summary: &str) -> bool {
-        let summary_lower = summary.to_lowercase();
-        summary_lower.ends_with(".png")
-            || summary_lower.ends_with(".svg")
-            || summary_lower.ends_with(".jpg")
-            || summary_lower.ends_with(".jpeg")
-            || summary_lower.ends_with(".bmp")
-            || summary_lower.ends_with(".ico")
-    }
-
-    let icon_final = match app_icon {
-        Some(ref icon) if !icon.is_empty() => icon.clone(),
-        _ => {
-            if summary_is_image_path(&summary) {
-                summary.clone()
-            } else if summary_as_icon(&summary) {
-                summary.clone()
-            } else if let Some(mapped) = map_app_icon(&app_name) {
-                mapped
-            } else {
-                app_name.to_lowercase()
-            }
-        }
-    };
-
-    let notification = Notification {
-        id: timestamp as u32,
-        app_name: app_name.clone(),
-        summary,
-        body,
-        app_icon: icon_final,
-        timestamp,
-        seen: false,
-        urgency: urgency.unwrap_or(NotificationUrgency::Normal),
-        actions: vec![],
-        hints: HashMap::new(),
-    };
-
-    let notification_id = notification.id;
-
-    {
-        let mut notifications = NOTIFICATIONS.write().await;
-        notifications.insert(0, notification);
-
-        if notifications.len() > MAX_NOTIFICATIONS {
-            notifications.truncate(MAX_NOTIFICATIONS);
-        }
-    }
-    emit_notifications_updated().await;
-
-    Ok(notification_id)
-}
-
-pub async fn start_notification_monitor() -> Result<(), String> {
-    tokio::spawn(async {
-        if let Err(e) = monitor_dbus_notifications().await {
-            eprintln!("Error monitoring D-Bus notifications: {}", e);
-        }
-    });
-
-    Ok(())
-}
-
-async fn monitor_dbus_notifications() -> Result<(), String> {
-    use tokio::io::{AsyncBufReadExt, BufReader};
-    use tokio::process::Command;
-
-    let mut cmd = Command::new("dbus-monitor")
-        .arg("--session")
-        .arg("interface=org.freedesktop.Notifications,member=Notify")
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to start dbus-monitor: {}", e))?;
-
-    if let Some(stdout) = cmd.stdout.take() {
-        let reader = BufReader::new(stdout);
-        let mut lines = reader.lines();
-
-        let mut current_notification: Option<NotificationData> = None;
-
-        while let Ok(Some(line)) = lines.next_line().await {
-            if line.contains("method call") && line.contains("Notify") {
-                current_notification = Some(NotificationData::default());
-            } else if let Some(ref mut notif) = current_notification {
-                if line.trim().starts_with("string") {
-                    let value = extract_string_value(&line);
-                    if notif.app_name.is_empty() {
-                        notif.app_name = value;
-                    } else if notif.summary.is_empty() {
-                        notif.summary = value;
-                    } else if notif.body.is_empty() {
-                        notif.body = value;
-
-                        if !notif.app_name.is_empty() && !notif.summary.is_empty() {
-                            let _ = add_real_notification(
-                                notif.app_name.clone(),
-                                notif.summary.clone(),
-                                notif.body.clone(),
-                                None,
-                                Some(NotificationUrgency::Normal),
-                            )
-                            .await;
-                        }
-
-                        current_notification = None;
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
-fn extract_string_value(line: &str) -> String {
-    if let Some(start) = line.find('"') {
-        if let Some(end) = line.rfind('"') {
-            if start < end {
-                return line[start + 1..end].to_string();
-            }
-        }
-    }
-    String::new()
 }
 
 pub async fn send_system_notification(
@@ -228,48 +60,212 @@ pub async fn send_system_notification(
     body: Option<String>,
     urgency: Option<String>,
 ) -> Result<String, String> {
-    use tokio::process::Command;
+       // Re-use internal logic or simply add to store, since we ARE the server now.
+       // Calling internal add method directly.
+       let urgency_enum = match urgency.as_deref() {
+            Some("low") => NotificationUrgency::Low,
+            Some("critical") => NotificationUrgency::Critical,
+            _ => NotificationUrgency::Normal,
+        };
 
-    let urgency_level = match urgency.as_deref() {
-        Some("low") => "low",
-        Some("critical") => "critical",
-        _ => "normal",
-    };
+        let _ = NotificationServer::add_notification_internal(
+            "VasakOS".to_string(),
+            summary,
+            body.unwrap_or_default(),
+            String::new(), // icon
+            urgency_enum,
+            vec![], // actions
+            HashMap::new()
+        ).await;
 
-    let mut cmd = Command::new("notify-send");
-    cmd.arg("--urgency").arg(urgency_level);
-    cmd.arg(&summary);
+        Ok("Notification added".to_string())
+}
 
-    if let Some(body_text) = &body {
-        cmd.arg(body_text);
+// --------------------------------------------------------------------------------
+// ZBus Notification Server Implementation
+// --------------------------------------------------------------------------------
+
+// Global connection storage
+static DBUS_CONNECTION: Lazy<Arc<RwLock<Option<Connection>>>> = Lazy::new(|| Arc::new(RwLock::new(None)));
+
+#[derive(Clone)]
+struct NotificationServer;
+
+#[interface(name = "org.freedesktop.Notifications")]
+impl NotificationServer {
+    async fn get_capabilities(&self) -> Vec<String> {
+        vec![
+            "body".to_string(),
+            "actions".to_string(),
+            "persistence".to_string(),
+            "icon-static".to_string(),
+        ]
+    }
+    
+    // Define signals
+    #[zbus(signal)]
+    async fn action_invoked(ctxt: &zbus::object_server::SignalContext<'_>, id: u32, action_key: &str) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn notification_closed(ctxt: &zbus::object_server::SignalContext<'_>, id: u32, reason: u32) -> zbus::Result<()>;
+
+    async fn get_server_information(&self) -> (String, String, String, String) {
+        (
+            "VasakOS Notification Server".to_string(),
+            "VasakOS".to_string(),
+            "0.1.0".to_string(),
+            "1.2".to_string(),
+        )
     }
 
-    match cmd.output().await {
-        Ok(output) => {
-            if output.status.success() {
-                let urgency_enum = match urgency_level {
-                    "low" => NotificationUrgency::Low,
-                    "critical" => NotificationUrgency::Critical,
-                    _ => NotificationUrgency::Normal,
-                };
+    async fn notify(
+        &self,
+        app_name: String,
+        replaces_id: u32,
+        app_icon: String,
+        summary: String,
+        body: String,
+        actions: Vec<String>,
+        hints: HashMap<String, Value<'_>>,
+        _expire_timeout: i32,
+    ) -> u32 {
+        let urgency = if let Some(Value::U8(u)) = hints.get("urgency") {
+             match u {
+                 0 => NotificationUrgency::Low,
+                 1 => NotificationUrgency::Normal,
+                 2 => NotificationUrgency::Critical,
+                 _ => NotificationUrgency::Normal,
+             }
+        } else {
+             NotificationUrgency::Normal
+        };
 
-                let _ = add_real_notification(
-                    "notify-send".to_string(),
-                    summary,
-                    body.unwrap_or_default(),
-                    Some("dialog-information".to_string()),
-                    Some(urgency_enum),
-                )
-                .await;
+        NotificationServer::add_notification_internal(
+            app_name,
+            summary,
+            body,
+            app_icon,
+            urgency,
+            actions,
+            HashMap::new()
+        ).await
+    }
 
-                Ok("Notification sent successfully".to_string())
-            } else {
-                Err(format!(
-                    "Failed to send notification: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ))
+    async fn close_notification(&self, id: u32) {
+        let _ = remove_notification(id).await;
+    }
+}
+
+impl NotificationServer {
+    async fn add_notification_internal(
+        app_name: String,
+        summary: String,
+        body: String,
+        app_icon: String,
+        urgency: NotificationUrgency,
+        actions: Vec<String>,
+        _hints: HashMap<String, String>
+    ) -> u32 {
+         let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        
+        // Icon mapping logic
+        let icon_final = if !app_icon.is_empty() {
+             app_icon
+        } else {
+             // Basic fallback mapping
+             let name_lower = app_name.to_lowercase();
+             if name_lower.contains("chrome") { "google-chrome".to_string() }
+             else if name_lower.contains("telegram") { "telegram-desktop".to_string() }
+             else { name_lower }
+        };
+
+        let notification = Notification {
+            id: timestamp as u32, 
+            app_name,
+            summary,
+            body,
+            app_icon: icon_final,
+            timestamp,
+            seen: false,
+            urgency,
+            actions,
+            hints: HashMap::new(),
+        };
+
+        let id = notification.id;
+
+        {
+            let mut store = NOTIFICATIONS.write().await;
+            store.insert(0, notification);
+            if store.len() > MAX_NOTIFICATIONS {
+                store.truncate(MAX_NOTIFICATIONS);
             }
         }
-        Err(e) => Err(format!("Failed to execute notify-send: {}", e)),
+        
+        emit_notifications_updated().await;
+        id
     }
+}
+
+pub async fn invoke_action(id: u32, action_key: String) -> Result<(), String> {
+    let conn_guard = DBUS_CONNECTION.read().await;
+    if let Some(conn) = conn_guard.as_ref() {
+        let iface_ref = conn.object_server().interface::<_, NotificationServer>("/org/freedesktop/Notifications").await
+             .map_err(|e| format!("Failed to get interface: {}", e))?;
+             
+        let ctxt = iface_ref.signal_context(); 
+        NotificationServer::action_invoked(ctxt, id, &action_key).await
+             .map_err(|e| format!("Failed to emit signal: {}", e))?;
+             
+        Ok(())
+    } else {
+        Err("DBus connection not initialized".to_string())
+    }
+}
+
+pub async fn start_notification_server() -> Result<(), Box<dyn std::error::Error>> {
+    let connection = Connection::session().await?;
+    
+    // Request the org.freedesktop.Notifications name
+    connection.request_name("org.freedesktop.Notifications").await?;
+    
+    // Register the object
+    connection.object_server().at("/org/freedesktop/Notifications", NotificationServer).await?;
+    
+    // Store connection
+    {
+        let mut guard = DBUS_CONNECTION.write().await;
+        *guard = Some(connection.clone());
+    }
+    
+    println!("Notification Server started on org.freedesktop.Notifications");
+    
+    // Keep the connection execution loop alive?
+    // zbus::Connection::session() creates a connection that runs in background if strictly async... 
+    // actually we might need to await verification. 
+    // But since we are spawning in start_notification_monitor, we should be fine if we hold the connection.
+    
+    // We need to keep the future alive if it's not purely background.
+    // zbus 4 Connection is cloneable and handle-like.
+    
+    // Wait forever
+    std::future::pending::<()>().await;
+    
+    Ok(())
+}
+
+// Adapter for existing signature in lib.rs?
+// lib.rs calls `setup_notification_monitoring` which calls `start_notification_monitor`.
+// We should update `start_notification_monitor` to call our new server.
+
+pub async fn start_notification_monitor() -> Result<(), String> {
+    tokio::spawn(async {
+        if let Err(e) = start_notification_server().await {
+             eprintln!("Error starting Notification Server: {}", e);
+        }
+    });
+    Ok(())
 }
