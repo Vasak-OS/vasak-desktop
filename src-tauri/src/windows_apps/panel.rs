@@ -82,73 +82,74 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
         let display = gdk_window.display();
 
         // Obtener dimensiones de pantalla completa usando el método correcto
-        let monitor = display.primary_monitor().unwrap();
-        let workarea = monitor.workarea();
-        let screen_width = workarea.width() as u32;
+        if let Some(monitor) = display.primary_monitor() {
+            let workarea = monitor.workarea();
+            let screen_width = workarea.width() as u32;
 
-        unsafe {
-            use gdk::ffi;
-            use std::ffi::CString;
+            unsafe {
+                use gdk::ffi;
+                use std::ffi::CString;
 
-            let window_ptr = gdk_window.as_ptr();
+                let window_ptr = gdk_window.as_ptr();
 
-            // Asegurar que la ventana esté completamente mapeada
-            ffi::gdk_window_ensure_native(window_ptr);
-            
-            // Establecer tipo de ventana primero
-            set_wm_atom_property(
-                window_ptr,
-                "_NET_WM_WINDOW_TYPE",
-                "_NET_WM_WINDOW_TYPE_DOCK",
-            );
-
-            // Estados necesarios para XFWM4
-            let states = [
-                ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_STICKY").unwrap().as_ptr(), 0),
-                ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_SKIP_TASKBAR").unwrap().as_ptr(), 0),
-                ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_SKIP_PAGER").unwrap().as_ptr(), 0),
-                ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_ABOVE").unwrap().as_ptr(), 0),
-            ];
-
-            if let (Ok(state_name), Ok(atom_type)) = (
-                CString::new("_NET_WM_STATE"),
-                CString::new("ATOM")
-            ) {
-                ffi::gdk_property_change(
+                // Asegurar que la ventana esté completamente mapeada
+                ffi::gdk_window_ensure_native(window_ptr);
+                
+                // Establecer tipo de ventana primero
+                set_wm_atom_property(
                     window_ptr,
-                    ffi::gdk_atom_intern(state_name.as_ptr(), 0),
-                    ffi::gdk_atom_intern(atom_type.as_ptr(), 0),
-                    32,
-                    ffi::GDK_PROP_MODE_REPLACE,
-                    states.as_ptr() as *const u8,
-                    states.len() as i32,
+                    "_NET_WM_WINDOW_TYPE",
+                    "_NET_WM_WINDOW_TYPE_DOCK",
                 );
+
+                // Estados necesarios para XFWM4
+                let states = [
+                    ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_STICKY").unwrap().as_ptr(), 0),
+                    ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_SKIP_TASKBAR").unwrap().as_ptr(), 0),
+                    ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_SKIP_PAGER").unwrap().as_ptr(), 0),
+                    ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_ABOVE").unwrap().as_ptr(), 0),
+                ];
+
+                if let (Ok(state_name), Ok(atom_type)) = (
+                    CString::new("_NET_WM_STATE"),
+                    CString::new("ATOM")
+                ) {
+                    ffi::gdk_property_change(
+                        window_ptr,
+                        ffi::gdk_atom_intern(state_name.as_ptr(), 0),
+                        ffi::gdk_atom_intern(atom_type.as_ptr(), 0),
+                        32,
+                        ffi::GDK_PROP_MODE_REPLACE,
+                        states.as_ptr() as *const u8,
+                        states.len() as i32,
+                    );
+                }
+
+                // Desktop sticky
+                let desktop_value: u32 = 0xFFFFFFFF;
+                set_wm_cardinal_property(window_ptr, "_NET_WM_DESKTOP", &[desktop_value]);
+
+                // Forzar sync antes de STRUT
+                ffi::gdk_display_sync(display.as_ptr());
+
+                // SOLUCIÓN DEFINITIVA: Usar solo propiedades básicas sin STRUT
+                // XFWM4 tiene problemas irreparables con STRUT, mejor solución alternativa
+                
+                // NO usar STRUT - causa problemas en XFWM4
+                // En su lugar, implementar un workaround para ventanas maximizadas
+                
+                // Propiedad especial para indicar que es un panel que debe ser respetado
+                let panel_height: u32 = 40;
+                set_wm_cardinal_property(window_ptr, "_NET_WM_STRUT", &[0, panel_height, 0, 0]);
+
+                // Usar propiedades específicas de XFWM4 para mejor compatibilidad
+                let layer_value: u32 = 6; // Above normal windows
+                set_wm_cardinal_property(window_ptr, "_WIN_LAYER", &[layer_value]);
+
+                // Sync final
+                ffi::gdk_display_sync(display.as_ptr());
+                ffi::gdk_display_flush(display.as_ptr());
             }
-
-            // Desktop sticky
-            let desktop_value: u32 = 0xFFFFFFFF;
-            set_wm_cardinal_property(window_ptr, "_NET_WM_DESKTOP", &[desktop_value]);
-
-            // Forzar sync antes de STRUT
-            ffi::gdk_display_sync(display.as_ptr());
-
-            // SOLUCIÓN DEFINITIVA: Usar solo propiedades básicas sin STRUT
-            // XFWM4 tiene problemas irreparables con STRUT, mejor solución alternativa
-            
-            // NO usar STRUT - causa problemas en XFWM4
-            // En su lugar, implementar un workaround para ventanas maximizadas
-            
-            // Propiedad especial para indicar que es un panel que debe ser respetado
-            let panel_height: u32 = 40;
-            set_wm_cardinal_property(window_ptr, "_NET_WM_STRUT", &[0, panel_height, 0, 0]);
-
-            // Usar propiedades específicas de XFWM4 para mejor compatibilidad
-            let layer_value: u32 = 6; // Above normal windows
-            set_wm_cardinal_property(window_ptr, "_WIN_LAYER", &[layer_value]);
-
-            // Sync final
-            ffi::gdk_display_sync(display.as_ptr());
-            ffi::gdk_display_flush(display.as_ptr());
         }
     }
 }

@@ -219,10 +219,15 @@ pub fn fetch_now_playing() -> Result<serde_json::Value, String> {
 pub fn start_mpris_monitor(app: AppHandle) {
     let app_for_thread = app.clone();
     thread::spawn(move || {
-        let rt = TokioBuilder::new_current_thread()
+        let rt = match TokioBuilder::new_current_thread()
             .enable_all()
-            .build()
-            .unwrap();
+            .build() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    let _ = app_for_thread.emit("mpris-error", format!("failed to build runtime: {}", e));
+                    return;
+                }
+            };
         let _ = rt.block_on(async move {
             if let Err(e) = monitor_signals_async(app_for_thread.clone()).await {
                 let _ = app_for_thread.emit("mpris-error", format!("monitor error: {}", e));
@@ -230,6 +235,7 @@ pub fn start_mpris_monitor(app: AppHandle) {
         });
     });
 }
+
 
 async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let conn = zbus::Connection::session().await?;
@@ -403,16 +409,18 @@ fn extract_mpris_from_json(j: &JsonValue) -> (Option<String>, Option<String>, Op
                             return Some(JsonValue::String(s.to_string()));
                         }
                     } else if v.is_array() {
-                        for it in v.as_array().unwrap() {
-                            if let Some(s) = it.as_str() {
-                                let sl = s.to_lowercase();
-                                if sl.contains("http")
-                                    || sl.contains("file://")
-                                    || sl.ends_with(".png")
-                                    || sl.ends_with(".jpg")
-                                    || sl.ends_with(".jpeg")
-                                {
-                                    return Some(JsonValue::String(s.to_string()));
+                        if let Some(arr) = v.as_array() {
+                            for it in arr {
+                                if let Some(s) = it.as_str() {
+                                    let sl = s.to_lowercase();
+                                    if sl.contains("http")
+                                        || sl.contains("file://")
+                                        || sl.ends_with(".png")
+                                        || sl.ends_with(".jpg")
+                                        || sl.ends_with(".jpeg")
+                                    {
+                                        return Some(JsonValue::String(s.to_string()));
+                                    }
                                 }
                             }
                         }
@@ -430,7 +438,7 @@ fn normalize_json_value(mut v: JsonValue) -> JsonValue {
     loop {
         match v {
             JsonValue::Object(map) if map.len() == 1 => {
-                let (_, inner) = map.into_iter().next().unwrap();
+                let (_, inner) = map.into_iter().next().map(|(k, v)| (k, v)).unwrap_or(("".to_string(), JsonValue::Null));
                 v = inner;
                 continue;
             }
