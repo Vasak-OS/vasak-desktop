@@ -31,9 +31,11 @@ use windows_apps::*;
 use applets::{
     manager::AppletManager, 
     audio::AudioApplet,
-    battery::BatteryApplet, 
+    battery::BatteryApplet,
+    bluetooth::BluetoothApplet,
     brightness::BrightnessApplet,
-    music::MusicApplet, 
+    music::MusicApplet,
+    network::NetworkApplet,
     notifications::NotificationApplet, 
     tray::TrayApplet
 };
@@ -108,8 +110,10 @@ pub fn run() {
                 let manager = AppletManager::new();
                 manager.register(AudioApplet).await;
                 manager.register(BatteryApplet).await;
+                manager.register(BluetoothApplet).await;
                 manager.register(BrightnessApplet).await;
                 manager.register(MusicApplet).await;
+                manager.register(NetworkApplet).await;
                 manager.register(TrayApplet).await;
                 manager.register(NotificationApplet).await;
                 
