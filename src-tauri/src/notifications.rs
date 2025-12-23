@@ -121,7 +121,7 @@ impl NotificationServer {
     async fn notify(
         &self,
         app_name: String,
-        replaces_id: u32,
+        _replaces_id: u32,
         app_icon: String,
         summary: String,
         body: String,
