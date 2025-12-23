@@ -1,11 +1,8 @@
-use crate::music::start_mpris_monitor;
-use crate::notifications::{initialize_app_handle, start_notification_monitor};
 use crate::window_manager;
-use crate::battery::start_battery_monitor;
+use window_manager::WindowManager;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use tauri::Emitter;
-use window_manager::WindowManager;
 
 pub fn setup_windows_monitoring(
     window_manager: Arc<Mutex<WindowManager>>,
@@ -26,23 +23,7 @@ pub fn setup_windows_monitoring(
     Ok(())
 }
 
-pub fn setup_notification_monitoring(app_handle: tauri::AppHandle) {
-    tauri::async_runtime::spawn(async move {
-        initialize_app_handle(app_handle).await;
-
-        if let Err(e) = start_notification_monitor().await {
-            eprintln!("Error starting notification monitor: {}", e);
-        }
-    });
-}
-
-pub fn setup_music_monitoring(app_handle: tauri::AppHandle) {
-    tauri::async_runtime::spawn(async move { start_mpris_monitor(app_handle) });
-}
-
-pub fn setup_battery_monitoring(app_handle: tauri::AppHandle) {
-    start_battery_monitor(app_handle);
-}
+// Battery, Music, Notifications moved to AppletManager/Applets
 
 pub fn setup_dbus_service(app_handle: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {

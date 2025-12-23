@@ -1,5 +1,5 @@
 use crate::structs::BatteryInfo;
-use crate::battery::{has_battery, get_battery_info};
+use crate::applets::battery::{has_battery, get_battery_info};
 
 #[tauri::command]
 pub async fn battery_exists() -> bool {
