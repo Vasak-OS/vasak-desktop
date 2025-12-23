@@ -119,11 +119,20 @@ impl WaylandManager {
     pub fn setup_protocol_bindings(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         // Dispatch pending events to set up protocol bindings
         log::info!("Dispatching events to discover available protocols...");
-        self.event_queue.blocking_dispatch(&mut *self.state.lock().unwrap())
+        
+        let mut guard = match self.state.lock() {
+            Ok(g) => g,
+            Err(p) => p.into_inner()
+        };
+
+        self.event_queue.blocking_dispatch(&mut *guard)
             .map_err(|e| format!("Failed to dispatch events: {}", e))?;
         
         // Check if manager is available
-        let state_guard = self.state.lock().unwrap();
+        let state_guard = match self.state.lock() {
+            Ok(g) => g,
+            Err(p) => p.into_inner()
+        };
         if state_guard.manager.is_some() {
             log::info!("Using wlr-foreign-toplevel-management protocol");
             return Ok(());
@@ -136,12 +145,26 @@ impl WaylandManager {
 
 impl WindowManagerBackend for WaylandManager {
     fn get_window_list(&mut self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
-
-        if let Err(e) = self.event_queue.blocking_dispatch(&mut *self.state.lock().unwrap()) {
-             log::warn!("Failed to dispatch events during get_window_list: {}", e);
+        // Safe lock for dispatch
+        {
+            let mut guard = match self.state.lock() {
+                Ok(g) => g,
+                Err(p) => {
+                    log::warn!("Mutex poisoned in get_window_list dispatch, recovering");
+                    p.into_inner()
+                }
+            };
+            
+            if let Err(e) = self.event_queue.blocking_dispatch(&mut *guard) {
+                 log::warn!("Failed to dispatch events during get_window_list: {}", e);
+            }
         }
 
-        let state = self.state.lock().unwrap();
+        let state = match self.state.lock() {
+            Ok(g) => g,
+            Err(p) => p.into_inner()
+        };
+        
         let mut windows: Vec<WindowInfo> = Vec::new();
         
         for (id, toplevel) in &state.toplevels {
@@ -167,7 +190,10 @@ impl WindowManagerBackend for WaylandManager {
         }
         
         {
-            let mut state = self.state.lock().unwrap();
+            let mut state = match self.state.lock() {
+                Ok(g) => g,
+                Err(p) => p.into_inner()
+            };
             state.event_sender = Some(tx);
         }
 
@@ -182,10 +208,23 @@ impl WindowManagerBackend for WaylandManager {
             let mut event_queue = event_queue;
 
             loop {
-                let guard = state_clone.lock().unwrap();
-                drop(guard); // Ensure lock is dropped
+                // Ensure we don't hold the lock longer than needed, and handle poison
+                {
+                    let _guard = match state_clone.lock() {
+                        Ok(g) => g,
+                        Err(p) => {
+                             log::warn!("Background thread mutex poisoned, recovering");
+                             p.into_inner()
+                        }
+                    };
+                } // drop guard immediately
                 
-                match event_queue.dispatch_pending(&mut *state_clone.lock().unwrap()) {
+                let mut guard = match state_clone.lock() {
+                    Ok(g) => g,
+                    Err(p) => p.into_inner()
+                };
+
+                match event_queue.dispatch_pending(&mut *guard) {
                     Ok(_) => {},
                     Err(e) => {
                         log::error!("Error dispatching pending: {}", e);
@@ -216,10 +255,17 @@ impl WindowManagerBackend for WaylandManager {
         let id: u32 = win_id.parse()
             .map_err(|_| "Invalid window ID format")?;
 
-        let state = self.state.lock().unwrap();
+        let state = match self.state.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                log::warn!("Mutex poisoned during toggle_window, recovering state");
+                poisoned.into_inner()
+            }
+        };
         
         if let Some(toplevel) = state.toplevels.get(&id) {
             if let Some(seat) = &state.seat {
+                log::debug!("Toggling window {}: active={}, minimized={}", id, toplevel.is_activated, toplevel.is_minimized);
                 if toplevel.is_minimized {
                     toplevel.handle.unset_minimized();
                     toplevel.handle.activate(seat);
@@ -234,13 +280,14 @@ impl WindowManagerBackend for WaylandManager {
                 } else {
                      toplevel.handle.set_minimized();
                 }
-                log::warn!("No seat found, window activation might fail");
+                log::warn!("No seat found, window activation might fail for window {}", id);
             }
             // Flush commands
             let _ = self.conn.flush();
             return Ok(());
         }
         
+        log::warn!("Window {} not found in known toplevels", id);
         Err("Window not found".into())
     }
 }
