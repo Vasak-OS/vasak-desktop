@@ -1,13 +1,12 @@
 mod app_url;
+mod applets;
 mod audio;
-mod battery;
 mod brightness;
 mod commands;
 mod dbus_service;
 mod eventloops;
 mod menu_manager;
 mod monitor_manager;
-mod music;
 mod notifications;
 mod structs;
 mod tray;
@@ -16,8 +15,8 @@ mod windows_apps;
 
 use commands::*;
 use eventloops::{
-    setup_battery_monitoring, setup_dbus_service, setup_music_monitoring,
-    setup_notification_monitoring, setup_windows_monitoring,
+    setup_dbus_service,
+    setup_windows_monitoring,
 };
 use std::sync::{Arc, Mutex};
 use structs::WMState;
@@ -29,9 +28,10 @@ use tray::create_tray_manager;
 use window_manager::WindowManager;
 use windows_apps::*;
 
+use applets::{manager::AppletManager, battery::BatteryApplet, music::MusicApplet, notifications::NotificationApplet};
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize Windows Manager
     let window_manager = Arc::new(Mutex::new(
         WindowManager::new().expect("Failed to initialize window manager"),
     ));
@@ -92,10 +92,18 @@ pub fn run() {
             let _ = create_panel(app);
 
             setup_windows_monitoring(window_manager.clone(), app.handle().clone())?;
-            setup_notification_monitoring(app.handle().clone());
-            setup_music_monitoring(app.handle().clone());
-            setup_battery_monitoring(app.handle().clone());
             setup_dbus_service(app.handle().clone());
+            
+            // Initialize AppletManager
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let manager = AppletManager::new();
+                manager.register(BatteryApplet).await;
+                manager.register(MusicApplet).await;
+                manager.register(NotificationApplet).await;
+                
+                manager.start_all(app_handle).await;
+            });
 
             Ok(())
         })

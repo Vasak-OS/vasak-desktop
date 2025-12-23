@@ -1,4 +1,4 @@
-use crate::music::{mpris_next, mpris_playpause, mpris_previous, fetch_now_playing};
+use crate::applets::music::{mpris_next, mpris_playpause, mpris_previous, fetch_now_playing};
 
 #[tauri::command]
 pub fn music_play_pause(player: String) {
