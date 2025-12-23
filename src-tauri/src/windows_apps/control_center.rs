@@ -61,7 +61,7 @@ pub async fn create_control_center_window(
 
     control_center_window.set_focus()?;
 
-    set_window_properties(&control_center_window)?;
+    let _ = set_window_properties(&control_center_window);
 
     Ok(())
 }

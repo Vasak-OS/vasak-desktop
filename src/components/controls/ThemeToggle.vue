@@ -9,9 +9,9 @@
       class="absolute inset-0 rounded-vsk transition-all duration-500"
       :class="{
         'bg-gradient-to-br from-orange-400/20 to-yellow-400/20':
-          !(configStore.config as any).style.darkmode,
+          !(configStore?.config as any)?.style?.darkmode,
         'bg-gradient-to-br from-purple-500/20 to-blue-600/20':
-          (configStore.config as any).style.darkmode,
+          (configStore?.config as any)?.style?.darkmode,
       }"
       style="opacity: 0"
     ></div>
@@ -20,14 +20,14 @@
     <div
       class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-500"
       :class="{
-        'bg-yellow-400 animate-pulse': !(configStore.config as any).style.darkmode,
-        'bg-blue-400 animate-pulse': (configStore.config as any).style.darkmode,
+        'bg-yellow-400 animate-pulse': !(configStore?.config as any)?.style?.darkmode,
+        'bg-blue-400 animate-pulse': (configStore?.config as any)?.style?.darkmode,
       }"
     ></div>
 
     <!-- Animated rays for sun (light mode) -->
     <div
-      v-if="!(configStore.config as any).style.darkmode"
+      v-if="configStore && !(configStore.config as any).style.darkmode"
       class="absolute inset-0 flex items-center justify-center"
     >
       <div
@@ -47,7 +47,7 @@
     </div>
 
     <!-- Twinkling stars for moon (dark mode) -->
-    <div v-if="(configStore.config as any).style.darkmode" class="absolute inset-0">
+    <div v-if="configStore && (configStore.config as any).style.darkmode" class="absolute inset-0">
       <div
         v-for="i in 6"
         :key="i"
@@ -64,12 +64,12 @@
     <img
       :src="icon"
       :alt="
-        (configStore.config as any).style.darkmode
+        (configStore?.config as any)?.style?.darkmode
           ? 'Toggle light theme'
           : 'Toggle dark theme'
       "
       :title="
-        (configStore.config as any).style.darkmode
+        (configStore?.config as any)?.style?.darkmode
           ? 'Toggle light theme'
           : 'Toggle dark theme'
       "
@@ -77,7 +77,7 @@
       :class="{
         'animate-spin': isSwitching,
         'drop-shadow-lg group-hover:drop-shadow-xl': true,
-        'filter brightness-110': !(configStore.config as any).style.darkmode,
+        'filter brightness-110': !(configStore?.config as any)?.style?.darkmode,
       }"
     />
   </button>
@@ -89,12 +89,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { useConfigStore, setDarkMode } from "@vasakgroup/plugin-config-manager";
 import dark from "@/assets/img/dark.png";
 import light from "@/assets/img/light.png";
+import { Store } from "pinia";
 
 const configStore = ref<any>(null);
 const isSwitching: Ref<boolean> = ref(false);
 
 onMounted(() => {
-  configStore.value = useConfigStore();
+  configStore.value = useConfigStore() as Store<"config", { config: any; loadConfig: () => Promise<void>; }>;; 
 });
 
 const icon = computed(() => {
