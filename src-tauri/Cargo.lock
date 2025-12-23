@@ -5688,7 +5688,6 @@ dependencies = [
  "tokio",
  "wayland-client",
  "wayland-protocols",
- "wayland-protocols-plasma",
  "wayland-protocols-wlr",
  "x11rb",
  "zbus 4.4.0",
@@ -5878,19 +5877,6 @@ dependencies = [
  "bitflags 2.10.0",
  "wayland-backend",
  "wayland-client",
- "wayland-scanner",
-]
-
-[[package]]
-name = "wayland-protocols-plasma"
-version = "0.3.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a07a14257c077ab3279987c4f8bb987851bf57081b93710381daea94f2c2c032"
-dependencies = [
- "bitflags 2.10.0",
- "wayland-backend",
- "wayland-client",
- "wayland-protocols",
  "wayland-scanner",
 ]
 
