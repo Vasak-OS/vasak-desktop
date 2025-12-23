@@ -1,6 +1,7 @@
 pub mod menu_parser;
 pub mod sni_item;
 pub mod sni_watcher;
+pub mod dbus_menu;
 
 use crate::structs::TrayManager;
 use std::collections::HashMap;
