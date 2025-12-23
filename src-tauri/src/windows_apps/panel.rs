@@ -84,7 +84,7 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
         // Obtener dimensiones de pantalla completa usando el método correcto
         if let Some(monitor) = display.primary_monitor() {
             let workarea = monitor.workarea();
-            let screen_width = workarea.width() as u32;
+            let _screen_width = workarea.width() as u32;
 
             unsafe {
                 use gdk::ffi;

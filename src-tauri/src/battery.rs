@@ -112,7 +112,7 @@ pub fn start_battery_monitor(app_handle: AppHandle) {
             Ok(c) => {
                 Arc::new(c)
             },
-            Err(e) => {
+            Err(_e) => {
                 return;
             }
         };
