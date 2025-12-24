@@ -10,6 +10,7 @@ mod monitor_manager;
 mod notifications;
 mod structs;
 mod tray;
+mod utils;
 mod window_manager;
 mod windows_apps;
 

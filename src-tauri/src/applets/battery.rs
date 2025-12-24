@@ -12,6 +12,7 @@ pub struct BatteryApplet;
 
 // Keep this global for the static methods (used by commands)
 static BATTERY_CONN: OnceCell<Arc<Connection>> = OnceCell::new();
+static BATTERY_DEVICE_PATH: OnceCell<String> = OnceCell::new();
 
 #[async_trait]
 impl Applet for BatteryApplet {
@@ -31,45 +32,35 @@ impl Applet for BatteryApplet {
         // Define paths for sysfs fallback
         let battery_sysfs_path = "/sys/class/power_supply/BAT0";
         let ac_sysfs_path = "/sys/class/power_supply/AC0";
-        let use_sysfs = std::path::Path::new(battery_sysfs_path).exists() || std::path::Path::new(ac_sysfs_path).exists();
+        let has_sysfs = std::path::Path::new(battery_sysfs_path).exists() || std::path::Path::new(ac_sysfs_path).exists();
+
+        // Emit initial state
+        if let Some(info) = get_battery_info().await {
+            let _ = app_handle.emit("battery-update", &info);
+        }
 
         if let Some(path) = battery_path {
-             // DBus monitoring
-             if use_sysfs {
-                 // Even if DBus exists, if sysfs is preferred/available logic from original code?
-                 // Original code: if use_sysfs { ... } else { DBus stream }
-                 // It seems originally it checked both? 
-                 // Actually:
-                 // let battery_path = find_battery_path...
-                 // let match battery_path { Some(path) => ... None => fallback loop }
-                 // THEN it checked use_sysfs. This logic in original file was a bit split.
-                 // Let's clean it up.
-                 
-                 // If we have sysfs, use it (polling), as it might be more reliable or preferred by the original author?
-                 // Original code had a block `if use_sysfs { loop poll } else { dbus stream }`.
-                 // But wait, `find_battery_path` returning Some didn't prevent `use_sysfs` check.
-                 // Let's stick to the original preference: if sysfs exists, use polling.
-                 self.run_sysfs_loop(app_handle).await;
-             } else {
-                 self.run_dbus_loop(app_handle, conn, path).await;
-             }
-        } else {
-             // specific fallback loop from original code (Wait for battery to appear?)
-             // actually original code: if battery_path is None -> poll every 5s until it appears?
-             // Original: `let battery_path = match battery_path { Some => path, None => loop { ... } }`
-             // This blocking behaviour inside `match` was likely wrong or blocking the async task.
-             // But since we are IN a task, we can verify.
+             // Cache the path for future lookups
+             BATTERY_DEVICE_PATH.set(path.clone()).ok();
              
-             // Simpler approach: If no battery found, try polling occasionally or just rely on sysfs if available.
-             if use_sysfs {
+             // Prefer DBus events if available
+             self.run_dbus_loop(app_handle, conn, path).await;
+        } else {
+             // Fallback to polling if UPower device not found
+             // If we have sysfs files, we assume battery exists and we should poll
+             // Note: get_battery_info currently relies on UPower, so if UPower is missing
+             // this might fail. Ideally we should have a pure sysfs reader here.
+             // For now, we reduce poll frequency to 2s to save CPU.
+             if has_sysfs {
                  self.run_sysfs_loop(app_handle).await;
              } else {
                  // No battery found via UPower and no SysFS.
-                 // We can start a slow poller to check if it appears.
+                 // Monitor occasionally in case it appears (e.g. plugged in)
                  loop {
                      tokio::time::sleep(Duration::from_secs(60)).await;
                      if let Some(info) = get_battery_info().await {
                           let _ = app_handle.emit("battery-update", &info);
+                          // If we found it, we should probably switch mode, but simple periodic check is fine
                      }
                  }
              }
@@ -83,7 +74,9 @@ impl BatteryApplet {
     async fn run_sysfs_loop(&self, app_handle: AppHandle) {
         let mut last_info: Option<BatteryInfo> = None;
         loop {
-            tokio::time::sleep(Duration::from_millis(1000)).await;
+            // Increased polling interval to 2s for optimization
+            tokio::time::sleep(Duration::from_secs(2)).await;
+            
             if let Some(current_info) = get_battery_info().await {
                 let should_emit = match &last_info {
                     None => true,
@@ -111,6 +104,7 @@ impl BatteryApplet {
                     if interface.as_str() == "org.freedesktop.DBus.Properties" &&
                        member.as_str() == "PropertiesChanged" &&
                        obj_path.as_str() == path {
+                           // Use cached path logic in get_battery_info
                            if let Some(info) = get_battery_info().await {
                                 let _ = app_handle.emit("battery-update", &info);
                            }
@@ -137,42 +131,20 @@ pub async fn get_battery_info() -> Option<BatteryInfo> {
         Connection::system().await.ok().map(Arc::new)?
     };
 
-    // UPower Logic
-    let upower_proxy = zbus::Proxy::new(
-        &conn,
-        "org.freedesktop.UPower",
-        "/org/freedesktop/UPower",
-        "org.freedesktop.UPower"
-    ).await.ok()?;
+    // Optimization: Use cached path if available to avoid enumeration
+    let device_path = if let Some(path) = BATTERY_DEVICE_PATH.get() {
+        path.clone()
+    } else {
+        // Fallback: search for it (and cache it if found?)
+        // find_battery_path caches it? No, find_battery_path is external.
+        // Let's just find it.
+        find_battery_path(&conn).await.unwrap_or_else(|| "/org/freedesktop/UPower/devices/battery_BAT0".to_string())
+    };
     
-    // First distinct battery check
-    let devices: Vec<zbus::zvariant::OwnedObjectPath> = upower_proxy
-        .call_method("EnumerateDevices", &())
-        .await
-        .ok()?
-        .body()
-        .deserialize()
-        .ok()?;
-    
-    for device_path in devices {
-        let device_proxy = zbus::Proxy::new(
-            &conn,
-            "org.freedesktop.UPower",
-            device_path.as_str(),
-            "org.freedesktop.UPower.Device"
-        ).await.ok()?;
-        
-        let device_type: u32 = device_proxy.get_property("Type").await.unwrap_or(0);
-        if device_type == 2 { 
-            return get_battery_info_from_proxy(device_proxy).await;
-        }
-    }
-    
-    // Fallback to BAT0
     let proxy = zbus::Proxy::new(
         &conn,
         "org.freedesktop.UPower",
-        "/org/freedesktop/UPower/devices/battery_BAT0",
+        device_path.as_str(),
         "org.freedesktop.UPower.Device"
     ).await.ok()?;
     

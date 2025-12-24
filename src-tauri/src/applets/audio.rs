@@ -2,7 +2,7 @@ use super::Applet;
 use async_trait::async_trait;
 use tauri::{AppHandle, Emitter};
 use std::error::Error;
-use tokio::time::{interval, Duration};
+use tokio::time::Duration;
 
 pub struct AudioApplet;
 
@@ -25,41 +25,61 @@ impl Applet for AudioApplet {
 }
 
 /// Monitorea cambios en el volumen de audio
+/// Monitorea cambios en el volumen de audio con polling adaptativo
 async fn monitor_audio_changes(app: AppHandle) {
-    let mut interval = interval(Duration::from_millis(500)); // Poll cada 500ms
+    const SLOW_POLL_MS: u64 = 2000;
+    const FAST_POLL_MS: u64 = 500;
+    const FAST_POLL_ITERATIONS: u32 = 10; // Keep fast polling for 5 seconds after change
+
+    let mut current_interval_ms = FAST_POLL_MS; // Start fast
+    let mut fast_poll_countdown = FAST_POLL_ITERATIONS;
     let mut last_volume: Option<crate::structs::VolumeInfo> = None;
 
     loop {
-        interval.tick().await;
+        tokio::time::sleep(Duration::from_millis(current_interval_ms)).await;
 
         // Obtener volumen actual
-        if let Ok(current_volume) = crate::audio::get_volume() {
-            // Comparar con el último valor conocido
-            let should_emit = match &last_volume {
-                None => true, // Primera lectura
-                Some(last) => {
-                    // Emitir si cambió el volumen o el estado de mute
-                    last.current != current_volume.current || last.is_muted != current_volume.is_muted
+        match crate::audio::get_volume() {
+            Ok(current_volume) => {
+                // Comparar con el último valor conocido
+                let has_changed = match &last_volume {
+                    None => true, // Primera lectura
+                    Some(last) => {
+                        last.current != current_volume.current || last.is_muted != current_volume.is_muted
+                    }
+                };
+
+                if has_changed {
+                    log::debug!(
+                        "Audio changed: volume={}%, muted={}",
+                        current_volume.current,
+                        current_volume.is_muted
+                    );
+
+                    // Emitir evento al frontend
+                    if let Err(e) = app.emit("volume-changed", &current_volume) {
+                        log::error!("Failed to emit volume-changed event: {}", e);
+                    }
+
+                    last_volume = Some(current_volume);
+                    
+                    // Switch to fast polling on change
+                    current_interval_ms = FAST_POLL_MS;
+                    fast_poll_countdown = FAST_POLL_ITERATIONS;
+                } else {
+                    // No change detected
+                    if fast_poll_countdown > 0 {
+                        fast_poll_countdown -= 1;
+                    } else {
+                        // Switch to slow polling if stable
+                        current_interval_ms = SLOW_POLL_MS;
+                    }
                 }
-            };
-
-            if should_emit {
-                log::debug!(
-                    "Audio changed: volume={}%, muted={}",
-                    current_volume.current,
-                    current_volume.is_muted
-                );
-
-                // Emitir evento al frontend
-                if let Err(e) = app.emit("volume-changed", &current_volume) {
-                    log::error!("Failed to emit volume-changed event: {}", e);
-                }
-
-                last_volume = Some(current_volume);
+            },
+            Err(_) => {
+                // Si falla la lectura, usar intervalo lento
+                current_interval_ms = SLOW_POLL_MS;
             }
-        } else {
-            // Si falla la lectura, esperar más tiempo antes del próximo intento
-            tokio::time::sleep(Duration::from_secs(2)).await;
         }
     }
 }
