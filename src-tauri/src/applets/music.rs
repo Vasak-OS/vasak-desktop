@@ -8,11 +8,13 @@ use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter};
 use zbus::{
-    blocking::{fdo::DBusProxy, Connection, Proxy},
+    blocking::{fdo::DBusProxy, Connection as BlockingConnection, Proxy as BlockingProxy},
     fdo::DBusProxy as AsyncDBusProxy,
     zvariant::Value,
     MessageStream,
     MessageType,
+    Connection as AsyncConnection,
+    Proxy as AsyncProxy,
 };
 
 pub struct MusicApplet;
@@ -28,11 +30,8 @@ impl Applet for MusicApplet {
     }
 }
 
-// ... Copying logic from music.rs ...
-
-// Helper function to replace start_mpris_monitor logic (async version)
 async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let conn = zbus::Connection::session().await?;
+    let conn = AsyncConnection::session().await?;
     let match_rule =
         "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'";
     match conn
@@ -49,81 +48,69 @@ async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error:
         Err(e) => log::error!("[music] monitor_signals_async: AddMatch failed: {:?}", e),
     }
 
-    let dbus_async = AsyncDBusProxy::new(&conn).await?;
+    let mut stream = MessageStream::from(conn.clone());
+    
+    // Provide a way to check for pending updates
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<()>(1);
 
-    // Stream de mensajes del bus
-    let stream_conn = conn.clone();
-    let mut stream = MessageStream::from(stream_conn);
-    while let Some(msg_res) = stream.next().await {
-        if let Ok(m) = msg_res {
-            let hdr = m.header();
-            if hdr.message_type() != MessageType::Signal {
-                continue;
-            }
-
-            let body = m.body();
-            let body_debug = format!("{:#?}", body);
-
-            let keys = [
-                "xesam:title",
-                "xesam:artist",
-                "mpris:artUrl",
-                "mpris:arturl",
-                "xesam:album",
-            ];
-            let bytes = parse_bytes_from_debug(&body_debug);
-            if !bytes.is_empty() {
-                let mut kv: Vec<String> = Vec::new();
-                for key in &keys {
-                    if let Some(val) = extract_metadata_from_bytes(&bytes, key, 256) {
-                        kv.push(format!("{} -> {}", key, val));
-                        continue;
-                    }
-                    if let Some(val) = extract_dbus_string_after_signature(&bytes, key, 1024) {
-                        kv.push(format!("{} -> {}", key, val));
-                        continue;
-                    }
+    // Task to handle debounced updates
+    let app_handle = app.clone();
+    let conn_clone = conn.clone();
+    tokio::spawn(async move {
+        while let Some(_) = rx.recv().await {
+            match fetch_now_playing_async(&conn_clone).await {
+                Ok(info) => {
+                    let _ = app_handle.emit("music-playing-update", info);
+                }
+                Err(e) => {
+                    let _ = app_handle.emit("mpris-error", e);
                 }
             }
+        }
+    });
 
-            let iface = hdr.interface().map(|i| i.as_str().to_string());
-            let member = hdr.member().map(|me| me.as_str().to_string());
-            let sender_opt = hdr.sender().map(|s| s.to_string());
+    let debounce_duration = std::time::Duration::from_millis(200);
+    let mut deadline: Option<tokio::time::Instant> = None;
+    let mut dirty = false;
 
-            let mut should_requery = false;
-            if iface.as_deref() == Some("org.freedesktop.DBus.Properties")
-                && member.as_deref() == Some("PropertiesChanged")
-            {
-                if let Some(sender_str) = sender_opt {
-                    if sender_str.starts_with("org.mpris.MediaPlayer2.") {
-                        should_requery = true;
-                    } else if sender_str.starts_with(':') {
-                        if let Ok(names) = dbus_async.list_names().await {
-                            for owned in names
-                                .into_iter()
-                                .filter(|n| n.as_str().starts_with("org.mpris.MediaPlayer2."))
-                            {
-                                let bus_name = owned.clone().into();
-                                if let Ok(owner) = dbus_async.get_name_owner(bus_name).await {
-                                    if owner.to_string() == sender_str {
-                                        should_requery = true;
-                                        break;
+    loop {
+        tokio::select! {
+            Some(msg_res) = stream.next() => {
+                if let Ok(m) = msg_res {
+                    let hdr = m.header();
+                    if hdr.message_type() == MessageType::Signal {
+                         let iface = hdr.interface().map(|i| i.as_str().to_string());
+                         let member = hdr.member().map(|me| me.as_str().to_string());
+                         
+                         if iface.as_deref() == Some("org.freedesktop.DBus.Properties") 
+                            && member.as_deref() == Some("PropertiesChanged") 
+                         {
+                             // Efficiently deserialize body
+                             // Signature: sa{sv}as (interface_name, changed_properties, invalidated_properties)
+                             let body = m.body();
+                             if let Ok((iface_name, changed_props, _invalidated)) = body.deserialize::<(String, HashMap<String, Value>, Vec<String>)>() {
+                                 if iface_name == "org.mpris.MediaPlayer2.Player" {
+                                     // Check if relevant keys changed
+                                    let keys = ["Metadata", "PlaybackStatus"];
+                                    let relevant = changed_props.keys().any(|k| keys.contains(&k.as_str()));
+                                    if relevant {
+                                        dirty = true;
+                                        deadline = Some(tokio::time::Instant::now() + debounce_duration);
                                     }
-                                }
-                            }
-                        }
+                                 }
+                             }
+                         }
                     }
                 }
             }
-
-            if should_requery {
-                let info_res = tokio::task::spawn_blocking(|| fetch_now_playing()).await;
-                if let Ok(Ok(info)) = info_res {
-                    let _ = app.emit("music-playing-update", info);
-                } else if let Ok(Err(e)) = info_res {
-                    let _ = app.emit("mpris-error", e);
-                } else if let Err(join_err) = info_res {
-                    let _ = app.emit("mpris-error", format!("join error: {:?}", join_err));
+            _ = async { match deadline { Some(d) => tokio::time::sleep_until(d).await, None => std::future::pending().await } }, if deadline.is_some() => {
+                if dirty {
+                    if let Err(e) = tx.send(()).await {
+                        eprintln!("Failed to trigger update: {}", e);
+                        break;
+                    }
+                    dirty = false;
+                    deadline = None;
                 }
             }
         }
@@ -131,10 +118,99 @@ async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
-// ... Public Commands ...
+async fn fetch_now_playing_async(conn: &AsyncConnection) -> Result<serde_json::Value, String> {
+    let dbus = AsyncDBusProxy::new(conn).await.map_err(|e| format!("DBus proxy creation failed: {}", e))?;
+    let owned_names = dbus
+        .list_names()
+        .await
+        .map_err(|e| format!("ListNames failed: {}", e))?;
+    let names: Vec<String> = owned_names.into_iter().map(|n| n.to_string()).collect();
+
+    // Buscar reproductor que esté reproduciendo; si no, tomar el primero con metadata.
+    let mut fallback: Option<(String, Option<String>)> = None; // (service, status)
+    for name in names
+        .into_iter()
+        .filter(|n| n.starts_with("org.mpris.MediaPlayer2."))
+    {
+        let proxy = AsyncProxy::new(
+            conn,
+            name.as_str(),
+            "/org/mpris/MediaPlayer2",
+            "org.mpris.MediaPlayer2.Player",
+        ).await.map_err(|e| format!("Proxy creation failed: {}", e))?;
+        
+        // PlaybackStatus
+        let status: Option<String> = proxy.get_property("PlaybackStatus").await.ok();
+        // Preferir Playing
+        if status.as_deref() == Some("Playing") {
+            let (title, artist, art_url) =
+                match proxy.get_property::<HashMap<String, Value>>("Metadata").await.ok() {
+                    Some(meta_map) => {
+                        // Serializar entrada por entrada y normalizar wrappers
+                        let mut jm: JsonMap<String, JsonValue> = JsonMap::new();
+                        for (k, v) in meta_map.into_iter() {
+                            if let Ok(jv) = serde_json::to_value(&v) {
+                                jm.insert(k, normalize_json_value(jv));
+                            }
+                        }
+                        let jobj = JsonValue::Object(jm);
+                        extract_mpris_from_json(&jobj)
+                    }
+                    _none => (None, None, None),
+                };
+            return Ok(json!({
+                "title": title.unwrap_or_else(|| "Unknown".to_string()),
+                "artist": artist.unwrap_or_else(|| "Unknown".to_string()),
+                "artUrl": art_url.unwrap_or_else(|| "".to_string()),
+                "player": name,
+                "status": status,
+            }));
+        } else if fallback.is_none() {
+            fallback = Some((name.clone(), status));
+        }
+    }
+
+    // Si no hay ninguno Playing, intentar fallback
+    if let Some((name, status)) = fallback {
+        let proxy = AsyncProxy::new(
+            conn,
+            name.as_str(),
+            "/org/mpris/MediaPlayer2",
+            "org.mpris.MediaPlayer2.Player",
+        ).await.map_err(|e| format!("Proxy for fallback failed: {}", e))?;
+
+        let (title, artist, art_url) = match proxy
+            .get_property::<HashMap<String, Value>>("Metadata")
+            .await
+            .ok()
+        {
+            Some(meta_map) => {
+                let mut jm: JsonMap<String, JsonValue> = JsonMap::new();
+                for (k, v) in meta_map.into_iter() {
+                    if let Ok(jv) = serde_json::to_value(&v) {
+                        jm.insert(k, normalize_json_value(jv));
+                    }
+                }
+                let jobj = JsonValue::Object(jm);
+                extract_mpris_from_json(&jobj)
+            }
+            _none => (None, None, None),
+        };
+        return Ok(json!({
+            "title": title.unwrap_or_else(|| "Unknown".to_string()),
+            "artist": artist.unwrap_or_else(|| "Unknown".to_string()),
+            "artUrl": art_url.unwrap_or_else(|| "".to_string()),
+            "player": name,
+            "status": status,
+        }));
+    }
+
+    // Ningún reproductor MPRIS encontrado
+    Ok(json!({ "title": "Nothing playing" }))
+}
 
 pub fn fetch_now_playing() -> Result<serde_json::Value, String> {
-    let conn = Connection::session().map_err(|e| format!("zbus connect error: {}", e))?;
+    let conn = BlockingConnection::session().map_err(|e| format!("zbus connect error: {}", e))?;
     let dbus = DBusProxy::new(&conn).map_err(|e| format!("DBus proxy creation failed: {}", e))?;
     let owned_names = dbus
         .list_names()
@@ -147,7 +223,7 @@ pub fn fetch_now_playing() -> Result<serde_json::Value, String> {
         .into_iter()
         .filter(|n| n.starts_with("org.mpris.MediaPlayer2."))
     {
-        let proxy = Proxy::new(
+        let proxy = BlockingProxy::new(
             &conn,
             name.as_str(),
             "/org/mpris/MediaPlayer2",
@@ -189,7 +265,7 @@ pub fn fetch_now_playing() -> Result<serde_json::Value, String> {
     // Si no hay ninguno Playing, intentar fallback
     if let Some((name, status)) = fallback {
         // reconectar proxy y tratar de extraer metadata (si falla, devolver solo player/status)
-        let proxy = Proxy::new(
+        let proxy = BlockingProxy::new(
             &conn,
             name.as_str(),
             "/org/mpris/MediaPlayer2",
@@ -238,8 +314,8 @@ pub fn mpris_previous(player: String) -> Result<(), String> {
 }
 
 fn call_player_method(player: &str, method: &str) -> Result<(), String> {
-    let conn = Connection::session().map_err(|e| format!("zbus connect error: {}", e))?;
-    let proxy = Proxy::new(
+    let conn = BlockingConnection::session().map_err(|e| format!("zbus connect error: {}", e))?;
+    let proxy = BlockingProxy::new(
         &conn,
         player,
         "/org/mpris/MediaPlayer2",
@@ -250,93 +326,6 @@ fn call_player_method(player: &str, method: &str) -> Result<(), String> {
         .call_method(method, &())
         .map_err(|e| format!("Call {} failed: {}", method, e))?;
     Ok(())
-}
-
-// ... Private Helpers ...
-
-fn parse_bytes_from_debug(body_debug: &str) -> Vec<u8> {
-    let mut bytes: Vec<u8> = Vec::new();
-    if let Some(start) = body_debug.find("bytes: [") {
-        if let Some(end) = body_debug[start..].find(']') {
-            let slice = &body_debug[start + "bytes: [".len()..start + end];
-            for token in slice.split(',') {
-                let t = token.trim();
-                if t.is_empty() {
-                    continue;
-                }
-                if let Ok(n) = t.parse::<u8>() {
-                    bytes.push(n);
-                }
-            }
-        }
-    }
-    bytes
-}
-
-fn extract_metadata_from_bytes(bytes: &[u8], key: &str, max_len: usize) -> Option<String> {
-    let key_bytes = key.as_bytes();
-    if key_bytes.is_empty() {
-        return None;
-    }
-    for i in 0..bytes.len().saturating_sub(key_bytes.len()) {
-        if &bytes[i..i + key_bytes.len()] == key_bytes {
-            let mut j = i + key_bytes.len();
-            while j < bytes.len() && (bytes[j] == 0 || bytes[j] < 0x20) {
-                j += 1;
-            }
-            let mut out: Vec<u8> = Vec::new();
-            let mut k = 0usize;
-            while j < bytes.len() && k < max_len {
-                let b = bytes[j];
-                if b == 0 {
-                    break;
-                }
-                if b >= 0x20 && b <= 0x7e {
-                    out.push(b);
-                } else {
-                    break;
-                }
-                j += 1;
-                k += 1;
-            }
-            if !out.is_empty() {
-                if let Ok(s) = String::from_utf8(out) {
-                    return Some(s);
-                }
-            }
-        }
-    }
-    None
-}
-
-fn extract_dbus_string_after_signature(bytes: &[u8], key: &str, max_len: usize) -> Option<String> {
-    let key_b = key.as_bytes();
-    if let Some(pos) = bytes.windows(key_b.len()).position(|w| w == key_b) {
-        let search_end = std::cmp::min(bytes.len(), pos + key_b.len() + 200);
-        let mut i = pos + key_b.len();
-        while i < search_end {
-            if bytes[i] == b's' {
-                let mut k = i + 1;
-                while k < bytes.len() && bytes[k] < 0x20 {
-                    k += 1;
-                }
-                if k + 4 <= bytes.len() {
-                    let len_slice: [u8; 4] = bytes[k..k + 4].try_into().unwrap_or([0, 0, 0, 0]);
-                    let s_len = u32::from_le_bytes(len_slice) as usize;
-                    let start = k + 4;
-                    let end = start.saturating_add(s_len);
-                    if end <= bytes.len() && s_len > 0 {
-                        let take = std::cmp::min(s_len, max_len);
-                        if let Ok(s) = String::from_utf8(bytes[start..start + take].to_vec()) {
-                            return Some(s);
-                        }
-                    }
-                }
-            }
-            i += 1;
-        }
-    }
-    None
 }
 
 fn extract_mpris_from_json(j: &JsonValue) -> (Option<String>, Option<String>, Option<String>) {
