@@ -223,17 +223,32 @@ impl SniWatcher {
     }
 
     async fn get_icon_from_theme(icon_name: &str) -> Option<String> {
+        // Cache for icon lookups
+        static ICON_CACHE: std::sync::OnceLock<crate::utils::performance::TtlCache<String, String>> = std::sync::OnceLock::new();
+        let cache = ICON_CACHE.get_or_init(|| crate::utils::performance::TtlCache::new(300)); // 5 min TTL
+
+        // Check cache first
+        if let Some(cached) = cache.get(&icon_name.to_string()) {
+            return Some(cached);
+        }
+
         // Simple icon theme lookup - you might want to use a proper icon theme library
         let common_paths = [
             format!("/usr/share/icons/hicolor/16x16/apps/{}.png", icon_name),
             format!("/usr/share/icons/hicolor/22x22/apps/{}.png", icon_name),
             format!("/usr/share/icons/hicolor/24x24/apps/{}.png", icon_name),
             format!("/usr/share/pixmaps/{}.png", icon_name),
+             // Add more paths or sizes as needed
+            format!("/usr/share/icons/hicolor/48x48/apps/{}.png", icon_name),
+            format!("/usr/share/icons/hicolor/scalable/apps/{}.svg", icon_name), 
         ];
 
         for path in &common_paths {
             if let Ok(data) = tokio::fs::read(path).await {
-                return Some(general_purpose::STANDARD.encode(&data));
+                let encoded = general_purpose::STANDARD.encode(&data);
+                // Cache the result
+                cache.insert(icon_name.to_string(), encoded.clone());
+                return Some(encoded);
             }
         }
 
