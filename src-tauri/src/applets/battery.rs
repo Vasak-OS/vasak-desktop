@@ -96,22 +96,71 @@ impl BatteryApplet {
     }
 
     async fn run_dbus_loop(&self, app_handle: AppHandle, conn: Arc<Connection>, path: String) {
-        let mut stream = MessageStream::from(conn.as_ref());
-        while let Some(msg_result) = stream.next().await {
-            if let Ok(msg) = msg_result {
-                let header = msg.header();
-                if let (Some(interface), Some(member), Some(obj_path)) = (header.interface(), header.member(), header.path()) {
-                    if interface.as_str() == "org.freedesktop.DBus.Properties" &&
-                       member.as_str() == "PropertiesChanged" &&
-                       obj_path.as_str() == path {
-                           // Use cached path logic in get_battery_info
-                           if let Some(info) = get_battery_info().await {
-                                let _ = app_handle.emit("battery-update", &info);
-                           }
+        let mut reconnect_attempts = 0u32;
+        let max_reconnects = 5;
+        
+        loop {
+            match self.monitor_dbus_with_reconnect(&app_handle, conn.clone(), path.clone(), reconnect_attempts).await {
+                Ok(_) => {
+                    log::info!("[battery] D-Bus monitor ended normally");
+                    break;
+                }
+                Err(e) => {
+                    reconnect_attempts += 1;
+                    if reconnect_attempts >= max_reconnects {
+                        log::error!("[battery] Max reconnection attempts reached: {}", e);
+                        let _ = app_handle.emit("dbus-status", serde_json::json!({
+                            "service": "battery",
+                            "status": "failed",
+                            "message": "No se pudo conectar a UPower"
+                        }));
+                        // Fallback to polling
+                        self.run_sysfs_loop(app_handle).await;
+                        break;
                     }
+                    log::warn!("[battery] Connection lost (attempt {}): {}. Reconnecting...", reconnect_attempts, e);
+                    let _ = app_handle.emit("dbus-status", serde_json::json!({
+                        "service": "battery",
+                        "status": "reconnecting",
+                        "attempt": reconnect_attempts
+                    }));
+                    tokio::time::sleep(std::time::Duration::from_secs(2u64.pow(reconnect_attempts.min(3)))).await;
                 }
             }
         }
+    }
+
+    async fn monitor_dbus_with_reconnect(&self, app_handle: &AppHandle, conn: Arc<Connection>, path: String, attempt: u32) -> Result<(), String> {
+        if attempt > 0 {
+            log::info!("[battery] Reconnected successfully after {} attempts", attempt);
+            let _ = app_handle.emit("dbus-status", serde_json::json!({
+                "service": "battery",
+                "status": "connected"
+            }));
+        }
+        
+        let mut stream = MessageStream::from(conn.as_ref());
+        while let Some(msg_result) = stream.next().await {
+            match msg_result {
+                Ok(msg) => {
+                    let header = msg.header();
+                    if let (Some(interface), Some(member), Some(obj_path)) = (header.interface(), header.member(), header.path()) {
+                        if interface.as_str() == "org.freedesktop.DBus.Properties" &&
+                           member.as_str() == "PropertiesChanged" &&
+                           obj_path.as_str() == path {
+                               if let Some(info) = get_battery_info().await {
+                                    let _ = app_handle.emit("battery-update", &info);
+                               }
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::error!("[battery] Stream error: {}", e);
+                    return Err(format!("D-Bus stream error: {}", e));
+                }
+            }
+        }
+        Err("D-Bus connection closed".to_string())
     }
 }
 
