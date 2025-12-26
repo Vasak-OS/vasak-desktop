@@ -3,22 +3,60 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, Notify};
 use zbus::{interface, Connection};
 use zbus::zvariant::Value;
 
 // Global stores
 static APP_HANDLE: Lazy<Arc<RwLock<Option<AppHandle>>>> = Lazy::new(|| Arc::new(RwLock::new(None)));
 static NOTIFICATIONS: Lazy<Arc<RwLock<Vec<Notification>>>> = Lazy::new(|| Arc::new(RwLock::new(Vec::new())));
+// Debounce notifier
+static NOTIFY_UPDATE: Lazy<Arc<Notify>> = Lazy::new(|| Arc::new(Notify::new()));
 
 const MAX_NOTIFICATIONS: usize = 50;
 
 pub async fn initialize_app_handle(app_handle: AppHandle) {
     let mut handle = APP_HANDLE.write().await;
     *handle = Some(app_handle);
+
+    // Spawn the debouncer loop
+    tokio::spawn(async {
+        let notify = NOTIFY_UPDATE.clone();
+        loop {
+            // Wait for a notification trigger
+            notify.notified().await;
+
+            // Debounce logic: Wait until there is a 100ms period of silence
+            // Or just debounce trailing edge with 100ms delay
+            let mut deadline = tokio::time::Instant::now() + tokio::time::Duration::from_millis(100);
+            
+            loop {
+                tokio::select! {
+                    _ = tokio::time::sleep_until(deadline) => {
+                        // Timeout passed without new activity
+                        break;
+                    }
+                    _ = notify.notified() => {
+                        // New activity received, extend deadline
+                        deadline = tokio::time::Instant::now() + tokio::time::Duration::from_millis(100);
+                    }
+                }
+            }
+
+            // Emit the update
+            perform_emit_notifications().await;
+        }
+    });
+
 }
 
+// This function triggers the update process (debounced)
 async fn emit_notifications_updated() {
+    NOTIFY_UPDATE.notify_one();
+}
+
+// The actual emission logic (private)
+async fn perform_emit_notifications() {
     if let Some(app_handle) = APP_HANDLE.read().await.as_ref() {
         let notifications = NOTIFICATIONS.read().await;
         if let Err(e) = app_handle.emit("notifications-updated", &*notifications) {
@@ -171,11 +209,9 @@ impl NotificationServer {
             .unwrap_or_default()
             .as_secs();
         
-        // Icon mapping logic
         let icon_final = if !app_icon.is_empty() {
              app_icon
         } else {
-             // Basic fallback mapping
              let name_lower = app_name.to_lowercase();
              if name_lower.contains("chrome") { "google-chrome".to_string() }
              else if name_lower.contains("telegram") { "telegram-desktop".to_string() }
@@ -229,7 +265,6 @@ pub async fn invoke_action(id: u32, action_key: String) -> Result<(), String> {
 pub async fn start_notification_server() -> Result<(), Box<dyn std::error::Error>> {
     let connection = Connection::session().await?;
     
-    // Request the org.freedesktop.Notifications name with ReplaceExisting
     use zbus::fdo::{RequestNameFlags, RequestNameReply};
     
     let reply = connection.request_name_with_flags(
@@ -252,29 +287,20 @@ pub async fn start_notification_server() -> Result<(), Box<dyn std::error::Error
         },
     }
 
-    // Register the object
     connection.object_server().at("/org/freedesktop/Notifications", NotificationServer).await?;
-    
-    // Also request a custom name for testing if primary fails (or always)
     let _ = connection.request_name("org.vasakos.Notifications").await;
 
-    // Store connection
     {
         let mut guard = DBUS_CONNECTION.write().await;
         *guard = Some(connection.clone());
     }
     
-    println!("Notification Server started on org.freedesktop.Notifications (and org.vasakos.Notifications)");
+    println!("Notification Server started");
     
-    // Keep the connection execution loop alive
     std::future::pending::<()>().await;
     
     Ok(())
 }
-
-// Adapter for existing signature in lib.rs?
-// lib.rs calls `setup_notification_monitoring` which calls `start_notification_monitor`.
-// We should update `start_notification_monitor` to call our new server.
 
 pub async fn start_notification_monitor() -> Result<(), String> {
     tokio::spawn(async {
