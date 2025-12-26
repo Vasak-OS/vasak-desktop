@@ -8,6 +8,7 @@ mod eventloops;
 mod menu_manager;
 mod monitor_manager;
 mod notifications;
+mod search;
 mod structs;
 mod tray;
 mod utils;
@@ -99,7 +100,10 @@ pub fn run() {
             music_previous_track,
             music_now_playing,
             battery_exists,
-            battery_fetch_info
+            battery_fetch_info,
+            global_search,
+            execute_search_result,
+            toggle_search
         ])
         .setup(move |app| {
             let _ = create_desktops(app);

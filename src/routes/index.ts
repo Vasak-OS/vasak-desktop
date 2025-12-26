@@ -22,7 +22,7 @@ const routes = [
       {
         path: "audio",
         component: () => import("@/views/applets/AudioAppletView.vue"),
-      }
+      },
     ],
   },
   {
@@ -32,6 +32,7 @@ const routes = [
         path: "terminal",
         component: () => import("@/views/apps/TerminalView.vue"),
       },
+      { path: "search", component: () => import("@/views/apps/SearchView.vue") },
       {
         path: "configuration",
         redirect: "/apps/configuration/info",

@@ -21,7 +21,8 @@
     "applet_network",
     "applet_audio",
     "app_terminal",
-    "app_config"
+    "app_config",
+    "app_search"
   ],
   "permissions": [
     "core:default",

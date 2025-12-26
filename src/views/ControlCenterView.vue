@@ -3,6 +3,7 @@ import VolumeControl from "@/components/controls/VolumeControl.vue";
 import BrightnessControl from "@/components/controls/BrightnessControl.vue";
 import NotificationArea from "@/components/areas/control-center/NotificationArea.vue";
 import NetworkControl from "@/components/controls/NetworkControl.vue";
+import SearchButtonControl from "@/components/controls/SearchButtonControl.vue";
 import BluetoothControl from "@/components/controls/BluetoothControl.vue";
 import UserControlCenterCard from "@/components/cards/UserControlCenterCard.vue";
 import ThemeToggle from "@/components/controls/ThemeToggle.vue";
@@ -37,9 +38,12 @@ onMounted(async () => {
     </div>
     <div class="flex flex-wrap w-full justify-around items-end self-end p-2">
       <MusicWidget class="w-full" />
-      <NetworkControl />
-      <BluetoothControl v-if="bluetoothInitialized" />
-      <ThemeToggle />
+      <div class="flex gap-2 w-full">
+        <SearchButtonControl />
+        <NetworkControl />
+        <BluetoothControl v-if="bluetoothInitialized" />
+        <ThemeToggle />
+      </div>
       <div class="flex flex-col gap-2 w-full mt-4">
         <BrightnessControl />
         <VolumeControl />
