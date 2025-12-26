@@ -152,9 +152,20 @@ pub async fn get_battery_info() -> Option<BatteryInfo> {
 }
 
 async fn get_battery_info_from_proxy(proxy: zbus::Proxy<'_>) -> Option<BatteryInfo> {
-    let is_present: bool = proxy.get_property("IsPresent").await.ok()?;
-    let percentage: f64 = proxy.get_property("Percentage").await.unwrap_or(0.0);
-    let state: u32 = proxy.get_property("State").await.unwrap_or(0);
+    let is_present: bool = tokio::time::timeout(Duration::from_millis(300), proxy.get_property("IsPresent"))
+        .await
+        .ok()?
+        .ok()?;
+    let percentage: f64 = tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Percentage"))
+        .await
+        .ok()
+        .and_then(|r| r.ok())
+        .unwrap_or(0.0);
+    let state: u32 = tokio::time::timeout(Duration::from_millis(300), proxy.get_property("State"))
+        .await
+        .ok()
+        .and_then(|r| r.ok())
+        .unwrap_or(0);
     let state_str = match state {
         1 => "Charging",
         2 => "Discharging",
@@ -172,19 +183,19 @@ async fn get_battery_info_from_proxy(proxy: zbus::Proxy<'_>) -> Option<BatteryIn
         has_battery: is_present,
         percentage,
         state: state_str,
-        time_to_empty: proxy.get_property("TimeToEmpty").await.ok(),
-        time_to_full: proxy.get_property("TimeToFull").await.ok(),
+        time_to_empty: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("TimeToEmpty")).await.ok().and_then(|r| r.ok()),
+        time_to_full: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("TimeToFull")).await.ok().and_then(|r| r.ok()),
         is_present,
         is_charging,
-        vendor: proxy.get_property("Vendor").await.ok(),
-        model: proxy.get_property("Model").await.ok(),
-        technology: proxy.get_property("Technology").await.ok(),
-        energy: proxy.get_property("Energy").await.ok(),
-        energy_full: proxy.get_property("EnergyFull").await.ok(),
-        energy_full_design: proxy.get_property("EnergyFullDesign").await.ok(),
-        voltage: proxy.get_property("Voltage").await.ok(),
-        temperature: proxy.get_property("Temperature").await.ok(),
-        serial: proxy.get_property("Serial").await.ok(),
+        vendor: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Vendor")).await.ok().and_then(|r| r.ok()),
+        model: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Model")).await.ok().and_then(|r| r.ok()),
+        technology: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Technology")).await.ok().and_then(|r| r.ok()),
+        energy: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Energy")).await.ok().and_then(|r| r.ok()),
+        energy_full: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("EnergyFull")).await.ok().and_then(|r| r.ok()),
+        energy_full_design: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("EnergyFullDesign")).await.ok().and_then(|r| r.ok()),
+        voltage: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Voltage")).await.ok().and_then(|r| r.ok()),
+        temperature: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Temperature")).await.ok().and_then(|r| r.ok()),
+        serial: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Serial")).await.ok().and_then(|r| r.ok()),
     })
 }
 
@@ -196,9 +207,12 @@ async fn find_battery_path(conn: &Connection) -> Option<String> {
         "org.freedesktop.UPower"
     ).await.ok()?;
     
-    let devices: Vec<zbus::zvariant::OwnedObjectPath> = upower_proxy
-        .call_method("EnumerateDevices", &())
+    let devices: Vec<zbus::zvariant::OwnedObjectPath> = tokio::time::timeout(
+        Duration::from_millis(500),
+        upower_proxy.call_method("EnumerateDevices", &())
+    )
         .await
+        .ok()?
         .ok()?
         .body()
         .deserialize()
@@ -212,7 +226,11 @@ async fn find_battery_path(conn: &Connection) -> Option<String> {
             "org.freedesktop.UPower.Device"
         ).await.ok()?;
         
-        let device_type: u32 = device_proxy.get_property("Type").await.unwrap_or(0);
+        let device_type: u32 = tokio::time::timeout(Duration::from_millis(300), device_proxy.get_property("Type"))
+            .await
+            .ok()
+            .and_then(|r| r.ok())
+            .unwrap_or(0);
         if device_type == 2 {
             return Some(device_path.to_string());
         }

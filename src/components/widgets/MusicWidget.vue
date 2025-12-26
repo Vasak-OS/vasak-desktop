@@ -18,6 +18,11 @@ const nextIcon: Ref<string> = ref("");
 const playIcon: Ref<string> = ref("");
 const pauseIcon: Ref<string> = ref("");
 
+// Estado de errores
+const commandError = ref("");
+const showError = ref(false);
+let errorTimeout: number | null = null;
+
 // Nuevo: computed que devuelve true si el status (normalizado) es "playing"
 const isPlaying = computed(() => {
   const s = musicInfo.value?.status;
@@ -29,14 +34,31 @@ const isPlaying = computed(() => {
 async function sendCommand(cmd: string) {
   const player = musicInfo.value?.player || "";
   if (!player) {
-    console.warn("[music] no player bus name available");
+    showErrorMessage("No hay reproductor activo");
     return;
   }
   try {
     await invoke(cmd, { player });
-  } catch (e) {
+    // Limpiar error si existía
+    if (showError.value) {
+      showError.value = false;
+      commandError.value = "";
+    }
+  } catch (e: any) {
     console.error(`[music] invoke ${cmd} failed:`, e);
+    const msg = e?.message || e?.toString() || "Error al ejecutar comando";
+    showErrorMessage(msg);
   }
+}
+
+function showErrorMessage(msg: string) {
+  commandError.value = msg;
+  showError.value = true;
+  if (errorTimeout) clearTimeout(errorTimeout);
+  errorTimeout = window.setTimeout(() => {
+    showError.value = false;
+    commandError.value = "";
+  }, 3000);
 }
 function onPrev() {
   sendCommand("music_previous_track");
@@ -239,11 +261,35 @@ async function onImgError() {
           <img :src="nextIcon" alt="Siguiente" class="w-4 h-4" />
         </button>
       </div>
+
+      <!-- Toast de error -->
+      <transition name="error-fade">
+        <div
+          v-if="showError"
+          class="mt-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded"
+        >
+          {{ commandError }}
+        </div>
+      </transition>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* Transición de fade para el toast de error */
+.error-fade-enter-active,
+.error-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.error-fade-enter-from {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+.error-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
 /* Animaciones de entrada/salida: fade + slight scale/translate */
 @keyframes controlsIn {
   from {
