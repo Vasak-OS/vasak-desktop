@@ -122,7 +122,6 @@ async fn handle_player_event(app: &AppHandle, conn: &AsyncConnection, sender: St
         Ok(i) => i,
         Err(e) => {
             log::warn!("[music] fetch_player_info failed sender={} err={}", sender, e);
-            println!("[music][debug] fetch_player_info failed sender={} err={}", sender, e);
             return; // Ignore ghost events
         }
     };
@@ -147,20 +146,17 @@ async fn handle_player_event(app: &AppHandle, conn: &AsyncConnection, sender: St
             "[music] Ignoring sender (not allowed): sender={} identity={} status={} current={:?} target={}",
             sender, identity, status, current, target_player
         );
-        println!("[music][debug] ignore sender={} identity={} status={} current={:?} target={}", sender, identity, status, current, target_player);
         return;
     }
 
     // Ignore events from ourselves (defensive)
     if identity.contains("vasak") || sender.contains("vasak") {
-        println!("[music][debug] ignore self sender={} identity={} status={} current={:?}", sender, identity, status, current);
         return;
     }
 
     // 4. Decision Matrix
     // If the sender is ephemeral and differs from the target, just emit update without switching focus.
     if is_ephemeral && sender != target_player {
-        println!("[music][debug] ephemeral update sender={} -> target={} (no switch)", sender, target_player);
         let mut info_mut = info;
         info_mut["player"] = json!(target_player.clone());
         let _ = app.emit("music-playing-update", &info_mut);
@@ -178,7 +174,6 @@ async fn handle_player_event(app: &AppHandle, conn: &AsyncConnection, sender: St
     };
 
     if should_switch {
-        println!("[music][debug] switching to sender={} identity={} status={} current={:?} target={}", sender, identity, status, current, target_player);
         if is_well_known_bus(&target_player) {
             set_active_player(Some(target_player.clone()));
         }
@@ -359,13 +354,9 @@ fn parse_metadata(meta: HashMap<String, Value>) -> (Option<String>, Option<Strin
     }
     let jobj = JsonValue::Object(jm);
     
-    println!("[music][debug] parse_metadata keys: {:?}", jobj.as_object().unwrap_or(&JsonMap::new()).keys().collect::<Vec<_>>());
-    
     let title = find_str(&jobj, &["xesam:title", "title"]);
     let artist = find_str_array(&jobj, &["xesam:artist", "artist"]);
     let art = find_str(&jobj, &["mpris:artUrl", "artUrl", "albumArt"]);
-
-    println!("[music][debug] parsed title={:?} artist={:?} art={:?}", title, artist, art);
 
     (title, artist, art)
 }
@@ -534,7 +525,6 @@ fn resolve_target(inc: String) -> String {
 
 fn exec_command(player: &str, method: &str) -> Result<(), String> {
     if player.is_empty() { return Err("No player selected".to_string()); }
-    println!("[music] Executing {} on {}", method, player);
     
     let conn = BlockingConnection::session().map_err(|e| e.to_string())?;
     let proxy = BlockingProxy::new(&conn, player, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
@@ -546,12 +536,10 @@ fn exec_command(player: &str, method: &str) -> Result<(), String> {
 pub fn emit_now_playing(app: &AppHandle, player: &str) -> Result<(), String> {
     if player.is_empty() { return Err("No player selected".to_string()); }
     log::info!("[music] emit_now_playing player={}", player);
-    println!("[music][debug] emit_now_playing player={}", player);
     let info = match fetch_player_info_blocking(player) {
         Ok(i) => i,
         Err(e) => {
             log::warn!("[music] emit_now_playing fetch failed: {}", e);
-            println!("[music][debug] emit_now_playing fetch failed: {}", e);
             // Return minimal info so UI updates even if fetch fails
             json!({
                 "player": player,
