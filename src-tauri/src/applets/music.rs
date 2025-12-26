@@ -37,7 +37,49 @@ impl Applet for MusicApplet {
 // --- LOGIC: Event Monitoring & State Management ---
 
 async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let conn = AsyncConnection::session().await?;
+    let mut reconnect_attempts = 0u32;
+    let max_reconnects = 5;
+    
+    loop {
+        match monitor_with_reconnect(&app, reconnect_attempts).await {
+            Ok(_) => {
+                log::info!("[music] Monitor loop ended normally");
+                break;
+            }
+            Err(e) => {
+                reconnect_attempts += 1;
+                if reconnect_attempts >= max_reconnects {
+                    log::error!("[music] Max reconnection attempts reached: {}", e);
+                    let _ = app.emit("dbus-status", serde_json::json!({
+                        "service": "music",
+                        "status": "failed",
+                        "message": "No se pudo conectar al bus de sesión"
+                    }));
+                    break;
+                }
+                log::warn!("[music] Connection lost (attempt {}): {}. Reconnecting...", reconnect_attempts, e);
+                let _ = app.emit("dbus-status", serde_json::json!({
+                    "service": "music",
+                    "status": "reconnecting",
+                    "attempt": reconnect_attempts
+                }));
+                tokio::time::sleep(std::time::Duration::from_secs(2u64.pow(reconnect_attempts.min(3)))).await;
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn monitor_with_reconnect(app: &AppHandle, attempt: u32) -> Result<(), String> {
+    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
+    
+    if attempt > 0 {
+        log::info!("[music] Reconnected successfully after {} attempts", attempt);
+        let _ = app.emit("dbus-status", serde_json::json!({
+            "service": "music",
+            "status": "connected"
+        }));
+    }
     
     // Subscribe to PropertiesChanged
     let match_rule = "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'";
@@ -90,17 +132,23 @@ async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error:
 
             // 2. SIGNAL STREAM
             Some(msg_res) = stream.next() => {
-                if let Ok(m) = msg_res {
-                    let hdr = m.header();
-                    if hdr.message_type() == MessageType::Signal {
-                         if let Some(sender) = hdr.sender().map(|s| s.as_str().to_string()) {
-                             let iface = hdr.interface().map(|i| i.as_str().to_string());
-                             if iface.as_deref() == Some("org.freedesktop.DBus.Properties") {
-                                  // Debounce trigger
-                                  pending_sender = Some(sender);
-                                  deadline = Some(tokio::time::Instant::now() + debounce_duration);
+                match msg_res {
+                    Ok(m) => {
+                        let hdr = m.header();
+                        if hdr.message_type() == MessageType::Signal {
+                             if let Some(sender) = hdr.sender().map(|s| s.as_str().to_string()) {
+                                 let iface = hdr.interface().map(|i| i.as_str().to_string());
+                                 if iface.as_deref() == Some("org.freedesktop.DBus.Properties") {
+                                      // Debounce trigger
+                                      pending_sender = Some(sender);
+                                      deadline = Some(tokio::time::Instant::now() + debounce_duration);
+                                 }
                              }
-                         }
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("[music] Stream error: {}", e);
+                        return Err(e.to_string());
                     }
                 }
             }

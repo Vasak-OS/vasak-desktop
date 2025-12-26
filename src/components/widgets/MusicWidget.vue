@@ -23,6 +23,10 @@ const commandError = ref("");
 const showError = ref(false);
 let errorTimeout: number | null = null;
 
+// Estado de conexión D-Bus
+const dbusStatus = ref("connected");
+const dbusMessage = ref("");
+
 // Nuevo: computed que devuelve true si el status (normalizado) es "playing"
 const isPlaying = computed(() => {
   const s = musicInfo.value?.status;
@@ -84,6 +88,21 @@ onMounted(async () => {
       const val = payload[key];
       if (val === undefined) continue;
       musicInfo.value[key] = val;
+    }
+  });
+  
+  // Escuchar estado de conexión D-Bus
+  listen("dbus-status", (event: any) => {
+    const payload = event.payload;
+    if (payload.service === "music") {
+      dbusStatus.value = payload.status;
+      if (payload.status === "reconnecting") {
+        dbusMessage.value = `Reconectando (intento ${payload.attempt})...`;
+      } else if (payload.status === "failed") {
+        dbusMessage.value = payload.message || "Error de conexión";
+      } else if (payload.status === "connected") {
+        dbusMessage.value = "";
+      }
     }
   });
   // medir posible overflow del título inicialmente
@@ -269,6 +288,19 @@ async function onImgError() {
           class="mt-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded"
         >
           {{ commandError }}
+        </div>
+      </transition>
+      
+      <!-- Estado de reconexión -->
+      <transition name="error-fade">
+        <div
+          v-if="dbusStatus === 'reconnecting' || dbusStatus === 'failed'"
+          class="mt-2 text-xs px-2 py-1 rounded"
+          :class="[
+            dbusStatus === 'reconnecting' ? 'text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20' : 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20'
+          ]"
+        >
+          {{ dbusMessage }}
         </div>
       </transition>
     </div>

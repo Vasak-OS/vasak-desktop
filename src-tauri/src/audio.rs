@@ -1,12 +1,31 @@
 use crate::structs::{VolumeInfo, AudioDevice};
 use std::process::Command;
+use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 
-// Función helper para ejecutar comandos de PipeWire/PulseAudio
+// Función helper para ejecutar comandos de PipeWire/PulseAudio con timeout
 fn run_command(cmd: &str, args: &[&str]) -> Result<String, String> {
-    let output = Command::new(cmd)
-        .args(args)
-        .output()
+    run_command_with_timeout(cmd, args, Duration::from_secs(3))
+}
+
+fn run_command_with_timeout(cmd: &str, args: &[&str], timeout: Duration) -> Result<String, String> {
+    use std::sync::mpsc;
+    use std::thread;
+    
+    let cmd_owned = cmd.to_string();
+    let args_owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+    
+    let (tx, rx) = mpsc::channel();
+    
+    thread::spawn(move || {
+        let output = Command::new(&cmd_owned)
+            .args(&args_owned)
+            .output();
+        let _ = tx.send(output);
+    });
+    
+    let output = rx.recv_timeout(timeout)
+        .map_err(|_| format!("Command {} timed out after {:?}", cmd, timeout))?
         .map_err(|e| format!("Failed to execute {}: {}", cmd, e))?;
 
     if !output.status.success() {
