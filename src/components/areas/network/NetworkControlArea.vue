@@ -15,7 +15,10 @@
     </div>
 
     <!-- WiFi Toggle -->
-    <div class="flex items-center justify-between mb-4 p-3 rounded-vsk border border-vsk-primary/70 background">
+    <div 
+      v-if="wifiAvailable"
+      class="flex items-center justify-between mb-4 p-3 rounded-vsk border border-vsk-primary/70 background"
+    >
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-full bg-vsk-primary/10">
           <svg class="w-5 h-5 text-vsk-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -30,7 +33,6 @@
       </div>
       <button
         @click="toggleWifi"
-        disabled
         :class="[
           'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
           wifiEnabled ? 'bg-green-500' : 'bg-vsk-primary/30',
@@ -44,8 +46,13 @@
         />
       </button>
     </div>
+    
+    <!-- WiFi unavailable message -->
+    <div v-else class="mb-4 p-3 rounded-vsk border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-center">
+        <span class="text-sm text-gray-500">Wireless hardware not cached or unavailable</span>
+    </div>
 
-    <div v-if="wifiEnabled" class="flex-1 overflow-hidden">
+    <div v-if="wifiAvailable && wifiEnabled" class="flex-1 overflow-hidden">
       <h3 class="text-sm font-medium text-vsk-text/80 mb-3">Available Networks</h3>
       
       <!-- Loading -->
@@ -92,10 +99,11 @@ import { listWifiNetworks, NetworkInfo } from "@vasakgroup/plugin-network-manage
 import NetworkWiFiCard from "@/components/cards/NetworkWiFiCard.vue";
 
 const wifiEnabled: Ref<boolean> = ref(true);
+const wifiAvailable: Ref<boolean> = ref(true); // Assume true until checked
 const loading: Ref<boolean> = ref(false);
 const availableNetworks: Ref<NetworkInfo[]> = ref([]);
-const wifiStatus: Ref<string> = ref("Connected");
-const ethernetStatus: Ref<string> = ref("Not connected");
+const wifiStatus: Ref<string> = ref("Checking...");
+const ethernetStatus: Ref<string> = ref("Connected"); // Todo: Fetch Real Eth Status
 let unlisten: (() => void) | null = null;
 
 defineProps({
@@ -105,21 +113,66 @@ defineProps({
   },
 });
 
+const checkWirelessStatus = async () => {
+    try {
+        // Assume commands exist in plugin
+        // Note: Invoke calls pass to rust. 
+        // We added: is_wireless_available, get_wireless_enabled
+        
+        // Wait, commands are in Rust but we invoke them by string.
+        // We need to ensure the names match exactly "plugin:network-manager|is_wireless_available"
+        // Using "invoke" calls the MAIN app commands or PLUGIN commands?
+        // If we use `invoke` from tauri core, and the commands are registered in `lib.rs`, we can call them directly if they are main commands.
+        // The commands were registered in `lib.rs` invoke handler (Step 480).
+        // So `invoke("is_wireless_available")` works.
+        
+        const available = await invoke("plugin:network-manager|is_wireless_available");
+        wifiAvailable.value = available as boolean;
+        
+        if (available) {
+            const enabled = await invoke("plugin:network-manager|get_wireless_enabled");
+            wifiEnabled.value = enabled as boolean;
+            wifiStatus.value = enabled ? "On" : "Off";
+            
+            if (enabled) {
+                await refreshNetworks();
+            }
+        } else {
+             wifiStatus.value = "Hardware unavailable";
+             wifiEnabled.value = false;
+        }
+    } catch (e) {
+        console.error("Error checking wireless status:", e);
+        // Fallback or maintain default
+        // wifiAvailable.value = false;
+    }
+};
+
 const toggleWifi = async () => {
+  if (!wifiAvailable.value) return;
+  
   try {
-    // Aquí llamarías al comando del plugin para toggle WiFi
-    // await invoke("toggle_wifi");
-    wifiEnabled.value = !wifiEnabled.value;
+    const newState = !wifiEnabled.value;
+    // Call backend to set state
+    await invoke("plugin:network-manager|set_wireless_enabled", { enabled: newState });
+    
+    // Optimistic update
+    wifiEnabled.value = newState;
+    wifiStatus.value = newState ? "On" : "Off";
+    
     if (wifiEnabled.value) {
       await refreshNetworks();
+    } else {
+        availableNetworks.value = [];
     }
   } catch (error) {
     console.error("Error toggling WiFi:", error);
+    // Revert logic could be added here
   }
 };
 
 const refreshNetworks = async () => {
-  if (!wifiEnabled.value) return;
+  if (!wifiEnabled.value || !wifiAvailable.value) return;
   
   loading.value = true;
   try {
@@ -140,11 +193,12 @@ const closeApplet = async () => {
 };
 
 onMounted(async () => {
-  await refreshNetworks();
+  await checkWirelessStatus();
   
-  // Listen for backend network events (scanning done, state change)
+  // Listen for backend network events
   unlisten = await listen<any>("network-changed", async () => {
-      await refreshNetworks();
+      // Re-check status on change (e.g. rfkill switch toggled externally)
+      await checkWirelessStatus();
   });
 });
 
