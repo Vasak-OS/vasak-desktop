@@ -9,6 +9,8 @@ mod music;
 mod network;
 mod notifications;
 mod runner;
+mod search;
+mod search_window;
 mod session;
 mod theme;
 mod tray;
@@ -31,6 +33,8 @@ pub use notifications::{
     send_notify,
 };
 pub use runner::open_app;
+pub use search::{execute_search_result, global_search};
+pub use search_window::toggle_search;
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};
 pub use theme::toggle_system_theme;
 pub use tray::{get_tray_items, init_sni_watcher};
