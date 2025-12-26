@@ -19,6 +19,10 @@ const routes = [
         path: "network",
         component: () => import("@/views/applets/NetworkAppletView.vue"),
       },
+      {
+        path: "audio",
+        component: () => import("@/views/applets/AudioAppletView.vue"),
+      }
     ],
   },
   {
