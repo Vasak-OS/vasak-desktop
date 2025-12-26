@@ -11,6 +11,7 @@ use tauri::{AppHandle, Emitter};
 use once_cell::sync::Lazy;
 use zbus::{
     blocking::{Connection as BlockingConnection, Proxy as BlockingProxy},
+    blocking::fdo::DBusProxy as BlockingDBusProxy,
     fdo::DBusProxy as AsyncDBusProxy,
     zvariant::Value,
     MessageStream, MessageType, Connection as AsyncConnection, Proxy as AsyncProxy,
@@ -243,23 +244,31 @@ async fn fetch_player_info(conn: &AsyncConnection, name: &str) -> Result<serde_j
         .map_err(|e| e.to_string())?;
 
     // Get Status
-    let status = proxy.get_property::<String>("PlaybackStatus").await.ok().unwrap_or("Stopped".to_string());
+    let status = tokio::time::timeout(std::time::Duration::from_millis(300), proxy.get_property::<String>("PlaybackStatus"))
+        .await
+        .ok()
+        .and_then(|r| r.ok())
+        .unwrap_or("Stopped".to_string());
     
     // Get Identity (for browser detection)
     // Try to get "Identity" from root interface
-    let root_proxy = AsyncProxy::new(conn, name, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2")
-         .await.ok();
-    let identity = if let Some(rp) = root_proxy {
-         rp.get_property::<String>("Identity").await.ok().unwrap_or(name.to_string())
-    } else {
-         name.to_string()
-    };
+        let root_proxy = AsyncProxy::new(conn, name, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2")
+            .await.ok();
+        let identity = if let Some(rp) = root_proxy {
+            tokio::time::timeout(std::time::Duration::from_millis(300), rp.get_property::<String>("Identity"))
+               .await
+               .ok()
+               .and_then(|r| r.ok())
+               .unwrap_or(name.to_string())
+        } else {
+            name.to_string()
+        };
 
     // Get Metadata
-    let (title, artist, art_url) = match proxy.get_property::<HashMap<String, Value>>("Metadata").await {
-         Ok(meta) => parse_metadata(meta),
-         _ => (None, None, None)
-    };
+            let (title, artist, art_url) = match tokio::time::timeout(std::time::Duration::from_millis(300), proxy.get_property::<HashMap<String, Value>>("Metadata")).await {
+                Ok(Ok(meta)) => parse_metadata(meta),
+                _ => (None, None, None)
+            };
 
     Ok(json!({
         "player": name, // Unique Name used for commands
@@ -526,11 +535,49 @@ fn resolve_target(inc: String) -> String {
 fn exec_command(player: &str, method: &str) -> Result<(), String> {
     if player.is_empty() { return Err("No player selected".to_string()); }
     
+    // Pre-validación de destino
     let conn = BlockingConnection::session().map_err(|e| e.to_string())?;
-    let proxy = BlockingProxy::new(&conn, player, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
-        .map_err(|e| format!("Proxy creation failed: {}", e))?;
-    proxy.call_method(method, &()).map_err(|e| format!("Method call failed: {}", e))?;
-    Ok(())
+    if !player_available(&conn, player) {
+        return Err(format!("Player not available: {}", player));
+    }
+
+    // Reintentos con backoff
+    call_with_retry_blocking(|| {
+        let proxy = BlockingProxy::new(&conn, player, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
+            .map_err(|e| format!("Proxy creation failed: {}", e))?;
+        proxy
+            .call_method(method, &())
+            .map(|_| ())
+            .map_err(|e| format!("Method call failed: {}", e))
+    }, 3, 50)
+}
+
+fn player_available(conn: &BlockingConnection, name: &str) -> bool {
+    if name.starts_with(":") { return true; }
+    match BlockingDBusProxy::new(conn) {
+        Ok(dbus) => dbus.list_names().map(|list| list.into_iter().any(|n| n == name)).unwrap_or(false),
+        Err(_) => false,
+    }
+}
+
+fn call_with_retry_blocking<F>(mut f: F, attempts: usize, base_delay_ms: u64) -> Result<(), String>
+where
+    F: FnMut() -> Result<(), String>,
+{
+    let mut last_err: Option<String> = None;
+    for i in 0..attempts {
+        match f() {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                last_err = Some(e);
+                if i + 1 < attempts {
+                    let delay = base_delay_ms * (1 << i);
+                    std::thread::sleep(std::time::Duration::from_millis(delay));
+                }
+            }
+        }
+    }
+    Err(last_err.unwrap_or_else(|| "Unknown error".to_string()))
 }
 
 pub fn emit_now_playing(app: &AppHandle, player: &str) -> Result<(), String> {
