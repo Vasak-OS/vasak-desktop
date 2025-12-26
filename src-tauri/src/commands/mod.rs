@@ -15,7 +15,10 @@ mod tray;
 mod window_manager;
 
 pub use applications::toggle_config_app;
-pub use audio::{get_audio_volume, set_audio_volume, toggle_audio_mute};
+pub use audio::{
+    get_audio_devices, get_audio_volume, set_audio_device, set_audio_volume, toggle_audio_applet,
+    toggle_audio_mute,
+};
 pub use battery::{battery_exists, battery_fetch_info};
 pub use bluetooth::toggle_bluetooth_applet;
 pub use brightness::{get_brightness_info, set_brightness_info};

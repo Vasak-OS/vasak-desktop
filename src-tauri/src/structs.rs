@@ -71,6 +71,15 @@ pub struct VolumeInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AudioDevice {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub is_default: bool,
+    pub volume: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrayItem {
     pub id: String,
     pub service_name: String,

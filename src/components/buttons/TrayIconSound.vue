@@ -1,7 +1,7 @@
 <template>
   <div
     class="p-1 rounded-vsk relative hover:bg-vsk-primary/30"
-    @click="toggleMute"
+    @click="toggleApplet"
   >
     <img
       :src="currentIcon"
@@ -68,12 +68,9 @@ async function getVolumeInfo() {
   }
 }
 
-async function toggleMute() {
+async function toggleApplet() {
   try {
-    const isUnmuted = await invoke("toggle_audio_mute");
-    volumeInfo.value.is_muted = !isUnmuted;
-    await getVolumeInfo();
-    await updateIcon();
+    await invoke("toggle_audio_applet");
   } catch (error) {
     console.error("Error toggling mute:", error);
   }

@@ -19,6 +19,7 @@
     "control_center",
     "applet_bluetooth",
     "applet_network",
+    "applet_audio",
     "app_terminal",
     "app_config"
   ],
