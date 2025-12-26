@@ -30,6 +30,7 @@ const contextMenu = ref<{
 });
 
 let unlisten: (() => void) | null = null;
+let unlistenBatteryEvent: (() => void) | null = null;
 
 const refreshTrayItems = async (): Promise<void> => {
   try {
@@ -122,7 +123,21 @@ onMounted(async () => {
   await refreshTrayItems();
   unlisten = await listen("tray-update", refreshTrayItems);
   bluetoothInitialized.value = await isBluetoothPluginInitialized();
-  existBattery.value = await batteryExists();
+  // Inicial: consultar si existe batería
+  try {
+    existBattery.value = await batteryExists();
+  } catch (e) {
+    console.warn("[TrayPanel] batteryExists failed:", e);
+    existBattery.value = false;
+  }
+
+  // Suscribirse a eventos de batería para actualizar visibilidad en caliente
+  unlistenBatteryEvent = await listen("battery-update", (event) => {
+    const payload: any = event.payload || {};
+    if (typeof payload.has_battery === "boolean") {
+      existBattery.value = payload.has_battery;
+    }
+  });
   await startSNIWatcher();
 
   document.addEventListener("click", hideContextMenu);
@@ -130,6 +145,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unlisten?.();
+  unlistenBatteryEvent?.();
   document.removeEventListener("click", hideContextMenu);
 });
 </script>
@@ -170,7 +186,7 @@ onUnmounted(() => {
         <div v-if="item.status === 'NeedsAttention'" class="status-indicator" />
       </div>
       <TrayIconSound />
-      <TrayIconBattery :exists="existBattery" />
+      <TrayIconBattery v-if="existBattery" />
       <TrayIconBluetooth />
       <TrayIconNetwork />
     </TransitionGroup>
