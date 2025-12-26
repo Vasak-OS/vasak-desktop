@@ -7,7 +7,7 @@ onMounted(async () => {
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       try {
-        invoke("toggle_bluetooth_applet");
+        invoke("toggle_audio_applet");
       } catch (error) {
         console.error("Error al cerrar:", error);
       }
