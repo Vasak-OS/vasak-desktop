@@ -85,8 +85,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, Ref } from "vue";
+import { ref, onMounted, onUnmounted, Ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { listWifiNetworks, NetworkInfo } from "@vasakgroup/plugin-network-manager"
 import NetworkWiFiCard from "@/components/cards/NetworkWiFiCard.vue";
 
@@ -95,6 +96,7 @@ const loading: Ref<boolean> = ref(false);
 const availableNetworks: Ref<NetworkInfo[]> = ref([]);
 const wifiStatus: Ref<string> = ref("Connected");
 const ethernetStatus: Ref<string> = ref("Not connected");
+let unlisten: (() => void) | null = null;
 
 defineProps({
   hideX: {
@@ -123,7 +125,7 @@ const refreshNetworks = async () => {
   try {
     availableNetworks.value = await listWifiNetworks();
   } catch (error) {
-    console.error("Error refreshing networks:", error);
+    // console.error("Error refreshing networks:", error);
   } finally {
     loading.value = false;
   }
@@ -139,5 +141,14 @@ const closeApplet = async () => {
 
 onMounted(async () => {
   await refreshNetworks();
+  
+  // Listen for backend network events (scanning done, state change)
+  unlisten = await listen<any>("network-changed", async () => {
+      await refreshNetworks();
+  });
+});
+
+onUnmounted(() => {
+  if (unlisten) unlisten();
 });
 </script>

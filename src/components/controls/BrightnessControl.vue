@@ -31,8 +31,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, Ref } from "vue";
+import { ref, computed, onMounted, onUnmounted, Ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getSymbolSource } from "@vasakgroup/plugin-vicons";
 
 interface BrightnessInfo {
@@ -49,6 +50,8 @@ const brightnessInfo: Ref<BrightnessInfo> = ref<BrightnessInfo>({
 
 const currentBrightness: Ref<number> = ref(100);
 const currentIcon: Ref<string> = ref("");
+let unlisten: (() => void) | null = null;
+let setDebitTimeout: ReturnType<typeof setTimeout> | null = null;
 
 async function updateIcon() {
   try {
@@ -66,33 +69,65 @@ async function updateIcon() {
 }
 
 const brightnessPercentage = computed(() => {
-  return Math.round(currentBrightness.value);
+  if (brightnessInfo.value.max <= 0) return 0;
+  // Calculate percentage from raw value
+  const range = brightnessInfo.value.max - brightnessInfo.value.min;
+  const loading = currentBrightness.value - brightnessInfo.value.min;
+  return Math.round((loading / range) * 100);
 });
 
 async function getBrightnessInfo() {
   try {
-    const info = await invoke("get_brightness_info");
-    brightnessInfo.value = info as any;
-    currentBrightness.value = (info as any).current;
+    const info = await invoke("get_brightness_info") as BrightnessInfo;
+    brightnessInfo.value = info;
+    currentBrightness.value = info.current;
     await updateIcon();
   } catch (error) {
     console.error("Error getting brightness:", error);
   }
 }
 
+// Debounce the outgoing update to avoid flooding the backend/hardware
 async function updateBrightness() {
-  try {
-    await invoke("set_brightness_info", {
-      brightness: Number(currentBrightness.value),
-    });
-    await updateIcon();
-  } catch (error) {
-    console.error("Error setting brightness:", error);
-  }
+  if (setDebitTimeout) clearTimeout(setDebitTimeout);
+  
+  // Optimistic update of UI
+  await updateIcon();
+
+  setDebitTimeout = setTimeout(async () => {
+    try {
+      await invoke("set_brightness_info", {
+        brightness: Number(currentBrightness.value),
+      });
+    } catch (error) {
+      console.error("Error setting brightness:", error);
+    }
+  }, 50); // Short debounce for responsiveness
 }
 
 onMounted(async () => {
   await getBrightnessInfo();
+
+  unlisten = await listen("brightness-changed", (event: any) => {
+    const payload = event.payload; 
+    // Payload: { value: number, max: number, percentage: number }
+    if (payload) {
+      // Avoid loop if the value is close to what we just set
+      // We check raw value difference.
+      if (Math.abs(currentBrightness.value - payload.value) > 1) {
+          currentBrightness.value = payload.value;
+          // Update max if changed (adaptive max?)
+          if (payload.max > 0) brightnessInfo.value.max = payload.max;
+          brightnessInfo.value.current = payload.value;
+          updateIcon();
+      }
+    }
+  });
+});
+
+onUnmounted(() => {
+  if (unlisten) unlisten();
+  if (setDebitTimeout) clearTimeout(setDebitTimeout);
 });
 </script>
 
