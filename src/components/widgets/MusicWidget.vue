@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { onMounted, ref, computed, Ref, nextTick, watch } from "vue";
 import { listen } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { getIconSource, getSymbolSource } from "@vasakgroup/plugin-vicons";
 
 const musicInfo: Ref<any> = ref({
@@ -57,12 +57,10 @@ onMounted(async () => {
   musicInfo.value = await invoke("music_now_playing");
   listen("music-playing-update", (event) => {
     const payload = (event.payload || {}) as Record<string, unknown>;
+    console.log("[MusicWidget] Received update:", payload);
     for (const key of Object.keys(payload)) {
       const val = payload[key];
-      if (val === undefined || val === null) continue;
-      if (typeof val === "string") {
-        if (val.trim() === "") continue;
-      }
+      if (val === undefined) continue;
       musicInfo.value[key] = val;
     }
   });
@@ -115,6 +113,45 @@ watch(
     updateTitleOverflow();
   }
 );
+watch(
+  () => musicInfo.value?.artUrl,
+  async (newUrl) => {
+    if (!newUrl || newUrl.trim() === "") {
+      // URL vacía o undefined: usar icono por defecto
+      imgSrc.value = await getIconSource("applications-multimedia");
+      return;
+    }
+
+    const url = newUrl.trim();
+
+    if (url.startsWith("file://")) {
+      // Remover prefijo file:// (puede ser file:// o file:///)
+      const path = url.replace(/^file:\/+/, "/");
+      imgSrc.value = convertFileSrc(path);
+    } else if (url.startsWith("http://") || url.startsWith("https://")) {
+      // URL remota HTTP/HTTPS: usar directamente
+      imgSrc.value = url;
+    } else if (url.startsWith("/")) {
+      // Ruta absoluta: convertir con convertFileSrc
+      imgSrc.value = convertFileSrc(url);
+    } else {
+      // Otros formatos o relativos: intentar directamente
+      imgSrc.value = url;
+    }
+  },
+  { immediate: true }
+);
+
+async function onImgError() {
+  try {
+    const defaultIcon = await getIconSource("applications-multimedia");
+    if (defaultIcon) {
+       imgSrc.value = defaultIcon;
+    }
+  } catch (e) {
+    console.warn("Failed to load default icon:", e);
+  }
+}
 </script>
 
 <template>
@@ -128,6 +165,7 @@ watch(
       :title="musicInfo.title"
       class="w-24 h-24 flex-shrink-0"
       :class="{ 'animate-pulse': isPlaying }"
+      @error="onImgError"
     />
 
     <!-- columna con título arriba y controls debajo -->

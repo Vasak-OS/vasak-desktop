@@ -1,18 +1,25 @@
-use crate::applets::music::{mpris_next, mpris_playpause, mpris_previous, fetch_now_playing};
+use crate::applets::music::{emit_now_playing, fetch_now_playing, mpris_next, mpris_playpause, mpris_previous};
+use tauri::AppHandle;
 
 #[tauri::command]
-pub fn music_play_pause(player: String) {
-    let _ = mpris_playpause(player);
+pub fn music_play_pause(app: AppHandle, player: String) {
+    if let Ok(target) = mpris_playpause(player) {
+        let _ = emit_now_playing(&app, &target);
+    }
 }
 
 #[tauri::command]
-pub fn music_next_track(player: String) {
-    let _ = mpris_next(player);
+pub fn music_next_track(app: AppHandle, player: String) {
+    if let Ok(target) = mpris_next(player) {
+        let _ = emit_now_playing(&app, &target);
+    }
 }
 
 #[tauri::command]
-pub fn music_previous_track(player: String) {
-    let _ = mpris_previous(player);
+pub fn music_previous_track(app: AppHandle, player: String) {
+    if let Ok(target) = mpris_previous(player) {
+        let _ = emit_now_playing(&app, &target);
+    }
 }
 
 #[tauri::command]
