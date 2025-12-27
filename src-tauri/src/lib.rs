@@ -115,6 +115,11 @@ pub fn run() {
             get_system_info,
             get_cpu_usage_only,
             get_memory_usage_only,
+            get_system_config,
+            set_system_config,
+            get_gtk_themes,
+            get_cursor_themes,
+            get_icon_packs,
             open_configuration_window
         ])
         .setup(move |app| {

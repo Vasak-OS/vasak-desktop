@@ -67,6 +67,11 @@ const routes = [
             component: () =>
               import("@/views/apps/configuration/ConfigShortcutView.vue"),
           },
+          {
+            path: "system",
+            component: () =>
+              import("@/views/apps/configuration/ConfigOSView.vue"),
+          },
         ],
       },
     ],
