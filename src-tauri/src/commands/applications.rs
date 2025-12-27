@@ -3,6 +3,11 @@ use crate::windows_apps::create_app_configuration_window;
 
 #[tauri::command]
 pub fn toggle_config_app(app: AppHandle) -> Result<(), ()> {
+    // Cerrar el menú si está abierto antes de abrir/alternar la app de configuración
+    if let Some(menu_window) = app.get_webview_window("menu") {
+        let _ = menu_window.close();
+    }
+
     if let Some(network_window) = app.get_webview_window("app_config") {
         if network_window.is_visible().unwrap_or(false) {
             network_window.close().expect("Failed to close network window");
@@ -18,3 +23,23 @@ pub fn toggle_config_app(app: AppHandle) -> Result<(), ()> {
 
     Ok(())
 }
+
+#[tauri::command]
+pub fn open_configuration_window(app: AppHandle) -> Result<(), String> {
+    // Cerrar el menú si está abierto para evitar solapamiento visual
+    if let Some(menu_window) = app.get_webview_window("menu") {
+        let _ = menu_window.close();
+    }
+
+    if let Some(config_window) = app.get_webview_window("app_config") {
+        let _ = config_window.show();
+        let _ = config_window.set_focus();
+    } else {
+        spawn(async move {
+            let _ = create_app_configuration_window(app).await;
+        });
+    }
+
+    Ok(())
+}
+

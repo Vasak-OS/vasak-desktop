@@ -19,6 +19,7 @@ const logoutImg: Ref<string> = ref("");
 const shutdownImg: Ref<string> = ref("");
 const rebootImg: Ref<string> = ref("");
 const suspendImg: Ref<string> = ref("");
+const settingsImg: Ref<string> = ref("");
 
 // Cargar menú
 const setMenu = async () => {
@@ -73,6 +74,14 @@ const suspend = async () => {
   }
 };
 
+const openConfiguration = async () => {
+  try {
+    await invoke("open_configuration_window");
+  } catch (error) {
+    console.error("Error al abrir configuración:", error);
+  }
+};
+
 const apps = computed(() => {
   const allApps = (menuData.value as any)["all"]?.apps;
   return allApps;
@@ -88,6 +97,7 @@ const setImages = async () => {
     shutdownImg.value = await getIconSource("system-shutdown");
     rebootImg.value = await getIconSource("system-reboot");
     suspendImg.value = await getIconSource("system-suspend");
+    settingsImg.value = await getIconSource("settings");
   } catch (error) {
     console.error("Error: finding logout icon");
   }
@@ -121,6 +131,7 @@ onMounted(async () => {
       <div class="flex items-center space-x-2">
         <SessionButton
           v-for="(action, index) in [
+            { title: 'Configuration', img: settingsImg, handler: openConfiguration },
             { title: 'Shutdown', img: shutdownImg, handler: shutdown },
             { title: 'Reboot', img: rebootImg, handler: reboot },
             { title: 'Logout', img: logoutImg, handler: logout },
