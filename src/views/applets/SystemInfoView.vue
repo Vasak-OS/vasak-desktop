@@ -9,7 +9,7 @@
 
     <div v-else-if="error" class="error-message">
       <p>{{ error }}</p>
-      <button @click="loadSystemInfo" class="retry-button">Reintentar</button>
+      <button @click="() => loadSystemInfo()" class="retry-button">Reintentar</button>
     </div>
 
     <div v-else class="info-grid">
@@ -121,6 +121,43 @@
         </div>
       </div>
 
+      <!-- Swap -->
+      <div class="info-card" v-if="systemInfo?.swap">
+        <div class="card-header">
+          <span class="icon">🔁</span>
+          <h3>Swap</h3>
+        </div>
+        <div class="card-content">
+          <div class="info-row">
+            <span class="label">Total:</span>
+            <span class="value">{{ systemInfo?.swap?.total_gb?.toFixed(2) }} GB</span>
+          </div>
+          <div class="info-row">
+            <span class="label">En uso:</span>
+            <span class="value">{{ systemInfo?.swap?.used_gb?.toFixed(2) }} GB</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Libre:</span>
+            <span class="value">{{ systemInfo?.swap?.free_gb?.toFixed(2) }} GB</span>
+          </div>
+          <div class="usage-section">
+            <div class="usage-header">
+              <span class="label">Uso:</span>
+              <span class="value usage-percent" :class="usageClass(systemInfo?.swap?.usage_percent)">
+                {{ systemInfo?.swap?.usage_percent?.toFixed(1) }}%
+              </span>
+            </div>
+            <div class="progress-bar">
+              <div 
+                class="progress-fill memory" 
+                :style="{ width: systemInfo?.swap?.usage_percent + '%' }"
+                :class="usageClass(systemInfo?.swap?.usage_percent)"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- GPU -->
       <div class="info-card" v-if="systemInfo?.gpu">
         <div class="card-header">
@@ -160,6 +197,38 @@
           </div>
         </div>
       </div>
+
+      <!-- Discos -->
+      <div class="info-card" v-if="systemInfo?.disks?.length">
+        <div class="card-header">
+          <span class="icon">💽</span>
+          <h3>Discos</h3>
+        </div>
+        <div class="card-content">
+          <div class="disk-row" v-for="disk in systemInfo?.disks" :key="disk.device + disk.mountpoint">
+            <div class="disk-header">
+              <span class="disk-device">{{ disk.device }}</span>
+              <span class="disk-mount">→ {{ disk.mountpoint }}</span>
+              <span class="disk-fstype">({{ disk.fstype }})</span>
+            </div>
+            <div class="disk-stats">
+              <span>Total: {{ disk.total_gb.toFixed(2) }} GB</span>
+              <span>Usado: {{ disk.used_gb.toFixed(2) }} GB</span>
+              <span>Libre: {{ disk.available_gb.toFixed(2) }} GB</span>
+              <span class="value usage-percent" :class="usageClass(disk.usage_percent)">
+                {{ disk.usage_percent.toFixed(1) }}%
+              </span>
+            </div>
+            <div class="progress-bar">
+              <div 
+                class="progress-fill memory" 
+                :style="{ width: disk.usage_percent + '%' }"
+                :class="usageClass(disk.usage_percent)"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="actions" v-if="!loading && !error">
@@ -192,6 +261,12 @@ interface SystemInfo {
     available_gb: number
     usage_percent: number
   }
+  swap?: {
+    total_gb: number
+    used_gb: number
+    free_gb: number
+    usage_percent: number
+  }
   gpu?: {
     model: string
     vendor: string
@@ -212,6 +287,15 @@ interface SystemInfo {
       label: string
     }>
   }
+  disks?: Array<{
+    device: string
+    mountpoint: string
+    fstype: string
+    total_gb: number
+    used_gb: number
+    available_gb: number
+    usage_percent: number
+  }>
 }
 
 const systemInfo = ref<SystemInfo | null>(null)
@@ -479,6 +563,44 @@ onUnmounted(() => {
   padding: 1.5rem;
   background: var(--surface-2);
   border-radius: 12px;
+}
+
+.disk-row {
+  padding: 0.5rem 0 1rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.disk-row:last-child {
+  border-bottom: none;
+}
+
+.disk-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.disk-device {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.disk-mount {
+  font-size: 0.9rem;
+}
+
+.disk-fstype {
+  font-size: 0.85rem;
+}
+
+.disk-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .refresh-button, .retry-button {

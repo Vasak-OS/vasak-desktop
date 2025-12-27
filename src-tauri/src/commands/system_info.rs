@@ -6,6 +6,8 @@ use std::process::Command;
 pub struct SystemInfo {
     pub cpu: CpuInfo,
     pub memory: MemoryInfo,
+    pub swap: Option<SwapInfo>,
+    pub disks: Vec<DiskInfo>,
     pub gpu: Option<GpuInfo>,
     pub system: SystemDetails,
     pub temperature: Option<TemperatureInfo>,
@@ -21,6 +23,25 @@ pub struct CpuInfo {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MemoryInfo {
+    pub total_gb: f64,
+    pub used_gb: f64,
+    pub available_gb: f64,
+    pub usage_percent: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SwapInfo {
+    pub total_gb: f64,
+    pub used_gb: f64,
+    pub free_gb: f64,
+    pub usage_percent: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DiskInfo {
+    pub device: String,
+    pub mountpoint: String,
+    pub fstype: String,
     pub total_gb: f64,
     pub used_gb: f64,
     pub available_gb: f64,
@@ -148,6 +169,94 @@ fn get_memory_info() -> MemoryInfo {
         available_gb,
         usage_percent,
     }
+}
+
+/// Obtiene información de swap desde /proc/meminfo
+fn get_swap_info() -> Option<SwapInfo> {
+    let content = fs::read_to_string("/proc/meminfo").ok()?;
+
+    let mut total_kb = 0u64;
+    let mut free_kb = 0u64;
+
+    for line in content.lines() {
+        if line.starts_with("SwapTotal:") {
+            total_kb = line.split_whitespace().nth(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+        } else if line.starts_with("SwapFree:") {
+            free_kb = line.split_whitespace().nth(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+        }
+    }
+
+    if total_kb == 0 {
+        return None;
+    }
+
+    let total_gb = total_kb as f64 / 1024.0 / 1024.0;
+    let free_gb = free_kb as f64 / 1024.0 / 1024.0;
+    let used_gb = (total_kb - free_kb) as f64 / 1024.0 / 1024.0;
+    let usage_percent = if total_gb > 0.0 { ((used_gb / total_gb) * 100.0) as f32 } else { 0.0 };
+
+    Some(SwapInfo {
+        total_gb,
+        used_gb,
+        free_gb,
+        usage_percent,
+    })
+}
+
+/// Obtiene información de discos usando `df -T -B1`
+fn get_disks_info() -> Vec<DiskInfo> {
+    let mut disks = Vec::new();
+
+    if let Ok(output) = Command::new("df").arg("-T").arg("-B1").output() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        for (i, line) in stdout.lines().enumerate() {
+            // Saltar cabecera
+            if i == 0 { continue; }
+
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() < 7 { continue; }
+
+            let device = parts[0].to_string();
+            let fstype = parts[1].to_string();
+            let total_bytes: f64 = parts[2].parse::<f64>().unwrap_or(0.0);
+            let used_bytes: f64 = parts[3].parse::<f64>().unwrap_or(0.0);
+            let avail_bytes: f64 = parts[4].parse::<f64>().unwrap_or(0.0);
+            let usep_str = parts[5].trim_end_matches('%');
+            let usage_percent: f32 = usep_str.parse::<f32>().unwrap_or(0.0);
+            let mountpoint = parts[6].to_string();
+
+            // Filtrar sistemas de archivos no relevantes
+            let device_lower = device.to_lowercase();
+            let fstype_lower = fstype.to_lowercase();
+            if device_lower.starts_with("tmpfs")
+                || device_lower.starts_with("devtmpfs")
+                || device_lower.starts_with("overlay")
+                || device_lower.starts_with("squashfs")
+                || device_lower.starts_with("udev")
+                || fstype_lower.contains("tmpfs")
+                || device_lower.starts_with("/dev/loop")
+            {
+                continue;
+            }
+
+            let total_gb = total_bytes / 1_000_000_000.0;
+            let used_gb = used_bytes / 1_000_000_000.0;
+            let available_gb = avail_bytes / 1_000_000_000.0;
+
+            disks.push(DiskInfo {
+                device,
+                mountpoint,
+                fstype,
+                total_gb,
+                used_gb,
+                available_gb,
+                usage_percent,
+            });
+        }
+    }
+
+    disks
 }
 
 /// Obtiene información de GPU usando lspci
@@ -301,6 +410,8 @@ pub fn get_system_info() -> Result<SystemInfo, String> {
             frequency: get_cpu_frequency(),
         },
         memory: get_memory_info(),
+        swap: get_swap_info(),
+        disks: get_disks_info(),
         gpu: get_gpu_info(),
         system: get_system_details(),
         temperature: get_temperature_info(),
