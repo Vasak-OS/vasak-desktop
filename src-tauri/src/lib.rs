@@ -8,7 +8,6 @@ mod eventloops;
 mod menu_manager;
 mod monitor_manager;
 mod notifications;
-mod search;
 mod structs;
 mod tray;
 mod utils;

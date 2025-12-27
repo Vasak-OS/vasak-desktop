@@ -1,4 +1,4 @@
-use crate::search;
+use crate::utils::search;
 
 #[tauri::command]
 pub async fn global_search(query: String, limit: Option<usize>) -> Vec<search::SearchResult> {
