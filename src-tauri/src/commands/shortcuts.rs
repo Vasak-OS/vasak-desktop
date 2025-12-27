@@ -2,7 +2,6 @@ use crate::utils::shortcuts::shortcuts::{Shortcut, ShortcutsManager};
 use crate::utils::shortcuts::shortcuts_handler::GlobalShortcutsHandler;
 use tauri::{State, AppHandle};
 use std::sync::Mutex;
-use std::collections::HashMap;
 
 pub struct ShortcutsState {
     pub manager: Mutex<ShortcutsManager>,
