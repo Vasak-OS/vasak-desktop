@@ -1,6 +1,6 @@
 use gtk::prelude::*;
 use std::sync::Arc;
-use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Url, WebviewUrl, WebviewWindowBuilder};
 
 use crate::app_url::get_app_url;
 use crate::monitor_manager::get_primary_monitor;
@@ -24,7 +24,7 @@ pub async fn create_search_window(
     app: AppHandle,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
-    let primary_monitor_size = primary_monitor.size();
+    let _primary_monitor_size = primary_monitor.size();
 
     let search_window = Arc::new(
         WebviewWindowBuilder::new(
