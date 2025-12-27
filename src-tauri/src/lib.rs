@@ -57,6 +57,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(wm_state)
         .manage(tray_manager)
+        .manage(commands::ShortcutsState::new())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_config_manager::init())
@@ -68,6 +69,7 @@ pub fn run() {
             get_windows,
             toggle_window,
             open_app,
+            open_configuration_window,
             logout,
             shutdown,
             reboot,
@@ -76,6 +78,7 @@ pub fn run() {
             get_menu_items,
             toggle_menu,
             toggle_config_app,
+            open_configuration_window,
             get_audio_volume,
             set_audio_volume,
             toggle_audio_mute,
@@ -103,7 +106,14 @@ pub fn run() {
             battery_fetch_info,
             global_search,
             execute_search_result,
-            toggle_search
+            toggle_search,
+            get_shortcuts,
+            update_shortcut,
+            add_custom_shortcut,
+            delete_shortcut,
+            execute_shortcut,
+            check_shortcut_conflicts,
+            open_configuration_window
         ])
         .setup(move |app| {
             let _ = create_desktops(app);
@@ -111,6 +121,15 @@ pub fn run() {
 
             setup_windows_monitoring(window_manager.clone(), app.handle().clone())?;
             setup_dbus_service(app.handle().clone());
+            
+            // Initialize global shortcuts handler
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let shortcuts_handler = utils::shortcuts::shortcuts_handler::GlobalShortcutsHandler::new();
+                if let Err(e) = shortcuts_handler.register_all(app_handle) {
+                    log::warn!("Failed to register global shortcuts: {}", e);
+                }
+            });
             
             // Initialize AppletManager
             let app_handle = app.handle().clone();

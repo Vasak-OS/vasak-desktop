@@ -57,6 +57,16 @@ const routes = [
             component: () =>
               import("@/views/apps/configuration/ConfigStyleView.vue"),
           },
+          {
+            path: "audio",
+            component: () =>
+              import("@/views/apps/configuration/ConfigAudioView.vue"),
+          },
+          {
+            path: "shortcuts",
+            component: () =>
+              import("@/views/apps/configuration/ConfigShortcutView.vue"),
+          },
         ],
       },
     ],
