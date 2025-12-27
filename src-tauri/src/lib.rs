@@ -112,6 +112,9 @@ pub fn run() {
             delete_shortcut,
             execute_shortcut,
             check_shortcut_conflicts,
+            get_system_info,
+            get_cpu_usage_only,
+            get_memory_usage_only,
             open_configuration_window
         ])
         .setup(move |app| {
