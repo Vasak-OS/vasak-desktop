@@ -7,6 +7,7 @@ import ConfigSidebarButton from '@/components/buttons/ConfigSidebarButton.vue';
     <ul>
       <ConfigSidebarButton icon="userinfo" to="/apps/configuration/info" title="Information" />
       <ConfigSidebarButton icon="style" to="/apps/configuration/style" title="Style Settings" />
+      <ConfigSidebarButton icon="settings" to="/apps/configuration/system" title="OS Settings" />
       <ConfigSidebarButton icon="volume2" to="/apps/configuration/audio" title="Audio Settings" />
       <ConfigSidebarButton icon="keyboard" to="/apps/configuration/shortcuts" title="Keyboard Shortcuts" />
       <ConfigSidebarButton icon="network" to="/apps/configuration/network" title="Network Settings" />
