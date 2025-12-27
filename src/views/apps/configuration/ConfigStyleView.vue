@@ -50,6 +50,17 @@ onMounted(async () => {
     gtkThemes.value = themes;
     cursorThemes.value = cursors;
     iconPacks.value = icons;
+
+    // Asegurar que el estado actual esté presente en los desplegables
+    if (selectedGtkTheme.value && !gtkThemes.value.includes(selectedGtkTheme.value)) {
+      gtkThemes.value.unshift(selectedGtkTheme.value);
+    }
+    if (selectedCursorTheme.value && !cursorThemes.value.includes(selectedCursorTheme.value)) {
+      cursorThemes.value.unshift(selectedCursorTheme.value);
+    }
+    if (selectedIconPack.value && !iconPacks.value.includes(selectedIconPack.value)) {
+      iconPacks.value.unshift(selectedIconPack.value);
+    }
   } catch (err) {
     error.value = `Error cargando configuración: ${err}`;
     console.error(err);
@@ -69,12 +80,12 @@ const saveConfig = async () => {
       throw new Error('Border radius debe estar entre 1 y 20');
     }
 
-    // Actualizar modo oscuro
+    // Actualizar modo oscuro via plugin
     if (darkMode.value !== (configStore.value.config?.style?.darkmode || false)) {
       await setDarkMode(darkMode.value);
     }
 
-    // Aplicar cambios del sistema
+    // Aplicar cambios del sistema (GTK, cursor, icons) via backend
     await applySystemChanges();
 
     // Aplicar CSS variables
@@ -94,11 +105,11 @@ const saveConfig = async () => {
 
 const applySystemChanges = async () => {
   try {
-    // Aplicar cambios de tema GTK y cursor
+    // Solo aplicar cambios de sistema (GTK, cursor, icons) via backend
+    // Border radius y primary color se manejan via el config store del plugin
     const config = {
       border_radius: borderRadius.value,
       primary_color: primaryColor.value,
-      accent_color: '#FF6B6B',
       dark_mode: darkMode.value,
       icon_pack: selectedIconPack.value,
       cursor_theme: selectedCursorTheme.value,
@@ -108,7 +119,7 @@ const applySystemChanges = async () => {
     await invoke('set_system_config', { config });
   } catch (err) {
     console.warn('Error aplicando cambios del sistema:', err);
-    // No lanzar error, permitir que se guarde en el config store al menos
+    // No lanzar error, permitir que continúe aunque falle el backend
   }
 };
 
@@ -500,21 +511,33 @@ const isFormValid = computed(() => {
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 20px;
+  padding-right: 36px;
 }
 
 .select-input:hover {
   border-color: var(--primary-color, #0084FF);
+  background-color: var(--surface-2, rgba(255, 255, 255, 0.08));
 }
 
 .select-input:focus {
   outline: none;
   border-color: var(--primary-color, #0084FF);
   background-color: var(--surface-2, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.1);
 }
 
 .select-input option {
   background-color: var(--surface-1, #1a1a1a);
   color: var(--text-primary, #fff);
+  padding: 8px;
+  margin: 4px 0;
 }
 
 .help-text {
