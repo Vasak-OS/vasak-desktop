@@ -1,9 +1,15 @@
 <script lang="ts" setup>
-import { ref, onMounted, computed } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
-import { useConfigStore, setDarkMode } from "@vasakgroup/plugin-config-manager";
-import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
-import { Store } from 'pinia';
+import { ref, onMounted, computed, type Ref } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+import {
+  useConfigStore,
+  setDarkMode,
+  type VSKConfig,
+  readConfig,
+  writeConfig,
+} from "@vasakgroup/plugin-config-manager";
+import ConfigAppLayout from "@/layouts/ConfigAppLayout.vue";
+import { Store } from "pinia";
 
 const configStore = ref<any>(null);
 const gtkThemes = ref<string[]>([]);
@@ -11,40 +17,55 @@ const cursorThemes = ref<string[]>([]);
 const iconPacks = ref<string[]>([]);
 const loading = ref(true);
 const saving = ref(false);
-const error = ref('');
-const successMessage = ref('');
+const error = ref("");
+const successMessage = ref("");
 
-const borderRadius = ref(8);
-const primaryColor = ref('#0084FF');
-const darkMode = ref(false);
-const selectedGtkTheme = ref('Adwaita');
-const selectedCursorTheme = ref('Adwaita');
-const selectedIconPack = ref('Adwaita');
+const vskConfig: Ref<VSKConfig | null> = ref(null);
+const selectedGtkTheme = ref("Adwaita");
+const selectedCursorTheme = ref("Adwaita");
+const selectedIconPack = ref("Adwaita");
 
 onMounted(async () => {
   try {
     // Cargar config store
     configStore.value = useConfigStore() as Store<
       "config",
-      { config: any; loadConfig: () => Promise<void> }
+      { config: VSKConfig; loadConfig: () => Promise<void> }
     >;
-    
+
     await configStore.value.loadConfig();
 
-    // Cargar valores actuales del config store
-    const style = configStore.value.config?.style || {};
-    borderRadius.value = style.borderRadius || 8;
-    primaryColor.value = style.primaryColor || '#0084FF';
-    darkMode.value = style.darkmode || false;
-    selectedGtkTheme.value = style.gtkTheme || 'Adwaita';
-    selectedCursorTheme.value = style.cursorTheme || 'Adwaita';
-    selectedIconPack.value = style.iconPack || 'Adwaita';
+    // Cargar valores actuales del config store para borderRadius y primaryColor
+    vskConfig.value = await readConfig();
+
+    // Cargar estado actual real del sistema (GTK, cursor, icons)
+    try {
+      const systemState = await invoke<{
+        gtk_theme: string;
+        cursor_theme: string;
+        icon_pack: string;
+        dark_mode: boolean;
+      }>("get_current_system_state");
+
+      selectedGtkTheme.value = systemState.gtk_theme;
+      selectedCursorTheme.value = systemState.cursor_theme;
+      selectedIconPack.value = systemState.icon_pack;
+      // Preferir darkMode del config store ya que es el canonical
+    } catch (err) {
+      console.warn(
+        "No se pudo obtener estado del sistema, usando valores por defecto:",
+        err
+      );
+      selectedGtkTheme.value = "Adwaita";
+      selectedCursorTheme.value = "Adwaita";
+      selectedIconPack.value = "Adwaita";
+    }
 
     // Cargar opciones disponibles
     const [themes, cursors, icons] = await Promise.all([
-      invoke<string[]>('get_gtk_themes'),
-      invoke<string[]>('get_cursor_themes'),
-      invoke<string[]>('get_icon_packs'),
+      invoke<string[]>("get_gtk_themes"),
+      invoke<string[]>("get_cursor_themes"),
+      invoke<string[]>("get_icon_packs"),
     ]);
 
     gtkThemes.value = themes;
@@ -52,13 +73,22 @@ onMounted(async () => {
     iconPacks.value = icons;
 
     // Asegurar que el estado actual esté presente en los desplegables
-    if (selectedGtkTheme.value && !gtkThemes.value.includes(selectedGtkTheme.value)) {
+    if (
+      selectedGtkTheme.value &&
+      !gtkThemes.value.includes(selectedGtkTheme.value)
+    ) {
       gtkThemes.value.unshift(selectedGtkTheme.value);
     }
-    if (selectedCursorTheme.value && !cursorThemes.value.includes(selectedCursorTheme.value)) {
+    if (
+      selectedCursorTheme.value &&
+      !cursorThemes.value.includes(selectedCursorTheme.value)
+    ) {
       cursorThemes.value.unshift(selectedCursorTheme.value);
     }
-    if (selectedIconPack.value && !iconPacks.value.includes(selectedIconPack.value)) {
+    if (
+      selectedIconPack.value &&
+      !iconPacks.value.includes(selectedIconPack.value)
+    ) {
       iconPacks.value.unshift(selectedIconPack.value);
     }
   } catch (err) {
@@ -71,29 +101,34 @@ onMounted(async () => {
 
 const saveConfig = async () => {
   saving.value = true;
-  error.value = '';
-  successMessage.value = '';
+  error.value = "";
+  successMessage.value = "";
 
   try {
     // Validar border radius
-    if (borderRadius.value < 1 || borderRadius.value > 20) {
-      throw new Error('Border radius debe estar entre 1 y 20');
+    if (
+      vskConfig.value?.style?.radius! < 1 ||
+      vskConfig.value?.style?.radius! > 20
+    ) {
+      throw new Error("Border radius debe estar entre 1 y 20");
     }
 
     // Actualizar modo oscuro via plugin
-    if (darkMode.value !== (configStore.value.config?.style?.darkmode || false)) {
-      await setDarkMode(darkMode.value);
+    if (
+      vskConfig.value?.style?.darkmode !==
+      (configStore.value.config?.style?.darkmode || false)
+    ) {
+      await setDarkMode(vskConfig.value?.style?.darkmode || false);
     }
+
+    await writeConfig(vskConfig.value!);
 
     // Aplicar cambios del sistema (GTK, cursor, icons) via backend
     await applySystemChanges();
 
-    // Aplicar CSS variables
-    applyThemeToDOM();
-
-    successMessage.value = 'Configuración guardada exitosamente';
+    successMessage.value = "Configuración guardada exitosamente";
     setTimeout(() => {
-      successMessage.value = '';
+      successMessage.value = "";
     }, 3000);
   } catch (err) {
     error.value = `Error guardando configuración: ${err}`;
@@ -105,56 +140,21 @@ const saveConfig = async () => {
 
 const applySystemChanges = async () => {
   try {
-    // Solo aplicar cambios de sistema (GTK, cursor, icons) via backend
-    // Border radius y primary color se manejan via el config store del plugin
     const config = {
-      border_radius: borderRadius.value,
-      primary_color: primaryColor.value,
-      dark_mode: darkMode.value,
       icon_pack: selectedIconPack.value,
       cursor_theme: selectedCursorTheme.value,
       gtk_theme: selectedGtkTheme.value,
     };
 
-    await invoke('set_system_config', { config });
+    await invoke("set_system_config", { config });
   } catch (err) {
-    console.warn('Error aplicando cambios del sistema:', err);
+    console.warn("Error aplicando cambios del sistema:", err);
     // No lanzar error, permitir que continúe aunque falle el backend
-  }
-};
-
-const applyThemeToDOM = () => {
-  // Aplicar CSS variables al documento
-  const root = document.documentElement;
-  root.style.setProperty('--border-radius', `${borderRadius.value}px`);
-  root.style.setProperty('--primary-color', primaryColor.value);
-
-  // Aplicar clase para modo oscuro
-  if (darkMode.value) {
-    document.documentElement.classList.add('dark-mode');
-  } else {
-    document.documentElement.classList.remove('dark-mode');
-  }
-};
-
-const resetToDefaults = async () => {
-  if (confirm('¿Estás seguro de que deseas restablecer a los valores por defecto?')) {
-    borderRadius.value = 8;
-    primaryColor.value = '#0084FF';
-    darkMode.value = false;
-    selectedGtkTheme.value = 'Adwaita';
-    selectedCursorTheme.value = 'Adwaita';
-    selectedIconPack.value = 'Adwaita';
-    applyThemeToDOM();
-    await saveConfig();
   }
 };
 
 const isFormValid = computed(() => {
   return (
-    borderRadius.value >= 1 &&
-    borderRadius.value <= 20 &&
-    primaryColor.value &&
     selectedGtkTheme.value &&
     selectedCursorTheme.value &&
     selectedIconPack.value
@@ -175,7 +175,9 @@ const isFormValid = computed(() => {
       <div v-else>
         <!-- Mensajes de error/éxito -->
         <div v-if="error" class="alert alert-error">{{ error }}</div>
-        <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
+        <div v-if="successMessage" class="alert alert-success">
+          {{ successMessage }}
+        </div>
 
         <!-- Formulario de configuración -->
         <div class="config-form">
@@ -187,11 +189,13 @@ const isFormValid = computed(() => {
             <div class="form-group">
               <label for="border-radius">
                 <span class="label-text">Border Radius</span>
-                <span class="label-value">{{ borderRadius }}px</span>
+                <span class="label-value">{{ vskConfig?.style.radius }}px</span>
               </label>
               <input
+                v-if="vskConfig"
                 id="border-radius"
-                v-model.number="borderRadius"
+                :value="vskConfig.style.radius"
+                @input="e => (vskConfig!.style.radius = parseInt((e.target as HTMLInputElement).value))"
                 type="range"
                 min="1"
                 max="20"
@@ -205,16 +209,22 @@ const isFormValid = computed(() => {
 
             <!-- Primary Color -->
             <div class="form-group">
-              <label for="primary-color" class="label-text">Color Primario</label>
+              <label for="primary-color" class="label-text"
+                >Color Primario</label
+              >
               <div class="color-input-wrapper">
                 <input
+                  v-if="vskConfig"
                   id="primary-color"
-                  v-model="primaryColor"
+                  :value="vskConfig.style.primarycolor"
+                  @input="e => (vskConfig!.style.primarycolor = (e.target as HTMLInputElement).value)"
                   type="color"
                   class="color-input"
                 />
                 <input
-                  v-model="primaryColor"
+                  v-if="vskConfig"
+                  :value="vskConfig.style.primarycolor"
+                  @input="e => (vskConfig!.style.primarycolor = (e.target as HTMLInputElement).value)"
                   type="text"
                   placeholder="#0084FF"
                   class="color-text"
@@ -227,12 +237,16 @@ const isFormValid = computed(() => {
               <label for="dark-mode" class="label-text">Modo Oscuro</label>
               <div class="toggle-switch">
                 <input
+                  v-if="vskConfig"
                   id="dark-mode"
-                  v-model="darkMode"
+                  :checked="vskConfig.style.darkmode"
+                  @change="e => (vskConfig!.style.darkmode = (e.target as HTMLInputElement).checked)"
                   type="checkbox"
                   class="toggle-input"
                 />
-                <span class="toggle-label">{{ darkMode ? 'Activado' : 'Desactivado' }}</span>
+                <span class="toggle-label">{{
+                  vskConfig?.style.darkmode ? "Activado" : "Desactivado"
+                }}</span>
               </div>
             </div>
           </div>
@@ -243,7 +257,11 @@ const isFormValid = computed(() => {
 
             <div class="form-group">
               <label for="gtk-theme" class="label-text">Tema GTK</label>
-              <select v-model="selectedGtkTheme" id="gtk-theme" class="select-input">
+              <select
+                v-model="selectedGtkTheme"
+                id="gtk-theme"
+                class="select-input"
+              >
                 <option v-for="theme in gtkThemes" :key="theme" :value="theme">
                   {{ theme }}
                 </option>
@@ -256,9 +274,19 @@ const isFormValid = computed(() => {
             <h3 class="section-title">🖱️ Cursor</h3>
 
             <div class="form-group">
-              <label for="cursor-theme" class="label-text">Tema de Cursor</label>
-              <select v-model="selectedCursorTheme" id="cursor-theme" class="select-input">
-                <option v-for="cursor in cursorThemes" :key="cursor" :value="cursor">
+              <label for="cursor-theme" class="label-text"
+                >Tema de Cursor</label
+              >
+              <select
+                v-model="selectedCursorTheme"
+                id="cursor-theme"
+                class="select-input"
+              >
+                <option
+                  v-for="cursor in cursorThemes"
+                  :key="cursor"
+                  :value="cursor"
+                >
                   {{ cursor }}
                 </option>
               </select>
@@ -271,7 +299,11 @@ const isFormValid = computed(() => {
 
             <div class="form-group">
               <label for="icon-pack" class="label-text">Pack de Iconos</label>
-              <select v-model="selectedIconPack" id="icon-pack" class="select-input">
+              <select
+                v-model="selectedIconPack"
+                id="icon-pack"
+                class="select-input"
+              >
                 <option v-for="pack in iconPacks" :key="pack" :value="pack">
                   {{ pack }}
                 </option>
@@ -290,14 +322,7 @@ const isFormValid = computed(() => {
               class="btn btn-primary"
             >
               <span v-if="saving" class="spinner-small"></span>
-              {{ saving ? 'Guardando...' : 'Guardar Cambios' }}
-            </button>
-            <button
-              @click="resetToDefaults"
-              :disabled="saving"
-              class="btn btn-secondary"
-            >
-              Restablecer Valores por Defecto
+              {{ saving ? "Guardando..." : "Guardar Cambios" }}
             </button>
           </div>
         </div>
@@ -333,7 +358,7 @@ const isFormValid = computed(() => {
   width: 40px;
   height: 40px;
   border: 4px solid var(--surface-2, rgba(255, 255, 255, 0.1));
-  border-top-color: var(--primary-color, #0084FF);
+  border-top-color: var(--primary-color, #0084ff);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -433,7 +458,7 @@ const isFormValid = computed(() => {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background-color: var(--primary-color, #0084FF);
+  background-color: var(--primary-color, #0084ff);
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 2px 8px rgba(0, 132, 255, 0.3);
@@ -447,7 +472,7 @@ const isFormValid = computed(() => {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background-color: var(--primary-color, #0084FF);
+  background-color: var(--primary-color, #0084ff);
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
@@ -481,7 +506,7 @@ const isFormValid = computed(() => {
 }
 
 .color-input:hover {
-  border-color: var(--primary-color, #0084FF);
+  border-color: var(--primary-color, #0084ff);
 }
 
 .color-text {
@@ -498,7 +523,7 @@ const isFormValid = computed(() => {
 
 .color-text:focus {
   outline: none;
-  border-color: var(--primary-color, #0084FF);
+  border-color: var(--primary-color, #0084ff);
   background-color: var(--surface-2, rgba(255, 255, 255, 0.1));
 }
 
@@ -522,13 +547,13 @@ const isFormValid = computed(() => {
 }
 
 .select-input:hover {
-  border-color: var(--primary-color, #0084FF);
+  border-color: var(--primary-color, #0084ff);
   background-color: var(--surface-2, rgba(255, 255, 255, 0.08));
 }
 
 .select-input:focus {
   outline: none;
-  border-color: var(--primary-color, #0084FF);
+  border-color: var(--primary-color, #0084ff);
   background-color: var(--surface-2, rgba(255, 255, 255, 0.1));
   box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.1);
 }
@@ -573,12 +598,12 @@ const isFormValid = computed(() => {
 }
 
 .toggle-input:checked {
-  background-color: var(--primary-color, #0084FF);
-  border-color: var(--primary-color, #0084FF);
+  background-color: var(--primary-color, #0084ff);
+  border-color: var(--primary-color, #0084ff);
 }
 
 .toggle-input::before {
-  content: '';
+  content: "";
   position: absolute;
   width: 20px;
   height: 20px;
@@ -620,12 +645,12 @@ const isFormValid = computed(() => {
 }
 
 .btn-primary {
-  background-color: var(--primary-color, #0084FF);
+  background-color: var(--primary-color, #0084ff);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--primary-color, #0084FF);
+  background-color: var(--primary-color, #0084ff);
   opacity: 0.9;
   box-shadow: 0 4px 12px rgba(0, 132, 255, 0.3);
 }
@@ -678,12 +703,12 @@ const isFormValid = computed(() => {
 }
 
 .description strong {
-  color: var(--primary-color, #0084FF);
+  color: var(--primary-color, #0084ff);
   font-weight: 600;
 }
 
 .description a {
-  color: var(--primary-color, #0084FF);
+  color: var(--primary-color, #0084ff);
   text-decoration: none;
   transition: opacity 0.2s ease;
 }

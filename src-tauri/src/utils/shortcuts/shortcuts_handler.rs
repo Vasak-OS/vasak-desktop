@@ -29,7 +29,7 @@ impl GlobalShortcutsHandler {
     }
 
     /// Registra todos los atajos globales en el sistema
-    pub fn register_all(&self, _app: AppHandle) -> Result<(), String> {
+    pub async fn register_all(&self, _app: AppHandle) -> Result<(), String> {
         let shortcuts = self.manager.get_shortcuts();
 
         // Construir lista de (keys, action) para registro a nivel sistema
@@ -42,9 +42,7 @@ impl GlobalShortcutsHandler {
 
         // Registrar en el sistema (X11/Wayland) en modo bulk
         let mgr = X11ShortcutsManager::new();
-        let _ = tauri::async_runtime::block_on(async move {
-            let _ = mgr.register_auto_bulk(&bindings).await;
-        });
+        let _ = mgr.register_auto_bulk(&bindings).await;
 
         Ok(())
     }

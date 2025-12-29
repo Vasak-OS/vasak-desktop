@@ -43,6 +43,84 @@ pub async fn get_system_config() -> Result<SystemConfig, String> {
     }
 }
 
+/// Obtiene el estado actual real del sistema desde gsettings
+#[tauri::command]
+pub async fn get_current_system_state() -> Result<SystemConfig, String> {
+    let gtk_theme = get_current_gtk_theme().await.unwrap_or_else(|_| "Adwaita".to_string());
+    let cursor_theme = get_current_cursor_theme().await.unwrap_or_else(|_| "Adwaita".to_string());
+    let icon_pack = get_current_icon_pack().await.unwrap_or_else(|_| "Adwaita".to_string());
+    let dark_mode = get_current_dark_mode().await.unwrap_or(false);
+    
+    Ok(SystemConfig {
+        border_radius: 8,
+        primary_color: "#0084FF".to_string(),
+        accent_color: "#FF6B6B".to_string(),
+        dark_mode,
+        icon_pack,
+        cursor_theme,
+        gtk_theme,
+    })
+}
+
+/// Obtiene el tema GTK actual desde gsettings
+async fn get_current_gtk_theme() -> Result<String, String> {
+    let output = Command::new("gsettings")
+        .args(&["get", "org.gnome.desktop.interface", "gtk-theme"])
+        .output()
+        .map_err(|e| format!("Error obteniendo tema GTK: {}", e))?;
+    
+    let theme = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .trim_matches('\'')
+        .to_string();
+    
+    Ok(theme)
+}
+
+/// Obtiene el cursor actual desde gsettings
+async fn get_current_cursor_theme() -> Result<String, String> {
+    let output = Command::new("gsettings")
+        .args(&["get", "org.gnome.desktop.interface", "cursor-theme"])
+        .output()
+        .map_err(|e| format!("Error obteniendo cursor: {}", e))?;
+    
+    let cursor = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .trim_matches('\'')
+        .to_string();
+    
+    Ok(cursor)
+}
+
+/// Obtiene el pack de iconos actual desde gsettings
+async fn get_current_icon_pack() -> Result<String, String> {
+    let output = Command::new("gsettings")
+        .args(&["get", "org.gnome.desktop.interface", "icon-theme"])
+        .output()
+        .map_err(|e| format!("Error obteniendo pack de iconos: {}", e))?;
+    
+    let icons = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .trim_matches('\'')
+        .to_string();
+    
+    Ok(icons)
+}
+
+/// Obtiene el estado de dark mode actual desde gsettings
+async fn get_current_dark_mode() -> Result<bool, String> {
+    let output = Command::new("gsettings")
+        .args(&["get", "org.gnome.desktop.interface", "color-scheme"])
+        .output()
+        .map_err(|e| format!("Error obteniendo color scheme: {}", e))?;
+    
+    let scheme = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .to_string();
+    
+    Ok(scheme.contains("dark"))
+}
+
 /// Establece la configuración del sistema y persiste los cambios
 #[tauri::command]
 pub async fn set_system_config(config: SystemConfig) -> Result<SystemConfig, String> {
@@ -84,11 +162,13 @@ async fn apply_system_config(config: &SystemConfig) -> Result<(), String> {
     // Aplicar cursor
     set_cursor_theme(&config.cursor_theme).await?;
 
+    // Aplicar icon pack
+    set_icon_pack(&config.icon_pack).await?;
+
     // Aplicar modo oscuro/claro
     set_dark_mode(config.dark_mode).await?;
 
     // Nota: Color primario y border radius se aplican via CSS vars en Vue
-    // Nota: Icon pack se aplica via refrescando las apps de Tauri
 
     Ok(())
 }
@@ -101,21 +181,49 @@ pub async fn set_gtk_theme(theme: &str, dark_mode: bool) -> Result<(), String> {
         theme.to_string()
     };
 
-    Command::new("gsettings")
+    let output = Command::new("gsettings")
         .args(&["set", "org.gnome.desktop.interface", "gtk-theme", &theme_name])
         .output()
         .map_err(|e| format!("Error setting GTK theme: {}", e))?;
 
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Error al aplicar tema GTK: {}", stderr));
+    }
+
+    println!("GTK theme aplicado: {}", theme_name);
     Ok(())
 }
 
 /// Cambia el cursor del sistema
 pub async fn set_cursor_theme(cursor: &str) -> Result<(), String> {
-    Command::new("gsettings")
+    let output = Command::new("gsettings")
         .args(&["set", "org.gnome.desktop.interface", "cursor-theme", cursor])
         .output()
         .map_err(|e| format!("Error setting cursor theme: {}", e))?;
 
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Error al aplicar cursor: {}", stderr));
+    }
+
+    println!("Cursor theme aplicado: {}", cursor);
+    Ok(())
+}
+
+/// Cambia el pack de iconos del sistema
+pub async fn set_icon_pack(icon_pack: &str) -> Result<(), String> {
+    let output = Command::new("gsettings")
+        .args(&["set", "org.gnome.desktop.interface", "icon-theme", icon_pack])
+        .output()
+        .map_err(|e| format!("Error setting icon pack: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Error al aplicar pack de iconos: {}", stderr));
+    }
+
+    println!("Icon pack aplicado: {}", icon_pack);
     Ok(())
 }
 
@@ -182,11 +290,11 @@ pub async fn get_cursor_themes() -> Result<Vec<String>, String> {
         if let Ok(entries) = std::fs::read_dir(&path) {
             for entry in entries {
                 if let Ok(entry) = entry {
-                    if let Ok(metadata) = entry.metadata() {
-                        if metadata.is_dir() {
-                            if let Ok(file_name) = entry.file_name().into_string() {
-                                cursors.insert(file_name);
-                            }
+                    // Verificar que tenga un subdirectorio "cursors"
+                    let cursors_dir = entry.path().join("cursors");
+                    if cursors_dir.exists() && cursors_dir.is_dir() {
+                        if let Ok(file_name) = entry.file_name().into_string() {
+                            cursors.insert(file_name);
                         }
                     }
                 }
@@ -217,9 +325,12 @@ pub async fn get_icon_packs() -> Result<Vec<String>, String> {
         if let Ok(entries) = std::fs::read_dir(&path) {
             for entry in entries {
                 if let Ok(entry) = entry {
-                    // Revisar si tiene index.theme
-                    let index_theme = entry.path().join("index.theme");
-                    if index_theme.exists() {
+                    let entry_path = entry.path();
+                    let index_theme = entry_path.join("index.theme");
+                    let cursors_dir = entry_path.join("cursors");
+                    
+                    // Solo incluir si tiene index.theme Y NO es un cursor theme
+                    if index_theme.exists() && !cursors_dir.exists() {
                         if let Ok(file_name) = entry.file_name().into_string() {
                             icons.insert(file_name);
                         }

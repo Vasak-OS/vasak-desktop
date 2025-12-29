@@ -116,6 +116,7 @@ pub fn run() {
             get_cpu_usage_only,
             get_memory_usage_only,
             get_system_config,
+            get_current_system_state,
             set_system_config,
             get_gtk_themes,
             get_cursor_themes,
@@ -133,7 +134,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let shortcuts_handler = utils::shortcuts::shortcuts_handler::GlobalShortcutsHandler::new();
-                if let Err(e) = shortcuts_handler.register_all(app_handle) {
+                if let Err(e) = shortcuts_handler.register_all(app_handle).await {
                     log::warn!("Failed to register global shortcuts: {}", e);
                 }
             });
