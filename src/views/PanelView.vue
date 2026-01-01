@@ -9,15 +9,20 @@ import { getIconSource } from "@vasakgroup/plugin-vicons";
 import menuIcon from "@/assets/img/icon.png";
 
 const notifyIcon: Ref<string> = ref("");
+const configIcon: Ref<string> = ref("");
+const fileManagerIcon: Ref<string> = ref("");
+
 const notifications = ref<Notification[]>([]);
 const hasNewNotifications = ref(false);
 let unlistenNotifications: Ref<(() => void) | null> = ref(null);
 
-const setNotifyIcon = async () => {
+const setIcons = async () => {
   try {
     notifyIcon.value = await getIconSource("preferences-desktop-notification");
+    configIcon.value = await getIconSource("preferences-system");
+    fileManagerIcon.value = await getIconSource("system-file-manager");
   } catch (err) {
-    console.error("Error: finding notify icon");
+    console.error("Error: finding icons");
   }
 };
 
@@ -26,6 +31,22 @@ const openMenu = async () => {
     await invoke("toggle_menu");
   } catch (error) {
     console.error("Error al abrir el menu:", error);
+  }
+};
+
+const openConfig = async () => {
+  try {
+    await invoke("toggle_config_app");
+  } catch (error) {
+    console.error("Error al abrir config:", error);
+  }
+};
+
+const openFileManager = async () => {
+  try {
+    await invoke("open_file_manager_window");
+  } catch (error) {
+    console.error("Error al abrir file manager:", error);
   }
 };
 
@@ -46,7 +67,7 @@ async function loadNotifications() {
 }
 
 onMounted(async () => {
-  setNotifyIcon();
+  setIcons();
   await loadNotifications();
 
   unlistenNotifications.value = await listen(
@@ -76,7 +97,11 @@ onUnmounted(() => {
 
 <template>
   <nav class="vpanel background">
-    <img :src="menuIcon" alt="Menu" @click="openMenu" class="app-icon" />
+    <div class="flex items-center gap-1">
+      <img :src="menuIcon" alt="Menu" @click="openMenu" class="app-icon" />
+      <img :src="configIcon" alt="Config" @click="openConfig" class="app-icon" />
+      <img :src="fileManagerIcon" alt="Files" @click="openFileManager" class="app-icon" />
+    </div>
     <WindowsArea />
     <div class="flex content-center items-center">
       <TrayBarArea />
