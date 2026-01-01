@@ -77,7 +77,9 @@ pub fn run() {
             get_menu_items,
             toggle_menu,
             toggle_config_app,
+            toggle_config_app,
             open_configuration_window,
+            open_file_manager_window,
             get_audio_volume,
             set_audio_volume,
             toggle_audio_mute,
@@ -121,7 +123,9 @@ pub fn run() {
             get_gtk_themes,
             get_cursor_themes,
             get_icon_packs,
-            open_configuration_window
+            get_icon_packs,
+            open_configuration_window,
+            read_directory
         ])
         .setup(move |app| {
             let _ = create_desktops(app);

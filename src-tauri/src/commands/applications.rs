@@ -1,5 +1,16 @@
 use tauri::{async_runtime::spawn, AppHandle, Manager};
-use crate::windows_apps::create_app_configuration_window;
+use crate::windows_apps::{create_app_configuration_window, create_file_manager_window};
+
+#[tauri::command]
+pub fn open_file_manager_window(app: AppHandle) -> Result<(), String> {
+    // Always spawn a new instance (multiple instances supported)
+    spawn(async move {
+        let _ = create_file_manager_window(app).await;
+    });
+
+    Ok(())
+}
+
 
 #[tauri::command]
 pub fn toggle_config_app(app: AppHandle) -> Result<(), ()> {
