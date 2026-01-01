@@ -34,6 +34,10 @@ const routes = [
       },
       { path: "search", component: () => import("@/views/apps/SearchView.vue") },
       {
+        path: "file_manager",
+        component: () => import("@/views/apps/FileManagerView.vue"),
+      },
+      {
         path: "configuration",
         redirect: "/apps/configuration/info",
         children: [
