@@ -1,4 +1,5 @@
 use crate::commands::{toggle_config_app, toggle_control_center, toggle_menu, toggle_search};
+use crate::windows_apps::create_file_manager_window;
 use futures_util::TryStreamExt;
 use tauri::AppHandle;
 use zbus::{Connection, Message, Result as ZbusResult};
@@ -32,6 +33,12 @@ impl DesktopService {
                 let app_handle = self.app_handle.clone();
                 tauri::async_runtime::spawn(async move {
                     let _ = toggle_search(app_handle).await;
+                });
+            }
+            "OpenFileManager" => {
+                let app_handle = self.app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = create_file_manager_window(app_handle).await;
                 });
             }
             _ => {

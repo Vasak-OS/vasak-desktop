@@ -22,7 +22,8 @@
     "applet_audio",
     "app_terminal",
     "app_config",
-    "app_search"
+    "app_search",
+    "app_file_manager*"
   ],
   "permissions": [
     "core:default",
