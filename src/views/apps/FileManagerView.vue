@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { WindowFrame } from "@vasakgroup/vue-libvasak";
 import { ref, onMounted } from "vue";
+import { readTextFile } from "@tauri-apps/plugin-fs";
+import { join, homeDir } from "@tauri-apps/api/path";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { homeDir } from '@tauri-apps/api/path';
 import { getIconSource } from "@vasakgroup/plugin-vicons";
 
 // Interfaces
@@ -18,14 +19,14 @@ interface FileEntry {
   loadError?: boolean;
 }
 
+interface SidebarItem {
+    name: string;
+    icon: string;
+    path: string;
+}
+
 // State
-const sidebarItems = [
-  { name: "Home", icon: "user-home", path: "HOME" },
-  { name: "Documents", icon: "folder-documents", path: "Documents" },
-  { name: "Downloads", icon: "folder-download", path: "Downloads" },
-  { name: "Pictures", icon: "folder-pictures", path: "Pictures" },
-  { name: "Music", icon: "folder-music", path: "Music" },
-];
+const sidebarItems = ref([] as SidebarItem[]);
 
 const files = ref<FileEntry[]>([]);
 const currentPath = ref("");
@@ -142,26 +143,95 @@ const handleItemClick = (file: FileEntry) => {
   }
 };
 
-const handleSidebarClick = (item: typeof sidebarItems[0]) => {
+const handleSidebarClick = (item: SidebarItem) => {
+  // item.path is now mostly absolute, except for special HOME logic if we kept it distinct, 
+  // but better to align all to absolute paths effectively.
+  // Although HOME is conceptually nicer as a variable.
+  
   if (item.path === "HOME") {
-    navigateTo(homePath.value);
+      navigateTo(homePath.value);
+  } else if (item.path.startsWith('/')) {
+      navigateTo(item.path);
   } else {
-    navigateTo(`${homePath.value}/${item.path}`);
+      // Fallback relative to home if path is simple name
+      navigateTo(`${homePath.value}/${item.path}`);
   }
+};
+
+const loadSidebar = async () => {
+    const items: SidebarItem[] = [];
+    
+    // 1. Always add Home
+    items.push({ name: "Home", icon: "user-home", path: "HOME" });
+    
+    try {
+        const configPath = await join(await homeDir(), '.config', 'user-dirs.dirs');
+        const content = await readTextFile(configPath);
+        
+        // Map XDG var to icon
+        const iconMap: Record<string, string> = {
+            "XDG_DOCUMENTS_DIR": "folder-documents",
+            "XDG_DOWNLOAD_DIR": "folder-download",
+            "XDG_MUSIC_DIR": "folder-music",
+            "XDG_PICTURES_DIR": "folder-pictures",
+            "XDG_VIDEOS_DIR": "folder-videos",
+            "XDG_DESKTOP_DIR": "user-desktop"
+        };
+        
+        const lines = content.split('\n');
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if(!trimmed || trimmed.startsWith('#')) continue;
+            
+            // Format: XDG_xxx_DIR="$HOME/yyy"
+            const match = trimmed.match(/^(XDG_[A-Z_]+_DIR)="(.*)"/);
+            if (match) {
+                const key = match[1];
+                let val = match[2];
+                
+                // Ignored keys
+                if (key === "XDG_TEMPLATES_DIR" || key === "XDG_PUBLICSHARE_DIR") continue;
+                
+                // Resolve $HOME
+                const resolvedPath = val.replace('$HOME', homePath.value);
+                // Extract clean name (basename)
+                const name = resolvedPath.split('/').pop() || val;
+                
+                const icon = iconMap[key] || "folder";
+                
+                items.push({ name, icon, path: resolvedPath });
+            }
+        }
+    } catch(e) {
+        console.warn("Failed to load user-dirs.dirs, falling back to defaults", e);
+        // Fallback defaults if file missing
+        items.push(
+            { name: "Documents", icon: "folder-documents", path: "Documents" },
+            { name: "Downloads", icon: "folder-download", path: "Downloads" },
+            { name: "Pictures", icon: "folder-pictures", path: "Pictures" },
+            { name: "Music", icon: "folder-music", path: "Music" }
+        );
+    }
+    
+    sidebarItems.value = items;
+    
+    // Load icons for the dynamic items
+    for (const item of sidebarItems.value) {
+        try {
+            const source = await getIconSource(item.icon);
+            sidebarIcons.value[item.name] = source.startsWith('/') ? convertFileSrc(source) : source;
+        } catch(e) { console.warn("Sidebar icon fail", item.icon) }
+    }
 };
 
 onMounted(async () => {
     try {
-        // Load sidebar icons
-        for (const item of sidebarItems) {
-            try {
-                const source = await getIconSource(item.icon);
-                sidebarIcons.value[item.name] = source.startsWith('/') ? convertFileSrc(source) : source;
-            } catch(e) { console.warn("Sidebar icon fail", item.icon) }
-        }
-
         homePath.value = await homeDir();
         currentPath.value = homePath.value;
+        
+        // Load sidebar AFTER home path is set
+        await loadSidebar();
+        
         loadFiles(homePath.value);
     } catch (e) {
         console.error("Failed to get home dir", e);

@@ -22,10 +22,13 @@
     "core:image:default",
     "core:path:default",
     "fs:default",
+    "fs:allow-read-text-file",
+    "fs:allow-exists",
     {
       "identifier": "fs:scope",
       "allow": [
-        "$HOME/**"
+        "$HOME/**",
+        "$HOME/.config/**"
       ]
     },
     "core:window:default",
