@@ -31,7 +31,16 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "scope": [
+          "$HOME/**",
+          "/usr/share/**",
+          "/run/media/**",
+          "/mnt/**"
+        ],
+        "enable": true
+      }
     }
   },
   "bundle": {
