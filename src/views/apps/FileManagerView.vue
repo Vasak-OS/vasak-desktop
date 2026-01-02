@@ -218,6 +218,10 @@ const loadSidebar = async () => {
             { name: "Music", icon: "folder-music", path: "Music" }
         );
     }
+
+    // Add Trash (Recycle Bin) at the end
+    const trashPath = await join(await homeDir(), '.local', 'share', 'Trash', 'files');
+    items.push({ name: "Trash", icon: "user-trash", path: trashPath });
     
     sidebarItems.value = items;
     
