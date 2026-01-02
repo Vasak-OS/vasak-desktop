@@ -26,13 +26,14 @@ const currentPath = ref("");
 const homePath = ref("");
 const loading = ref(false);
 const error = ref("");
+const showHidden = ref(false);
 
 // Actions
 const loadFiles = async (path: string) => {
   loading.value = true;
   error.value = "";
   try {
-    const entries = await invoke<FileEntry[]>("read_directory", { path });
+    const entries = await invoke<FileEntry[]>("read_directory", { path, showHidden: showHidden.value });
     files.value = entries;
     currentPath.value = path;
   } catch (err: any) {
@@ -41,6 +42,11 @@ const loadFiles = async (path: string) => {
   } finally {
     loading.value = false;
   }
+};
+
+const toggleHiddenFiles = () => {
+    showHidden.value = !showHidden.value;
+    loadFiles(currentPath.value);
 };
 
 const navigateTo = (path: string) => {
@@ -106,7 +112,12 @@ onMounted(async () => {
         <div class="flex-1 bg-white/40 dark:bg-black/20 rounded-[var(--radius-vsk)] px-3 py-1 text-sm font-medium opacity-80 backdrop-blur-md truncate">
           {{ currentPath }}
         </div>
-        <div class="ml-4 flex gap-2">
+        <div class="ml-4 flex gap-2 items-center">
+            <!-- Hidden Files Toggle -->
+            <label class="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer select-none hover:text-gray-900 dark:hover:text-gray-200">
+                <input type="checkbox" :checked="showHidden" @change="toggleHiddenFiles" class="rounded border-gray-300 dark:border-gray-600 focus:ring-vsk-primary text-vsk-primary">
+                Show Hidden
+            </label>
             <!-- Placeholder for search or other actions -->
             <button class="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-[var(--radius-vsk)]">🔍</button>
         </div>

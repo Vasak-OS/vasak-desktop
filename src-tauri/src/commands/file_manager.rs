@@ -11,7 +11,7 @@ pub struct FileEntry {
 }
 
 #[tauri::command]
-pub fn read_directory(path: String) -> Result<Vec<FileEntry>, String> {
+pub fn read_directory(path: String, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
     // Handle home directory expansion if needed, but for now strict paths.
     // Ideally the frontend sends absolute paths.
     
@@ -27,6 +27,12 @@ pub fn read_directory(path: String) -> Result<Vec<FileEntry>, String> {
             for entry_result in read_dir {
                 if let Ok(entry) = entry_result {
                     let file_name = entry.file_name().to_string_lossy().to_string();
+                    
+                    // Filter hidden files if show_hidden is false
+                    if !show_hidden && file_name.starts_with('.') {
+                        continue;
+                    }
+
                     let file_path = entry.path().to_string_lossy().to_string();
                     
                     let metadata = entry.metadata().map_err(|e| e.to_string())?;
