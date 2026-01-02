@@ -11,7 +11,7 @@ pub fn create_file_manager_window(
     
     let label = format!("app_file_manager_{}", Uuid::new_v4());
 
-    let mut builder = WebviewWindowBuilder::new(
+    let builder = WebviewWindowBuilder::new(
             &app,
             &label,
             WebviewUrl::App("index.html#/apps/file_manager".into()),
