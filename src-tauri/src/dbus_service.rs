@@ -38,7 +38,7 @@ impl DesktopService {
             "OpenFileManager" => {
                 let app_handle = self.app_handle.clone();
                 tauri::async_runtime::spawn(async move {
-                    let _ = create_file_manager_window(app_handle).await;
+                    let _ = create_file_manager_window(app_handle);
                 });
             }
             _ => {

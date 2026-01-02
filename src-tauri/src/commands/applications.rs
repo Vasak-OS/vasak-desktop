@@ -3,9 +3,8 @@ use crate::windows_apps::{create_app_configuration_window, create_file_manager_w
 
 #[tauri::command]
 pub fn open_file_manager_window(app: AppHandle) -> Result<(), String> {
-    // Always spawn a new instance (multiple instances supported)
     spawn(async move {
-        let _ = create_file_manager_window(app).await;
+        let _ = create_file_manager_window(app);
     });
 
     Ok(())
@@ -14,7 +13,6 @@ pub fn open_file_manager_window(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn toggle_config_app(app: AppHandle) -> Result<(), ()> {
-    // Cerrar el menú si está abierto antes de abrir/alternar la app de configuración
     if let Some(menu_window) = app.get_webview_window("menu") {
         let _ = menu_window.close();
     }
