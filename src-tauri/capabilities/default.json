@@ -19,6 +19,15 @@
     "core:default",
     "shell:allow-open",
     "opener:default",
+    "core:image:default",
+    "core:path:default",
+    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        "$HOME/**"
+      ]
+    },
     "core:window:default",
     "core:window:allow-start-dragging",
     "core:window:allow-set-position",
