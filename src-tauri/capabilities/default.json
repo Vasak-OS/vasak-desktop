@@ -18,11 +18,25 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "open",
+          "cmd": "/usr/bin/xdg-open",
+          "args": true,
+          "sidecar": false
+        }
+      ]
+    },
     "opener:default",
+    "opener:allow-open-path",
     "core:image:default",
     "core:path:default",
     "fs:default",
     "fs:allow-read-text-file",
+    "fs:allow-open",
+    "fs:allow-read-file",
     "fs:allow-exists",
     {
       "identifier": "fs:scope",
