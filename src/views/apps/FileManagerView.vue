@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { WindowFrame } from "@vasakgroup/vue-libvasak";
 import { ref, onMounted } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { homeDir } from '@tauri-apps/api/path';
+import { getIconSource } from "@vasakgroup/plugin-vicons";
 
 // Interfaces
 interface FileEntry {
@@ -10,15 +11,20 @@ interface FileEntry {
   is_dir: boolean;
   size: string;
   path: string;
+  // Metadata for UI
+  icon?: string;
+  previewUrl?: string;
+  mimeType?: string; // specific type inference
+  loadError?: boolean;
 }
 
 // State
 const sidebarItems = [
-  { name: "Home", icon: "🏠", path: "HOME" }, // Special marker for home
-  { name: "Documents", icon: "📄", path: "Documents" },
-  { name: "Downloads", icon: "⬇️", path: "Downloads" },
-  { name: "Pictures", icon: "🖼️", path: "Pictures" },
-  { name: "Music", icon: "🎵", path: "Music" },
+  { name: "Home", icon: "user-home", path: "HOME" },
+  { name: "Documents", icon: "folder-documents", path: "Documents" },
+  { name: "Downloads", icon: "folder-download", path: "Downloads" },
+  { name: "Pictures", icon: "folder-pictures", path: "Pictures" },
+  { name: "Music", icon: "folder-music", path: "Music" },
 ];
 
 const files = ref<FileEntry[]>([]);
@@ -27,14 +33,78 @@ const homePath = ref("");
 const loading = ref(false);
 const error = ref("");
 const showHidden = ref(false);
+const sidebarIcons = ref<Record<string, string>>({});
+
+// Icon Mapping Helper
+const getIconNameForFile = (filename: string, isDir: boolean): string => {
+  if (isDir) return "folder";
+  
+  const ext = filename.split('.').pop()?.toLowerCase() || "";
+  
+  switch(ext) {
+    case "png": case "jpg": case "jpeg": case "gif": case "webp": case "svg": return "image-x-generic";
+    case "mp4": case "webm": case "mkv": case "avi": return "video-x-generic";
+    case "mp3": case "wav": case "flac": case "ogg": return "audio-x-generic";
+    case "txt": case "md": case "log": return "text-x-generic";
+    case "pdf": return "application-pdf";
+    case "zip": case "tar": case "gz": case "7z": case "rar": return "package-x-generic";
+    case "rs": case "ts": case "js": case "vue": case "py": case "c": case "cpp": return "text-x-script"; // or generic code icon
+    case "html": case "css": return "text-html";
+    case "exe": case "sh": case "bin": return "application-x-executable";
+    default: return "text-x-generic"; // Fallback
+  }
+};
+
+const isImage = (filename: string) => /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
+const isVideo = (filename: string) => /\.(mp4|webm|mkv)$/i.test(filename);
+
+// Process entries to add icons and previews
+const processEntries = async (entries: FileEntry[]) => {
+  const processed: FileEntry[] = [];
+  
+  for (const entry of entries) {
+    const item: FileEntry = { ...entry };
+    
+    // 1. Generate Preview for Images/Videos
+    if (!item.is_dir) {
+        if (isImage(item.name)) {
+            item.previewUrl = convertFileSrc(item.path);
+            item.mimeType = "image";
+        } else if (isVideo(item.name)) {
+             item.previewUrl = convertFileSrc(item.path);
+             item.mimeType = "video";
+        }
+    }
+
+    // 2. Fetch Icon if no preview (or as fallback/overlay)
+    const iconName = getIconNameForFile(item.name, item.is_dir);
+    try {
+        const source = await getIconSource(iconName);
+        if (source && source.startsWith('/')) {
+            item.icon = convertFileSrc(source);
+        } else {
+             item.icon = source;
+        }
+    } catch (e) {
+        console.warn(`Failed to load icon ${iconName}`, e);
+        // Fallback or empty
+    }
+    
+    processed.push(item);
+  }
+  return processed;
+};
 
 // Actions
 const loadFiles = async (path: string) => {
   loading.value = true;
   error.value = "";
+  files.value = []; // Clear for immediate feedback or keep old? Clear feels snappier for nav.
+  
   try {
     const entries = await invoke<FileEntry[]>("read_directory", { path, showHidden: showHidden.value });
-    files.value = entries;
+    // Post-process for icons/previews
+    files.value = await processEntries(entries);
     currentPath.value = path;
   } catch (err: any) {
     error.value = err.toString();
@@ -82,6 +152,14 @@ const handleSidebarClick = (item: typeof sidebarItems[0]) => {
 
 onMounted(async () => {
     try {
+        // Load sidebar icons
+        for (const item of sidebarItems) {
+            try {
+                const source = await getIconSource(item.icon);
+                sidebarIcons.value[item.name] = source.startsWith('/') ? convertFileSrc(source) : source;
+            } catch(e) { console.warn("Sidebar icon fail", item.icon) }
+        }
+
         homePath.value = await homeDir();
         currentPath.value = homePath.value;
         loadFiles(homePath.value);
@@ -132,7 +210,9 @@ onMounted(async () => {
             @click="handleSidebarClick(item)"
             class="flex items-center gap-3 px-3 py-2 rounded-[var(--radius-vsk)] hover:bg-white/40 dark:hover:bg-white/10 transition-colors text-sm font-medium text-left"
           >
-            <span>{{ item.icon }}</span>
+            <!-- Use loaded icon or fallback emoji -->
+            <img v-if="sidebarIcons[item.name]" :src="sidebarIcons[item.name]" class="w-5 h-5" />
+            <span v-else>📁</span>
             <span>{{ item.name }}</span>
           </button>
         </div>
@@ -152,9 +232,23 @@ onMounted(async () => {
               @dblclick="handleItemClick(file)"
               class="group flex flex-col items-center gap-2 p-3 rounded-[var(--radius-vsk)] hover:bg-blue-500/10 dark:hover:bg-blue-400/10 hover:ring-1 hover:ring-vsk-primary cursor-pointer transition-all"
             >
-              <div class="text-4xl opacity-80 group-hover:scale-110 transition-transform duration-200">
-                {{ file.is_dir ? '📁' : '📄' }}
+              <!-- Icon / Preview Container -->
+              <div class="w-16 h-16 flex items-center justify-center overflow-hidden rounded-[var(--radius-vsk)] bg-black/5 dark:bg-white/5 group-hover:scale-105 transition-transform duration-200">
+                 
+                 <!-- Image Preview -->
+                 <img v-if="file.mimeType === 'image' && file.previewUrl && !file.loadError" :src="file.previewUrl" class="w-full h-full object-cover" loading="lazy" @error="file.loadError = true" />
+                 
+                 <!-- Video Preview (Icon fallback if needed, but video tag for now) -->
+                 <video v-else-if="file.mimeType === 'video' && file.previewUrl && !file.loadError" :src="file.previewUrl" class="w-full h-full object-cover" muted loop @mouseenter="(e) => (e.target as HTMLVideoElement).play()" @mouseleave="(e) => (e.target as HTMLVideoElement).pause()" @error="file.loadError = true"></video>
+
+                 <!-- System Icon (Fallback or for non-media OR load error) -->
+                 <img v-else-if="file.icon" :src="file.icon" class="w-full h-full object-contain p-2 opacity-80" />
+                 
+                 <!-- Fallback Text Icon -->
+                 <span v-else class="text-3xl opacity-50">{{ file.is_dir ? '📁' : '📄' }}</span>
+
               </div>
+
               <span class="text-xs text-center truncate w-full px-1 select-none font-medium text-gray-700 dark:text-gray-300 group-hover:text-vsk-primary" :title="file.name">
                 {{ file.name }}
               </span>

@@ -63,6 +63,7 @@ pub fn run() {
         .plugin(tauri_plugin_user_data::init())
         .plugin(tauri_plugin_network_manager::init())
         .plugin(tauri_plugin_bluetooth_manager::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_vicons::init())
         .invoke_handler(tauri::generate_handler![
             get_windows,
