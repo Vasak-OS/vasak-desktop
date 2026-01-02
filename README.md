@@ -16,8 +16,8 @@ The vasak-desktop application requires both Node.js/JavaScript and Rust toolchai
 
 #### Required Dependencies
 * JavaScript Runtime (Bun Recommended):
-  * Node.js 18+ or Bun runtime
-  * Package manager: npm, yarn, pnpm, or bun
+  * Bun runtime
+  * Package manager: bun
 * Rust Toolchain:
   * Rust 1.70+ with Cargo
   * Tauri CLI 2.8+
