@@ -5,6 +5,7 @@ import { readTextFile } from "@tauri-apps/plugin-fs";
 import { join, homeDir } from "@tauri-apps/api/path";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { Command } from '@tauri-apps/plugin-shell';
 
 // Interfaces
 interface FileEntry {
@@ -134,12 +135,17 @@ const navigateUp = () => {
   }
 };
 
-const handleItemClick = (file: FileEntry) => {
+const handleItemClick = async (file: FileEntry) => {
   if (file.is_dir) {
     navigateTo(file.path);
   } else {
-    // TODO: Implement file opening logic
-    console.log("File clicked:", file.path);
+    try {
+        const cmd = Command.create('open', [file.path]);
+        await cmd.spawn();
+    } catch (e) {
+        console.error("Failed to open file:", file.path, e);
+        // Optional: show user feedback
+    }
   }
 };
 
