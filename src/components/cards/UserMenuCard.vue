@@ -20,7 +20,7 @@ onMounted(loadUserInfo);
 </script>
 
 <template>
-  <div v-if="userInfo" class="flex items-center space-x-3 backdrop-blur-sm">
+  <div v-if="userInfo" class="flex items-center space-x-3">
     <img
       :src="avatarSrc"
       :alt="userInfo.username"
