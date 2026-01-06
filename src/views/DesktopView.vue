@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import DesktopClockWidget from "@/components/widgets/DesktopClockWidget.vue";
 import MusicWidget from "@/components/widgets/MusicWidget.vue";
-import { ref, Ref } from "vue";
+import { ref, Ref, computed } from "vue";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
-const background: Ref<string> = ref(
-  "https://png.pngtree.com/background/20250102/original/pngtree-planetary-glow-stunning-celestial-view-pc-wallpaper-picture-image_15736228.jpg"
+const backgroundPath: Ref<string> = ref(
+  "/usr/share/backgrounds/cutefishos/wallpaper-9.jpg"
 );
+const background = computed(() => convertFileSrc(backgroundPath.value));
 const backgroundType: Ref<string> = ref("image/jpeg");
 </script>
 
