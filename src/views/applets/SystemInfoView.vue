@@ -1,83 +1,147 @@
 <template>
-  <div class="system-info-view">
-    <h2 class="view-title">Información del Sistema</h2>
-    
-    <div v-if="loading" class="loading">
-      <div class="spinner"></div>
+  <div class="p-8 max-w-[1200px] mx-auto">
+    <h2 class="text-3xl font-bold mb-8 text-vsk-primary">
+      Información del Sistema
+    </h2>
+
+    <div
+      v-if="loading"
+      class="flex flex-col items-center justify-center p-12 text-center"
+    >
+      <div class="w-12 h-12 border-4 rounded-full animate-spin"></div>
       <p>Cargando información del sistema...</p>
     </div>
 
-    <div v-else-if="error" class="error-message">
+    <div
+      v-else-if="error"
+      class="flex flex-col items-center justify-center p-12 text-center text-red-500"
+    >
       <p>{{ error }}</p>
-      <button @click="() => loadSystemInfo()" class="retry-button">Reintentar</button>
+      <button
+        @click="() => loadSystemInfo()"
+        class="mt-3 py-3 px-6 bg-vsk-primary border-0 rounded-vsk font-semibold cursor-pointer transition-all hover:bg-[var(--accent-hover)] hover:scale-105 active:scale-95"
+      >
+        Reintentar
+      </button>
     </div>
 
-    <div v-else class="info-grid">
+    <div
+      v-else
+      class="grid grid-cols-[repeat(auto-fit,minmax(350px,1fr))] gap-6 mb-8"
+    >
       <!-- Sistema -->
-      <div class="info-card">
-        <div class="card-header">
-          <span class="icon">💻</span>
-          <h3>Sistema Operativo</h3>
+      <div
+        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+      >
+        <div class="flex items-center gap-3 py-4 px-5">
+          <span class="text-2xl">💻</span>
+          <h3 class="text-lg font-semibold m-0">Sistema Operativo</h3>
         </div>
-        <div class="card-content">
-          <div class="info-row">
-            <span class="label">Nombre:</span>
-            <span class="value">{{ systemInfo?.system.os_name }}</span>
+        <div class="p-5">
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">Nombre:</span>
+            <span class="font-semibold text-right max-w-[60%]">{{
+              systemInfo?.system.os_name
+            }}</span>
           </div>
-          <div class="info-row">
-            <span class="label">Versión:</span>
-            <span class="value">{{ systemInfo?.system.os_version }}</span>
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">Versión:</span>
+            <span class="font-semibold text-right max-w-[60%]">{{
+              systemInfo?.system.os_version
+            }}</span>
           </div>
-          <div class="info-row">
-            <span class="label">Kernel:</span>
-            <span class="value">{{ systemInfo?.system.kernel }}</span>
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">Kernel:</span>
+            <span class="font-semibold text-right max-w-[60%]">{{
+              systemInfo?.system.kernel
+            }}</span>
           </div>
-          <div class="info-row">
-            <span class="label">Hostname:</span>
-            <span class="value">{{ systemInfo?.system.hostname }}</span>
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">Hostname:</span>
+            <span class="font-semibold text-right max-w-[60%]">{{
+              systemInfo?.system.hostname
+            }}</span>
           </div>
-          <div class="info-row">
-            <span class="label">Display Server:</span>
-            <span class="value">{{ systemInfo?.system.display_server }}</span>
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm"
+              >Display Server:</span
+            >
+            <span class="font-semibold text-right max-w-[60%]">{{
+              systemInfo?.system.display_server
+            }}</span>
           </div>
-          <div class="info-row">
-            <span class="label">Uptime:</span>
-            <span class="value">{{ formatUptime(systemInfo?.system.uptime_seconds) }}</span>
+          <div class="flex justify-between items-center py-2 border-b-0">
+            <span class="font-medium text-vsk-primary text-sm">Uptime:</span>
+            <span class="font-semibold text-right max-w-[60%]">{{
+              formatUptime(systemInfo?.system.uptime_seconds)
+            }}</span>
           </div>
         </div>
       </div>
 
       <!-- CPU -->
-      <div class="info-card">
-        <div class="card-header">
-          <span class="icon">⚙️</span>
-          <h3>Procesador (CPU)</h3>
+      <div
+        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+      >
+        <div class="flex items-center gap-3 py-4 px-5">
+          <span class="text-2xl">⚙️</span>
+          <h3 class="text-lg font-semibold m-0">Procesador (CPU)</h3>
         </div>
-        <div class="card-content">
-          <div class="info-row">
-            <span class="label">Modelo:</span>
-            <span class="value cpu-model">{{ systemInfo?.cpu.model }}</span>
+        <div class="p-5">
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">Modelo:</span>
+            <span
+              class="font-semibold text-right max-w-[60%] text-[0.85rem] leading-tight"
+              >{{ systemInfo?.cpu.model }}</span
+            >
           </div>
-          <div class="info-row">
-            <span class="label">Núcleos:</span>
-            <span class="value">{{ systemInfo?.cpu.cores }}</span>
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">Núcleos:</span>
+            <span class="font-semibold text-right max-w-[60%]">{{
+              systemInfo?.cpu.cores
+            }}</span>
           </div>
-          <div class="info-row" v-if="systemInfo?.cpu.frequency">
-            <span class="label">Frecuencia:</span>
-            <span class="value">{{ systemInfo?.cpu.frequency?.toFixed(2) }} GHz</span>
+          <div
+            class="flex justify-between items-center py-2"
+            v-if="systemInfo?.cpu.frequency"
+          >
+            <span class="font-medium text-vsk-primary text-sm"
+              >Frecuencia:</span
+            >
+            <span class="font-semibold text-right max-w-[60%]"
+              >{{ systemInfo?.cpu.frequency?.toFixed(2) }} GHz</span
+            >
           </div>
-          <div class="usage-section">
-            <div class="usage-header">
-              <span class="label">Uso actual:</span>
-              <span class="value usage-percent" :class="usageClass(systemInfo?.cpu.usage)">
+          <div class="mt-4 pt-4 border-t border-[var(--border)]">
+            <div class="flex justify-between mb-2">
+              <span class="font-medium text-vsk-primary text-sm"
+                >Uso actual:</span
+              >
+              <span
+                class="font-bold text-lg"
+                :class="{
+                  'text-[#4ade80]': usageClass(systemInfo?.cpu.usage) === 'low',
+                  'text-[#fbbf24]':
+                    usageClass(systemInfo?.cpu.usage) === 'medium',
+                  'text-[#f87171]':
+                    usageClass(systemInfo?.cpu.usage) === 'high',
+                }"
+              >
                 {{ systemInfo?.cpu.usage?.toFixed(1) }}%
               </span>
             </div>
-            <div class="progress-bar">
-              <div 
-                class="progress-fill cpu" 
+            <div class="h-2 bg-[var(--surface-1)] rounded overflow-hidden">
+              <div
+                class="h-full transition-all duration-300 rounded"
                 :style="{ width: systemInfo?.cpu.usage + '%' }"
-                :class="usageClass(systemInfo?.cpu.usage)"
+                :class="{
+                  'bg-gradient-to-r from-[#4ade80] to-[#22c55e]':
+                    usageClass(systemInfo?.cpu.usage) === 'low',
+                  'bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]':
+                    usageClass(systemInfo?.cpu.usage) === 'medium',
+                  'bg-gradient-to-r from-[#f87171] to-[#ef4444]':
+                    usageClass(systemInfo?.cpu.usage) === 'high',
+                }"
               ></div>
             </div>
           </div>
@@ -85,36 +149,63 @@
       </div>
 
       <!-- Memoria -->
-      <div class="info-card">
-        <div class="card-header">
-          <span class="icon">🧠</span>
-          <h3>Memoria RAM</h3>
+      <div
+        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+      >
+        <div class="flex items-center gap-3 py-4 px-5">
+          <span class="text-2xl">🧠</span>
+          <h3 class="text-lg font-semibold m-0">Memoria RAM</h3>
         </div>
-        <div class="card-content">
-          <div class="info-row">
-            <span class="label">Total:</span>
-            <span class="value">{{ systemInfo?.memory.total_gb?.toFixed(2) }} GB</span>
+        <div class="p-5">
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">Total:</span>
+            <span class="font-semibold text-right max-w-[60%]"
+              >{{ systemInfo?.memory.total_gb?.toFixed(2) }} GB</span
+            >
           </div>
-          <div class="info-row">
-            <span class="label">En uso:</span>
-            <span class="value">{{ systemInfo?.memory.used_gb?.toFixed(2) }} GB</span>
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">En uso:</span>
+            <span class="font-semibold text-right max-w-[60%]"
+              >{{ systemInfo?.memory.used_gb?.toFixed(2) }} GB</span
+            >
           </div>
-          <div class="info-row">
-            <span class="label">Disponible:</span>
-            <span class="value">{{ systemInfo?.memory.available_gb?.toFixed(2) }} GB</span>
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm"
+              >Disponible:</span
+            >
+            <span class="font-semibold text-right max-w-[60%]"
+              >{{ systemInfo?.memory.available_gb?.toFixed(2) }} GB</span
+            >
           </div>
-          <div class="usage-section">
-            <div class="usage-header">
-              <span class="label">Uso:</span>
-              <span class="value usage-percent" :class="usageClass(systemInfo?.memory.usage_percent)">
+          <div class="mt-4 pt-4 border-t border-[var(--border)]">
+            <div class="flex justify-between mb-2">
+              <span class="font-medium text-vsk-primary text-sm">Uso:</span>
+              <span
+                class="font-bold text-lg"
+                :class="{
+                  'text-[#4ade80]':
+                    usageClass(systemInfo?.memory.usage_percent) === 'low',
+                  'text-[#fbbf24]':
+                    usageClass(systemInfo?.memory.usage_percent) === 'medium',
+                  'text-[#f87171]':
+                    usageClass(systemInfo?.memory.usage_percent) === 'high',
+                }"
+              >
                 {{ systemInfo?.memory.usage_percent?.toFixed(1) }}%
               </span>
             </div>
-            <div class="progress-bar">
-              <div 
-                class="progress-fill memory" 
+            <div class="h-2 bg-[var(--surface-1)] rounded overflow-hidden">
+              <div
+                class="h-full transition-all duration-300 rounded"
                 :style="{ width: systemInfo?.memory.usage_percent + '%' }"
-                :class="usageClass(systemInfo?.memory.usage_percent)"
+                :class="{
+                  'bg-gradient-to-r from-[#4ade80] to-[#22c55e]':
+                    usageClass(systemInfo?.memory.usage_percent) === 'low',
+                  'bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]':
+                    usageClass(systemInfo?.memory.usage_percent) === 'medium',
+                  'bg-gradient-to-r from-[#f87171] to-[#ef4444]':
+                    usageClass(systemInfo?.memory.usage_percent) === 'high',
+                }"
               ></div>
             </div>
           </div>
@@ -122,36 +213,62 @@
       </div>
 
       <!-- Swap -->
-      <div class="info-card" v-if="systemInfo?.swap">
-        <div class="card-header">
-          <span class="icon">🔁</span>
-          <h3>Swap</h3>
+      <div
+        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        v-if="systemInfo?.swap"
+      >
+        <div class="flex items-center gap-3 py-4 px-5">
+          <span class="text-2xl">🔁</span>
+          <h3 class="text-lg font-semibold m-0">Swap</h3>
         </div>
-        <div class="card-content">
-          <div class="info-row">
-            <span class="label">Total:</span>
-            <span class="value">{{ systemInfo?.swap?.total_gb?.toFixed(2) }} GB</span>
+        <div class="p-5">
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">Total:</span>
+            <span class="font-semibold text-right max-w-[60%]"
+              >{{ systemInfo?.swap?.total_gb?.toFixed(2) }} GB</span
+            >
           </div>
-          <div class="info-row">
-            <span class="label">En uso:</span>
-            <span class="value">{{ systemInfo?.swap?.used_gb?.toFixed(2) }} GB</span>
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">En uso:</span>
+            <span class="font-semibold text-right max-w-[60%]"
+              >{{ systemInfo?.swap?.used_gb?.toFixed(2) }} GB</span
+            >
           </div>
-          <div class="info-row">
-            <span class="label">Libre:</span>
-            <span class="value">{{ systemInfo?.swap?.free_gb?.toFixed(2) }} GB</span>
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm">Libre:</span>
+            <span class="font-semibold text-right max-w-[60%]"
+              >{{ systemInfo?.swap?.free_gb?.toFixed(2) }} GB</span
+            >
           </div>
-          <div class="usage-section">
-            <div class="usage-header">
-              <span class="label">Uso:</span>
-              <span class="value usage-percent" :class="usageClass(systemInfo?.swap?.usage_percent)">
+          <div class="mt-4 pt-4 border-t border-[var(--border)]">
+            <div class="flex justify-between mb-2">
+              <span class="font-medium text-vsk-primary text-sm">Uso:</span>
+              <span
+                class="font-bold text-lg"
+                :class="{
+                  'text-[#4ade80]':
+                    usageClass(systemInfo?.swap?.usage_percent) === 'low',
+                  'text-[#fbbf24]':
+                    usageClass(systemInfo?.swap?.usage_percent) === 'medium',
+                  'text-[#f87171]':
+                    usageClass(systemInfo?.swap?.usage_percent) === 'high',
+                }"
+              >
                 {{ systemInfo?.swap?.usage_percent?.toFixed(1) }}%
               </span>
             </div>
-            <div class="progress-bar">
-              <div 
-                class="progress-fill memory" 
+            <div class="h-2 bg-[var(--surface-1)] rounded overflow-hidden">
+              <div
+                class="h-full transition-all duration-300 rounded"
                 :style="{ width: systemInfo?.swap?.usage_percent + '%' }"
-                :class="usageClass(systemInfo?.swap?.usage_percent)"
+                :class="{
+                  'bg-gradient-to-r from-[#4ade80] to-[#22c55e]':
+                    usageClass(systemInfo?.swap?.usage_percent) === 'low',
+                  'bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]':
+                    usageClass(systemInfo?.swap?.usage_percent) === 'medium',
+                  'bg-gradient-to-r from-[#f87171] to-[#ef4444]':
+                    usageClass(systemInfo?.swap?.usage_percent) === 'high',
+                }"
               ></div>
             </div>
           </div>
@@ -159,71 +276,135 @@
       </div>
 
       <!-- GPU -->
-      <div class="info-card" v-if="systemInfo?.gpu">
-        <div class="card-header">
-          <span class="icon">🎮</span>
-          <h3>Tarjeta Gráfica (GPU)</h3>
+      <div
+        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        v-if="systemInfo?.gpu"
+      >
+        <div class="flex items-center gap-3 py-4 px-5">
+          <span class="text-2xl">🎮</span>
+          <h3 class="text-lg font-semibold m-0">Tarjeta Gráfica (GPU)</h3>
         </div>
-        <div class="card-content">
-          <div class="info-row">
-            <span class="label">Fabricante:</span>
-            <span class="value">{{ systemInfo?.gpu.vendor }}</span>
+        <div class="p-5">
+          <div class="flex justify-between items-center py-2">
+            <span class="font-medium text-vsk-primary text-sm"
+              >Fabricante:</span
+            >
+            <span class="font-semibold text-right max-w-[60%]">{{
+              systemInfo?.gpu.vendor
+            }}</span>
           </div>
-          <div class="info-row">
-            <span class="label">Modelo:</span>
-            <span class="value gpu-model">{{ systemInfo?.gpu.model }}</span>
+          <div class="flex justify-between items-center py-2 border-b-0">
+            <span class="font-medium text-vsk-primary text-sm">Modelo:</span>
+            <span
+              class="font-semibold text-right max-w-[60%] text-[0.85rem] leading-tight"
+              >{{ systemInfo?.gpu.model }}</span
+            >
           </div>
         </div>
       </div>
 
       <!-- Temperatura -->
-      <div class="info-card" v-if="systemInfo?.temperature">
-        <div class="card-header">
-          <span class="icon">🌡️</span>
-          <h3>Temperatura</h3>
+      <div
+        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        v-if="systemInfo?.temperature"
+      >
+        <div class="flex items-center gap-3 py-4 px-5">
+          <span class="text-2xl">🌡️</span>
+          <h3 class="text-lg font-semibold m-0">Temperatura</h3>
         </div>
-        <div class="card-content">
-          <div class="info-row" v-if="systemInfo?.temperature.cpu_temp">
-            <span class="label">CPU:</span>
-            <span class="value temp" :class="tempClass(systemInfo?.temperature.cpu_temp)">
+        <div class="p-5">
+          <div
+            class="flex justify-between items-center py-2"
+            v-if="systemInfo?.temperature.cpu_temp"
+          >
+            <span class="font-medium text-vsk-primary text-sm">CPU:</span>
+            <span
+              class="font-bold text-right max-w-[60%]"
+              :class="{
+                'text-[#4ade80]':
+                  tempClass(systemInfo?.temperature.cpu_temp) === 'normal',
+                'text-[#fbbf24]':
+                  tempClass(systemInfo?.temperature.cpu_temp) === 'warm',
+                'text-[#f87171]':
+                  tempClass(systemInfo?.temperature.cpu_temp) === 'critical',
+              }"
+            >
               {{ systemInfo?.temperature.cpu_temp?.toFixed(1) }}°C
             </span>
           </div>
-          <div class="sensors-list" v-if="systemInfo?.temperature.sensors?.length">
-            <div class="sensor-item" v-for="sensor in systemInfo.temperature.sensors.slice(0, 3)" :key="sensor.name">
-              <span class="sensor-label">{{ sensor.label }}:</span>
-              <span class="sensor-temp" :class="tempClass(sensor.temp)">{{ sensor.temp.toFixed(1) }}°C</span>
+          <div
+            class="mt-3 pt-3 border-t border-[var(--border-subtle)]"
+            v-if="systemInfo?.temperature.sensors?.length"
+          >
+            <div
+              class="flex justify-between py-1.5 text-sm"
+              v-for="sensor in systemInfo.temperature.sensors.slice(0, 3)"
+              :key="sensor.name"
+            >
+              <span class="text-vsk-primary">{{ sensor.label }}:</span>
+              <span
+                class="font-semibold"
+                :class="{
+                  'text-[#4ade80]': tempClass(sensor.temp) === 'normal',
+                  'text-[#fbbf24]': tempClass(sensor.temp) === 'warm',
+                  'text-[#f87171]': tempClass(sensor.temp) === 'critical',
+                }"
+                >{{ sensor.temp.toFixed(1) }}°C</span
+              >
             </div>
           </div>
         </div>
       </div>
 
       <!-- Discos -->
-      <div class="info-card" v-if="systemInfo?.disks?.length">
-        <div class="card-header">
-          <span class="icon">💽</span>
-          <h3>Discos</h3>
+      <div
+        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        v-if="systemInfo?.disks?.length"
+      >
+        <div class="flex items-center gap-3 py-4 px-5">
+          <span class="text-2xl">💽</span>
+          <h3 class="text-lg font-semibold m-0">Discos</h3>
         </div>
-        <div class="card-content">
-          <div class="disk-row" v-for="disk in systemInfo?.disks" :key="disk.device + disk.mountpoint">
-            <div class="disk-header">
-              <span class="disk-device">{{ disk.device }}</span>
-              <span class="disk-mount">→ {{ disk.mountpoint }}</span>
-              <span class="disk-fstype">({{ disk.fstype }})</span>
+        <div class="p-5">
+          <div
+            class="py-2 pb-4 last:border-b-0"
+            v-for="disk in systemInfo?.disks"
+            :key="disk.device + disk.mountpoint"
+          >
+            <div
+              class="flex flex-wrap gap-2 items-center mb-2 text-vsk-primary"
+            >
+              <span class="font-semibold">{{ disk.device }}</span>
+              <span class="text-sm">→ {{ disk.mountpoint }}</span>
+              <span class="text-[0.85rem]">({{ disk.fstype }})</span>
             </div>
-            <div class="disk-stats">
+            <div class="flex flex-wrap gap-4 mb-2">
               <span>Total: {{ disk.total_gb.toFixed(2) }} GB</span>
               <span>Usado: {{ disk.used_gb.toFixed(2) }} GB</span>
               <span>Libre: {{ disk.available_gb.toFixed(2) }} GB</span>
-              <span class="value usage-percent" :class="usageClass(disk.usage_percent)">
+              <span
+                class="font-bold text-lg"
+                :class="{
+                  'text-[#4ade80]': usageClass(disk.usage_percent) === 'low',
+                  'text-[#fbbf24]': usageClass(disk.usage_percent) === 'medium',
+                  'text-[#f87171]': usageClass(disk.usage_percent) === 'high',
+                }"
+              >
                 {{ disk.usage_percent.toFixed(1) }}%
               </span>
             </div>
-            <div class="progress-bar">
-              <div 
-                class="progress-fill memory" 
+            <div class="h-2 bg-[var(--surface-1)] rounded overflow-hidden">
+              <div
+                class="h-full transition-all duration-300 rounded"
                 :style="{ width: disk.usage_percent + '%' }"
-                :class="usageClass(disk.usage_percent)"
+                :class="{
+                  'bg-gradient-to-r from-[#4ade80] to-[#22c55e]':
+                    usageClass(disk.usage_percent) === 'low',
+                  'bg-gradient-to-r from-[#fbbf24] to-[#f59e0b]':
+                    usageClass(disk.usage_percent) === 'medium',
+                  'bg-gradient-to-r from-[#f87171] to-[#ef4444]':
+                    usageClass(disk.usage_percent) === 'high',
+                }"
               ></div>
             </div>
           </div>
@@ -231,13 +412,26 @@
       </div>
     </div>
 
-    <div class="actions" v-if="!loading && !error">
-      <button @click="() => loadSystemInfo()" class="refresh-button" :disabled="isUpdating">
-        <span class="refresh-icon" :class="{ 'spinning': isUpdating }">🔄</span>
-        {{ isUpdating ? 'Actualizando...' : 'Actualizar' }}
+    <div
+      class="text-center p-6 background rounded-vsk"
+      v-if="!loading && !error"
+    >
+      <button
+        @click="() => loadSystemInfo()"
+        class="py-3 px-6 bg-vsk-primary text-white border-0 rounded-vsk font-semibold cursor-pointer transition-all inline-flex items-center gap-2 hover:bg-[var(--accent-hover)] hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+        :disabled="isUpdating"
+      >
+        <span
+          class="inline-block transition-transform duration-300"
+          :class="{ 'animate-spin': isUpdating }"
+          >🔄</span
+        >
+        {{ isUpdating ? "Actualizando..." : "Actualizar" }}
       </button>
-      <p class="update-info">
-        <span v-if="isUpdating" class="updating-indicator">● Actualizando...</span>
+      <p class="mt-3 text-[0.85rem] text-[var(--text-tertiary)]">
+        <span v-if="isUpdating" class="text-vsk-primary animate-pulse"
+          >● Actualizando...</span
+        >
         <span v-else>Última actualización: {{ lastUpdate }}</span>
       </p>
     </div>
@@ -245,428 +439,129 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+import { ref, onMounted, onUnmounted } from "vue";
+import { invoke } from "@tauri-apps/api/core";
 
 interface SystemInfo {
   cpu: {
-    model: string
-    cores: number
-    usage: number
-    frequency?: number
-  }
+    model: string;
+    cores: number;
+    usage: number;
+    frequency?: number;
+  };
   memory: {
-    total_gb: number
-    used_gb: number
-    available_gb: number
-    usage_percent: number
-  }
+    total_gb: number;
+    used_gb: number;
+    available_gb: number;
+    usage_percent: number;
+  };
   swap?: {
-    total_gb: number
-    used_gb: number
-    free_gb: number
-    usage_percent: number
-  }
+    total_gb: number;
+    used_gb: number;
+    free_gb: number;
+    usage_percent: number;
+  };
   gpu?: {
-    model: string
-    vendor: string
-  }
+    model: string;
+    vendor: string;
+  };
   system: {
-    hostname: string
-    kernel: string
-    os_name: string
-    os_version: string
-    display_server: string
-    uptime_seconds: number
-  }
+    hostname: string;
+    kernel: string;
+    os_name: string;
+    os_version: string;
+    display_server: string;
+    uptime_seconds: number;
+  };
   temperature?: {
-    cpu_temp?: number
+    cpu_temp?: number;
     sensors: Array<{
-      name: string
-      temp: number
-      label: string
-    }>
-  }
+      name: string;
+      temp: number;
+      label: string;
+    }>;
+  };
   disks?: Array<{
-    device: string
-    mountpoint: string
-    fstype: string
-    total_gb: number
-    used_gb: number
-    available_gb: number
-    usage_percent: number
-  }>
+    device: string;
+    mountpoint: string;
+    fstype: string;
+    total_gb: number;
+    used_gb: number;
+    available_gb: number;
+    usage_percent: number;
+  }>;
 }
 
-const systemInfo = ref<SystemInfo | null>(null)
-const loading = ref(true)
-const isInitialLoad = ref(true)
-const isUpdating = ref(false)
-const error = ref('')
-const lastUpdate = ref('')
-let updateInterval: number | null = null
+const systemInfo = ref<SystemInfo | null>(null);
+const loading = ref(true);
+const isInitialLoad = ref(true);
+const isUpdating = ref(false);
+const error = ref("");
+const lastUpdate = ref("");
+let updateInterval: number | null = null;
 
 const loadSystemInfo = async (silent = false) => {
   try {
     // Solo mostrar loading completo en la carga inicial
     if (!silent) {
-      loading.value = true
+      loading.value = true;
     } else {
-      isUpdating.value = true
+      isUpdating.value = true;
     }
-    error.value = ''
-    systemInfo.value = await invoke<SystemInfo>('get_system_info')
-    lastUpdate.value = new Date().toLocaleTimeString()
-    isInitialLoad.value = false
+    error.value = "";
+    systemInfo.value = await invoke<SystemInfo>("get_system_info");
+    lastUpdate.value = new Date().toLocaleTimeString();
+    isInitialLoad.value = false;
   } catch (e) {
-    error.value = 'Error al cargar información del sistema: ' + e
-    console.error(e)
+    error.value = "Error al cargar información del sistema: " + e;
+    console.error(e);
   } finally {
-    loading.value = false
-    isUpdating.value = false
+    loading.value = false;
+    isUpdating.value = false;
   }
-}
+};
 
 const formatUptime = (seconds: number | undefined): string => {
-  if (!seconds) return '0 segundos'
-  
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  
-  const parts = []
-  if (days > 0) parts.push(`${days}d`)
-  if (hours > 0) parts.push(`${hours}h`)
-  if (minutes > 0) parts.push(`${minutes}m`)
-  
-  return parts.join(' ') || '< 1m'
-}
+  if (!seconds) return "0 segundos";
+
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+
+  return parts.join(" ") || "< 1m";
+};
 
 const usageClass = (usage: number | undefined): string => {
-  if (!usage) return ''
-  if (usage > 80) return 'high'
-  if (usage > 60) return 'medium'
-  return 'low'
-}
+  if (!usage) return "";
+  if (usage > 80) return "high";
+  if (usage > 60) return "medium";
+  return "low";
+};
 
 const tempClass = (temp: number | undefined): string => {
-  if (!temp) return ''
-  if (temp > 80) return 'critical'
-  if (temp > 60) return 'warm'
-  return 'normal'
-}
+  if (!temp) return "";
+  if (temp > 80) return "critical";
+  if (temp > 60) return "warm";
+  return "normal";
+};
 
 onMounted(() => {
-  loadSystemInfo()
+  loadSystemInfo();
   // Actualizar cada 5 segundos en modo silencioso (sin loading)
-  updateInterval = setInterval(() => loadSystemInfo(true), 5000) as unknown as number
-})
+  updateInterval = setInterval(
+    () => loadSystemInfo(true),
+    5000
+  ) as unknown as number;
+});
 
 onUnmounted(() => {
   if (updateInterval) {
-    clearInterval(updateInterval)
+    clearInterval(updateInterval);
   }
-})
+});
 </script>
-
-<style scoped>
-.system-info-view {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.view-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 2rem;
-  color: var(--text-primary);
-}
-
-.loading, .error-message {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  text-align: center;
-}
-
-.spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid var(--surface-3);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.info-card {
-  background: var(--surface-2);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.info-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
-  background: var(--surface-3);
-  border-bottom: 1px solid var(--border);
-}
-
-.card-header .icon {
-  font-size: 1.5rem;
-}
-
-.card-header h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.card-content {
-  padding: 1.25rem;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.info-row:last-child {
-  border-bottom: none;
-}
-
-.label {
-  font-weight: 500;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-.value {
-  font-weight: 600;
-  color: var(--text-primary);
-  text-align: right;
-  max-width: 60%;
-  word-break: break-word;
-}
-
-.cpu-model, .gpu-model {
-  font-size: 0.85rem;
-  line-height: 1.3;
-}
-
-.usage-section {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-
-.usage-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.usage-percent {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.usage-percent.low { color: #4ade80; }
-.usage-percent.medium { color: #fbbf24; }
-.usage-percent.high { color: #f87171; }
-
-.progress-bar {
-  height: 8px;
-  background: var(--surface-1);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  transition: width 0.3s ease;
-  border-radius: 4px;
-}
-
-.progress-fill.cpu.low,
-.progress-fill.memory.low {
-  background: linear-gradient(90deg, #4ade80, #22c55e);
-}
-
-.progress-fill.cpu.medium,
-.progress-fill.memory.medium {
-  background: linear-gradient(90deg, #fbbf24, #f59e0b);
-}
-
-.progress-fill.cpu.high,
-.progress-fill.memory.high {
-  background: linear-gradient(90deg, #f87171, #ef4444);
-}
-
-.temp {
-  font-weight: 700;
-}
-
-.temp.normal { color: #4ade80; }
-.temp.warm { color: #fbbf24; }
-.temp.critical { color: #f87171; }
-
-.sensors-list {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.sensor-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.35rem 0;
-  font-size: 0.9rem;
-}
-
-.sensor-label {
-  color: var(--text-secondary);
-}
-
-.sensor-temp {
-  font-weight: 600;
-}
-
-.actions {
-  text-align: center;
-  padding: 1.5rem;
-  background: var(--surface-2);
-  border-radius: 12px;
-}
-
-.disk-row {
-  padding: 0.5rem 0 1rem 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.disk-row:last-child {
-  border-bottom: none;
-}
-
-.disk-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-  color: var(--text-secondary);
-}
-
-.disk-device {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.disk-mount {
-  font-size: 0.9rem;
-}
-
-.disk-fstype {
-  font-size: 0.85rem;
-}
-
-.disk-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
-}
-
-.refresh-button, .retry-button {
-  padding: 0.75rem 1.5rem;
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.refresh-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.refresh-button:hover:not(:disabled), .retry-button:hover {
-  background: var(--accent-hover);
-  transform: scale(1.02);
-}
-
-.refresh-button:active:not(:disabled), .retry-button:active {
-  transform: scale(0.98);
-}
-
-.refresh-icon {
-  display: inline-block;
-  transition: transform 0.3s ease;
-}
-
-.refresh-icon.spinning {
-  animation: spin 1s linear infinite;
-}
-
-.update-info {
-  margin-top: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--text-tertiary);
-}
-
-.updating-indicator {
-  color: var(--accent);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.error-message {
-  color: var(--error);
-}
-
-@media (max-width: 768px) {
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .system-info-view {
-    padding: 1rem;
-  }
-}
-</style>
