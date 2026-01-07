@@ -211,6 +211,7 @@ const disconnect = async (device: any) => {
       >
         <img
           :src="syncIcon"
+          alt="Sync Bluetooth"
           class="h-6 w-6"
           :class="{ 'animate-spin': isScanning }"
         />
