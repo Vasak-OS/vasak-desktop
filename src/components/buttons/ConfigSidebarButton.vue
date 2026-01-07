@@ -24,6 +24,7 @@ onMounted(async () => {
     <!-- Icono con efecto de escala -->
     <img
       :src="iconSrc"
+      :alt="`Icon for ${to}`"
       class="w-full h-full transition-transform duration-200 hover:scale-110"
       :class="{ 'scale-110': $route.path === to }"
     />
