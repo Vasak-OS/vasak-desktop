@@ -266,13 +266,20 @@ fn is_well_known_bus(bus: &str) -> bool {
 
 // --- STATE HELPERS ---
 
-fn get_active_player() -> Option<String> {
-    ACTIVE_PLAYER.lock().unwrap().clone()
+/// Get the currently active player name
+pub fn get_active_player() -> Option<String> {
+    ACTIVE_PLAYER.lock()
+        .ok()
+        .and_then(|guard| guard.clone())
 }
 
-fn set_active_player(p: Option<String>) {
-    let mut lock = ACTIVE_PLAYER.lock().unwrap();
-    *lock = p;
+/// Set the active player
+pub fn set_active_player(player: Option<String>) {
+    if let Ok(mut lock) = ACTIVE_PLAYER.lock() {
+        *lock = player;
+    } else {
+        log::error!("Failed to acquire ACTIVE_PLAYER lock");
+    }
 }
 
 fn update_ui(app: &AppHandle, info: &serde_json::Value) {
