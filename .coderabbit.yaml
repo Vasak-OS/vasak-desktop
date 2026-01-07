@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# CodeRabbit Configuration for Vasak-OS Desktop
+# https://coderabbit.ai/docs
+
+rules:
+  - type: pattern
+    patterns:
+      - pattern: "src/**"
+        language: "typescript"
+      - pattern: "src-tauri/**"
+        language: "rust"
+
+reviews:
+  auto_review: true
+  request_changes_on_review: false
+  
+comments:
+  enabled: true
+  auto_reply: true
+
+exclude_patterns:
+  - "node_modules/**"
+  - "target/**"
+  - "dist/**"
+  - "build/**"
+  - ".git/**"
+
+language_settings:
+  typescript:
+    enabled: true
+  vue:
+    enabled: true
+  rust:
+    enabled: true
