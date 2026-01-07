@@ -13,6 +13,10 @@ import {
 } from "@vasakgroup/plugin-bluetooth-manager";
 import { listen } from "@tauri-apps/api/event";
 import BluetoothDeviceCard from "@/components/cards/BluetoothDeviceCard.vue";
+import {
+  applyBluetoothChange,
+  resolveBluetoothIconName,
+} from "@/tools/bluetooth.controller";
 
 const connectedDevices: Ref<any[]> = ref([]);
 const availableDevices: Ref<any[]> = ref([]);
@@ -40,107 +44,12 @@ const toggleBT = async () => {
 
 const isBluetoothOn = computed(() => defaultAdapter.value?.powered);
 
-// Helper: buscar dispositivo por path
-const findDeviceIndex = (devices: any[], path: string) => {
-  return devices.findIndex((d) => d.path === path);
-};
-
-const deviceExists = (devices: any[], path: string) => {
-  return devices.some((d) => d.path === path);
-};
-
-// Helper: añadir dispositivo si no existe
-const addDeviceIfNotExists = (devices: Ref<any[]>, device: any) => {
-  if (!deviceExists(devices.value, device.path)) {
-    devices.value.push(device);
-  }
-};
-
-// Helper: mover dispositivo entre listas
-const moveDevice = (from: Ref<any[]>, to: Ref<any[]>, device: any) => {
-  const index = findDeviceIndex(from.value, device.path);
-  if (index !== -1) {
-    from.value.splice(index, 1);
-    addDeviceIfNotExists(to, device);
-  }
-};
-
-// Handler: cambio de propiedad del adaptador
-const handleAdapterPropertyChanged = (data: any) => {
-  if (defaultAdapter.value && data.path === defaultAdapter.value.path) {
-    defaultAdapter.value = data;
-  }
-};
-
-// Handler: dispositivo añadido
-const handleDeviceAdded = (data: any) => {
-  addDeviceIfNotExists(availableDevices, data);
-};
-
-// Handler: dispositivo removido
-const handleDeviceRemoved = (data: any) => {
-  availableDevices.value = availableDevices.value.filter(
-    (d) => d.path !== data.path
-  );
-  connectedDevices.value = connectedDevices.value.filter(
-    (d) => d.path !== data.path
-  );
-};
-
-// Handler: actualizar dispositivo en lista disponibles
-const updateDeviceInAvailable = (deviceIndex: number, data: any) => {
-  if (data.connected) {
-    moveDevice(availableDevices, connectedDevices, data);
-  } else {
-    availableDevices.value[deviceIndex] = data;
-  }
-};
-
-// Handler: actualizar dispositivo en lista conectados
-const updateDeviceInConnected = (connectedIndex: number, data: any) => {
-  if (data.connected) {
-    connectedDevices.value[connectedIndex] = data;
-  } else {
-    moveDevice(connectedDevices, availableDevices, data);
-  }
-};
-
-// Handler: dispositivo conectado o propiedad cambiada
-const handleDeviceUpdate = (data: any) => {
-  const deviceIndex = findDeviceIndex(availableDevices.value, data.path);
-
-  if (deviceIndex !== -1) {
-    updateDeviceInAvailable(deviceIndex, data);
-  } else {
-    const connectedIndex = findDeviceIndex(connectedDevices.value, data.path);
-    if (connectedIndex !== -1) {
-      updateDeviceInConnected(connectedIndex, data);
-    }
-  }
-};
-
-// Handler: dispositivo desconectado
-const handleDeviceDisconnected = (data: any) => {
-  moveDevice(connectedDevices, availableDevices, data);
-};
-
 const handleBluetoothChange = async (event: any) => {
-  const { change_type, data } = event.payload;
-
-  const handlers: Record<string, (data: any) => void> = {
-    "adapter-property-changed": handleAdapterPropertyChanged,
-    "device-added": handleDeviceAdded,
-    "device-removed": handleDeviceRemoved,
-    "device-connected": handleDeviceUpdate,
-    "device-property-changed": handleDeviceUpdate,
-    "device-disconnected": handleDeviceDisconnected,
-  };
-
-  const handler = handlers[change_type];
-  if (handler) {
-    handler(data);
-  }
-
+  applyBluetoothChange(event.payload, {
+    availableDevices,
+    connectedDevices,
+    defaultAdapter,
+  });
   await refreshDevices();
   getBluetoothIcon();
 };
@@ -195,13 +104,10 @@ onUnmounted(() => {
 const getBluetoothIcon = async () => {
   try {
     connectedDevicesCount.value = connectedDevices.value.length;
-    let iconName = "bluetooth-disabled-symbolic";
-    if (isBluetoothOn.value) {
-      iconName =
-        connectedDevicesCount.value > 0
-          ? "bluetooth-active-symbolic"
-          : "bluetooth-symbolic";
-    }
+    const iconName = resolveBluetoothIconName(
+      isBluetoothOn.value,
+      connectedDevicesCount.value
+    );
     bluetoothIcon.value = await getIconSource(iconName);
   } catch (error) {
     console.error("Error loading bluetooth icon:", error);
