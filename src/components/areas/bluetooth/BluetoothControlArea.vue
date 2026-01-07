@@ -40,79 +40,107 @@ const toggleBT = async () => {
 
 const isBluetoothOn = computed(() => defaultAdapter.value?.powered);
 
+// Helper: buscar dispositivo por path
+const findDeviceIndex = (devices: any[], path: string) => {
+  return devices.findIndex((d) => d.path === path);
+};
+
+const deviceExists = (devices: any[], path: string) => {
+  return devices.some((d) => d.path === path);
+};
+
+// Helper: añadir dispositivo si no existe
+const addDeviceIfNotExists = (devices: Ref<any[]>, device: any) => {
+  if (!deviceExists(devices.value, device.path)) {
+    devices.value.push(device);
+  }
+};
+
+// Helper: mover dispositivo entre listas
+const moveDevice = (from: Ref<any[]>, to: Ref<any[]>, device: any) => {
+  const index = findDeviceIndex(from.value, device.path);
+  if (index !== -1) {
+    from.value.splice(index, 1);
+    addDeviceIfNotExists(to, device);
+  }
+};
+
+// Handler: cambio de propiedad del adaptador
+const handleAdapterPropertyChanged = (data: any) => {
+  if (defaultAdapter.value && data.path === defaultAdapter.value.path) {
+    defaultAdapter.value = data;
+  }
+};
+
+// Handler: dispositivo añadido
+const handleDeviceAdded = (data: any) => {
+  addDeviceIfNotExists(availableDevices, data);
+};
+
+// Handler: dispositivo removido
+const handleDeviceRemoved = (data: any) => {
+  availableDevices.value = availableDevices.value.filter(
+    (d) => d.path !== data.path
+  );
+  connectedDevices.value = connectedDevices.value.filter(
+    (d) => d.path !== data.path
+  );
+};
+
+// Handler: actualizar dispositivo en lista disponibles
+const updateDeviceInAvailable = (deviceIndex: number, data: any) => {
+  if (data.connected) {
+    moveDevice(availableDevices, connectedDevices, data);
+  } else {
+    availableDevices.value[deviceIndex] = data;
+  }
+};
+
+// Handler: actualizar dispositivo en lista conectados
+const updateDeviceInConnected = (connectedIndex: number, data: any) => {
+  if (data.connected) {
+    connectedDevices.value[connectedIndex] = data;
+  } else {
+    moveDevice(connectedDevices, availableDevices, data);
+  }
+};
+
+// Handler: dispositivo conectado o propiedad cambiada
+const handleDeviceUpdate = (data: any) => {
+  const deviceIndex = findDeviceIndex(availableDevices.value, data.path);
+
+  if (deviceIndex !== -1) {
+    updateDeviceInAvailable(deviceIndex, data);
+  } else {
+    const connectedIndex = findDeviceIndex(connectedDevices.value, data.path);
+    if (connectedIndex !== -1) {
+      updateDeviceInConnected(connectedIndex, data);
+    }
+  }
+};
+
+// Handler: dispositivo desconectado
+const handleDeviceDisconnected = (data: any) => {
+  moveDevice(connectedDevices, availableDevices, data);
+};
+
 const handleBluetoothChange = async (event: any) => {
   const { change_type, data } = event.payload;
 
-  switch (change_type) {
-    case "adapter-property-changed":
-      if (defaultAdapter.value && data.path === defaultAdapter.value.path) {
-        defaultAdapter.value = data;
-      }
-      break;
+  const handlers: Record<string, (data: any) => void> = {
+    "adapter-property-changed": handleAdapterPropertyChanged,
+    "device-added": handleDeviceAdded,
+    "device-removed": handleDeviceRemoved,
+    "device-connected": handleDeviceUpdate,
+    "device-property-changed": handleDeviceUpdate,
+    "device-disconnected": handleDeviceDisconnected,
+  };
 
-    case "device-added":
-      if (!availableDevices.value.find((d) => d.path === data.path)) {
-        availableDevices.value.push(data);
-      }
-      break;
-
-    case "device-removed":
-      availableDevices.value = availableDevices.value.filter(
-        (d) => d.path !== data.path
-      );
-      connectedDevices.value = connectedDevices.value.filter(
-        (d) => d.path !== data.path
-      );
-      break;
-
-    case "device-connected":
-    case "device-property-changed":
-      // Actualizar en ambas listas
-      const deviceIndex = availableDevices.value.findIndex(
-        (d) => d.path === data.path
-      );
-      if (deviceIndex !== -1) {
-        if (data.connected) {
-          // Mover a conectados
-          availableDevices.value.splice(deviceIndex, 1);
-          if (!connectedDevices.value.find((d) => d.path === data.path)) {
-            connectedDevices.value.push(data);
-          }
-        } else {
-          // Actualizar en disponibles
-          availableDevices.value[deviceIndex] = data;
-        }
-      } else {
-        // Actualizar en conectados
-        const connectedIndex = connectedDevices.value.findIndex(
-          (d) => d.path === data.path
-        );
-        if (connectedIndex !== -1) {
-          if (data.connected) {
-            connectedDevices.value[connectedIndex] = data;
-          } else {
-            // Mover a disponibles
-            connectedDevices.value.splice(connectedIndex, 1);
-            if (!availableDevices.value.find((d) => d.path === data.path)) {
-              availableDevices.value.push(data);
-            }
-          }
-        }
-      }
-      break;
-
-    case "device-disconnected":
-      const disconnectedIndex = connectedDevices.value.findIndex(
-        (d) => d.path === data.path
-      );
-      if (disconnectedIndex !== -1) {
-        connectedDevices.value.splice(disconnectedIndex, 1);
-        if (!availableDevices.value.find((d) => d.path === data.path)) {
-          availableDevices.value.push(data);
-        }
-      }
-      break;
+  const handler = handlers[change_type];
+  if (handler) {
+    handler(data);
   }
+
   await refreshDevices();
   getBluetoothIcon();
 };
