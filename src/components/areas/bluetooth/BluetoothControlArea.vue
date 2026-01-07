@@ -157,6 +157,7 @@ const refreshDevices = async () => {
     );
     connectedDevicesCount.value = connectedDevices.value.length;
   } catch (e) {
+    console.error("Error refreshing devices:", e);
     connectedDevices.value = [];
     availableDevices.value = [];
   }
@@ -194,13 +195,16 @@ onUnmounted(() => {
 const getBluetoothIcon = async () => {
   try {
     connectedDevicesCount.value = connectedDevices.value.length;
-    const iconName = isBluetoothOn.value
-      ? connectedDevicesCount.value > 0
-        ? "bluetooth-active-symbolic"
-        : "bluetooth-symbolic"
-      : "bluetooth-disabled-symbolic";
+    let iconName = "bluetooth-disabled-symbolic";
+    if (isBluetoothOn.value) {
+      iconName =
+        connectedDevicesCount.value > 0
+          ? "bluetooth-active-symbolic"
+          : "bluetooth-symbolic";
+    }
     bluetoothIcon.value = await getIconSource(iconName);
   } catch (error) {
+    console.error("Error loading bluetooth icon:", error);
     bluetoothIcon.value = "";
   }
 };
@@ -291,5 +295,3 @@ const disconnect = async (device: any) => {
     </div>
   </div>
 </template>
-
-<style scoped></style>
