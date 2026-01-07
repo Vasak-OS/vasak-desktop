@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::sync::OnceLock;
 use crate::constants::{CMD_BRIGHTNESSCTL, CMD_XRANDR, BACKLIGHT_PATH};
 use crate::error::{Result, VasakError};
 use crate::structs::BrightnessInfo;
@@ -11,10 +12,30 @@ fn is_wayland() -> bool {
 }
 
 /// Método de control de brillo disponible
+#[derive(Clone)]
 enum BrightnessMethod {
     Brightnessctl,
     Sysfs(PathBuf),
     Xrandr,
+}
+
+/// Cache global del método de brillo detectado
+static BRIGHTNESS_METHOD: OnceLock<BrightnessMethod> = OnceLock::new();
+
+/// Obtiene el método de brillo, detectándolo solo la primera vez
+fn get_brightness_method() -> Result<BrightnessMethod> {
+    // Si ya está en cache, retornar el valor clonado
+    if let Some(method) = BRIGHTNESS_METHOD.get() {
+        return Ok(method.clone());
+    }
+    
+    // Detectar y cachear el método
+    let method = detect_brightness_method()?;
+    
+    // Intentar guardar en cache (puede fallar si otro thread lo hizo primero, pero está bien)
+    let _ = BRIGHTNESS_METHOD.set(method.clone());
+    
+    Ok(method)
 }
 
 /// Detecta el mejor método de control de brillo disponible
@@ -143,7 +164,7 @@ fn get_brightness_xrandr() -> Result<BrightnessInfo> {
 
 /// Obtiene la información actual del brillo del sistema
 pub fn get_brightness() -> Result<BrightnessInfo> {
-    let method = detect_brightness_method()?;
+    let method = get_brightness_method()?;
     
     match method {
         BrightnessMethod::Brightnessctl => get_brightness_brightnessctl(),
@@ -202,7 +223,7 @@ fn set_brightness_xrandr(brightness: u32) -> Result<()> {
 
 /// Establece el brillo del sistema
 pub fn set_brightness(brightness: u32) -> Result<()> {
-    let method = detect_brightness_method()?;
+    let method = get_brightness_method()?;
     
     match method {
         BrightnessMethod::Brightnessctl => set_brightness_brightnessctl(brightness),
