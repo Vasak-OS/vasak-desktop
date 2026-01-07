@@ -2,5 +2,26 @@
   "sonarlint.connectedMode.project": {
     "connectionId": "vasakos",
     "projectKey": "Vasak-OS_vasak-desktop"
+  },
+  "sonarlint.pathToCompileCommands": "${workspaceFolder}/src-tauri",
+  "sonarlint.languageServer.analyzeOpenFilesOnly": false,
+  "[vue]": {
+    "editor.defaultFormatter": "Vue.volar"
+  },
+  "sonarlint.ls.enabled": true,
+  "sonarlint.rules": {
+    "rust:S1234": {
+      "level": "on"
+    }
+  },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/target": true,
+    "**/.git": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/target": true,
+    "**/dist": true
   }
 }
