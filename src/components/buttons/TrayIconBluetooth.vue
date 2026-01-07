@@ -142,6 +142,7 @@ const getBluetoothIcon = async () => {
   >
     <img
       :src="bluetoothIcon"
+      alt="Bluetooth Icon"
       class="m-auto h-[22px] w-auto transition-all duration-300"
       :class="{
         'filter brightness-75': !isBluetoothOn,
