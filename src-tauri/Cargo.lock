@@ -5658,6 +5658,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-user-data",
  "tauri-plugin-vicons",
+ "thiserror 2.0.17",
  "tokio",
  "uuid",
  "wayland-client",
