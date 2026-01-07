@@ -257,6 +257,7 @@ const loadSidebar = async () => {
         : source;
     } catch (e) {
       console.warn("Sidebar icon fail", item.icon);
+      console.error("Sidebar icon error: ", e);
     }
   }
 };
