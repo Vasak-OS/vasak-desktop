@@ -1,4 +1,5 @@
 use crate::commands::{toggle_config_app, toggle_control_center, toggle_menu, toggle_search};
+use crate::constants::DBUS_SERVICE_NAME;
 use crate::windows_apps::create_file_manager_window;
 use futures_util::TryStreamExt;
 use tauri::AppHandle;
@@ -42,7 +43,7 @@ impl DesktopService {
                 });
             }
             _ => {
-                println!("D-Bus: Unknown method: {}", member);
+                log::warn!("D-Bus: Unknown method called: {}", member);
             }
         }
 
@@ -52,7 +53,7 @@ impl DesktopService {
 
 /// Inicia el servicio D-Bus en un hilo separado
 pub async fn start_dbus_service(app_handle: AppHandle) -> ZbusResult<()> {
-    println!("Starting D-Bus service...");
+    log::info!("Starting D-Bus service...");
 
     let service = DesktopService::new(app_handle);
 
@@ -60,16 +61,20 @@ pub async fn start_dbus_service(app_handle: AppHandle) -> ZbusResult<()> {
     let connection = Connection::session().await?;
 
     // Solicitar el nombre del servicio
-    connection.request_name("org.vasak.os.Desktop").await?;
+    connection.request_name(DBUS_SERVICE_NAME).await?;
+    
+    log::info!("D-Bus service registered as: {}", DBUS_SERVICE_NAME);
 
     // Procesar mensajes D-Bus usando stream
     let mut stream = zbus::MessageStream::from(&connection);
 
     while let Some(msg) = stream.try_next().await? {
         // Verificar si es para nuestro servicio
-        if msg.header().destination().map(|d| d.as_str()) == Some("org.vasak.os.Desktop") {
+        if msg.header().destination().map(|d| d.as_str()) == Some(DBUS_SERVICE_NAME) {
             // Manejar la llamada al método
-            let _ = service.handle_method_call(&msg).await;
+            if let Err(e) = service.handle_method_call(&msg).await {
+                log::error!("Error handling D-Bus method call: {}", e);
+            }
         }
     }
 

@@ -137,7 +137,8 @@ fn scan_applications() -> HashMap<String, DesktopEntry> {
 
 /// Refresh application cache if needed
 fn ensure_cache_fresh() {
-    let mut timestamp = CACHE_TIMESTAMP.lock().unwrap();
+    let mut timestamp = CACHE_TIMESTAMP.lock()
+        .expect("CACHE_TIMESTAMP lock poisoned");
     let now = std::time::SystemTime::now();
     
     let should_refresh = match *timestamp {
@@ -153,7 +154,8 @@ fn ensure_cache_fresh() {
     if should_refresh {
         log::info!("[search] Refreshing application cache");
         let apps = scan_applications();
-        let mut cache = APP_CACHE.lock().unwrap();
+        let mut cache = APP_CACHE.lock()
+            .expect("APP_CACHE lock poisoned");
         *cache = apps;
         *timestamp = Some(now);
     }
@@ -205,7 +207,8 @@ pub fn search_applications(query: &str, limit: usize) -> Vec<SearchResult> {
 
     ensure_cache_fresh();
     
-    let cache = APP_CACHE.lock().unwrap();
+    let cache = APP_CACHE.lock()
+        .expect("APP_CACHE lock poisoned");
     let mut results: Vec<SearchResult> = cache
         .iter()
         .filter_map(|(id, entry)| {

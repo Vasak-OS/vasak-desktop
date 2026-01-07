@@ -1,4 +1,10 @@
+// Core modules
 mod app_url;
+mod constants;
+mod error;
+mod structs;
+
+// Feature modules
 mod applets;
 mod audio;
 mod brightness;
@@ -8,7 +14,6 @@ mod eventloops;
 mod menu_manager;
 mod monitor_manager;
 mod notifications;
-mod structs;
 mod tray;
 mod utils;
 mod window_manager;
@@ -79,7 +84,6 @@ pub fn run() {
             get_menu_items,
             toggle_menu,
             toggle_config_app,
-            toggle_config_app,
             open_configuration_window,
             open_file_manager_window,
             get_audio_volume,
@@ -125,8 +129,6 @@ pub fn run() {
             get_gtk_themes,
             get_cursor_themes,
             get_icon_packs,
-            get_icon_packs,
-            open_configuration_window,
             read_directory
         ])
         .setup(move |app| {
