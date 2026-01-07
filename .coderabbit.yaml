@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# CodeRabbit Configuration for Vasak-OS Desktop
+# https://coderabbit.ai/docs
+
+reviews:
+  auto_review:
+    enabled: true
+  request_changes_workflow: false
+  path_filters:
+    - "!node_modules/**"
+    - "!target/**"
+    - "!dist/**"
+    - "!build/**"
+    - "!.git/**"
+
+chat:
+  auto_reply: true

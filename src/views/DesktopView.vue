@@ -25,6 +25,7 @@ const backgroundType: Ref<string> = ref("image/jpeg");
   <img
     v-else
     :src="background"
+    alt="Background"
     class="w-screen h-screen object-cover absolute z-10"
     style="border-radius: 0px"
   />

@@ -22,7 +22,7 @@ const setIcons = async () => {
     configIcon.value = await getIconSource("preferences-system");
     fileManagerIcon.value = await getIconSource("system-file-manager");
   } catch (err) {
-    console.error("Error: finding icons");
+    console.error("Error finding icons:", err);
   }
 };
 
@@ -99,8 +99,18 @@ onUnmounted(() => {
   <nav class="vpanel background">
     <div class="flex items-center gap-1">
       <img :src="menuIcon" alt="Menu" @click="openMenu" class="app-icon" />
-      <img :src="configIcon" alt="Config" @click="openConfig" class="app-icon" />
-      <img :src="fileManagerIcon" alt="Files" @click="openFileManager" class="app-icon" />
+      <img
+        :src="configIcon"
+        alt="Config"
+        @click="openConfig"
+        class="app-icon"
+      />
+      <img
+        :src="fileManagerIcon"
+        alt="Files"
+        @click="openFileManager"
+        class="app-icon"
+      />
     </div>
     <WindowsArea />
     <div class="flex content-center items-center">

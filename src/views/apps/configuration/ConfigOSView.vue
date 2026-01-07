@@ -347,15 +347,15 @@ const isFormValid = computed(() => {
 }
 
 .alert-error {
+  color: #ff6b6b;
   background-color: rgba(255, 107, 107, 0.1);
   border: 1px solid rgba(255, 107, 107, 0.3);
-  color: #ff6b6b;
 }
 
 .alert-success {
+  color: #4caf50;
   background-color: rgba(76, 175, 80, 0.1);
   border: 1px solid rgba(76, 175, 80, 0.3);
-  color: #4caf50;
 }
 
 .config-form {

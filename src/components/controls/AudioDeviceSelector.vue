@@ -22,9 +22,8 @@ async function loadDevices() {
   try {
     const deviceList = await invoke<AudioDevice[]>("get_audio_devices");
     devices.value = deviceList;
-    
-    // Establecer el dispositivo seleccionado
-    const defaultDevice = deviceList.find(d => d.is_default);
+
+    const defaultDevice = deviceList.find((d) => d.is_default);
     if (defaultDevice) {
       selectedDeviceId.value = defaultDevice.id;
     }
@@ -39,7 +38,6 @@ async function onDeviceChange(deviceId: string) {
   selectedDeviceId.value = deviceId;
   try {
     await invoke("set_audio_device", { deviceId });
-    // Recargar para confirmar cambio
     await loadDevices();
   } catch (e) {
     console.error("[audio] Failed to set device:", e);
@@ -49,11 +47,10 @@ async function onDeviceChange(deviceId: string) {
 onMounted(async () => {
   speakerIcon.value = await getSymbolSource("audio-speakers-symbolic");
   await loadDevices();
-  
-  // Escuchar cambios de dispositivos desde el backend
+
   listen<AudioDevice[]>("audio-devices-changed", (event) => {
     devices.value = event.payload;
-    const defaultDevice = event.payload.find(d => d.is_default);
+    const defaultDevice = event.payload.find((d) => d.is_default);
     if (defaultDevice) {
       selectedDeviceId.value = defaultDevice.id;
     }
@@ -64,23 +61,25 @@ onMounted(async () => {
 function getDeviceName(device: AudioDevice): string {
   // Remover prefixes comunes y dejar nombre limpio
   return device.name
-    .replace(/ALSA/g, "")
-    .replace(/PulseAudio/g, "")
-    .replace(/PipeWire/g, "")
-    .replace(/\[.*\]/g, "")
+    .replaceAll("ALSA", "")
+    .replaceAll("PulseAudio", "")
+    .replaceAll("PipeWire", "")
     .trim();
 }
 </script>
 
 <template>
   <div class="space-y-2">
-    <!-- Header -->
     <div class="flex items-center gap-2 text-sm font-medium text-muted">
-      <img v-if="speakerIcon" :src="speakerIcon" alt="Speaker" class="w-4 h-4" />
+      <img
+        v-if="speakerIcon"
+        :src="speakerIcon"
+        alt="Speaker"
+        class="w-4 h-4"
+      />
       <span>Dispositivo de audio</span>
     </div>
 
-    <!-- Device selector -->
     <div v-if="!isLoading && devices.length > 0" class="space-y-1">
       <div
         v-for="device in devices"
@@ -89,7 +88,7 @@ function getDeviceName(device: AudioDevice): string {
         :class="[
           selectedDeviceId === device.id
             ? 'bg-vsk-primary/30 ring-1 ring-vsk-primary'
-            : 'bg-background hover:bg-vsk-primary/10'
+            : 'bg-background hover:bg-vsk-primary/10',
         ]"
         @click="onDeviceChange(device.id)"
       >
@@ -97,7 +96,9 @@ function getDeviceName(device: AudioDevice): string {
         <div
           class="w-4 h-4 rounded-full border-2 border-vsk-primary/50 flex items-center justify-center transition-colors"
           :class="[
-            selectedDeviceId === device.id ? 'bg-vsk-primary border-vsk-primary' : ''
+            selectedDeviceId === device.id
+              ? 'bg-vsk-primary border-vsk-primary'
+              : '',
           ]"
         >
           <div
@@ -137,6 +138,3 @@ function getDeviceName(device: AudioDevice): string {
     </div>
   </div>
 </template>
-
-<style scoped>
-</style>
