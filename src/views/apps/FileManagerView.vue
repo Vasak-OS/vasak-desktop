@@ -295,7 +295,7 @@ onMounted(async () => {
               class="rounded-vsk background focus:ring-vsk-primary text-vsk-primary" />
             Show Hidden
           </label>
-          <button class="p-1 hover:bg-vsk-primary rounded-vsk">
+          <button aria-label="Search" class="p-1 hover:bg-vsk-primary rounded-vsk">
             🔍
           </button>
         </div>
@@ -348,7 +348,7 @@ onMounted(async () => {
                 <!-- Fallback Text Icon -->
                 <span v-else class="text-3xl opacity-50">{{
                   file.is_dir ? "📁" : "📄"
-                  }}</span>
+                }}</span>
               </div>
 
               <span
