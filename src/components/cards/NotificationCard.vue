@@ -4,34 +4,20 @@
     :class="{
       'opacity-75 scale-95': notification.seen,
       'notification-new': !notification.seen,
-    }"
-    :data-urgency="notification.urgency?.toLowerCase()"
-  >
-    <img
-      :src="iconSrc"
-      :alt="notification.app_name"
-      class="w-10 h-10 object-contain"
-    />
+    }" :data-urgency="notification.urgency?.toLowerCase()">
+    <img :src="iconSrc" :alt="notification.app_name" class="w-10 h-10 object-contain" />
     <div class="flex-1 min-w-0">
       <div class="flex items-center justify-between gap-2">
         <h3 class="font-medium truncate">{{ notification.summary }}</h3>
-        <button
-          @click="$emit('seen', notification.id)"
-          class="close-button flex items-center justify-center w-6 h-6 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400 dark:hover:text-red-400 transition-all duration-200 transform hover:scale-110"
-        >
-          <img
-            :src="closeIconSrc"
-            alt="Cerrar"
-            class="w-3 h-3 transition-transform duration-200"
-          />
+        <button @click="$emit('seen', notification.id)"
+          class="close-button flex items-center justify-center w-6 h-6 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400 dark:hover:text-red-400 transition-all duration-200 transform hover:scale-110">
+          <img :src="closeIconSrc" alt="Cerrar" class="w-3 h-3 transition-transform duration-200" />
         </button>
       </div>
       <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
         {{ notification.body }}
       </p>
-      <div
-        class="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400"
-      >
+      <div class="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
         <span>{{ notification.app_name }}</span>
         <span>•</span>
         <span>{{ formatTime(notification.timestamp) }}</span>
@@ -39,12 +25,8 @@
 
       <!-- Actions -->
       <div v-if="parsedActions.length > 0" class="flex flex-wrap gap-2 mt-2">
-        <button
-          v-for="action in parsedActions"
-          :key="action.key"
-          @click.stop="handleAction(action.key)"
-          class="px-3 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200 rounded transition-colors"
-        >
+        <button v-for="action in parsedActions" :key="action.key" @click.stop="handleAction(action.key)"
+          class="px-3 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200 rounded transition-colors">
           {{ action.label }}
         </button>
       </div>
@@ -86,7 +68,6 @@ const parsedActions = computed(() => {
   for (let i = 0; i < acts.length; i += 2) {
     const key = acts[i];
     const label = acts[i + 1] || key;
-    // Skip 'default' action as it is usually the body click
     if (key !== "default") {
       result.push({ key, label });
     }
@@ -99,11 +80,11 @@ function formatTime(timestamp: number): string {
   return date.toLocaleTimeString();
 }
 
-async function handleAction(actionKey: string) {
+async function handleAction(action_key: string) {
   try {
     await invoke("invoke_notification_action", {
       id: props.notification.id,
-      actionKey,
+      action_key,
     });
   } catch (error) {
     console.error("Failed to invoke action:", error);
@@ -123,11 +104,9 @@ onMounted(async () => {
 <style scoped>
 .notification-container {
   border: 1px solid transparent;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.5),
-    rgba(255, 255, 255, 0.3)
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.5),
+      rgba(255, 255, 255, 0.3));
   backdrop-filter: blur(10px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -150,9 +129,11 @@ onMounted(async () => {
   0% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
   }
+
   50% {
     box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.1);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
@@ -176,11 +157,9 @@ onMounted(async () => {
 
 .notification-container[data-urgency="critical"] {
   border-left-color: #ef4444;
-  background: linear-gradient(
-    135deg,
-    rgba(239, 68, 68, 0.1),
-    rgba(239, 68, 68, 0.05)
-  );
+  background: linear-gradient(135deg,
+      rgba(239, 68, 68, 0.1),
+      rgba(239, 68, 68, 0.05));
 }
 
 .notification-container[data-urgency="critical"].notification-new {
@@ -188,10 +167,12 @@ onMounted(async () => {
 }
 
 @keyframes critical-pulse {
+
   0%,
   100% {
     border-left-color: #ef4444;
   }
+
   50% {
     border-left-color: #fca5a5;
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);

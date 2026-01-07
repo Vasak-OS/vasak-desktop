@@ -64,7 +64,6 @@ function getDeviceName(device: AudioDevice): string {
     .replaceAll("ALSA", "")
     .replaceAll("PulseAudio", "")
     .replaceAll("PipeWire", "")
-    .replaceAll(/\[[^\]]*\]/g, "")
     .trim();
 }
 </script>
