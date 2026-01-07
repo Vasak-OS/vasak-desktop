@@ -50,7 +50,6 @@ const handleBluetoothChange = async (event: any) => {
     connectedDevices,
     defaultAdapter,
   });
-  await refreshDevices();
   getBluetoothIcon();
 };
 
