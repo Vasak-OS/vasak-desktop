@@ -7,27 +7,29 @@ use tauri::{async_runtime::spawn, Manager};
 
 #[tauri::command]
 pub fn get_audio_volume() -> Result<VolumeInfo, String> {
-    get_volume()
+    get_volume().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn set_audio_volume(volume: i64, app: AppHandle) -> Result<(), String> {
-    set_volume(volume, app)
+    set_volume(volume, app).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn toggle_audio_mute(app: AppHandle) -> Result<bool, String> {
-    toggle_mute(app)
+    toggle_mute(app).map_err(|e| e.to_string())
 }
+
 #[tauri::command]
 pub fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
-    list_audio_devices()
+    list_audio_devices().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn set_audio_device(device_id: String, app: AppHandle) -> Result<bool, String> {
-    set_default_audio_device(&device_id, app)?;
-    Ok(true)
+    set_default_audio_device(&device_id, app)
+        .map(|_| true)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
