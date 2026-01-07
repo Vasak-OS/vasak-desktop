@@ -64,14 +64,13 @@ function getDeviceName(device: AudioDevice): string {
     .replaceAll("ALSA", "")
     .replaceAll("PulseAudio", "")
     .replaceAll("PipeWire", "")
-    .replaceAll(/\[.*\]/g, "")
+    .replaceAll(/\[[^\]]*\]/g, "")
     .trim();
 }
 </script>
 
 <template>
   <div class="space-y-2">
-    <!-- Header -->
     <div class="flex items-center gap-2 text-sm font-medium text-muted">
       <img
         v-if="speakerIcon"
@@ -82,7 +81,6 @@ function getDeviceName(device: AudioDevice): string {
       <span>Dispositivo de audio</span>
     </div>
 
-    <!-- Device selector -->
     <div v-if="!isLoading && devices.length > 0" class="space-y-1">
       <div
         v-for="device in devices"
