@@ -125,7 +125,7 @@ const getUserInfo = async () => {
   }
 };
 
-let timeInterval: number;
+let timeInterval: NodeJS.Timeout;
 
 onMounted(async () => {
   await getUserInfo();
@@ -135,7 +135,7 @@ onMounted(async () => {
     isLoaded.value = true;
   }, 100);
 
-  timeInterval = window.setInterval(updateDateTime, 1000);
+  timeInterval = globalThis.setInterval(updateDateTime, 1000);
 });
 
 onUnmounted(() => {

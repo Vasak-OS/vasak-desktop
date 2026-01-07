@@ -55,12 +55,15 @@ let setDebitTimeout: ReturnType<typeof setTimeout> | null = null;
 
 async function updateIcon() {
   try {
-    const iconName =
-      brightnessPercentage.value > 66
-        ? "display-brightness-high-symbolic"
-        : brightnessPercentage.value > 33
-        ? "display-brightness-medium-symbolic"
-        : "display-brightness-low-symbolic";
+    let iconName: string;
+
+    if (brightnessPercentage.value > 66) {
+      iconName = "display-brightness-high-symbolic";
+    } else if (brightnessPercentage.value > 33) {
+      iconName = "display-brightness-medium-symbolic";
+    } else {
+      iconName = "display-brightness-low-symbolic";
+    }
 
     currentIcon.value = await getSymbolSource(iconName);
   } catch (error) {
@@ -78,7 +81,7 @@ const brightnessPercentage = computed(() => {
 
 async function getBrightnessInfo() {
   try {
-    const info = await invoke("get_brightness_info") as BrightnessInfo;
+    const info = (await invoke("get_brightness_info")) as BrightnessInfo;
     brightnessInfo.value = info;
     currentBrightness.value = info.current;
     await updateIcon();
@@ -90,7 +93,7 @@ async function getBrightnessInfo() {
 // Debounce the outgoing update to avoid flooding the backend/hardware
 async function updateBrightness() {
   if (setDebitTimeout) clearTimeout(setDebitTimeout);
-  
+
   // Optimistic update of UI
   await updateIcon();
 
@@ -109,17 +112,17 @@ onMounted(async () => {
   await getBrightnessInfo();
 
   unlisten = await listen("brightness-changed", (event: any) => {
-    const payload = event.payload; 
+    const payload = event.payload;
     // Payload: { value: number, max: number, percentage: number }
     if (payload) {
       // Avoid loop if the value is close to what we just set
       // We check raw value difference.
       if (Math.abs(currentBrightness.value - payload.value) > 1) {
-          currentBrightness.value = payload.value;
-          // Update max if changed (adaptive max?)
-          if (payload.max > 0) brightnessInfo.value.max = payload.max;
-          brightnessInfo.value.current = payload.value;
-          updateIcon();
+        currentBrightness.value = payload.value;
+        // Update max if changed (adaptive max?)
+        if (payload.max > 0) brightnessInfo.value.max = payload.max;
+        brightnessInfo.value.current = payload.value;
+        updateIcon();
       }
     }
   });
