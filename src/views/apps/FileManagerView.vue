@@ -39,7 +39,8 @@ const sidebarIcons = ref<Record<string, string>>({});
 const getIconNameForFile = (filename: string, isDir: boolean): string => {
   if (isDir) return "folder";
 
-  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  const parts = filename.split(".");
+  const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : "";
 
   switch (ext) {
     case "png":
@@ -281,7 +282,7 @@ onMounted(async () => {
     <div class="h-[calc(100vh-32px)] w-screen rounded-b-window background flex flex-col overflow-hidden">
       <div class="h-12 border-b border-vsk-primary flex items-center px-4 background backdrop-blur-sm shrink-0">
         <div class="flex gap-2 mr-4">
-          <button @click="navigateUp" class="hover:text-vsk-primary transition-colors text-lg">
+          <button @click="navigateUp" aria-label="up" class="hover:text-vsk-primary transition-colors text-lg">
             ↑
           </button>
         </div>
