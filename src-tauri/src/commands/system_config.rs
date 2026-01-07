@@ -1,12 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 use std::path::PathBuf;
+use std::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemConfig {
-    pub border_radius: u32,
-    pub primary_color: String,
-    pub accent_color: String,
     pub dark_mode: bool,
     pub icon_pack: String,
     pub cursor_theme: String,
@@ -16,9 +13,6 @@ pub struct SystemConfig {
 impl Default for SystemConfig {
     fn default() -> Self {
         Self {
-            border_radius: 8,
-            primary_color: "#0084FF".to_string(),
-            accent_color: "#FF6B6B".to_string(),
             dark_mode: false,
             icon_pack: "Adwaita".to_string(),
             cursor_theme: "Adwaita".to_string(),
@@ -31,30 +25,32 @@ impl Default for SystemConfig {
 #[tauri::command]
 pub async fn get_system_config() -> Result<SystemConfig, String> {
     let config_path = get_config_path()?;
-    
+
     if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)
             .map_err(|e| format!("Error leyendo configuración: {}", e))?;
-        
-        serde_json::from_str(&content)
-            .map_err(|e| format!("Error parseando configuración: {}", e))
+
+        serde_json::from_str(&content).map_err(|e| format!("Error parseando configuración: {}", e))
     } else {
+        eprintln!("[get_system_config] Archivo no existe, usando defaults");
         Ok(SystemConfig::default())
     }
 }
 
-/// Obtiene el estado actual real del sistema desde gsettings
 #[tauri::command]
 pub async fn get_current_system_state() -> Result<SystemConfig, String> {
-    let gtk_theme = get_current_gtk_theme().await.unwrap_or_else(|_| "Adwaita".to_string());
-    let cursor_theme = get_current_cursor_theme().await.unwrap_or_else(|_| "Adwaita".to_string());
-    let icon_pack = get_current_icon_pack().await.unwrap_or_else(|_| "Adwaita".to_string());
+    let gtk_theme = get_current_gtk_theme()
+        .await
+        .unwrap_or_else(|_| "Adwaita".to_string());
+    let cursor_theme = get_current_cursor_theme()
+        .await
+        .unwrap_or_else(|_| "Adwaita".to_string());
+    let icon_pack = get_current_icon_pack()
+        .await
+        .unwrap_or_else(|_| "Adwaita".to_string());
     let dark_mode = get_current_dark_mode().await.unwrap_or(false);
-    
+
     Ok(SystemConfig {
-        border_radius: 8,
-        primary_color: "#0084FF".to_string(),
-        accent_color: "#FF6B6B".to_string(),
         dark_mode,
         icon_pack,
         cursor_theme,
@@ -62,33 +58,31 @@ pub async fn get_current_system_state() -> Result<SystemConfig, String> {
     })
 }
 
-/// Obtiene el tema GTK actual desde gsettings
 async fn get_current_gtk_theme() -> Result<String, String> {
     let output = Command::new("gsettings")
         .args(&["get", "org.gnome.desktop.interface", "gtk-theme"])
         .output()
         .map_err(|e| format!("Error obteniendo tema GTK: {}", e))?;
-    
+
     let theme = String::from_utf8_lossy(&output.stdout)
         .trim()
         .trim_matches('\'')
         .to_string();
-    
+
     Ok(theme)
 }
 
-/// Obtiene el cursor actual desde gsettings
 async fn get_current_cursor_theme() -> Result<String, String> {
     let output = Command::new("gsettings")
         .args(&["get", "org.gnome.desktop.interface", "cursor-theme"])
         .output()
         .map_err(|e| format!("Error obteniendo cursor: {}", e))?;
-    
+
     let cursor = String::from_utf8_lossy(&output.stdout)
         .trim()
         .trim_matches('\'')
         .to_string();
-    
+
     Ok(cursor)
 }
 
@@ -98,12 +92,12 @@ async fn get_current_icon_pack() -> Result<String, String> {
         .args(&["get", "org.gnome.desktop.interface", "icon-theme"])
         .output()
         .map_err(|e| format!("Error obteniendo pack de iconos: {}", e))?;
-    
+
     let icons = String::from_utf8_lossy(&output.stdout)
         .trim()
         .trim_matches('\'')
         .to_string();
-    
+
     Ok(icons)
 }
 
@@ -113,32 +107,27 @@ async fn get_current_dark_mode() -> Result<bool, String> {
         .args(&["get", "org.gnome.desktop.interface", "color-scheme"])
         .output()
         .map_err(|e| format!("Error obteniendo color scheme: {}", e))?;
-    
-    let scheme = String::from_utf8_lossy(&output.stdout)
-        .trim()
-        .to_string();
-    
+
+    let scheme = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
     Ok(scheme.contains("dark"))
 }
 
 /// Establece la configuración del sistema y persiste los cambios
 #[tauri::command]
 pub async fn set_system_config(config: SystemConfig) -> Result<SystemConfig, String> {
-    // Aplicar cambios al sistema
     apply_system_config(&config).await?;
 
-    // Persistir configuración en archivo
     let config_path = get_config_path()?;
-    
-    // Crear directorio si no existe
+
     if let Some(parent) = config_path.parent() {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("Error creando directorio de configuración: {}", e))?;
     }
-    
+
     let config_json = serde_json::to_string_pretty(&config)
         .map_err(|e| format!("Error serializando configuración: {}", e))?;
-    
+
     std::fs::write(&config_path, config_json)
         .map_err(|e| format!("Error guardando configuración: {}", e))?;
 
@@ -147,42 +136,34 @@ pub async fn set_system_config(config: SystemConfig) -> Result<SystemConfig, Str
 
 /// Obtiene la ruta del archivo de configuración
 fn get_config_path() -> Result<PathBuf, String> {
-    let home = std::env::var("HOME")
-        .map_err(|e| format!("Error obteniendo HOME: {}", e))?;
-    
-    Ok(PathBuf::from(home)
-        .join(".config/vasak/system_config.json"))
+    let home = std::env::var("HOME").map_err(|e| format!("Error obteniendo HOME: {}", e))?;
+
+    Ok(PathBuf::from(home).join(".config/vasak/system_config.json"))
 }
 
-/// Aplica la configuración al sistema
 async fn apply_system_config(config: &SystemConfig) -> Result<(), String> {
-    // Aplicar tema GTK
-    set_gtk_theme(&config.gtk_theme, config.dark_mode).await?;
+    if let Err(e) = set_gtk_theme(&config.gtk_theme, config.dark_mode).await {
+        eprintln!("⚠️  Error GTK (no crítico): {}", e);
+    }
 
-    // Aplicar cursor
-    set_cursor_theme(&config.cursor_theme).await?;
+    if let Err(e) = set_cursor_theme(&config.cursor_theme).await {
+        eprintln!("⚠️  Error Cursor (no crítico): {}", e);
+    }
 
-    // Aplicar icon pack
     set_icon_pack(&config.icon_pack).await?;
-
-    // Aplicar modo oscuro/claro
     set_dark_mode(config.dark_mode).await?;
-
-    // Nota: Color primario y border radius se aplican via CSS vars en Vue
 
     Ok(())
 }
 
-/// Cambia el tema GTK del sistema
-pub async fn set_gtk_theme(theme: &str, dark_mode: bool) -> Result<(), String> {
-    let theme_name = if dark_mode {
-        format!("{}-dark", theme)
-    } else {
-        theme.to_string()
-    };
-
+pub async fn set_gtk_theme(theme: &str, _dark_mode: bool) -> Result<(), String> {
     let output = Command::new("gsettings")
-        .args(&["set", "org.gnome.desktop.interface", "gtk-theme", &theme_name])
+        .args(&[
+            "set",
+            "org.gnome.desktop.interface",
+            "gtk-theme",
+            &theme.to_string(),
+        ])
         .output()
         .map_err(|e| format!("Error setting GTK theme: {}", e))?;
 
@@ -191,11 +172,10 @@ pub async fn set_gtk_theme(theme: &str, dark_mode: bool) -> Result<(), String> {
         return Err(format!("Error al aplicar tema GTK: {}", stderr));
     }
 
-    println!("GTK theme aplicado: {}", theme_name);
+    println!("GTK theme aplicado: {}", &theme.to_string());
     Ok(())
 }
 
-/// Cambia el cursor del sistema
 pub async fn set_cursor_theme(cursor: &str) -> Result<(), String> {
     let output = Command::new("gsettings")
         .args(&["set", "org.gnome.desktop.interface", "cursor-theme", cursor])
@@ -211,23 +191,46 @@ pub async fn set_cursor_theme(cursor: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Cambia el pack de iconos del sistema
 pub async fn set_icon_pack(icon_pack: &str) -> Result<(), String> {
+    let available_packs = get_icon_packs().await?;
+    if !available_packs.contains(&icon_pack.to_string()) {
+        let msg = format!(
+            "Icon pack '{}' no encontrado. Disponibles: {:?}",
+            icon_pack, available_packs
+        );
+        eprintln!("{}", msg);
+        return Err(msg);
+    }
+
     let output = Command::new("gsettings")
-        .args(&["set", "org.gnome.desktop.interface", "icon-theme", icon_pack])
+        .args(&[
+            "set",
+            "org.gnome.desktop.interface",
+            "icon-theme",
+            icon_pack,
+        ])
         .output()
-        .map_err(|e| format!("Error setting icon pack: {}", e))?;
+        .map_err(|e| {
+            let err_msg = format!("Error ejecutando gsettings: {}", e);
+            eprintln!("{}", err_msg);
+            err_msg
+        })?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let err_msg = format!(
+            "[set_icon_pack] Error: exit_code={}, stderr={}, stdout={}",
+            output.status.code().unwrap_or(-1),
+            stderr,
+            stdout
+        );
+        eprintln!("{}", err_msg);
         return Err(format!("Error al aplicar pack de iconos: {}", stderr));
     }
-
-    println!("Icon pack aplicado: {}", icon_pack);
     Ok(())
 }
 
-/// Activa/desactiva el modo oscuro
 pub async fn set_dark_mode(dark_mode: bool) -> Result<(), String> {
     let scheme = if dark_mode {
         "prefer-dark"
@@ -235,25 +238,29 @@ pub async fn set_dark_mode(dark_mode: bool) -> Result<(), String> {
         "prefer-light"
     };
 
-    Command::new("gsettings")
+    let output = Command::new("gsettings")
         .args(&["set", "org.gnome.desktop.interface", "color-scheme", scheme])
         .output()
         .map_err(|e| format!("Error setting color scheme: {}", e))?;
 
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!("[set_dark_mode] Error: {}", stderr);
+        return Err(format!("Error al aplicar esquema de color: {}", stderr));
+    }
     Ok(())
 }
 
-/// Obtiene lista de temas GTK disponibles
 #[tauri::command]
 pub async fn get_gtk_themes() -> Result<Vec<String>, String> {
     let themes_path = PathBuf::from("/usr/share/themes");
-    
+
     if !themes_path.exists() {
         return Ok(vec!["Adwaita".to_string()]);
     }
 
-    let entries = std::fs::read_dir(&themes_path)
-        .map_err(|e| format!("Error reading themes: {}", e))?;
+    let entries =
+        std::fs::read_dir(&themes_path).map_err(|e| format!("Error reading themes: {}", e))?;
 
     let mut themes = Vec::new();
     for entry in entries {
@@ -272,16 +279,12 @@ pub async fn get_gtk_themes() -> Result<Vec<String>, String> {
     Ok(themes)
 }
 
-/// Obtiene lista de temas de cursor disponibles
 #[tauri::command]
 pub async fn get_cursor_themes() -> Result<Vec<String>, String> {
     let home = std::env::var("HOME").unwrap_or_default();
     let local_icons = PathBuf::from(&home).join(".local/share/icons");
-    
-    let cursor_paths = vec![
-        PathBuf::from("/usr/share/icons"),
-        local_icons,
-    ];
+
+    let cursor_paths = vec![PathBuf::from("/usr/share/icons"), local_icons];
 
     let mut cursors = std::collections::HashSet::new();
     cursors.insert("Adwaita".to_string());
@@ -290,7 +293,6 @@ pub async fn get_cursor_themes() -> Result<Vec<String>, String> {
         if let Ok(entries) = std::fs::read_dir(&path) {
             for entry in entries {
                 if let Ok(entry) = entry {
-                    // Verificar que tenga un subdirectorio "cursors"
                     let cursors_dir = entry.path().join("cursors");
                     if cursors_dir.exists() && cursors_dir.is_dir() {
                         if let Ok(file_name) = entry.file_name().into_string() {
@@ -307,16 +309,12 @@ pub async fn get_cursor_themes() -> Result<Vec<String>, String> {
     Ok(result)
 }
 
-/// Obtiene lista de packs de iconos disponibles
 #[tauri::command]
 pub async fn get_icon_packs() -> Result<Vec<String>, String> {
     let home = std::env::var("HOME").unwrap_or_default();
     let local_icons = PathBuf::from(&home).join(".local/share/icons");
-    
-    let icon_paths = vec![
-        PathBuf::from("/usr/share/icons"),
-        local_icons,
-    ];
+
+    let icon_paths = vec![PathBuf::from("/usr/share/icons"), local_icons];
 
     let mut icons = std::collections::HashSet::new();
     icons.insert("Adwaita".to_string());
@@ -328,8 +326,7 @@ pub async fn get_icon_packs() -> Result<Vec<String>, String> {
                     let entry_path = entry.path();
                     let index_theme = entry_path.join("index.theme");
                     let cursors_dir = entry_path.join("cursors");
-                    
-                    // Solo incluir si tiene index.theme Y NO es un cursor theme
+
                     if index_theme.exists() && !cursors_dir.exists() {
                         if let Ok(file_name) = entry.file_name().into_string() {
                             icons.insert(file_name);
@@ -344,4 +341,3 @@ pub async fn get_icon_packs() -> Result<Vec<String>, String> {
     result.sort();
     Ok(result)
 }
-
