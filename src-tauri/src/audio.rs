@@ -1,47 +1,12 @@
+use crate::constants::CMD_WPCTL;
+use crate::error::{Result, VasakError};
 use crate::structs::{VolumeInfo, AudioDevice};
-use std::process::Command;
-use std::time::Duration;
+use crate::utils::CommandExecutor;
 use tauri::{AppHandle, Emitter};
 
-// Función helper para ejecutar comandos de PipeWire/PulseAudio con timeout
-fn run_command(cmd: &str, args: &[&str]) -> Result<String, String> {
-    run_command_with_timeout(cmd, args, Duration::from_secs(3))
-}
-
-fn run_command_with_timeout(cmd: &str, args: &[&str], timeout: Duration) -> Result<String, String> {
-    use std::sync::mpsc;
-    use std::thread;
-    
-    let cmd_owned = cmd.to_string();
-    let args_owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
-    
-    let (tx, rx) = mpsc::channel();
-    
-    thread::spawn(move || {
-        let output = Command::new(&cmd_owned)
-            .args(&args_owned)
-            .output();
-        let _ = tx.send(output);
-    });
-    
-    let output = rx.recv_timeout(timeout)
-        .map_err(|_| format!("Command {} timed out after {:?}", cmd, timeout))?
-        .map_err(|e| format!("Failed to execute {}: {}", cmd, e))?;
-
-    if !output.status.success() {
-        return Err(format!(
-            "Command {} failed: {}",
-            cmd,
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
-}
-
-// Función helper para encontrar el ID del sink por defecto
-fn get_default_sink_id() -> Result<String, String> {
-    let status_output = run_command("wpctl", &["status"])?;
+/// Obtiene el ID del sink de audio por defecto
+fn get_default_sink_id() -> Result<String> {
+    let status_output = CommandExecutor::run(CMD_WPCTL, &["status"])?;
 
     // Buscar el sink por defecto
     let mut in_sinks_section = false;
@@ -58,13 +23,10 @@ fn get_default_sink_id() -> Result<String, String> {
             }
             if in_sinks_section && line.contains("*") {
                 // Extraer el ID del sink. Formato: "│  *   61. Device Name [vol: 0.30]"
-                // Buscar el número que viene después del asterisco y antes del punto
                 if let Some(asterisk_pos) = line.find("*") {
                     let after_asterisk = &line[asterisk_pos + 1..];
-                    // Buscar el primer número en la línea después del asterisco
                     after_asterisk.split_whitespace().find_map(|part| {
                         if part.ends_with('.') {
-                            // Remover el punto final y verificar que sea un número
                             let num_part = &part[..part.len() - 1];
                             if num_part.chars().all(|c| c.is_ascii_digit()) {
                                 Some(num_part.to_string())
@@ -82,27 +44,27 @@ fn get_default_sink_id() -> Result<String, String> {
                 None
             }
         })
-        .ok_or("No se encontró el sink por defecto")?;
+        .ok_or_else(|| VasakError::NotFound("No se encontró el sink por defecto".to_string()))?;
 
     Ok(default_sink_id)
 }
 
-pub fn get_volume() -> Result<VolumeInfo, String> {
-    // Obtener el sink por defecto usando la función helper
+/// Obtiene la información actual del volumen del sistema usando wpctl
+pub fn get_volume() -> Result<VolumeInfo> {
     let default_sink_id = get_default_sink_id()?;
 
     // Obtener información del volumen
-    let volume_output = run_command("wpctl", &["get-volume", &default_sink_id])?;
+    let volume_output = CommandExecutor::run(CMD_WPCTL, &["get-volume", &default_sink_id])?;
 
     // Parsear la salida: "Volume: 0.50 [MUTED]" o "Volume: 0.50"
     let parts: Vec<&str> = volume_output.trim().split_whitespace().collect();
     if parts.len() < 2 {
-        return Err("Formato de volumen inválido".to_string());
+        return Err(VasakError::Parse("Formato de volumen inválido".to_string()));
     }
 
     let volume_float: f64 = parts[1]
         .parse()
-        .map_err(|_| "No se pudo parsear el volumen")?;
+        .map_err(|_| VasakError::Parse("No se pudo parsear el volumen".to_string()))?;
 
     let current = (volume_float * 100.0) as i64;
     let is_muted = volume_output.contains("[MUTED]");
@@ -115,12 +77,12 @@ pub fn get_volume() -> Result<VolumeInfo, String> {
     })
 }
 
-pub fn set_volume(volume: i64, app: AppHandle) -> Result<(), String> {
-    // Obtener el sink por defecto usando la función helper
+/// Establece el volumen del sistema
+pub fn set_volume(volume: i64, app: AppHandle) -> Result<()> {
     let default_sink_id = get_default_sink_id()?;
 
     let volume_percent = format!("{}%", volume);
-    run_command("wpctl", &["set-volume", &default_sink_id, &volume_percent])?;
+    CommandExecutor::run(CMD_WPCTL, &["set-volume", &default_sink_id, &volume_percent])?;
 
     // Si se aplicó correctamente, leer estado y notificar al frontend
     if let Ok(info) = get_volume() {
@@ -129,25 +91,28 @@ pub fn set_volume(volume: i64, app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-pub fn toggle_mute(app: AppHandle) -> Result<bool, String> {
-    // Obtener el sink por defecto usando la función helper
+/// Alterna el estado de silencio del audio
+pub fn toggle_mute(app: AppHandle) -> Result<bool> {
     let default_sink_id = get_default_sink_id()?;
 
     // Obtener estado actual
     let current_info = get_volume()?;
 
     // Toggle mute
-    run_command("wpctl", &["set-mute", &default_sink_id, "toggle"])?;
+    CommandExecutor::run(CMD_WPCTL, &["set-mute", &default_sink_id, "toggle"])?;
+    
     // Después del toggle, obtener estado actualizado y notificar al frontend
     if let Ok(info) = get_volume() {
         let _ = app.emit("volume-changed", info.clone());
     }
+    
     // Retornar el nuevo estado (opuesto al actual)
     Ok(!current_info.is_muted)
 }
-/// List all audio output devices (sinks)
-pub fn list_audio_devices() -> Result<Vec<AudioDevice>, String> {
-    let status_output = run_command("wpctl", &["status"])?;
+
+/// Lista todos los dispositivos de salida de audio (sinks)
+pub fn list_audio_devices() -> Result<Vec<AudioDevice>> {
+    let status_output = CommandExecutor::run(CMD_WPCTL, &["status"])?;
     let default_sink_id = get_default_sink_id().ok();
     
     let mut devices = Vec::new();
@@ -180,11 +145,10 @@ pub fn list_audio_devices() -> Result<Vec<AudioDevice>, String> {
                     // Extract volume if available
                     let volume = if let Some(vol_start) = after_dot.find("vol: ") {
                         let vol_str = &after_dot[vol_start + 5..];
-                        let vol_val = vol_str.split(|c| c == ']' || c == ' ')
+                        vol_str.split(|c| c == ']' || c == ' ')
                             .next()
                             .and_then(|s| s.parse::<f64>().ok())
-                            .unwrap_or(0.5);
-                        vol_val
+                            .unwrap_or(0.5)
                     } else {
                         0.5
                     };
@@ -206,9 +170,9 @@ pub fn list_audio_devices() -> Result<Vec<AudioDevice>, String> {
     Ok(devices)
 }
 
-/// Set the default audio output device
-pub fn set_default_audio_device(device_id: &str, app: AppHandle) -> Result<(), String> {
-    run_command("wpctl", &["set-default", device_id])?;
+/// Establece el dispositivo de salida de audio por defecto
+pub fn set_default_audio_device(device_id: &str, app: AppHandle) -> Result<()> {
+    CommandExecutor::run(CMD_WPCTL, &["set-default", device_id])?;
     
     // Notify frontend of change
     if let Ok(devices) = list_audio_devices() {

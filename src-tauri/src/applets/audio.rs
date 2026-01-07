@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use tauri::{AppHandle, Emitter};
 use std::error::Error;
 use tokio::time::Duration;
+use crate::constants::{AUDIO_SLOW_POLL_MS, AUDIO_FAST_POLL_MS, AUDIO_FAST_POLL_ITERATIONS};
 
 pub struct AudioApplet;
 
@@ -24,15 +25,10 @@ impl Applet for AudioApplet {
     }
 }
 
-/// Monitorea cambios en el volumen de audio
 /// Monitorea cambios en el volumen de audio con polling adaptativo
 async fn monitor_audio_changes(app: AppHandle) {
-    const SLOW_POLL_MS: u64 = 2000;
-    const FAST_POLL_MS: u64 = 500;
-    const FAST_POLL_ITERATIONS: u32 = 10; // Keep fast polling for 5 seconds after change
-
-    let mut current_interval_ms = FAST_POLL_MS; // Start fast
-    let mut fast_poll_countdown = FAST_POLL_ITERATIONS;
+    let mut current_interval_ms = AUDIO_FAST_POLL_MS; // Start fast
+    let mut fast_poll_countdown = AUDIO_FAST_POLL_ITERATIONS;
     let mut last_volume: Option<crate::structs::VolumeInfo> = None;
 
     loop {
@@ -64,21 +60,21 @@ async fn monitor_audio_changes(app: AppHandle) {
                     last_volume = Some(current_volume);
                     
                     // Switch to fast polling on change
-                    current_interval_ms = FAST_POLL_MS;
-                    fast_poll_countdown = FAST_POLL_ITERATIONS;
+                    current_interval_ms = AUDIO_FAST_POLL_MS;
+                    fast_poll_countdown = AUDIO_FAST_POLL_ITERATIONS;
                 } else {
                     // No change detected
                     if fast_poll_countdown > 0 {
                         fast_poll_countdown -= 1;
                     } else {
                         // Switch to slow polling if stable
-                        current_interval_ms = SLOW_POLL_MS;
+                        current_interval_ms = AUDIO_SLOW_POLL_MS;
                     }
                 }
             },
             Err(_) => {
                 // Si falla la lectura, usar intervalo lento
-                current_interval_ms = SLOW_POLL_MS;
+                current_interval_ms = AUDIO_SLOW_POLL_MS;
             }
         }
     }
