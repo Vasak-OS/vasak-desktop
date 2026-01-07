@@ -1,29 +1,17 @@
 <template>
-  <div 
+  <div
     class="notification-container flex items-start gap-3 p-3 background rounded-vsk shadow-sm transition-all duration-200 hover:shadow-lg"
-    :class="{ 
+    :class="{
       'opacity-75 scale-95': notification.seen,
-      'notification-new': !notification.seen 
-    }"
-    :data-urgency="notification.urgency?.toLowerCase()"
-  >
-    <img 
-      :src="iconSrc" 
-      :alt="notification.app_name"
-      class="w-10 h-10 object-contain"
-    />
+      'notification-new': !notification.seen,
+    }" :data-urgency="notification.urgency?.toLowerCase()">
+    <img :src="iconSrc" :alt="notification.app_name" class="w-10 h-10 object-contain" />
     <div class="flex-1 min-w-0">
       <div class="flex items-center justify-between gap-2">
         <h3 class="font-medium truncate">{{ notification.summary }}</h3>
-        <button 
-          @click="$emit('seen', notification.id)"
-          class="close-button flex items-center justify-center w-6 h-6 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400 dark:hover:text-red-400 transition-all duration-200 transform hover:scale-110"
-        >
-          <img 
-            :src="closeIconSrc" 
-            alt="Cerrar"
-            class="w-3 h-3 transition-transform duration-200"
-          />
+        <button @click="$emit('seen', notification.id)"
+          class="close-button flex items-center justify-center w-6 h-6 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400 dark:hover:text-red-400 transition-all duration-200 transform hover:scale-110">
+          <img :src="closeIconSrc" alt="Cerrar" class="w-3 h-3 transition-transform duration-200" />
         </button>
       </div>
       <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
@@ -37,12 +25,8 @@
 
       <!-- Actions -->
       <div v-if="parsedActions.length > 0" class="flex flex-wrap gap-2 mt-2">
-        <button
-          v-for="action in parsedActions"
-          :key="action.key"
-          @click.stop="handleAction(action.key)"
-          class="px-3 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200 rounded transition-colors"
-        >
+        <button v-for="action in parsedActions" :key="action.key" @click.stop="handleAction(action.key)"
+          class="px-3 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200 rounded transition-colors">
           {{ action.label }}
         </button>
       </div>
@@ -51,31 +35,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { invoke } from '@tauri-apps/api/core';
+import { ref, onMounted, computed } from "vue";
+import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { invoke } from "@tauri-apps/api/core";
 
 const props = defineProps<{
   notification: {
-    id: number
-    app_name: string
-    app_icon: string
-    summary: string
-    body: string
-    timestamp: number
-    seen: boolean
-    urgency?: string
-    actions?: string[]
-    hints?: { [key: string]: string }
-  }
-}>()
+    id: number;
+    app_name: string;
+    app_icon: string;
+    summary: string;
+    body: string;
+    timestamp: number;
+    seen: boolean;
+    urgency?: string;
+    actions?: string[];
+    hints?: { [key: string]: string };
+  };
+}>();
 
 defineEmits<{
-  (e: 'seen', id: number): void
-}>()
+  seen: [id: number];
+}>();
 
-const iconSrc = ref('')
-const closeIconSrc = ref('')
+const iconSrc = ref("");
+const closeIconSrc = ref("");
 
 // Parse standard DBus actions [key, label, key, label...]
 const parsedActions = computed(() => {
@@ -84,8 +68,7 @@ const parsedActions = computed(() => {
   for (let i = 0; i < acts.length; i += 2) {
     const key = acts[i];
     const label = acts[i + 1] || key;
-    // Skip 'default' action as it is usually the body click
-    if (key !== 'default') {
+    if (key !== "default") {
       result.push({ key, label });
     }
   }
@@ -93,41 +76,43 @@ const parsedActions = computed(() => {
 });
 
 function formatTime(timestamp: number): string {
-  const date = new Date(timestamp * 1000)
-  return date.toLocaleTimeString()
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleTimeString();
 }
 
-async function handleAction(actionKey: string) {
+async function handleAction(action_key: string) {
   try {
-    await invoke('invoke_notification_action', { 
-      id: props.notification.id, 
-      actionKey 
+    await invoke("invoke_notification_action", {
+      id: props.notification.id,
+      action_key,
     });
   } catch (error) {
-    console.error('Failed to invoke action:', error);
+    console.error("Failed to invoke action:", error);
   }
 }
 
 onMounted(async () => {
   try {
     iconSrc.value = await getIconSource(props.notification.app_icon);
-    closeIconSrc.value = await getIconSource('window-close-symbolic');
+    closeIconSrc.value = await getIconSource("window-close-symbolic");
   } catch (error) {
-    console.error('Error loading icons:', error)
+    console.error("Error loading icons:", error);
   }
-})
+});
 </script>
 
 <style scoped>
 .notification-container {
   border: 1px solid transparent;
-  background: linear-gradient(135deg, rgba(255,255,255,0.5), rgba(255,255,255,0.3));
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.5),
+      rgba(255, 255, 255, 0.3));
   backdrop-filter: blur(10px);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark .notification-container {
-  background: linear-gradient(135deg, rgba(0,0,0,0.5), rgba(0,0,0,0.3));
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
 }
 
 .notification-container:hover {
@@ -144,9 +129,11 @@ onMounted(async () => {
   0% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
   }
+
   50% {
     box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.1);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
@@ -170,7 +157,9 @@ onMounted(async () => {
 
 .notification-container[data-urgency="critical"] {
   border-left-color: #ef4444;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+  background: linear-gradient(135deg,
+      rgba(239, 68, 68, 0.1),
+      rgba(239, 68, 68, 0.05));
 }
 
 .notification-container[data-urgency="critical"].notification-new {
@@ -178,9 +167,12 @@ onMounted(async () => {
 }
 
 @keyframes critical-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     border-left-color: #ef4444;
   }
+
   50% {
     border-left-color: #fca5a5;
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
@@ -192,4 +184,4 @@ onMounted(async () => {
 .notification-container span {
   transition: color 0.2s ease-in-out;
 }
-</style> 
+</style>

@@ -19,6 +19,7 @@ onMounted(async () => {
     try {
       extraInfo.value = await getDeviceInfo(props.device.path);
     } catch (e) {
+      console.error("Error fetching device info:", e);
       extraInfo.value = {};
     }
   }
@@ -31,7 +32,7 @@ onMounted(async () => {
     :class="connected ? 'border-l-4 border-green-500' : ''"
   >
     <div class="flex items-center gap-3 flex-1 min-w-0">
-      <img :src="icon" alt="icono" class="h-7 w-7 flex-shrink-0" />
+      <img :src="icon" alt="icono" class="h-7 w-7 shrink-0" />
       <div class="min-w-0">
         <div class="font-semibold truncate">
           {{ device.alias || device.name || device.address }}
@@ -43,17 +44,18 @@ onMounted(async () => {
         >
           <span v-if="device.type" class="ml-1">{{ device.type }}</span>
         </div>
-        <!-- Información adicional obtenida dinámicamente -->
         <div
-          v-if="extraInfo.battery !== undefined || device.rssi || extraInfo.manufacturer !== undefined"
+          v-if="
+            extraInfo.battery !== undefined ||
+            device.rssi ||
+            extraInfo.manufacturer !== undefined
+          "
           class="text-xs text-gray-400 flex gap-2 mt-1"
         >
           <span v-if="extraInfo.battery !== undefined"
             >🔋 {{ extraInfo.battery }}%</span
           >
-          <span v-if="device.rssi"
-            >📶 {{ device.rssi }} dBm</span
-          >
+          <span v-if="device.rssi">📶 {{ device.rssi }} dBm</span>
           <span v-if="extraInfo.manufacturer"
             >🏷️ {{ extraInfo.manufacturer }}</span
           >
@@ -68,5 +70,3 @@ onMounted(async () => {
     </button>
   </div>
 </template>
-
-<style scoped></style>

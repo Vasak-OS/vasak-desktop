@@ -48,6 +48,7 @@
 
     <img
       :src="bluetoothIcon"
+      alt="Bluetooth Icon"
       class="m-auto w-[50px] h-[50px] transition-all duration-300 group-hover:scale-110 relative z-10"
       :class="{
         'animate-spin': isTogglingBluetooth,
@@ -65,7 +66,7 @@ import {
   getDefaultAdapter,
   toggleBluetooth,
   AdapterInfo,
-  getConnectedDevicesCount
+  getConnectedDevicesCount,
 } from "@vasakgroup/plugin-bluetooth-manager";
 import { listen } from "@tauri-apps/api/event";
 
@@ -175,7 +176,9 @@ const handleBluetoothChange = (event: any) => {
 onMounted(async () => {
   defaultAdapter.value = await getDefaultAdapter();
   await getBluetoothIcon();
-  connectedDevicesCount.value = await getConnectedDevicesCount(defaultAdapter.value?.path as string);
+  connectedDevicesCount.value = await getConnectedDevicesCount(
+    defaultAdapter.value?.path as string
+  );
   unlistenBluetooth.value = await listen(
     "bluetooth-change",
     handleBluetoothChange
@@ -190,7 +193,9 @@ onUnmounted(() => {
 
 const getBluetoothIcon = async () => {
   try {
-    connectedDevicesCount.value = await getConnectedDevicesCount(defaultAdapter.value?.path as string);
+    connectedDevicesCount.value = await getConnectedDevicesCount(
+      defaultAdapter.value?.path as string
+    );
     const iconName = isBluetoothOn
       ? connectedDevicesCount.value > 0
         ? "bluetooth-active-symbolic"

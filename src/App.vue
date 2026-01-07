@@ -6,7 +6,6 @@ import { listen } from "@tauri-apps/api/event";
 import { onMounted, onUnmounted } from "vue";
 
 let unlistenConfig: Function | null = null;
-let unlistenShortcuts: (Function | null)[] = [];
 
 onMounted(async () => {
   const configStore = useConfigStore() as Store<
@@ -25,9 +24,6 @@ onUnmounted(() => {
   if (unlistenConfig !== null) {
     unlistenConfig();
   }
-  unlistenShortcuts.forEach((fn) => {
-    if (fn !== null) fn();
-  });
 });
 </script>
 

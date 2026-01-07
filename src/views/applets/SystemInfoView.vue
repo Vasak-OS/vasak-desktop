@@ -502,11 +502,10 @@ let updateInterval: number | null = null;
 
 const loadSystemInfo = async (silent = false) => {
   try {
-    // Solo mostrar loading completo en la carga inicial
-    if (!silent) {
-      loading.value = true;
-    } else {
+    if (silent) {
       isUpdating.value = true;
+    } else {
+      loading.value = true;
     }
     error.value = "";
     systemInfo.value = await invoke<SystemInfo>("get_system_info");

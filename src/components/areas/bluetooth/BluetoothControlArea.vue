@@ -13,6 +13,10 @@ import {
 } from "@vasakgroup/plugin-bluetooth-manager";
 import { listen } from "@tauri-apps/api/event";
 import BluetoothDeviceCard from "@/components/cards/BluetoothDeviceCard.vue";
+import {
+  applyBluetoothChange,
+  resolveBluetoothIconName,
+} from "@/tools/bluetooth.controller";
 
 const connectedDevices: Ref<any[]> = ref([]);
 const availableDevices: Ref<any[]> = ref([]);
@@ -41,79 +45,11 @@ const toggleBT = async () => {
 const isBluetoothOn = computed(() => defaultAdapter.value?.powered);
 
 const handleBluetoothChange = async (event: any) => {
-  const { change_type, data } = event.payload;
-
-  switch (change_type) {
-    case "adapter-property-changed":
-      if (defaultAdapter.value && data.path === defaultAdapter.value.path) {
-        defaultAdapter.value = data;
-      }
-      break;
-
-    case "device-added":
-      if (!availableDevices.value.find((d) => d.path === data.path)) {
-        availableDevices.value.push(data);
-      }
-      break;
-
-    case "device-removed":
-      availableDevices.value = availableDevices.value.filter(
-        (d) => d.path !== data.path
-      );
-      connectedDevices.value = connectedDevices.value.filter(
-        (d) => d.path !== data.path
-      );
-      break;
-
-    case "device-connected":
-    case "device-property-changed":
-      // Actualizar en ambas listas
-      const deviceIndex = availableDevices.value.findIndex(
-        (d) => d.path === data.path
-      );
-      if (deviceIndex !== -1) {
-        if (data.connected) {
-          // Mover a conectados
-          availableDevices.value.splice(deviceIndex, 1);
-          if (!connectedDevices.value.find((d) => d.path === data.path)) {
-            connectedDevices.value.push(data);
-          }
-        } else {
-          // Actualizar en disponibles
-          availableDevices.value[deviceIndex] = data;
-        }
-      } else {
-        // Actualizar en conectados
-        const connectedIndex = connectedDevices.value.findIndex(
-          (d) => d.path === data.path
-        );
-        if (connectedIndex !== -1) {
-          if (data.connected) {
-            connectedDevices.value[connectedIndex] = data;
-          } else {
-            // Mover a disponibles
-            connectedDevices.value.splice(connectedIndex, 1);
-            if (!availableDevices.value.find((d) => d.path === data.path)) {
-              availableDevices.value.push(data);
-            }
-          }
-        }
-      }
-      break;
-
-    case "device-disconnected":
-      const disconnectedIndex = connectedDevices.value.findIndex(
-        (d) => d.path === data.path
-      );
-      if (disconnectedIndex !== -1) {
-        connectedDevices.value.splice(disconnectedIndex, 1);
-        if (!availableDevices.value.find((d) => d.path === data.path)) {
-          availableDevices.value.push(data);
-        }
-      }
-      break;
-  }
-  await refreshDevices();
+  applyBluetoothChange(event.payload, {
+    availableDevices,
+    connectedDevices,
+    defaultAdapter,
+  });
   getBluetoothIcon();
 };
 
@@ -129,6 +65,7 @@ const refreshDevices = async () => {
     );
     connectedDevicesCount.value = connectedDevices.value.length;
   } catch (e) {
+    console.error("Error refreshing devices:", e);
     connectedDevices.value = [];
     availableDevices.value = [];
   }
@@ -166,13 +103,13 @@ onUnmounted(() => {
 const getBluetoothIcon = async () => {
   try {
     connectedDevicesCount.value = connectedDevices.value.length;
-    const iconName = isBluetoothOn.value
-      ? connectedDevicesCount.value > 0
-        ? "bluetooth-active-symbolic"
-        : "bluetooth-symbolic"
-      : "bluetooth-disabled-symbolic";
+    const iconName = resolveBluetoothIconName(
+      isBluetoothOn.value,
+      connectedDevicesCount.value
+    );
     bluetoothIcon.value = await getIconSource(iconName);
   } catch (error) {
+    console.error("Error loading bluetooth icon:", error);
     bluetoothIcon.value = "";
   }
 };
@@ -211,6 +148,7 @@ const disconnect = async (device: any) => {
       >
         <img
           :src="syncIcon"
+          alt="Sync Bluetooth"
           class="h-6 w-6"
           :class="{ 'animate-spin': isScanning }"
         />
@@ -262,5 +200,3 @@ const disconnect = async (device: any) => {
     </div>
   </div>
 </template>
-
-<style scoped></style>

@@ -8,22 +8,41 @@
         @click="closeApplet"
         class="p-2 rounded-vsk hover:bg-vsk-primary/10 transition-colors"
       >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        <svg
+          class="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          ></path>
         </svg>
       </button>
     </div>
 
     <!-- WiFi Toggle -->
-    <div 
+    <div
       v-if="wifiAvailable"
       class="flex items-center justify-between mb-4 p-3 rounded-vsk border border-vsk-primary/70 background"
     >
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-full bg-vsk-primary/10">
-          <svg class="w-5 h-5 text-vsk-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-              d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+          <svg
+            class="w-5 h-5 text-vsk-primary"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
+            ></path>
           </svg>
         </div>
         <div>
@@ -41,30 +60,40 @@
         <span
           :class="[
             'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-            wifiEnabled ? 'translate-x-6' : 'translate-x-1'
+            wifiEnabled ? 'translate-x-6' : 'translate-x-1',
           ]"
         />
       </button>
     </div>
-    
-    <!-- WiFi unavailable message -->
-    <div v-else class="mb-4 p-3 rounded-vsk border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-center">
-        <span class="text-sm text-gray-500">Wireless hardware not cached or unavailable</span>
+
+    <div
+      v-else
+      class="mb-4 p-3 rounded-vsk border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-center"
+    >
+      <span class="text-sm text-gray-500"
+        >Wireless hardware not cached or unavailable</span
+      >
     </div>
 
     <div v-if="wifiAvailable && wifiEnabled" class="flex-1 overflow-hidden">
-      <h3 class="text-sm font-medium text-vsk-text/80 mb-3">Available Networks</h3>
-      
-      <!-- Loading -->
+      <h3 class="text-sm font-medium text-vsk-text/80 mb-3">
+        Available Networks
+      </h3>
+
       <div v-if="loading" class="flex items-center justify-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-vsk-primary"></div>
+        <div
+          class="animate-spin rounded-full h-8 w-8 border-b-2 border-vsk-primary"
+        ></div>
       </div>
 
       <div v-else class="space-y-2 overflow-y-auto max-h-96">
-        <NetworkWiFiCard v-for="network in availableNetworks" :key="network.ssid" v-bind="network" />
+        <NetworkWiFiCard
+          v-for="network in availableNetworks"
+          :key="network.ssid"
+          v-bind="network"
+        />
       </div>
 
-      <!-- Refresh Button -->
       <button
         @click="refreshNetworks"
         class="w-full mt-4 p-2 rounded-vsk border border-vsk-primary/70 hover:bg-vsk-primary/5 transition-colors text-sm text-vsk-text"
@@ -73,13 +102,23 @@
       </button>
     </div>
 
-    <!-- Ethernet Section -->
     <div class="mt-6 pt-4 border-t border-vsk-primary/70">
-      <div class="flex items-center gap-3 p-3 background rounded-vsk border border-vsk-primary/70">
+      <div
+        class="flex items-center gap-3 p-3 background rounded-vsk border border-vsk-primary/70"
+      >
         <div class="p-2 rounded-full bg-vsk-primary/10">
-          <svg class="w-5 h-5 text-vsk-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-              d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"></path>
+          <svg
+            class="w-5 h-5 text-vsk-primary"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"
+            ></path>
           </svg>
         </div>
         <div>
@@ -95,15 +134,19 @@
 import { ref, onMounted, onUnmounted, Ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { listWifiNetworks, NetworkInfo } from "@vasakgroup/plugin-network-manager"
+import {
+  listWifiNetworks,
+  NetworkInfo,
+  getCurrentNetworkState,
+} from "@vasakgroup/plugin-network-manager";
 import NetworkWiFiCard from "@/components/cards/NetworkWiFiCard.vue";
 
 const wifiEnabled: Ref<boolean> = ref(true);
-const wifiAvailable: Ref<boolean> = ref(true); // Assume true until checked
+const wifiAvailable: Ref<boolean> = ref(true);
 const loading: Ref<boolean> = ref(false);
 const availableNetworks: Ref<NetworkInfo[]> = ref([]);
 const wifiStatus: Ref<string> = ref("Checking...");
-const ethernetStatus: Ref<string> = ref("Connected"); // Todo: Fetch Real Eth Status
+const ethernetStatus: Ref<string> = ref("Checking...");
 let unlisten: (() => void) | null = null;
 
 defineProps({
@@ -114,71 +157,90 @@ defineProps({
 });
 
 const checkWirelessStatus = async () => {
-    try {
-        // Assume commands exist in plugin
-        // Note: Invoke calls pass to rust. 
-        // We added: is_wireless_available, get_wireless_enabled
-        
-        // Wait, commands are in Rust but we invoke them by string.
-        // We need to ensure the names match exactly "plugin:network-manager|is_wireless_available"
-        // Using "invoke" calls the MAIN app commands or PLUGIN commands?
-        // If we use `invoke` from tauri core, and the commands are registered in `lib.rs`, we can call them directly if they are main commands.
-        // The commands were registered in `lib.rs` invoke handler (Step 480).
-        // So `invoke("is_wireless_available")` works.
-        
-        const available = await invoke("plugin:network-manager|is_wireless_available");
-        wifiAvailable.value = available as boolean;
-        
-        if (available) {
-            const enabled = await invoke("plugin:network-manager|get_wireless_enabled");
-            wifiEnabled.value = enabled as boolean;
-            wifiStatus.value = enabled ? "On" : "Off";
-            
-            if (enabled) {
-                await refreshNetworks();
-            }
-        } else {
-             wifiStatus.value = "Hardware unavailable";
-             wifiEnabled.value = false;
-        }
-    } catch (e) {
-        console.error("Error checking wireless status:", e);
-        // Fallback or maintain default
-        // wifiAvailable.value = false;
+  try {
+    const available = await invoke(
+      "plugin:network-manager|is_wireless_available"
+    );
+    wifiAvailable.value = available as boolean;
+
+    if (available) {
+      const enabled = await invoke(
+        "plugin:network-manager|get_wireless_enabled"
+      );
+      wifiEnabled.value = enabled as boolean;
+      wifiStatus.value = enabled ? "On" : "Off";
+
+      if (enabled) {
+        await refreshNetworks();
+      }
+    } else {
+      wifiStatus.value = "Hardware unavailable";
+      wifiEnabled.value = false;
     }
+  } catch (e) {
+    console.error("Error checking wireless status:", e);
+  }
 };
 
 const toggleWifi = async () => {
   if (!wifiAvailable.value) return;
-  
+
   try {
     const newState = !wifiEnabled.value;
-    // Call backend to set state
-    await invoke("plugin:network-manager|set_wireless_enabled", { enabled: newState });
-    
-    // Optimistic update
+    await invoke("plugin:network-manager|set_wireless_enabled", {
+      enabled: newState,
+    });
+
     wifiEnabled.value = newState;
     wifiStatus.value = newState ? "On" : "Off";
-    
+
     if (wifiEnabled.value) {
       await refreshNetworks();
     } else {
-        availableNetworks.value = [];
+      availableNetworks.value = [];
     }
   } catch (error) {
     console.error("Error toggling WiFi:", error);
-    // Revert logic could be added here
+  }
+};
+
+const updateEthernetStatus = (state: NetworkInfo | null) => {
+  if (!state) {
+    ethernetStatus.value = "Unknown";
+    return;
+  }
+
+  const isEthernet = state.connection_type?.toLowerCase() === "ethernet";
+  if (isEthernet && state.is_connected) {
+    ethernetStatus.value = "Connected";
+    return;
+  }
+
+  if (isEthernet && !state.is_connected) {
+    ethernetStatus.value = "Disconnected";
+    return;
+  }
+
+  ethernetStatus.value = "Not connected";
+};
+
+const refreshEthernetStatus = async () => {
+  try {
+    const state = await getCurrentNetworkState();
+    updateEthernetStatus(state);
+  } catch (error) {
+    console.error("Error fetching ethernet status:", error);
+    ethernetStatus.value = "Unknown";
   }
 };
 
 const refreshNetworks = async () => {
   if (!wifiEnabled.value || !wifiAvailable.value) return;
-  
   loading.value = true;
   try {
     availableNetworks.value = await listWifiNetworks();
   } catch (error) {
-    // console.error("Error refreshing networks:", error);
+    console.error("Error refreshing networks:", error);
   } finally {
     loading.value = false;
   }
@@ -194,11 +256,10 @@ const closeApplet = async () => {
 
 onMounted(async () => {
   await checkWirelessStatus();
-  
-  // Listen for backend network events
+  await refreshEthernetStatus();
   unlisten = await listen<any>("network-changed", async () => {
-      // Re-check status on change (e.g. rfkill switch toggled externally)
-      await checkWirelessStatus();
+    await checkWirelessStatus();
+    await refreshEthernetStatus();
   });
 });
 

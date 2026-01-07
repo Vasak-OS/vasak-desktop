@@ -11,7 +11,6 @@ import CategoryMenuPill from "@/components/buttons/CategoryMenuPill.vue";
 import WeatherWidget from "@/components/widgets/WeatherWidget.vue";
 import { getIconSource } from "@vasakgroup/plugin-vicons";
 
-// Estado global
 const menuData: Ref<Array<any>> = ref([]);
 const categorySelected: Ref<any> = ref("all");
 const filter: Ref<string> = ref("");
@@ -21,7 +20,6 @@ const rebootImg: Ref<string> = ref("");
 const suspendImg: Ref<string> = ref("");
 const settingsImg: Ref<string> = ref("");
 
-// Cargar menú
 const setMenu = async () => {
   try {
     menuData.value = await invoke("get_menu_items");
@@ -99,7 +97,7 @@ const setImages = async () => {
     suspendImg.value = await getIconSource("system-suspend");
     settingsImg.value = await getIconSource("settings");
   } catch (error) {
-    console.error("Error: finding logout icon");
+    console.error("Error loading session icons:", error);
   }
 };
 
@@ -120,7 +118,6 @@ onMounted(async () => {
 
 <template>
   <div class="vmenu background">
-    <!-- Header Section -->
     <div
       class="flex items-center justify-between animate-fadeIn mb-4 header-section"
     >
@@ -131,7 +128,11 @@ onMounted(async () => {
       <div class="flex items-center space-x-2">
         <SessionButton
           v-for="(action, index) in [
-            { title: 'Configuration', img: settingsImg, handler: openConfiguration },
+            {
+              title: 'Configuration',
+              img: settingsImg,
+              handler: openConfiguration,
+            },
             { title: 'Shutdown', img: shutdownImg, handler: shutdown },
             { title: 'Reboot', img: rebootImg, handler: reboot },
             { title: 'Logout', img: logoutImg, handler: logout },
@@ -146,7 +147,6 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Main Content -->
     <transition name="fade" mode="out-in">
       <div v-if="filter !== ''" key="filter-view" class="animate-fadeIn">
         <FilterArea v-model:apps="apps" v-model:filter="filter" />
@@ -156,21 +156,18 @@ onMounted(async () => {
         key="main-view"
         class="grid grid-cols-3 gap-4 animate-slideUpPlus h-[calc(100vh-88px)]"
       >
-        <!-- Apps -->
         <div
           class="background rounded-vsk p-4 h-full overflow-y-auto apps-container"
         >
           <MenuArea v-model:apps="appsOfCategory" />
         </div>
 
-        <!-- Weather Widget -->
         <div
           class="rounded-vsk background p-4 space-y-4 h-full overflow-y-auto weather-container"
         >
           <WeatherWidget />
         </div>
 
-        <!-- Categories -->
         <div class="categories-container">
           <transition-group
             tag="div"
