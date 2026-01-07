@@ -204,7 +204,7 @@ async function onImgError() {
       :src="imgSrc"
       :alt="musicInfo.title"
       :title="musicInfo.title"
-      class="w-24 h-24 flex-shrink-0"
+      class="w-24 h-24 shrink-0"
       :class="{ 'animate-pulse': isPlaying }"
       @error="onImgError"
     />

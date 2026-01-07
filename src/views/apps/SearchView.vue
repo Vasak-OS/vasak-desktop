@@ -162,7 +162,7 @@ function getCategoryLabel(category: string): string {
       <div class="absolute inset-0 rounded-window transition-all duration-500 opacity-0 group-hover:opacity-100 z-0"></div>
       <!-- Header -->
       <div class="flex items-center gap-4 px-6 py-5 border-b border-vsk-primary/10 relative z-10">
-        <img :src="searchIconSrc" alt="Search" class="w-7 h-7 flex-shrink-0" />
+        <img :src="searchIconSrc" alt="Search" class="w-7 h-7 shrink-0" />
         <input
           v-model="query"
           type="text"
@@ -183,7 +183,7 @@ function getCategoryLabel(category: string): string {
           @click="executeResult(result)"
           @mouseenter="selectedIndex = index"
         >
-          <div class="w-14 h-14 flex-shrink-0 flex items-center justify-center text-3xl rounded-vsk bg-vsk-primary/10 border border-vsk-primary/20">
+          <div class="w-14 h-14 shrink-0 flex items-center justify-center text-3xl rounded-vsk bg-vsk-primary/10 border border-vsk-primary/20">
             {{ getCategoryIcon(result.category) }}
           </div>
           <div class="flex-1 min-w-0">

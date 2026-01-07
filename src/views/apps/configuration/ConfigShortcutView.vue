@@ -260,7 +260,7 @@ const showConflictWarning = computed(() => {
 
               <!-- Category Badge -->
               <span :class="[
-                'px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0',
+                'px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap shrink-0',
                 getCategoryColor(shortcut.category)
               ]">
                 {{ getCategoryLabel(shortcut.category) }}
