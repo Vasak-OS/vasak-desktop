@@ -72,7 +72,6 @@ onMounted(() => {
 .selected-category {
   animation: pulse 2s infinite ease-in-out;
   border: 1px solid rgba(127, 127, 127, 0.1);
-  animation: glow 2s infinite ease-in-out;
   position: relative;
 }
 
