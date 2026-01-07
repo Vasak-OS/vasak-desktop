@@ -122,8 +122,6 @@ const saveConfig = async () => {
     }
 
     await writeConfig(vskConfig.value!);
-
-    // Aplicar cambios del sistema (GTK, cursor, icons) via backend
     await applySystemChanges();
 
     successMessage.value = "Configuración guardada exitosamente";
@@ -141,6 +139,7 @@ const saveConfig = async () => {
 const applySystemChanges = async () => {
   try {
     const config = {
+      dark_mode: vskConfig!.value?.style?.darkmode || false,
       icon_pack: selectedIconPack.value,
       cursor_theme: selectedCursorTheme.value,
       gtk_theme: selectedGtkTheme.value,
@@ -148,8 +147,7 @@ const applySystemChanges = async () => {
 
     await invoke("set_system_config", { config });
   } catch (err) {
-    console.warn("Error aplicando cambios del sistema:", err);
-    // No lanzar error, permitir que continúe aunque falle el backend
+    console.error("Error aplicando cambios del sistema:", err);
   }
 };
 
