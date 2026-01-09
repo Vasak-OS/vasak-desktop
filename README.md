@@ -9,6 +9,10 @@ Vasak Desktop is a modern desktop environment built with Tauri (Rust backend + V
 
 This document covers the overall system architecture, core components, and technology stack.
 
+## Preview
+
+![Vasak Desktop Preview](./preview.gif)
+
 ## Getting Started
 
 ### Prerequisites and System Requirements
