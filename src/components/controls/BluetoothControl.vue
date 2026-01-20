@@ -11,7 +11,7 @@
   >
     <!-- Background glow effect -->
     <div
-      class="absolute inset-0 rounded-vsk bg-gradient-to-br from-blue-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+      class="absolute inset-0 rounded-vsk bg-lineal-to-br from-blue-500/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
     ></div>
 
     <!-- Status indicator -->
