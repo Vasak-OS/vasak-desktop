@@ -124,10 +124,7 @@ const loadSidebar = async () => {
 onMounted(async () => {
 	try {
 		homePath.value = await homeDir();
-
-		// Verroute = useRoute();
 		const initialPath = route.query.path as string || homePath.value;
-
 		currentPath.value = initialPath;
 
 		await loadSidebar();

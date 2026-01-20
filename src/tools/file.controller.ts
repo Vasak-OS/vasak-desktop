@@ -106,6 +106,36 @@ export function getFileMimeType(
 	return 'unknown';
 }
 
+/**
+ * Enriches a file entry with icon and preview data
+ * @param fileEntry - The file entry to enrich
+ * @returns The enriched file entry
+ */
+async function enrichFileEntry(fileEntry: FileEntry): Promise<FileEntry> {
+	// Load icon
+	try {
+		fileEntry.icon = await getFileIconSource(
+			fileEntry.name,
+			fileEntry.isDirectory,
+		);
+	} catch (e) {
+		console.warn(`Failed to load icon for ${fileEntry.name}`, e);
+	}
+
+	// Generate preview for images and videos
+	if (!fileEntry.isDirectory) {
+		if (isImageFile(fileEntry.name)) {
+			fileEntry.previewUrl = convertFileSrc(fileEntry.path);
+			fileEntry.mimeType = 'image';
+		} else if (isVideoFile(fileEntry.name)) {
+			fileEntry.previewUrl = convertFileSrc(fileEntry.path);
+			fileEntry.mimeType = 'video';
+		}
+	}
+
+	return fileEntry;
+}
+
 export async function loadDirectory(
 	dirPath: string,
 	showHidden: boolean = false,
@@ -117,7 +147,7 @@ export async function loadDirectory(
 			entries
 				.filter((entry) => showHidden || !entry.name.startsWith('.'))
 				.map(async (entry) => {
-					const filePath = `${dirPath}/${entry.name}`;
+					const filePath = await join(dirPath, entry.name);
 					const fileEntry: FileEntry = {
 						name: entry.name,
 						path: filePath,
@@ -125,28 +155,7 @@ export async function loadDirectory(
 						isHidden: entry.name.startsWith('.'),
 					};
 
-					// Load icon
-					try {
-						fileEntry.icon = await getFileIconSource(
-							entry.name,
-							entry.isDirectory,
-						);
-					} catch (e) {
-						console.warn(`Failed to load icon for ${entry.name}`, e);
-					}
-
-					// Generate preview for images and videos
-					if (!entry.isDirectory) {
-						if (isImageFile(entry.name)) {
-							fileEntry.previewUrl = convertFileSrc(filePath);
-							fileEntry.mimeType = 'image';
-						} else if (isVideoFile(entry.name)) {
-							fileEntry.previewUrl = convertFileSrc(filePath);
-							fileEntry.mimeType = 'video';
-						}
-					}
-
-					return fileEntry;
+					return enrichFileEntry(fileEntry);
 				}),
 		);
 
@@ -162,51 +171,33 @@ export async function loadDirectoryBackend(
 	showHidden: boolean = false,
 ): Promise<FileEntry[]> {
 	try {
-    interface BackendFileEntry {
-      name: string;
-      is_dir: boolean;
-      size: string;
-      path: string;
-    }
+		interface BackendFileEntry {
+			name: string;
+			is_dir: boolean;
+			size: string;
+			path: string;
+		}
 
-    const entries = await invoke<BackendFileEntry[]>('read_directory', {
-    	path: dirPath,
-    	showHidden,
-    });
+		const entries = await invoke<BackendFileEntry[]>('read_directory', {
+			path: dirPath,
+			showHidden,
+		});
 
-    const processedFiles = await Promise.all(
-    	entries.map(async (entry) => {
-    		const fileEntry: FileEntry = {
-    			name: entry.name,
-    			path: entry.path,
-    			isDirectory: entry.is_dir,
-    			isHidden: entry.name.startsWith('.'),
-    			size: entry.size,
-    		};
+		const processedFiles = await Promise.all(
+			entries.map(async (entry) => {
+				const fileEntry: FileEntry = {
+					name: entry.name,
+					path: entry.path,
+					isDirectory: entry.is_dir,
+					isHidden: entry.name.startsWith('.'),
+					size: entry.size,
+				};
 
-    		// Load icon
-    		try {
-    			fileEntry.icon = await getFileIconSource(entry.name, entry.is_dir);
-    		} catch (e) {
-    			console.warn(`Failed to load icon for ${entry.name}`, e);
-    		}
+				return enrichFileEntry(fileEntry);
+			}),
+		);
 
-    		// Generate preview for images and videos
-    		if (!entry.is_dir) {
-    			if (isImageFile(entry.name)) {
-    				fileEntry.previewUrl = convertFileSrc(entry.path);
-    				fileEntry.mimeType = 'image';
-    			} else if (isVideoFile(entry.name)) {
-    				fileEntry.previewUrl = convertFileSrc(entry.path);
-    				fileEntry.mimeType = 'video';
-    			}
-    		}
-
-    		return fileEntry;
-    	}),
-    );
-
-    return processedFiles;
+		return processedFiles;
 	} catch (err: any) {
 		console.error('Error reading directory:', err);
 		throw err;

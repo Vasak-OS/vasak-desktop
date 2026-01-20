@@ -38,7 +38,9 @@ pub fn create_file_manager_window(
     // Determinar el path: usar el proporcionado o el home por defecto
     let target_path = match path {
         Some(p) => p,
-        None => std::env::var("HOME").unwrap_or_else(|_| "/home".to_string()),
+        None => dirs::home_dir()
+            .and_then(|p| p.to_str().map(String::from))
+            .unwrap_or_else(|| "/home".to_string()),
     };
     
     let complete_url = format!(
