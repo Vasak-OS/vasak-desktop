@@ -2220,7 +2220,7 @@ dependencies = [
  "rgb",
  "tiff",
  "zune-core 0.5.1",
- "zune-jpeg 0.5.10",
+ "zune-jpeg 0.5.11",
 ]
 
 [[package]]
@@ -4933,7 +4933,7 @@ dependencies = [
  "thiserror 2.0.18",
  "url",
  "windows",
- "zbus 5.13.1",
+ "zbus 5.13.2",
 ]
 
 [[package]]
@@ -4984,7 +4984,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tracing",
  "windows-sys 0.60.2",
- "zbus 5.13.1",
+ "zbus 5.13.2",
 ]
 
 [[package]]
@@ -5002,12 +5002,15 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-vicons"
-version = "2.0.2"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e650f0b5d2aa32829eb2b3b440e639b1ffa5bc17c65904833a0b8d7423ad0979"
+checksum = "486e63adf4061ecd70995d5464fe3bcecd0f40c88010e08754a3461000ff5941"
 dependencies = [
  "base64 0.22.1",
+ "glib",
  "gtk",
+ "once_cell",
+ "parking_lot",
  "serde",
  "tauri",
  "tauri-plugin",
@@ -6726,9 +6729,9 @@ dependencies = [
 
 [[package]]
 name = "zbus"
-version = "5.13.1"
+version = "5.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17f79257df967b6779afa536788657777a0001f5b42524fcaf5038d4344df40b"
+checksum = "1bfeff997a0aaa3eb20c4652baf788d2dfa6d2839a0ead0b3ff69ce2f9c4bdd1"
 dependencies = [
  "async-broadcast 0.7.2",
  "async-executor",
@@ -6754,7 +6757,7 @@ dependencies = [
  "uuid",
  "windows-sys 0.61.2",
  "winnow 0.7.14",
- "zbus_macros 5.13.1",
+ "zbus_macros 5.13.2",
  "zbus_names 4.3.1",
  "zvariant 5.9.2",
 ]
@@ -6788,9 +6791,9 @@ dependencies = [
 
 [[package]]
 name = "zbus_macros"
-version = "5.13.1"
+version = "5.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aad23e2d2f91cae771c7af7a630a49e755f1eb74f8a46e9f6d5f7a146edf5a37"
+checksum = "0bbd5a90dbe8feee5b13def448427ae314ccd26a49cac47905cafefb9ff846f1"
 dependencies = [
  "proc-macro-crate 3.4.0",
  "proc-macro2",
@@ -6910,9 +6913,9 @@ dependencies = [
 
 [[package]]
 name = "zmij"
-version = "1.0.15"
+version = "1.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94f63c051f4fe3c1509da62131a678643c5b6fbdc9273b2b79d4378ebda003d2"
+checksum = "dfcd145825aace48cff44a8844de64bf75feec3080e0aa5cdbde72961ae51a65"
 
 [[package]]
 name = "zune-core"
@@ -6946,9 +6949,9 @@ dependencies = [
 
 [[package]]
 name = "zune-jpeg"
-version = "0.5.10"
+version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea2db9186c0a6ad1aa7012046f3fadc8db9001691b367c510f5867f17f975752"
+checksum = "2959ca473aae96a14ecedf501d20b3608d2825ba280d5adb57d651721885b0c2"
 dependencies = [
  "zune-core 0.5.1",
 ]
