@@ -124,10 +124,10 @@ const loadSidebar = async () => {
 onMounted(async () => {
   try {
     homePath.value = await homeDir();
-    
+
     // Verroute = useRoute();
     const initialPath = route.query.path as string || homePath.value;
-    
+
     currentPath.value = initialPath;
 
     await loadSidebar();
@@ -210,7 +210,7 @@ onMounted(async () => {
                 <!-- Fallback Text Icon -->
                 <span v-else class="text-3xl opacity-50">{{
                   getFileEmoji(file.name, file.isDirectory)
-                }}</span>
+                  }}</span>
               </div>
 
               <span
