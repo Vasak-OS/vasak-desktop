@@ -2,9 +2,10 @@
 import DesktopClockWidget from "@/components/widgets/DesktopClockWidget.vue";
 import MusicWidget from "@/components/widgets/MusicWidget.vue";
 import { computed, onMounted, onUnmounted, watch } from "vue";
-import { convertFileSrc } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { homeDir } from "@tauri-apps/api/path";
 import { listen } from "@tauri-apps/api/event";
+import { Command } from "@tauri-apps/plugin-shell";
 import type { FileEntry } from "@/interfaces/file";
 import { loadDirectory, getFileEmoji, getUserDirectories } from "@/tools/file.controller";
 import { useConfigStore, type VSKConfig } from "@vasakgroup/plugin-config-manager";
@@ -65,6 +66,27 @@ const loadDesktopFiles = async () => {
   }
 };
 
+// Manejar clicks en archivos y carpetas
+const handleFileClick = async (file: FileEntry) => {
+  if (file.isDirectory) {
+    // Abrir el file manager en la carpeta seleccionada
+    try {
+      await invoke("open_file_manager_window");
+      // TODO: Pasar la ruta de la carpeta al file manager cuando se implemente
+    } catch (error) {
+      console.error("Error al abrir file manager:", error);
+    }
+  } else {
+    // Abrir el archivo con la aplicación predeterminada del sistema
+    try {
+      const cmd = Command.create("open", [file.path]);
+      await cmd.spawn();
+    } catch (error) {
+      console.error("Error al abrir archivo:", file.path, error);
+    }
+  }
+};
+
 // Ver cambios en showFiles para recargar archivos
 watch(showFiles, () => {
   loadDesktopFiles();
@@ -120,6 +142,7 @@ onUnmounted(() => {
         :key="file.path"
         class="flex flex-col items-center justify-start cursor-pointer hover:bg-white/10 rounded-lg p-2 transition-colors"
         :style="{ width: `${iconSize + 40}px` }"
+        @dblclick="handleFileClick(file)"
       >
         <div 
           class="flex items-center justify-center mb-1"
