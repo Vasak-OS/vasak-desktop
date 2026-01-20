@@ -1,22 +1,16 @@
 <script setup lang="ts">
-import { WindowFrame } from "@vasakgroup/vue-libvasak";
-import { ref, onMounted } from "vue";
-import { readTextFile } from "@tauri-apps/plugin-fs";
-import { join, homeDir } from "@tauri-apps/api/path";
-import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
-import { Command } from "@tauri-apps/plugin-shell";
-
-interface FileEntry {
-  name: string;
-  is_dir: boolean;
-  size: string;
-  path: string;
-  icon?: string;
-  previewUrl?: string;
-  mimeType?: string;
-  loadError?: boolean;
-}
+import { WindowFrame } from '@vasakgroup/vue-libvasak';
+import { ref, onMounted } from 'vue';
+import { join, homeDir } from '@tauri-apps/api/path';
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { Command } from '@tauri-apps/plugin-shell';
+import { useRoute } from 'vue-router';
+import type { FileEntry } from '@/interfaces/file';
+import {
+	loadDirectoryBackend,
+	getUserDirectories,
+} from '@/tools/file.controller';
 
 interface SidebarItem {
   name: string;
@@ -25,255 +19,119 @@ interface SidebarItem {
 }
 
 // State
+const route = useRoute();
 const sidebarItems = ref([] as SidebarItem[]);
-
 const files = ref<FileEntry[]>([]);
-const currentPath = ref("");
-const homePath = ref("");
 const loading = ref(false);
-const error = ref("");
+const error = ref('');
+const currentPath = ref('');
+const homePath = ref('');
 const showHidden = ref(false);
 const sidebarIcons = ref<Record<string, string>>({});
 
-// Icon Mapping Helper
-const getIconNameForFile = (filename: string, isDir: boolean): string => {
-  if (isDir) return "folder";
-
-  const parts = filename.split(".");
-  const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : "";
-
-  switch (ext) {
-    case "png":
-    case "jpg":
-    case "jpeg":
-    case "gif":
-    case "webp":
-    case "svg":
-      return "image-x-generic";
-    case "mp4":
-    case "webm":
-    case "mkv":
-    case "avi":
-      return "video-x-generic";
-    case "mp3":
-    case "wav":
-    case "flac":
-    case "ogg":
-      return "audio-x-generic";
-    case "txt":
-    case "md":
-    case "log":
-      return "text-x-generic";
-    case "pdf":
-      return "application-pdf";
-    case "zip":
-    case "tar":
-    case "gz":
-    case "7z":
-    case "rar":
-      return "package-x-generic";
-    case "rs":
-    case "ts":
-    case "js":
-    case "vue":
-    case "py":
-    case "c":
-    case "cpp":
-      return "text-x-script"; // or generic code icon
-    case "html":
-    case "css":
-      return "text-html";
-    case "exe":
-    case "sh":
-    case "bin":
-      return "application-x-executable";
-    default:
-      return "text-x-generic"; // Fallback
-  }
-};
-
-const isImage = (filename: string) =>
-  /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
-const isVideo = (filename: string) => /\.(mp4|webm|mkv)$/i.test(filename);
-
-const processEntries = async (entries: FileEntry[]) => {
-  const processed: FileEntry[] = [];
-
-  for (const entry of entries) {
-    const item: FileEntry = { ...entry };
-
-    if (!item.is_dir) {
-      if (isImage(item.name)) {
-        item.previewUrl = convertFileSrc(item.path);
-        item.mimeType = "image";
-      } else if (isVideo(item.name)) {
-        item.previewUrl = convertFileSrc(item.path);
-        item.mimeType = "video";
-      }
-    }
-
-    const iconName = getIconNameForFile(item.name, item.is_dir);
-    try {
-      const source = await getIconSource(iconName);
-      if (source && source.startsWith("/")) {
-        item.icon = convertFileSrc(source);
-      } else {
-        item.icon = source;
-      }
-    } catch (e) {
-      console.warn(`Failed to load icon ${iconName}`, e);
-    }
-
-    processed.push(item);
-  }
-  return processed;
-};
-
 const loadFiles = async (path: string) => {
-  loading.value = true;
-  error.value = "";
-  files.value = [];
-
-  try {
-    const entries = await invoke<FileEntry[]>("read_directory", {
-      path,
-      showHidden: showHidden.value,
-    });
-    files.value = await processEntries(entries);
-    currentPath.value = path;
-  } catch (err: any) {
-    error.value = err.toString();
-    console.error("Error reading directory:", err);
-  } finally {
-    loading.value = false;
-  }
+	loading.value = true;
+	error.value = '';
+	try {
+		files.value = await loadDirectoryBackend(path, showHidden.value);
+		currentPath.value = path;
+	} catch (err: any) {
+		error.value = err.toString();
+	} finally {
+		loading.value = false;
+	}
 };
 
 const toggleHiddenFiles = () => {
-  showHidden.value = !showHidden.value;
-  loadFiles(currentPath.value);
+	showHidden.value = !showHidden.value;
+	loadFiles(currentPath.value);
 };
 
 const navigateTo = (path: string) => {
-  loadFiles(path);
+	loadFiles(path);
 };
 
 const navigateUp = () => {
-  const parts = currentPath.value.split("/");
-  if (parts.length > 1) {
-    parts.pop();
-    const newPath = parts.join("/") || "/";
-    loadFiles(newPath);
-  }
+	const parts = currentPath.value.split('/');
+	if (parts.length > 1) {
+		parts.pop();
+		const newPath = parts.join('/') || '/';
+		loadFiles(newPath);
+	}
 };
 
 const handleItemClick = async (file: FileEntry) => {
-  if (file.is_dir) {
-    navigateTo(file.path);
-  } else {
-    try {
-      const cmd = Command.create("open", [file.path]);
-      await cmd.spawn();
-    } catch (e) {
-      console.error("Failed to open file:", file.path, e);
-    }
-  }
+	if (file.isDirectory) {
+		navigateTo(file.path);
+	} else {
+		try {
+			const cmd = Command.create('open', [file.path]);
+			await cmd.spawn();
+		} catch (e) {
+			console.error('Failed to open file:', file.path, e);
+		}
+	}
 };
 
 const handleSidebarClick = (item: SidebarItem) => {
-  if (item.path === "HOME") {
-    navigateTo(homePath.value);
-  } else if (item.path.startsWith("/")) {
-    navigateTo(item.path);
-  } else {
-    navigateTo(`${homePath.value}/${item.path}`);
-  }
+	if (item.path === 'HOME') {
+		navigateTo(homePath.value);
+	} else if (item.path.startsWith('/')) {
+		navigateTo(item.path);
+	} else {
+		navigateTo(`${homePath.value}/${item.path}`);
+	}
 };
 
 const loadSidebar = async () => {
-  const items: SidebarItem[] = [];
+	const items: SidebarItem[] = [];
 
-  items.push({ name: "Home", icon: "user-home", path: "HOME" });
+	items.push({ name: 'Home', icon: 'user-home', path: 'HOME' });
 
-  try {
-    const configPath = await join(await homeDir(), ".config", "user-dirs.dirs");
-    const content = await readTextFile(configPath);
+	// Load user directories from XDG config
+	const userDirectories = await getUserDirectories(homePath.value);
+	// Filter out templates and public share directories
+	const filteredDirectories = userDirectories.filter(
+		(dir) => dir.xdgKey !== 'XDG_TEMPLATES_DIR' && dir.xdgKey !== 'XDG_PUBLICSHARE_DIR'
+	);
+	items.push(...filteredDirectories);
 
-    // Map XDG var to icon
-    const iconMap: Record<string, string> = {
-      XDG_DOCUMENTS_DIR: "folder-documents",
-      XDG_DOWNLOAD_DIR: "folder-download",
-      XDG_MUSIC_DIR: "folder-music",
-      XDG_PICTURES_DIR: "folder-pictures",
-      XDG_VIDEOS_DIR: "folder-videos",
-      XDG_DESKTOP_DIR: "user-desktop",
-    };
+	const trashPath = await join(
+		homePath.value,
+		'.local',
+		'share',
+		'Trash',
+		'files'
+	);
+	items.push({ name: 'Trash', icon: 'user-trash', path: trashPath });
 
-    const lines = content.split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
+	sidebarItems.value = items;
 
-      const match = trimmed.match(/^(XDG_[A-Z_]+_DIR)="(.*)"/);
-      if (match) {
-        const key = match[1];
-        let val = match[2];
-
-        if (key === "XDG_TEMPLATES_DIR" || key === "XDG_PUBLICSHARE_DIR")
-          continue;
-
-        const resolvedPath = val.replace("$HOME", homePath.value);
-        const name = resolvedPath.split("/").pop() || val;
-        const icon = iconMap[key] || "folder";
-
-        items.push({ name, icon, path: resolvedPath });
-      }
-    }
-  } catch (e) {
-    console.warn("Failed to load user-dirs.dirs, falling back to defaults", e);
-    items.push(
-      { name: "Documents", icon: "folder-documents", path: "Documents" },
-      { name: "Downloads", icon: "folder-download", path: "Downloads" },
-      { name: "Pictures", icon: "folder-pictures", path: "Pictures" },
-      { name: "Music", icon: "folder-music", path: "Music" }
-    );
-  }
-
-  const trashPath = await join(
-    await homeDir(),
-    ".local",
-    "share",
-    "Trash",
-    "files"
-  );
-  items.push({ name: "Trash", icon: "user-trash", path: trashPath });
-
-  sidebarItems.value = items;
-
-  for (const item of sidebarItems.value) {
-    try {
-      const source = await getIconSource(item.icon);
-      sidebarIcons.value[item.name] = source.startsWith("/")
-        ? convertFileSrc(source)
-        : source;
-    } catch (e) {
-      console.warn("Sidebar icon fail", item.icon);
-      console.error("Sidebar icon error: ", e);
-    }
-  }
+	for (const item of sidebarItems.value) {
+		try {
+			const source = await getIconSource(item.icon);
+			sidebarIcons.value[item.name] = source.startsWith('/')
+				? convertFileSrc(source)
+				: source;
+		} catch (e) {
+			console.warn('Sidebar icon fail', item.icon);
+			console.error('Sidebar icon error: ', e);
+		}
+	}
 };
 
 onMounted(async () => {
-  try {
-    homePath.value = await homeDir();
-    currentPath.value = homePath.value;
+	try {
+		homePath.value = await homeDir();
+		const initialPath = route.query.path as string || homePath.value;
+		currentPath.value = initialPath;
 
-    await loadSidebar();
+		await loadSidebar();
 
-    loadFiles(homePath.value);
-  } catch (e) {
-    console.error("Failed to get home dir", e);
-  }
+		loadFiles(initialPath);
+	} catch (e) {
+		console.error('Failed to get home dir', e);
+	}
 });
 </script>
 
@@ -344,11 +202,6 @@ onMounted(async () => {
 
                 <img v-else-if="file.icon" :src="file.icon" alt="File Icon"
                   class="w-full h-full object-contain p-2 opacity-80" />
-
-                <!-- Fallback Text Icon -->
-                <span v-else class="text-3xl opacity-50">{{
-                  file.is_dir ? "📁" : "📄"
-                }}</span>
               </div>
 
               <span

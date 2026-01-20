@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { onMounted, ref, Ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { getSymbolSource } from "@vasakgroup/plugin-vicons";
+import { onMounted, ref, Ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 interface AudioDevice {
   id: string;
@@ -13,56 +13,56 @@ interface AudioDevice {
 }
 
 const devices: Ref<AudioDevice[]> = ref([]);
-const selectedDeviceId = ref("");
-const speakerIcon: Ref<string> = ref("");
+const selectedDeviceId = ref('');
+const speakerIcon: Ref<string> = ref('');
 const isLoading = ref(false);
 
 async function loadDevices() {
-  isLoading.value = true;
-  try {
-    const deviceList = await invoke<AudioDevice[]>("get_audio_devices");
-    devices.value = deviceList;
+	isLoading.value = true;
+	try {
+		const deviceList = await invoke<AudioDevice[]>('get_audio_devices');
+		devices.value = deviceList;
 
-    const defaultDevice = deviceList.find((d) => d.is_default);
-    if (defaultDevice) {
-      selectedDeviceId.value = defaultDevice.id;
-    }
-  } catch (e) {
-    console.error("[audio] Failed to load devices:", e);
-  } finally {
-    isLoading.value = false;
-  }
+		const defaultDevice = deviceList.find((d) => d.is_default);
+		if (defaultDevice) {
+			selectedDeviceId.value = defaultDevice.id;
+		}
+	} catch (e) {
+		console.error('[audio] Failed to load devices:', e);
+	} finally {
+		isLoading.value = false;
+	}
 }
 
 async function onDeviceChange(deviceId: string) {
-  selectedDeviceId.value = deviceId;
-  try {
-    await invoke("set_audio_device", { deviceId });
-    await loadDevices();
-  } catch (e) {
-    console.error("[audio] Failed to set device:", e);
-  }
+	selectedDeviceId.value = deviceId;
+	try {
+		await invoke('set_audio_device', { deviceId });
+		await loadDevices();
+	} catch (e) {
+		console.error('[audio] Failed to set device:', e);
+	}
 }
 
 onMounted(async () => {
-  speakerIcon.value = await getSymbolSource("audio-speakers-symbolic");
-  await loadDevices();
+	speakerIcon.value = await getSymbolSource('audio-speakers-symbolic');
+	await loadDevices();
 
-  listen<AudioDevice[]>("audio-devices-changed", (event) => {
-    devices.value = event.payload;
-    const defaultDevice = event.payload.find((d) => d.is_default);
-    if (defaultDevice) {
-      selectedDeviceId.value = defaultDevice.id;
-    }
-  });
+	listen<AudioDevice[]>('audio-devices-changed', (event) => {
+		devices.value = event.payload;
+		const defaultDevice = event.payload.find((d) => d.is_default);
+		if (defaultDevice) {
+			selectedDeviceId.value = defaultDevice.id;
+		}
+	});
 });
 
 function getDeviceName(device: AudioDevice): string {
-  return device.name
-    .replaceAll("ALSA", "")
-    .replaceAll("PulseAudio", "")
-    .replaceAll("PipeWire", "")
-    .trim();
+	return device.name
+		.replaceAll('ALSA', '')
+		.replaceAll('PulseAudio', '')
+		.replaceAll('PipeWire', '')
+		.trim();
 }
 </script>
 

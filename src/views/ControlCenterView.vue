@@ -1,30 +1,30 @@
 <script setup lang="ts">
-import VolumeControl from "@/components/controls/VolumeControl.vue";
-import BrightnessControl from "@/components/controls/BrightnessControl.vue";
-import NotificationArea from "@/components/areas/control-center/NotificationArea.vue";
-import NetworkControl from "@/components/controls/NetworkControl.vue";
-import SearchButtonControl from "@/components/controls/SearchButtonControl.vue";
-import BluetoothControl from "@/components/controls/BluetoothControl.vue";
-import UserControlCenterCard from "@/components/cards/UserControlCenterCard.vue";
-import ThemeToggle from "@/components/controls/ThemeToggle.vue";
-import { onMounted, Ref, ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-import { isBluetoothPluginInitialized } from "@vasakgroup/plugin-bluetooth-manager";
-import MusicWidget from "@/components/widgets/MusicWidget.vue";
+import VolumeControl from '@/components/controls/VolumeControl.vue';
+import BrightnessControl from '@/components/controls/BrightnessControl.vue';
+import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
+import NetworkControl from '@/components/controls/NetworkControl.vue';
+import SearchButtonControl from '@/components/controls/SearchButtonControl.vue';
+import BluetoothControl from '@/components/controls/BluetoothControl.vue';
+import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue';
+import ThemeToggle from '@/components/controls/ThemeToggle.vue';
+import { onMounted, Ref, ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
+import MusicWidget from '@/components/widgets/MusicWidget.vue';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 
 onMounted(async () => {
-  bluetoothInitialized.value = await isBluetoothPluginInitialized();
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      try {
-        invoke("toggle_control_center");
-      } catch (error) {
-        console.error("Error al cerrar:", error);
-      }
-    }
-  });
+	bluetoothInitialized.value = await isBluetoothPluginInitialized();
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') {
+			try {
+				invoke('toggle_control_center');
+			} catch (error) {
+				console.error('Error al cerrar:', error);
+			}
+		}
+	});
 });
 </script>
 

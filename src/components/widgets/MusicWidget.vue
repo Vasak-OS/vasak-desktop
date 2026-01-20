@@ -1,106 +1,105 @@
 <script lang="ts" setup>
-import { onMounted, ref, computed, Ref, nextTick, watch } from "vue";
-import { listen } from "@tauri-apps/api/event";
-import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { getIconSource, getSymbolSource } from "@vasakgroup/plugin-vicons";
+import { onMounted, ref, computed, Ref, nextTick, watch } from 'vue';
+import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
+import type { MusicInfo } from '@/interfaces/music';
+import { processImageUrl } from '@/utils/image';
 
-const musicInfo: Ref<any> = ref({
-  title: "",
-  artist: "",
-  player: "",
-  artUrl: "",
-  status: "",
+const musicInfo: Ref<MusicInfo> = ref({
+	title: '',
+	artist: '',
+	player: '',
+	artUrl: '',
+	status: '',
 });
 
-const imgSrc: Ref<string> = ref("");
-const prevIcon: Ref<string> = ref("");
-const nextIcon: Ref<string> = ref("");
-const playIcon: Ref<string> = ref("");
-const pauseIcon: Ref<string> = ref("");
+const imgSrc: Ref<string> = ref('');
+const prevIcon: Ref<string> = ref('');
+const nextIcon: Ref<string> = ref('');
+const playIcon: Ref<string> = ref('');
+const pauseIcon: Ref<string> = ref('');
 
-const commandError = ref("");
+const commandError = ref('');
 const showError = ref(false);
-let errorTimeout: NodeJS.Timeout | null = null;
+let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 
-const dbusStatus = ref("connected");
-const dbusMessage = ref("");
+const dbusStatus = ref('connected');
+const dbusMessage = ref('');
 
-const isPlaying = computed(() => {
-  const s = musicInfo.value?.status;
-  if (!s) return false;
-  return String(s).toLowerCase() === "playing";
-});
+const isPlaying = computed(() => 
+	String(musicInfo.value?.status || '').toLowerCase() === 'playing'
+);
 
-async function sendCommand(cmd: string) {
-  const player = musicInfo.value?.player || "";
-  if (!player) {
-    showErrorMessage("No hay reproductor activo");
-    return;
-  }
-  try {
-    await invoke(cmd, { player });
-    if (showError.value) {
-      showError.value = false;
-      commandError.value = "";
-    }
-  } catch (e: any) {
-    console.error(`[music] invoke ${cmd} failed:`, e);
-    const msg = e?.message || e?.toString() || "Error al ejecutar comando";
-    showErrorMessage(msg);
-  }
+async function sendCommand(cmd: string): Promise<void> {
+	const player = musicInfo.value?.player || '';
+	if (!player) {
+		showErrorMessage('No hay reproductor activo');
+		return;
+	}
+	try {
+		await invoke(cmd, { player });
+		if (showError.value) {
+			showError.value = false;
+			commandError.value = '';
+		}
+	} catch (e: any) {
+		console.error(`[music] invoke ${cmd} failed:`, e);
+		const msg = e?.message || e?.toString() || 'Error al ejecutar comando';
+		showErrorMessage(msg);
+	}
 }
 
-function showErrorMessage(msg: string) {
-  commandError.value = msg;
-  showError.value = true;
-  if (errorTimeout) clearTimeout(errorTimeout);
-  errorTimeout = globalThis.setTimeout(() => {
-    showError.value = false;
-    commandError.value = "";
-  }, 3000);
+function showErrorMessage(msg: string): void {
+	commandError.value = msg;
+	showError.value = true;
+	if (errorTimeout) clearTimeout(errorTimeout);
+	errorTimeout = globalThis.setTimeout(() => {
+		showError.value = false;
+		commandError.value = '';
+	}, 3000);
 }
-function onPrev() {
-  sendCommand("music_previous_track");
+
+function onPrev(): void {
+	sendCommand('music_previous_track');
 }
-function onNext() {
-  sendCommand("music_next_track");
+
+function onNext(): void {
+	sendCommand('music_next_track');
 }
-function onPlayPause() {
-  sendCommand("music_play_pause");
+
+function onPlayPause(): void {
+	sendCommand('music_play_pause');
 }
 
 onMounted(async () => {
-  imgSrc.value = await getIconSource("applications-multimedia");
-  prevIcon.value = await getSymbolSource("media-seek-backward");
-  nextIcon.value = await getSymbolSource("media-skip-forward");
-  playIcon.value = await getSymbolSource("media-playback-start");
-  pauseIcon.value = await getSymbolSource("media-playback-pause");
-  musicInfo.value = await invoke("music_now_playing");
-  listen("music-playing-update", (event) => {
-    const payload = (event.payload || {}) as Record<string, unknown>;
-    console.log("[MusicWidget] Received update:", payload);
-    for (const key of Object.keys(payload)) {
-      const val = payload[key];
-      if (val === undefined) continue;
-      musicInfo.value[key] = val;
-    }
-  });
+	imgSrc.value = await getIconSource('applications-multimedia');
+	prevIcon.value = await getSymbolSource('media-seek-backward');
+	nextIcon.value = await getSymbolSource('media-skip-forward');
+	playIcon.value = await getSymbolSource('media-playback-start');
+	pauseIcon.value = await getSymbolSource('media-playback-pause');
+	musicInfo.value = await invoke<MusicInfo>('music_now_playing');
+	listen('music-playing-update', (event) => {
+		const payload = (event.payload || {}) as Partial<MusicInfo>;
+		console.log('[MusicWidget] Received update:', payload);
+		Object.assign(musicInfo.value, payload);
+	});
 
-  listen("dbus-status", (event: any) => {
-    const payload = event.payload;
-    if (payload.service === "music") {
-      dbusStatus.value = payload.status;
-      if (payload.status === "reconnecting") {
-        dbusMessage.value = `Reconectando (intento ${payload.attempt})...`;
-      } else if (payload.status === "failed") {
-        dbusMessage.value = payload.message || "Error de conexión";
-      } else if (payload.status === "connected") {
-        dbusMessage.value = "";
-      }
-    }
-  });
-  await nextTick();
-  updateTitleOverflow();
+	listen('dbus-status', (event: any) => {
+		const payload = event.payload;
+		if (payload.service === 'music') {
+			dbusStatus.value = payload.status;
+			if (payload.status === 'reconnecting') {
+				dbusMessage.value = `Reconectando (intento ${payload.attempt})...`;
+			} else if (payload.status === 'failed') {
+				dbusMessage.value = payload.message || 'Error de conexión';
+			} else if (payload.status === 'connected') {
+				dbusMessage.value = '';
+			}
+		}
+	});
+	await nextTick();
+	updateTitleOverflow();
 });
 
 const titleContainer = ref<HTMLElement | null>(null);
@@ -110,70 +109,59 @@ const marqueeDistance = ref(0);
 const marqueeDuration = ref(6);
 const TITLE_MAX_PX = 150;
 
-function updateTitleOverflow() {
-  const container = titleContainer.value;
-  const inner = titleInner.value;
-  if (!container || !inner) {
-    titleOverflow.value = false;
-    return;
-  }
-  container.style.width = `${TITLE_MAX_PX}px`;
-  const cw = container.clientWidth;
-  const iw = inner.scrollWidth;
-  if (iw > cw + 2) {
-    titleOverflow.value = true;
-    marqueeDistance.value = iw - cw;
-    marqueeDuration.value = Math.min(
-      20,
-      Math.max(4, marqueeDistance.value / 30)
-    );
-  } else {
-    titleOverflow.value = false;
-    marqueeDistance.value = 0;
-    marqueeDuration.value = 0;
-  }
+function updateTitleOverflow(): void {
+	const container = titleContainer.value;
+	const inner = titleInner.value;
+	if (!container || !inner) {
+		titleOverflow.value = false;
+		return;
+	}
+	container.style.width = `${TITLE_MAX_PX}px`;
+	const cw = container.clientWidth;
+	const iw = inner.scrollWidth;
+	if (iw > cw + 2) {
+		titleOverflow.value = true;
+		marqueeDistance.value = iw - cw;
+		marqueeDuration.value = Math.min(
+			20,
+			Math.max(4, marqueeDistance.value / 30)
+		);
+	} else {
+		titleOverflow.value = false;
+		marqueeDistance.value = 0;
+		marqueeDuration.value = 0;
+	}
 }
 
 watch(
-  () => musicInfo.value?.title,
-  async () => {
-    await nextTick();
-    updateTitleOverflow();
-  }
+	() => musicInfo.value?.title,
+	async () => {
+		await nextTick();
+		updateTitleOverflow();
+	}
 );
 watch(
-  () => musicInfo.value?.artUrl,
-  async (newUrl) => {
-    if (!newUrl || newUrl.trim() === "") {
-      imgSrc.value = await getIconSource("applications-multimedia");
-      return;
-    }
-
-    const url = newUrl.trim();
-
-    if (url.startsWith("file://")) {
-      const path = url.replace(/^file:\/+/, "/");
-      imgSrc.value = convertFileSrc(path);
-    } else if (url.startsWith("http://") || url.startsWith("https://")) {
-      imgSrc.value = url;
-    } else if (url.startsWith("/")) {
-      imgSrc.value = convertFileSrc(url);
-    } else {
-      imgSrc.value = url;
-    }
-  },
-  { immediate: true }
+	() => musicInfo.value?.artUrl,
+	async (newUrl) => {
+		const processedUrl = processImageUrl(newUrl);
+		if (processedUrl) {
+			imgSrc.value = processedUrl;
+		} else {
+			imgSrc.value = await getIconSource('applications-multimedia');
+		}
+	},
+	{ immediate: true }
 );
 
-async function onImgError() {
-  try {
-    const defaultIcon = await getIconSource("applications-multimedia");
-    if (defaultIcon) {
-      imgSrc.value = defaultIcon;
-    }
-  } catch (e) {
-    console.warn("Failed to load default icon:", e);
-  }
+async function onImgError(): Promise<void> {
+	try {
+		const defaultIcon = await getIconSource('applications-multimedia');
+		if (defaultIcon) {
+			imgSrc.value = defaultIcon;
+		}
+	} catch (e) {
+		console.warn('Failed to load default icon:', e);
+	}
 }
 </script>
 
@@ -238,12 +226,11 @@ async function onImgError() {
           class="w-12 h-12 flex items-center justify-center rounded-vsk background text-xs"
           :title="isPlaying ? 'Pausa' : 'Reproducir'"
         >
-          <template v-if="isPlaying">
-            <img :src="pauseIcon" alt="Pausa" class="w-4 h-4" />
-          </template>
-          <template v-else>
-            <img :src="playIcon" alt="Reproducir" class="w-4 h-4" />
-          </template>
+          <img 
+            :src="isPlaying ? pauseIcon : playIcon" 
+            :alt="isPlaying ? 'Pausa' : 'Reproducir'" 
+            class="w-4 h-4" 
+          />
         </button>
 
         <button

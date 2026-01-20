@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, Ref } from "vue";
-import { listen } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
-import TrayIconBluetooth from "@/components/buttons/TrayIconBluetooth.vue";
-import { isBluetoothPluginInitialized } from "@vasakgroup/plugin-bluetooth-manager";
-import TrayIconNetwork from "@/components/buttons/TrayIconNetwork.vue";
-import TrayIconSound from "@/components/buttons/TrayIconSound.vue";
-import TrayMusicControl from "@/components/controls/TrayMusicControl.vue";
-import TrayIconBattery from "@/components/buttons/TrayIconBattery.vue";
-import { TrayItem, TrayMenu } from "@/interfaces/tray";
-import { batteryExists } from "@/tools/battery.controller";
-import { getTrayItems, startSNIWatcher } from "@/tools/tray.controller";
+import { ref, onMounted, onUnmounted, Ref } from 'vue';
+import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
+import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
+import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
+import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
+import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
+import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
+import { TrayItem, TrayMenu } from '@/interfaces/tray';
+import { batteryExists } from '@/tools/battery.controller';
+import { getTrayItems, startSNIWatcher } from '@/tools/tray.controller';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
@@ -22,131 +22,131 @@ const contextMenu = ref<{
   items: TrayMenu[];
   trayId: string;
 }>({
-  visible: false,
-  x: 0,
-  y: 0,
-  items: [],
-  trayId: "",
+	visible: false,
+	x: 0,
+	y: 0,
+	items: [],
+	trayId: '',
 });
 
 let unlisten: (() => void) | null = null;
 let unlistenBatteryEvent: (() => void) | null = null;
 
 const refreshTrayItems = async (): Promise<void> => {
-  try {
-    trayItems.value = await getTrayItems();
-  } catch (error) {
-    console.error("[TrayPanel Error] Error obteniendo items del tray:", error);
-  }
+	try {
+		trayItems.value = await getTrayItems();
+	} catch (error) {
+		console.error('[TrayPanel Error] Error obteniendo items del tray:', error);
+	}
 };
 
 const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
-  try {
-    if (event.button === 2) {
-      // Right click
-      event.preventDefault();
-      await showContextMenu(item, event);
-    } else if (event.button === 0) {
-      // Left click
-      await invoke("tray_item_activate", {
-        service_name: item.service_name,
-        x: event.clientX,
-        y: event.clientY,
-      });
-    } else if (event.button === 1) {
-      // Middle click
-      await invoke("tray_item_secondary_activate", {
-        service_name: item.service_name,
-        x: event.clientX,
-        y: event.clientY,
-      });
-    }
-  } catch (error) {
-    console.error("[TrayPanel Error] Error manejando click:", error);
-  }
+	try {
+		if (event.button === 2) {
+			// Right click
+			event.preventDefault();
+			await showContextMenu(item, event);
+		} else if (event.button === 0) {
+			// Left click
+			await invoke('tray_item_activate', {
+				service_name: item.service_name,
+				x: event.clientX,
+				y: event.clientY,
+			});
+		} else if (event.button === 1) {
+			// Middle click
+			await invoke('tray_item_secondary_activate', {
+				service_name: item.service_name,
+				x: event.clientX,
+				y: event.clientY,
+			});
+		}
+	} catch (error) {
+		console.error('[TrayPanel Error] Error manejando click:', error);
+	}
 };
 
 const showContextMenu = async (item: TrayItem, event: MouseEvent) => {
-  if (!item.menu_path) return;
+	if (!item.menu_path) return;
 
-  try {
-    const menuItems: TrayMenu[] = await invoke("get_tray_menu", {
-      service_name: item.service_name,
-    });
+	try {
+		const menuItems: TrayMenu[] = await invoke('get_tray_menu', {
+			service_name: item.service_name,
+		});
 
-    contextMenu.value = {
-      visible: true,
-      x: event.clientX,
-      y: event.clientY,
-      items: menuItems,
-      trayId: item.service_name,
-    };
-  } catch (error) {
-    console.error("[TrayPanel Error] Error obteniendo menú:", error);
-  }
+		contextMenu.value = {
+			visible: true,
+			x: event.clientX,
+			y: event.clientY,
+			items: menuItems,
+			trayId: item.service_name,
+		};
+	} catch (error) {
+		console.error('[TrayPanel Error] Error obteniendo menú:', error);
+	}
 };
 
 const handleMenuItemClick = async (menuItem: TrayMenu) => {
-  try {
-    await invoke("tray_menu_item_click", {
-      service_name: contextMenu.value.trayId,
-      menu_id: menuItem.id,
-    });
-    contextMenu.value.visible = false;
-  } catch (error) {
-    console.error("[TrayPanel Error] Error en click de menú:", error);
-  }
+	try {
+		await invoke('tray_menu_item_click', {
+			service_name: contextMenu.value.trayId,
+			menu_id: menuItem.id,
+		});
+		contextMenu.value.visible = false;
+	} catch (error) {
+		console.error('[TrayPanel Error] Error en click de menú:', error);
+	}
 };
 
 const hideContextMenu = () => {
-  contextMenu.value.visible = false;
+	contextMenu.value.visible = false;
 };
 
 const getItemPulseClass = (item: TrayItem) => {
-  return item.status === "NeedsAttention" ? "animate-pulse-attention" : "";
+	return item.status === 'NeedsAttention' ? 'animate-pulse-attention' : '';
 };
 
 const getItemStatusClass = (item: TrayItem) => {
-  switch (item.status) {
-    case "Active":
-      return "tray-item-active";
-    case "Passive":
-      return "tray-item-passive";
-    case "NeedsAttention":
-      return "tray-item-attention";
-    default:
-      return "";
-  }
+	switch (item.status) {
+	case 'Active':
+		return 'tray-item-active';
+	case 'Passive':
+		return 'tray-item-passive';
+	case 'NeedsAttention':
+		return 'tray-item-attention';
+	default:
+		return '';
+	}
 };
 
 onMounted(async () => {
-  await refreshTrayItems();
-  unlisten = await listen("tray-update", refreshTrayItems);
-  bluetoothInitialized.value = await isBluetoothPluginInitialized();
-  // Inicial: consultar si existe batería
-  try {
-    existBattery.value = await batteryExists();
-  } catch (e) {
-    console.warn("[TrayPanel] batteryExists failed:", e);
-    existBattery.value = false;
-  }
+	await refreshTrayItems();
+	unlisten = await listen('tray-update', refreshTrayItems);
+	bluetoothInitialized.value = await isBluetoothPluginInitialized();
+	// Inicial: consultar si existe batería
+	try {
+		existBattery.value = await batteryExists();
+	} catch (e) {
+		console.warn('[TrayPanel] batteryExists failed:', e);
+		existBattery.value = false;
+	}
 
-  // Suscribirse a eventos de batería para actualizar visibilidad en caliente
-  unlistenBatteryEvent = await listen("battery-update", (event) => {
-    const payload: any = event.payload || {};
-    if (typeof payload.has_battery === "boolean") {
-      existBattery.value = payload.has_battery;
-    }
-  });
-  await startSNIWatcher();
+	// Suscribirse a eventos de batería para actualizar visibilidad en caliente
+	unlistenBatteryEvent = await listen('battery-update', (event) => {
+		const payload: any = event.payload || {};
+		if (typeof payload.has_battery === 'boolean') {
+			existBattery.value = payload.has_battery;
+		}
+	});
+	await startSNIWatcher();
 
-  document.addEventListener("click", hideContextMenu);
+	document.addEventListener('click', hideContextMenu);
 });
 
 onUnmounted(() => {
-  unlisten?.();
-  unlistenBatteryEvent?.();
-  document.removeEventListener("click", hideContextMenu);
+	unlisten?.();
+	unlistenBatteryEvent?.();
+	document.removeEventListener('click', hideContextMenu);
 });
 </script>
 

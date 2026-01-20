@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import ConfigSidebarArea from "@/components/areas/configuration/ConfigSidebarArea.vue";
-import { WindowFrame } from "@vasakgroup/vue-libvasak";
+import ConfigSidebarArea from '@/components/areas/configuration/ConfigSidebarArea.vue';
+import { WindowFrame } from '@vasakgroup/vue-libvasak';
 </script>
 
 <template>

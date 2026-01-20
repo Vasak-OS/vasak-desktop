@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 defineProps({
-  title: String,
-  img: String
+	title: String,
+	img: String
 });
 
 </script>

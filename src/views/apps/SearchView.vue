@@ -1,157 +1,157 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onUnmounted, Ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { ref, watch, nextTick, onMounted, onUnmounted, Ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 
 interface SearchResult {
   id: string;
   title: string;
   description: string;
   icon: string | null;
-  category: "application" | "file" | "action";
+  category: 'application' | 'file' | 'action';
   exec: string | null;
   path: string | null;
   score: number;
 }
 
-const query = ref("");
+const query = ref('');
 const results = ref<SearchResult[]>([]);
 const selectedIndex = ref(0);
 const loading = ref(false);
 const currentWindow = getCurrentWindow();
 
 // Icono del sistema para búsqueda (vicons)
-const searchIconSrc: Ref<string> = ref("");
+const searchIconSrc: Ref<string> = ref('');
 
 let debounceTimer: number | null = null;
 
 // Watch query changes
 watch(query, (newQuery) => {
-  if (debounceTimer) {
-    clearTimeout(debounceTimer);
-  }
+	if (debounceTimer) {
+		clearTimeout(debounceTimer);
+	}
 
-  if (!newQuery.trim()) {
-    results.value = [];
-    selectedIndex.value = 0;
-    return;
-  }
+	if (!newQuery.trim()) {
+		results.value = [];
+		selectedIndex.value = 0;
+		return;
+	}
 
-  loading.value = true;
-  debounceTimer = setTimeout(async () => {
-    try {
-      const searchResults = await invoke<SearchResult[]>("global_search", {
-        query: newQuery,
-        limit: 50,
-      });
-      results.value = searchResults;
-      selectedIndex.value = 0;
-    } catch (error) {
-      console.error("[search] Error:", error);
-      results.value = [];
-    } finally {
-      loading.value = false;
-    }
-  }, 150) as unknown as number;
+	loading.value = true;
+	debounceTimer = setTimeout(async () => {
+		try {
+			const searchResults = await invoke<SearchResult[]>('global_search', {
+				query: newQuery,
+				limit: 50,
+			});
+			results.value = searchResults;
+			selectedIndex.value = 0;
+		} catch (error) {
+			console.error('[search] Error:', error);
+			results.value = [];
+		} finally {
+			loading.value = false;
+		}
+	}, 150) as unknown as number;
 });
 
 // Keyboard navigation
 const handleKeydown = async (event: KeyboardEvent) => {
-  switch (event.key) {
-    case "Escape":
-      event.preventDefault();
-      await currentWindow.close();
-      break;
+	switch (event.key) {
+	case 'Escape':
+		event.preventDefault();
+		await currentWindow.close();
+		break;
 
-    case "ArrowDown":
-      event.preventDefault();
-      if (selectedIndex.value < results.value.length - 1) {
-        selectedIndex.value++;
-        scrollToSelected();
-      }
-      break;
+	case 'ArrowDown':
+		event.preventDefault();
+		if (selectedIndex.value < results.value.length - 1) {
+			selectedIndex.value++;
+			scrollToSelected();
+		}
+		break;
 
-    case "ArrowUp":
-      event.preventDefault();
-      if (selectedIndex.value > 0) {
-        selectedIndex.value--;
-        scrollToSelected();
-      }
-      break;
+	case 'ArrowUp':
+		event.preventDefault();
+		if (selectedIndex.value > 0) {
+			selectedIndex.value--;
+			scrollToSelected();
+		}
+		break;
 
-    case "Enter":
-      event.preventDefault();
-      if (results.value[selectedIndex.value]) {
-        await executeResult(results.value[selectedIndex.value]);
-      }
-      break;
-  }
+	case 'Enter':
+		event.preventDefault();
+		if (results.value[selectedIndex.value]) {
+			await executeResult(results.value[selectedIndex.value]);
+		}
+		break;
+	}
 };
 
 // Execute selected result
 const executeResult = async (result: SearchResult) => {
-  try {
-    await invoke("execute_search_result", {
-      id: result.id,
-      category: result.category,
-      exec: result.exec,
-    });
-    await currentWindow.close();
-  } catch (error) {
-    console.error("[search] Execution error:", error);
-  }
+	try {
+		await invoke('execute_search_result', {
+			id: result.id,
+			category: result.category,
+			exec: result.exec,
+		});
+		await currentWindow.close();
+	} catch (error) {
+		console.error('[search] Execution error:', error);
+	}
 };
 
 // Scroll to selected item
 const scrollToSelected = () => {
-  nextTick(() => {
-    const selected = document.querySelector(".search-result.selected");
-    if (selected) {
-      selected.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
-  });
+	nextTick(() => {
+		const selected = document.querySelector('.search-result.selected');
+		if (selected) {
+			selected.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+		}
+	});
 };
 
 // Auto-focus input on mount
 onMounted(async () => {
-  // Cargar ícono de búsqueda desde vicons
-  searchIconSrc.value = await getIconSource("search");
-  nextTick(() => {
-    document.querySelector<HTMLInputElement>(".search-input")?.focus();
-  });
-  globalThis.addEventListener("keydown", handleKeydown);
+	// Cargar ícono de búsqueda desde vicons
+	searchIconSrc.value = await getIconSource('search');
+	nextTick(() => {
+		document.querySelector<HTMLInputElement>('.search-input')?.focus();
+	});
+	globalThis.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
-  globalThis.removeEventListener("keydown", handleKeydown);
+	globalThis.removeEventListener('keydown', handleKeydown);
 });
 
 // Helper functions
 function getCategoryIcon(category: string): string {
-  switch (category) {
-    case "application":
-      return "📦";
-    case "file":
-      return "📄";
-    case "action":
-      return "⚡";
-    default:
-      return "🔹";
-  }
+	switch (category) {
+	case 'application':
+		return '📦';
+	case 'file':
+		return '📄';
+	case 'action':
+		return '⚡';
+	default:
+		return '🔹';
+	}
 }
 
 function getCategoryLabel(category: string): string {
-  switch (category) {
-    case "application":
-      return "App";
-    case "file":
-      return "Archivo";
-    case "action":
-      return "Acción";
-    default:
-      return "";
-  }
+	switch (category) {
+	case 'application':
+		return 'App';
+	case 'file':
+		return 'Archivo';
+	case 'action':
+		return 'Acción';
+	default:
+		return '';
+	}
 }
 </script>
 

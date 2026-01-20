@@ -1,131 +1,108 @@
 <script lang="ts" setup>
-import { onMounted, ref, computed, Ref, watch } from "vue";
-import { listen } from "@tauri-apps/api/event";
-import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { getIconSource, getSymbolSource } from "@vasakgroup/plugin-vicons";
+import { onMounted, ref, computed, Ref, watch } from 'vue';
+import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
+import type { MusicInfo } from '@/interfaces/music';
+import { processImageUrl } from '@/utils/image';
 
-
-const musicInfo: Ref<any> = ref({
-  title: "",
-  artist: "",
-  player: "",
-  artUrl: "",
-  status: "",
+const musicInfo: Ref<MusicInfo> = ref({
+	title: '',
+	artist: '',
+	player: '',
+	artUrl: '',
+	status: '',
 });
 
 // Watch for artUrl changes to update imgSrc
 watch(
-  () => musicInfo.value?.artUrl,
-  async (newUrl) => {
-    if (!newUrl || newUrl.trim() === "") {
-      // URL vacía o undefined: usar icono por defecto
-      imgSrc.value = await getIconSource("applications-multimedia");
-      return;
-    }
-
-    const url = newUrl.trim();
-
-    if (url.startsWith("file://")) {
-      // Remover prefijo file:// (puede ser file:// o file:///)
-      const path = url.replace(/^file:\/+/, "/");
-      imgSrc.value = convertFileSrc(path);
-    } else if (url.startsWith("http://") || url.startsWith("https://")) {
-      // URL remota HTTP/HTTPS: usar directamente
-      imgSrc.value = url;
-    } else if (url.startsWith("/")) {
-      // Ruta absoluta: convertir con convertFileSrc
-      imgSrc.value = convertFileSrc(url);
-    } else {
-      // Otros formatos o relativos: intentar directamente
-      imgSrc.value = url;
-    }
-  },
-  { immediate: true }
+	() => musicInfo.value?.artUrl,
+	async (newUrl) => {
+		const processedUrl = processImageUrl(newUrl);
+		if (processedUrl) {
+			imgSrc.value = processedUrl;
+		} else {
+			imgSrc.value = await getIconSource('applications-multimedia');
+		}
+	},
+	{ immediate: true }
 );
 
-async function onImgError() {
-  imgSrc.value = await getIconSource("applications-multimedia");
+async function onImgError(): Promise<void> {
+	imgSrc.value = await getIconSource('applications-multimedia');
 }
 
-const imgSrc: Ref<string> = ref("");
-const prevIcon: Ref<string> = ref("");
-const nextIcon: Ref<string> = ref("");
-const playIcon: Ref<string> = ref("");
-const pauseIcon: Ref<string> = ref("");
+const imgSrc: Ref<string> = ref('');
+const prevIcon: Ref<string> = ref('');
+const nextIcon: Ref<string> = ref('');
+const playIcon: Ref<string> = ref('');
+const pauseIcon: Ref<string> = ref('');
 
-// Nuevo: computed que devuelve true si el status (normalizado) es "playing"
-const isPlaying = computed(() => {
-  const s = musicInfo.value?.status;
-  if (!s) return false;
-  return String(s).toLowerCase() === "playing";
-});
+const isPlaying = computed(() => 
+	String(musicInfo.value?.status || '').toLowerCase() === 'playing'
+);
 
-// helpers para invocar comandos Tauri (el frontend siempre pasa el player)
-async function sendCommand(cmd: string) {
-  const player = musicInfo.value?.player || "";
-  if (!player) {
-    console.warn("[music] no player bus name available");
-    return;
-  }
-  try {
-    await invoke(cmd, { player });
-  } catch (e) {
-    console.error(`[music] invoke ${cmd} failed:`, e);
-  }
-}
-function onPrev() {
-  sendCommand("music_previous_track");
-}
-function onNext() {
-  sendCommand("music_next_track");
-}
-function onPlayPause() {
-  sendCommand("music_play_pause");
+async function sendCommand(cmd: string): Promise<void> {
+	const player = musicInfo.value?.player || '';
+	if (!player) {
+		console.warn('[music] no player bus name available');
+		return;
+	}
+	try {
+		await invoke(cmd, { player });
+	} catch (e) {
+		console.error(`[music] invoke ${cmd} failed:`, e);
+	}
 }
 
-// Nuevo: control de visibilidad con display (v-show) y animación de entrada/salida
+function onPrev(): void {
+	sendCommand('music_previous_track');
+}
+
+function onNext(): void {
+	sendCommand('music_next_track');
+}
+
+function onPlayPause(): void {
+	sendCommand('music_play_pause');
+}
+
 const visible = ref(false);
 const isHiding = ref(false);
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 const ANIM_MS = 180;
 
-function onEnter() {
-  if (hideTimer) {
-    clearTimeout(hideTimer);
-    hideTimer = null;
-  }
-  isHiding.value = false;
-  visible.value = true;
+function onEnter(): void {
+	if (hideTimer) {
+		clearTimeout(hideTimer);
+		hideTimer = null;
+	}
+	isHiding.value = false;
+	visible.value = true;
 }
 
-function onLeave() {
-  // iniciar animación de salida
-  if (!visible.value) return;
-  isHiding.value = true;
-  if (hideTimer) clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => {
-    visible.value = false;
-    isHiding.value = false;
-    hideTimer = null;
-  }, ANIM_MS);
+function onLeave(): void {
+	if (!visible.value) return;
+	isHiding.value = true;
+	if (hideTimer) clearTimeout(hideTimer);
+	hideTimer = setTimeout(() => {
+		visible.value = false;
+		isHiding.value = false;
+		hideTimer = null;
+	}, ANIM_MS);
 }
 
 onMounted(async () => {
-  imgSrc.value = await getIconSource("applications-multimedia");
-  prevIcon.value = await getSymbolSource("media-seek-backward");
-  nextIcon.value = await getSymbolSource("media-skip-forward");
-  playIcon.value = await getSymbolSource("media-playback-start");
-  pauseIcon.value = await getSymbolSource("media-playback-pause");
-  musicInfo.value = await invoke("music_now_playing");
-  listen("music-playing-update", (event) => {
-    const payload = (event.payload || {}) as Record<string, unknown>;
-    for (const key of Object.keys(payload)) {
-      const val = payload[key];
-      if (val === undefined) continue;
-      // asignar individualmente para mantener la referencia reactiva
-      musicInfo.value[key] = val;
-    }
-  });
+	imgSrc.value = await getIconSource('applications-multimedia');
+	prevIcon.value = await getSymbolSource('media-seek-backward');
+	nextIcon.value = await getSymbolSource('media-skip-forward');
+	playIcon.value = await getSymbolSource('media-playback-start');
+	pauseIcon.value = await getSymbolSource('media-playback-pause');
+	musicInfo.value = await invoke<MusicInfo>('music_now_playing');
+	listen('music-playing-update', (event) => {
+		const payload = (event.payload || {}) as Partial<MusicInfo>;
+		Object.assign(musicInfo.value, payload);
+	});
 });
 </script>
 
@@ -141,7 +118,7 @@ onMounted(async () => {
       :src="imgSrc"
       :alt="musicInfo.title"
       :title="musicInfo.title"
-      class="w-6 h-6 rounded-full origin-center"
+      class="w-5.5 h-5.5 rounded-full origin-center"
       :class="{ 'animate-spin': isPlaying }"
       @error="onImgError"
     />
@@ -159,7 +136,6 @@ onMounted(async () => {
       }"
       aria-hidden="false"
     >
-      <!-- anterior -->
       <button
         @click.prevent="onPrev"
         class="w-6 h-6 flex items-center justify-center rounded-vsk background text-xs"
@@ -168,21 +144,18 @@ onMounted(async () => {
         <img :src="prevIcon" alt="Anterior" class="w-4 h-4" />
       </button>
 
-      <!-- play / pause (toggle) -->
       <button
         @click.prevent="onPlayPause"
         class="w-6 h-6 flex items-center justify-center rounded-vsk background text-xs"
         :title="isPlaying ? 'Pausa' : 'Reproducir'"
       >
-        <template v-if="isPlaying">
-          <img :src="pauseIcon" alt="Pausa" class="w-4 h-4" />
-        </template>
-        <template v-else>
-          <img :src="playIcon" alt="Reproducir" class="w-4 h-4" />
-        </template>
+        <img 
+          :src="isPlaying ? pauseIcon : playIcon" 
+          :alt="isPlaying ? 'Pausa' : 'Reproducir'" 
+          class="w-4 h-4" 
+        />
       </button>
 
-      <!-- siguiente -->
       <button
         @click.prevent="onNext"
         class="w-6 h-6 flex items-center justify-center rounded-vsk background text-xs"

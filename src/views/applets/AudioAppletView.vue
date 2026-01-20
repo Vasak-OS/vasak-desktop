@@ -1,18 +1,18 @@
 <script lang="ts" setup>
-import SystemAudioArea from "@/components/areas/audio/SystemAudioArea.vue";
-import { invoke } from "@tauri-apps/api/core";
-import { onMounted } from "vue";
+import SystemAudioArea from '@/components/areas/audio/SystemAudioArea.vue';
+import { invoke } from '@tauri-apps/api/core';
+import { onMounted } from 'vue';
 
 onMounted(async () => {
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      try {
-        invoke("toggle_audio_applet");
-      } catch (error) {
-        console.error("Error al cerrar:", error);
-      }
-    }
-  });
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') {
+			try {
+				invoke('toggle_audio_applet');
+			} catch (error) {
+				console.error('Error al cerrar:', error);
+			}
+		}
+	});
 });
 </script>
 

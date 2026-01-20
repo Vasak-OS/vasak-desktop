@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, Ref } from "vue";
-import { getUserData, type UserInfo } from "@vasakgroup/plugin-user-data";
+import { ref, onMounted, computed, Ref } from 'vue';
+import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 
 const userInfo: Ref<UserInfo | null> = ref<UserInfo | null>(null);
 
 const avatarSrc = computed(() => {
-  return userInfo.value?.avatar_data;
+	return userInfo.value?.avatar_data;
 });
 
 const loadUserInfo = async () => {
-  try {
-    userInfo.value = await getUserData();
-  } catch (error) {
-    console.error("Error al cargar información del usuario:", error);
-  }
+	try {
+		userInfo.value = await getUserData();
+	} catch (error) {
+		console.error('Error al cargar información del usuario:', error);
+	}
 };
 
 onMounted(loadUserInfo);
