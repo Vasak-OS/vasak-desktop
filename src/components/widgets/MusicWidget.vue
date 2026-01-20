@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import { onMounted, ref, computed, Ref, nextTick, watch } from 'vue';
 import { listen } from '@tauri-apps/api/event';
-import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
+import type { MusicInfo } from '@/interfaces/music';
+import { processImageUrl } from '@/utils/image';
 
-const musicInfo: Ref<any> = ref({
+const musicInfo: Ref<MusicInfo> = ref({
 	title: '',
 	artist: '',
 	player: '',
@@ -25,13 +27,11 @@ let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 const dbusStatus = ref('connected');
 const dbusMessage = ref('');
 
-const isPlaying = computed(() => {
-	const s = musicInfo.value?.status;
-	if (!s) return false;
-	return String(s).toLowerCase() === 'playing';
-});
+const isPlaying = computed(() => 
+	String(musicInfo.value?.status || '').toLowerCase() === 'playing'
+);
 
-async function sendCommand(cmd: string) {
+async function sendCommand(cmd: string): Promise<void> {
 	const player = musicInfo.value?.player || '';
 	if (!player) {
 		showErrorMessage('No hay reproductor activo');
@@ -50,7 +50,7 @@ async function sendCommand(cmd: string) {
 	}
 }
 
-function showErrorMessage(msg: string) {
+function showErrorMessage(msg: string): void {
 	commandError.value = msg;
 	showError.value = true;
 	if (errorTimeout) clearTimeout(errorTimeout);
@@ -59,13 +59,16 @@ function showErrorMessage(msg: string) {
 		commandError.value = '';
 	}, 3000);
 }
-function onPrev() {
+
+function onPrev(): void {
 	sendCommand('music_previous_track');
 }
-function onNext() {
+
+function onNext(): void {
 	sendCommand('music_next_track');
 }
-function onPlayPause() {
+
+function onPlayPause(): void {
 	sendCommand('music_play_pause');
 }
 
@@ -75,15 +78,11 @@ onMounted(async () => {
 	nextIcon.value = await getSymbolSource('media-skip-forward');
 	playIcon.value = await getSymbolSource('media-playback-start');
 	pauseIcon.value = await getSymbolSource('media-playback-pause');
-	musicInfo.value = await invoke('music_now_playing');
+	musicInfo.value = await invoke<MusicInfo>('music_now_playing');
 	listen('music-playing-update', (event) => {
-		const payload = (event.payload || {}) as Record<string, unknown>;
+		const payload = (event.payload || {}) as Partial<MusicInfo>;
 		console.log('[MusicWidget] Received update:', payload);
-		for (const key of Object.keys(payload)) {
-			const val = payload[key];
-			if (val === undefined) continue;
-			musicInfo.value[key] = val;
-		}
+		Object.assign(musicInfo.value, payload);
 	});
 
 	listen('dbus-status', (event: any) => {
@@ -110,7 +109,7 @@ const marqueeDistance = ref(0);
 const marqueeDuration = ref(6);
 const TITLE_MAX_PX = 150;
 
-function updateTitleOverflow() {
+function updateTitleOverflow(): void {
 	const container = titleContainer.value;
 	const inner = titleInner.value;
 	if (!container || !inner) {
@@ -144,28 +143,17 @@ watch(
 watch(
 	() => musicInfo.value?.artUrl,
 	async (newUrl) => {
-		if (!newUrl || newUrl.trim() === '') {
-			imgSrc.value = await getIconSource('applications-multimedia');
-			return;
-		}
-
-		const url = newUrl.trim();
-
-		if (url.startsWith('file://')) {
-			const path = url.replace(/^file:\/+/, '/');
-			imgSrc.value = convertFileSrc(path);
-		} else if (url.startsWith('http://') || url.startsWith('https://')) {
-			imgSrc.value = url;
-		} else if (url.startsWith('/')) {
-			imgSrc.value = convertFileSrc(url);
+		const processedUrl = processImageUrl(newUrl);
+		if (processedUrl) {
+			imgSrc.value = processedUrl;
 		} else {
-			imgSrc.value = url;
+			imgSrc.value = await getIconSource('applications-multimedia');
 		}
 	},
 	{ immediate: true }
 );
 
-async function onImgError() {
+async function onImgError(): Promise<void> {
 	try {
 		const defaultIcon = await getIconSource('applications-multimedia');
 		if (defaultIcon) {
@@ -238,12 +226,11 @@ async function onImgError() {
           class="w-12 h-12 flex items-center justify-center rounded-vsk background text-xs"
           :title="isPlaying ? 'Pausa' : 'Reproducir'"
         >
-          <template v-if="isPlaying">
-            <img :src="pauseIcon" alt="Pausa" class="w-4 h-4" />
-          </template>
-          <template v-else>
-            <img :src="playIcon" alt="Reproducir" class="w-4 h-4" />
-          </template>
+          <img 
+            :src="isPlaying ? pauseIcon : playIcon" 
+            :alt="isPlaying ? 'Pausa' : 'Reproducir'" 
+            class="w-4 h-4" 
+          />
         </button>
 
         <button
