@@ -1,47 +1,80 @@
 <script lang="ts" setup>
 import DesktopClockWidget from "@/components/widgets/DesktopClockWidget.vue";
 import MusicWidget from "@/components/widgets/MusicWidget.vue";
-import { ref, Ref, computed, onMounted, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted, watch } from "vue";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { homeDir } from "@tauri-apps/api/path";
+import { listen } from "@tauri-apps/api/event";
+import type { FileEntry } from "@/interfaces/file";
+import { loadDirectory, getFileEmoji, getUserDirectories } from "@/tools/file.controller";
+import { useConfigStore, type VSKConfig } from "@vasakgroup/plugin-config-manager";
+import { ref } from "vue";
+import type { Store } from "pinia";
 
-const backgroundPath: Ref<string> = ref(
-  "/usr/share/backgrounds/cutefishos/wallpaper-9.jpg"
-);
-const background = computed(() => convertFileSrc(backgroundPath.value));
-const backgroundType: Ref<string> = ref("image/jpeg");
+const configStore = useConfigStore() as Store<
+  "config",
+  { config: VSKConfig; loadConfig: () => Promise<void> }
+>;
+const desktopFiles = ref<FileEntry[]>([]);
 
 let unlistenConfigChanged: (() => void) | null = null;
 
-// Cargar configuración desde el plugin
-const loadConfig = async () => {
+// Computados reactivos que leen directamente de la configuración del store
+const backgroundPath = computed(() => {
+  return (configStore as any).config?.desktop?.wallpaper?.[0] || "/usr/share/backgrounds/cutefishos/wallpaper-9.jpg";
+});
+
+const background = computed(() => convertFileSrc(backgroundPath.value));
+
+const backgroundType = computed(() => {
+  const ext = backgroundPath.value.toLowerCase().split('.').pop();
+  if (ext === 'mp4' || ext === 'webm' || ext === 'ogv') {
+    return `video/${ext}`;
+  }
+  return `image/${ext || 'jpeg'}`;
+});
+
+const showFiles = computed(() => (configStore as any).config?.desktop?.showfiles ?? false);
+const showHiddenFiles = computed(() => (configStore as any).config?.desktop?.showhiddenfiles ?? false);
+const iconSize = computed(() => (configStore as any).config?.desktop?.iconsize ?? 64);
+
+// Cargar archivos del escritorio
+const loadDesktopFiles = async () => {
+  if (!showFiles.value) {
+    desktopFiles.value = [];
+    return;
+  }
+
   try {
-    const configStr = await invoke<string>("plugin:config-manager|read_config");
-    const config = JSON.parse(configStr);
+    const home = await homeDir();
+    const userDirs = await getUserDirectories(home);
     
-    // Leer wallpaper desde config.desktop.wallpaper
-    if (config.desktop?.wallpaper && config.desktop.wallpaper.length > 0) {
-      backgroundPath.value = config.desktop.wallpaper[0];
-      
-      // Detectar tipo de archivo
-      const ext = backgroundPath.value.toLowerCase().split('.').pop();
-      if (ext === 'mp4' || ext === 'webm' || ext === 'ogv') {
-        backgroundType.value = `video/${ext}`;
-      } else {
-        backgroundType.value = `image/${ext || 'jpeg'}`;
-      }
+    // Buscar el directorio Desktop en las carpetas XDG
+    const desktopDir = userDirs.find(dir => dir.xdgKey === 'XDG_DESKTOP_DIR');
+    
+    if (desktopDir) {
+      desktopFiles.value = await loadDirectory(desktopDir.path, showHiddenFiles.value);
+    } else {
+      // Fallback al directorio Desktop tradicional si no se encuentra en XDG
+      const desktopPath = `${home}/Desktop`;
+      desktopFiles.value = await loadDirectory(desktopPath, showHiddenFiles.value);
     }
   } catch (error) {
-    console.error("Error loading config:", error);
+    console.error("Error loading desktop files:", error);
+    desktopFiles.value = [];
   }
 };
 
+// Ver cambios en showFiles para recargar archivos
+watch(showFiles, () => {
+  loadDesktopFiles();
+});
+
 onMounted(async () => {
-  await loadConfig();
-  const appWindow = getCurrentWindow();
-  unlistenConfigChanged = await appWindow.listen("config-changed", async () => {
-    await loadConfig();
+  await (configStore as any).loadConfig();
+  await loadDesktopFiles();
+  unlistenConfigChanged = await listen("config-changed", async () => {
+    await (configStore as any).loadConfig();
   });
 });
 
@@ -70,10 +103,45 @@ onUnmounted(() => {
     class="w-screen h-screen object-cover absolute z-10"
     style="border-radius: 0px"
   />
-  <main
-    class="w-screen h-screen flex flex-col items-center justify-center absolute z-20"
+  
+  <!-- Grid de archivos del escritorio -->
+  <div
+    v-if="showFiles && desktopFiles.length > 0"
+    class="absolute z-15 w-full h-full overflow-auto px-4 py-14"
   >
-    <MusicWidget />
-    <DesktopClockWidget />
+    <div 
+      class="grid gap-4 content-start"
+      :style="{
+        gridTemplateColumns: `repeat(auto-fill, minmax(${iconSize + 40}px, 1fr))`
+      }"
+    >
+      <div
+        v-for="file in desktopFiles"
+        :key="file.path"
+        class="flex flex-col items-center justify-start cursor-pointer hover:bg-white/10 rounded-lg p-2 transition-colors"
+        :style="{ width: `${iconSize + 40}px` }"
+      >
+        <div 
+          class="flex items-center justify-center mb-1"
+          :style="{ fontSize: `${iconSize}px`, lineHeight: '1' }"
+        >
+          {{ getFileEmoji(file.name, file.isDirectory) }}
+        </div>
+        <span 
+          class="text-white text-center text-sm break-words max-w-full px-1 py-0.5 rounded"
+          style="text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6);"
+          :style="{ fontSize: `${Math.max(12, iconSize / 6)}px` }"
+        >
+          {{ file.name }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <main
+    class="w-screen h-screen flex flex-col items-center justify-center absolute z-20 pointer-events-none"
+  >
+    <MusicWidget class="pointer-events-auto" />
+    <DesktopClockWidget class="pointer-events-auto" />
   </main>
 </template>
