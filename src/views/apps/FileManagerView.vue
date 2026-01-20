@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { WindowFrame } from "@vasakgroup/vue-libvasak";
-import { ref, onMounted } from "vue";
-import { join, homeDir } from "@tauri-apps/api/path";
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
-import { Command } from "@tauri-apps/plugin-shell";
-import { useRoute } from "vue-router";
-import type { FileEntry } from "@/interfaces/file";
+import { WindowFrame } from '@vasakgroup/vue-libvasak';
+import { ref, onMounted } from 'vue';
+import { join, homeDir } from '@tauri-apps/api/path';
+import { convertFileSrc } from '@tauri-apps/api/core';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { Command } from '@tauri-apps/plugin-shell';
+import { useRoute } from 'vue-router';
+import type { FileEntry } from '@/interfaces/file';
 import {
-  loadDirectoryBackend,
-  getFileEmoji,
-  getUserDirectories,
-} from "@/tools/file.controller";
+	loadDirectoryBackend,
+	getFileEmoji,
+	getUserDirectories,
+} from '@/tools/file.controller';
 
 interface SidebarItem {
   name: string;
@@ -24,118 +24,118 @@ const route = useRoute();
 const sidebarItems = ref([] as SidebarItem[]);
 const files = ref<FileEntry[]>([]);
 const loading = ref(false);
-const error = ref("");
-const currentPath = ref("");
-const homePath = ref("");
+const error = ref('');
+const currentPath = ref('');
+const homePath = ref('');
 const showHidden = ref(false);
 const sidebarIcons = ref<Record<string, string>>({});
 
 const loadFiles = async (path: string) => {
-  loading.value = true;
-  error.value = "";
-  try {
-    files.value = await loadDirectoryBackend(path, showHidden.value);
-    currentPath.value = path;
-  } catch (err: any) {
-    error.value = err.toString();
-  } finally {
-    loading.value = false;
-  }
+	loading.value = true;
+	error.value = '';
+	try {
+		files.value = await loadDirectoryBackend(path, showHidden.value);
+		currentPath.value = path;
+	} catch (err: any) {
+		error.value = err.toString();
+	} finally {
+		loading.value = false;
+	}
 };
 
 const toggleHiddenFiles = () => {
-  showHidden.value = !showHidden.value;
-  loadFiles(currentPath.value);
+	showHidden.value = !showHidden.value;
+	loadFiles(currentPath.value);
 };
 
 const navigateTo = (path: string) => {
-  loadFiles(path);
+	loadFiles(path);
 };
 
 const navigateUp = () => {
-  const parts = currentPath.value.split("/");
-  if (parts.length > 1) {
-    parts.pop();
-    const newPath = parts.join("/") || "/";
-    loadFiles(newPath);
-  }
+	const parts = currentPath.value.split('/');
+	if (parts.length > 1) {
+		parts.pop();
+		const newPath = parts.join('/') || '/';
+		loadFiles(newPath);
+	}
 };
 
 const handleItemClick = async (file: FileEntry) => {
-  if (file.isDirectory) {
-    navigateTo(file.path);
-  } else {
-    try {
-      const cmd = Command.create("open", [file.path]);
-      await cmd.spawn();
-    } catch (e) {
-      console.error("Failed to open file:", file.path, e);
-    }
-  }
+	if (file.isDirectory) {
+		navigateTo(file.path);
+	} else {
+		try {
+			const cmd = Command.create('open', [file.path]);
+			await cmd.spawn();
+		} catch (e) {
+			console.error('Failed to open file:', file.path, e);
+		}
+	}
 };
 
 const handleSidebarClick = (item: SidebarItem) => {
-  if (item.path === "HOME") {
-    navigateTo(homePath.value);
-  } else if (item.path.startsWith("/")) {
-    navigateTo(item.path);
-  } else {
-    navigateTo(`${homePath.value}/${item.path}`);
-  }
+	if (item.path === 'HOME') {
+		navigateTo(homePath.value);
+	} else if (item.path.startsWith('/')) {
+		navigateTo(item.path);
+	} else {
+		navigateTo(`${homePath.value}/${item.path}`);
+	}
 };
 
 const loadSidebar = async () => {
-  const items: SidebarItem[] = [];
+	const items: SidebarItem[] = [];
 
-  items.push({ name: "Home", icon: "user-home", path: "HOME" });
+	items.push({ name: 'Home', icon: 'user-home', path: 'HOME' });
 
-  // Load user directories from XDG config
-  const userDirectories = await getUserDirectories(homePath.value);
-  // Filter out templates and public share directories
-  const filteredDirectories = userDirectories.filter(
-    (dir) => dir.xdgKey !== "XDG_TEMPLATES_DIR" && dir.xdgKey !== "XDG_PUBLICSHARE_DIR"
-  );
-  items.push(...filteredDirectories);
+	// Load user directories from XDG config
+	const userDirectories = await getUserDirectories(homePath.value);
+	// Filter out templates and public share directories
+	const filteredDirectories = userDirectories.filter(
+		(dir) => dir.xdgKey !== 'XDG_TEMPLATES_DIR' && dir.xdgKey !== 'XDG_PUBLICSHARE_DIR'
+	);
+	items.push(...filteredDirectories);
 
-  const trashPath = await join(
-    homePath.value,
-    ".local",
-    "share",
-    "Trash",
-    "files"
-  );
-  items.push({ name: "Trash", icon: "user-trash", path: trashPath });
+	const trashPath = await join(
+		homePath.value,
+		'.local',
+		'share',
+		'Trash',
+		'files'
+	);
+	items.push({ name: 'Trash', icon: 'user-trash', path: trashPath });
 
-  sidebarItems.value = items;
+	sidebarItems.value = items;
 
-  for (const item of sidebarItems.value) {
-    try {
-      const source = await getIconSource(item.icon);
-      sidebarIcons.value[item.name] = source.startsWith("/")
-        ? convertFileSrc(source)
-        : source;
-    } catch (e) {
-      console.warn("Sidebar icon fail", item.icon);
-      console.error("Sidebar icon error: ", e);
-    }
-  }
+	for (const item of sidebarItems.value) {
+		try {
+			const source = await getIconSource(item.icon);
+			sidebarIcons.value[item.name] = source.startsWith('/')
+				? convertFileSrc(source)
+				: source;
+		} catch (e) {
+			console.warn('Sidebar icon fail', item.icon);
+			console.error('Sidebar icon error: ', e);
+		}
+	}
 };
 
 onMounted(async () => {
-  try {
-    homePath.value = await homeDir();
+	try {
+		homePath.value = await homeDir();
 
-    // Verroute = useRoute();
-    const initialPath = route.query.path as string || homePath.value;
+		// Verroute = useRoute();
+		const initialPath = route.query.path as string || homePath.value;
 
-    currentPath.value = initialPath;
+		currentPath.value = initialPath;
 
-    await loadSidebar();
+		await loadSidebar();
 
-    loadFiles(initialPath);
-  } catch (e) {
-    console.error("Failed to get home dir", e);
-  }
+		loadFiles(initialPath);
+	} catch (e) {
+		console.error('Failed to get home dir', e);
+	}
 });
 </script>
 

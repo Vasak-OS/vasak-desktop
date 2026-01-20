@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, Ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { ref, onMounted, Ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 
 interface Props {
   id: string;
@@ -11,20 +11,20 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const iconSource: Ref<string> = ref<string>("");
+const iconSource: Ref<string> = ref<string>('');
 
 const toggleWindow = async (): Promise<void> => {
-  try {
-    await invoke("toggle_window", { windowId: props.id });
-  } catch (error) {
-    console.error("[Window Error] Error alternando ventana:", error);
-  }
+	try {
+		await invoke('toggle_window', { windowId: props.id });
+	} catch (error) {
+		console.error('[Window Error] Error alternando ventana:', error);
+	}
 };
 
 onMounted(async () => {
-  if (props.icon) {
-    iconSource.value = await getIconSource(props.icon);
-  }
+	if (props.icon) {
+		iconSource.value = await getIconSource(props.icon);
+	}
 });
 </script>
 

@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { Ref, ref, onMounted } from "vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
-import { getDeviceInfo } from "@vasakgroup/plugin-bluetooth-manager";
+import { Ref, ref, onMounted } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
 
-const icon: Ref<string> = ref("");
+const icon: Ref<string> = ref('');
 const extraInfo: Ref<any> = ref({});
 const props = defineProps<{
   device: any;
@@ -11,18 +11,18 @@ const props = defineProps<{
   connected?: boolean;
 }>();
 
-const emit = defineEmits(["action"]);
+const emit = defineEmits(['action']);
 
 onMounted(async () => {
-  icon.value = await getIconSource(props.device.icon || "bluetooth");
-  if (props.device.path) {
-    try {
-      extraInfo.value = await getDeviceInfo(props.device.path);
-    } catch (e) {
-      console.error("Error fetching device info:", e);
-      extraInfo.value = {};
-    }
-  }
+	icon.value = await getIconSource(props.device.icon || 'bluetooth');
+	if (props.device.path) {
+		try {
+			extraInfo.value = await getDeviceInfo(props.device.path);
+		} catch (e) {
+			console.error('Error fetching device info:', e);
+			extraInfo.value = {};
+		}
+	}
 });
 </script>
 

@@ -1,118 +1,118 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, Ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, onMounted, computed, Ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 
-import SearchMenuComponent from "@/components/SearchMenuComponent.vue";
-import MenuArea from "@/components/areas/menu/MenuArea.vue";
-import FilterArea from "@/components/areas/menu/FilterArea.vue";
-import UserMenuCard from "@/components/cards/UserMenuCard.vue";
-import SessionButton from "@/components/buttons/SessionButton.vue";
-import CategoryMenuPill from "@/components/buttons/CategoryMenuPill.vue";
-import WeatherWidget from "@/components/widgets/WeatherWidget.vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
+import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
+import MenuArea from '@/components/areas/menu/MenuArea.vue';
+import FilterArea from '@/components/areas/menu/FilterArea.vue';
+import UserMenuCard from '@/components/cards/UserMenuCard.vue';
+import SessionButton from '@/components/buttons/SessionButton.vue';
+import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
+import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 
 const menuData: Ref<Array<any>> = ref([]);
-const categorySelected: Ref<any> = ref("all");
-const filter: Ref<string> = ref("");
-const logoutImg: Ref<string> = ref("");
-const shutdownImg: Ref<string> = ref("");
-const rebootImg: Ref<string> = ref("");
-const suspendImg: Ref<string> = ref("");
-const settingsImg: Ref<string> = ref("");
+const categorySelected: Ref<any> = ref('all');
+const filter: Ref<string> = ref('');
+const logoutImg: Ref<string> = ref('');
+const shutdownImg: Ref<string> = ref('');
+const rebootImg: Ref<string> = ref('');
+const suspendImg: Ref<string> = ref('');
+const settingsImg: Ref<string> = ref('');
 
 const setMenu = async () => {
-  try {
-    menuData.value = await invoke("get_menu_items");
-  } catch (error) {
-    console.error("Error al cargar el menú:", error);
-  }
+	try {
+		menuData.value = await invoke('get_menu_items');
+	} catch (error) {
+		console.error('Error al cargar el menú:', error);
+	}
 };
 
 const detectDisplayServer = async () => {
-  try {
-    const result = await invoke("detect_display_server");
-    return result;
-  } catch (error) {
-    console.error("Error detectando servidor de display:", error);
-    return "unknown";
-  }
+	try {
+		const result = await invoke('detect_display_server');
+		return result;
+	} catch (error) {
+		console.error('Error detectando servidor de display:', error);
+		return 'unknown';
+	}
 };
 
 const logout = async () => {
-  try {
-    const displayServer = await detectDisplayServer();
-    await invoke("logout", { displayServer });
-  } catch (error) {
-    console.error("Error al hacer logout:", error);
-  }
+	try {
+		const displayServer = await detectDisplayServer();
+		await invoke('logout', { displayServer });
+	} catch (error) {
+		console.error('Error al hacer logout:', error);
+	}
 };
 
 const shutdown = async () => {
-  try {
-    await invoke("shutdown");
-  } catch (error) {
-    console.error("Error al apagar:", error);
-  }
+	try {
+		await invoke('shutdown');
+	} catch (error) {
+		console.error('Error al apagar:', error);
+	}
 };
 
 const reboot = async () => {
-  try {
-    await invoke("reboot");
-  } catch (error) {
-    console.error("Error al reiniciar:", error);
-  }
+	try {
+		await invoke('reboot');
+	} catch (error) {
+		console.error('Error al reiniciar:', error);
+	}
 };
 
 const suspend = async () => {
-  try {
-    const displayServer = await detectDisplayServer();
-    await invoke("suspend", { displayServer });
-  } catch (error) {
-    console.error("Error al suspender:", error);
-  }
+	try {
+		const displayServer = await detectDisplayServer();
+		await invoke('suspend', { displayServer });
+	} catch (error) {
+		console.error('Error al suspender:', error);
+	}
 };
 
 const openConfiguration = async () => {
-  try {
-    await invoke("open_configuration_window");
-  } catch (error) {
-    console.error("Error al abrir configuración:", error);
-  }
+	try {
+		await invoke('open_configuration_window');
+	} catch (error) {
+		console.error('Error al abrir configuración:', error);
+	}
 };
 
 const apps = computed(() => {
-  const allApps = (menuData.value as any)["all"]?.apps;
-  return allApps;
+	const allApps = (menuData.value as any)['all']?.apps;
+	return allApps;
 });
 
 const appsOfCategory = computed(
-  () => (menuData.value as any)[categorySelected.value]?.apps
+	() => (menuData.value as any)[categorySelected.value]?.apps
 );
 
 const setImages = async () => {
-  try {
-    logoutImg.value = await getIconSource("system-log-out");
-    shutdownImg.value = await getIconSource("system-shutdown");
-    rebootImg.value = await getIconSource("system-reboot");
-    suspendImg.value = await getIconSource("system-suspend");
-    settingsImg.value = await getIconSource("settings");
-  } catch (error) {
-    console.error("Error loading session icons:", error);
-  }
+	try {
+		logoutImg.value = await getIconSource('system-log-out');
+		shutdownImg.value = await getIconSource('system-shutdown');
+		rebootImg.value = await getIconSource('system-reboot');
+		suspendImg.value = await getIconSource('system-suspend');
+		settingsImg.value = await getIconSource('settings');
+	} catch (error) {
+		console.error('Error loading session icons:', error);
+	}
 };
 
 onMounted(async () => {
-  setMenu();
-  setImages();
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      try {
-        invoke("toggle_menu");
-      } catch (error) {
-        console.error("Error al cerrar:", error);
-      }
-    }
-  });
+	setMenu();
+	setImages();
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape') {
+			try {
+				invoke('toggle_menu');
+			} catch (error) {
+				console.error('Error al cerrar:', error);
+			}
+		}
+	});
 });
 </script>
 

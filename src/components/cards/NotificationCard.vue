@@ -35,9 +35,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, onMounted, computed } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { invoke } from '@tauri-apps/api/core';
 
 const props = defineProps<{
   notification: {
@@ -58,46 +58,46 @@ defineEmits<{
   seen: [id: number];
 }>();
 
-const iconSrc = ref("");
-const closeIconSrc = ref("");
+const iconSrc = ref('');
+const closeIconSrc = ref('');
 
 // Parse standard DBus actions [key, label, key, label...]
 const parsedActions = computed(() => {
-  const acts = props.notification.actions || [];
-  const result = [];
-  for (let i = 0; i < acts.length; i += 2) {
-    const key = acts[i];
-    const label = acts[i + 1] || key;
-    if (key !== "default") {
-      result.push({ key, label });
-    }
-  }
-  return result;
+	const acts = props.notification.actions || [];
+	const result = [];
+	for (let i = 0; i < acts.length; i += 2) {
+		const key = acts[i];
+		const label = acts[i + 1] || key;
+		if (key !== 'default') {
+			result.push({ key, label });
+		}
+	}
+	return result;
 });
 
 function formatTime(timestamp: number): string {
-  const date = new Date(timestamp * 1000);
-  return date.toLocaleTimeString();
+	const date = new Date(timestamp * 1000);
+	return date.toLocaleTimeString();
 }
 
 async function handleAction(action_key: string) {
-  try {
-    await invoke("invoke_notification_action", {
-      id: props.notification.id,
-      action_key,
-    });
-  } catch (error) {
-    console.error("Failed to invoke action:", error);
-  }
+	try {
+		await invoke('invoke_notification_action', {
+			id: props.notification.id,
+			action_key,
+		});
+	} catch (error) {
+		console.error('Failed to invoke action:', error);
+	}
 }
 
 onMounted(async () => {
-  try {
-    iconSrc.value = await getIconSource(props.notification.app_icon);
-    closeIconSrc.value = await getIconSource("window-close-symbolic");
-  } catch (error) {
-    console.error("Error loading icons:", error);
-  }
+	try {
+		iconSrc.value = await getIconSource(props.notification.app_icon);
+		closeIconSrc.value = await getIconSource('window-close-symbolic');
+	} catch (error) {
+		console.error('Error loading icons:', error);
+	}
 });
 </script>
 

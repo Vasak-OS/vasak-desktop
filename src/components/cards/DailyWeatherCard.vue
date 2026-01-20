@@ -3,36 +3,36 @@ import WeatherIcon from '@/components/icon/WeatherIcon.vue';
 import { computed } from 'vue';
 
 const props = defineProps({
-  date: {
-    type: String,
-    required: true
-  },
-  min: {
-    type: Number,
-    required: true
-  },
-  max: {
-    type: Number,
-    required: true
-  },
-  units: {
-    type: Object,
-    required: true
-  },
-  dayOrNight: {
-    type: String as () => "day" | "night",
-    required: true
-  },
-  weatherCode: {
-    type: Number,
-    required: true
-  }
+	date: {
+		type: String,
+		required: true
+	},
+	min: {
+		type: Number,
+		required: true
+	},
+	max: {
+		type: Number,
+		required: true
+	},
+	units: {
+		type: Object,
+		required: true
+	},
+	dayOrNight: {
+		type: String as () => 'day' | 'night',
+		required: true
+	},
+	weatherCode: {
+		type: Number,
+		required: true
+	}
 });
 
 const formattedDate = computed(() => {
-  const dateObj = new Date(props.date);
-  dateObj.setDate(dateObj.getDate() + 1);
-  return dateObj.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+	const dateObj = new Date(props.date);
+	dateObj.setDate(dateObj.getDate() + 1);
+	return dateObj.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
 });
 </script>
 <template>

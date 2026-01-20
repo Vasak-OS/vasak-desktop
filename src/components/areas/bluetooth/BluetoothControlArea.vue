@@ -1,28 +1,28 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted, Ref } from "vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 import {
-  getDefaultAdapter,
-  toggleBluetooth,
-  AdapterInfo,
-  connectDevice,
-  disconnectDevice,
-  getConnectedDevices,
-  getAvailableDevices,
-  scanForDevices,
-} from "@vasakgroup/plugin-bluetooth-manager";
-import { listen } from "@tauri-apps/api/event";
-import BluetoothDeviceCard from "@/components/cards/BluetoothDeviceCard.vue";
+	getDefaultAdapter,
+	toggleBluetooth,
+	AdapterInfo,
+	connectDevice,
+	disconnectDevice,
+	getConnectedDevices,
+	getAvailableDevices,
+	scanForDevices,
+} from '@vasakgroup/plugin-bluetooth-manager';
+import { listen } from '@tauri-apps/api/event';
+import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import {
-  applyBluetoothChange,
-  resolveBluetoothIconName,
-} from "@/tools/bluetooth.controller";
+	applyBluetoothChange,
+	resolveBluetoothIconName,
+} from '@/tools/bluetooth.controller';
 
 const connectedDevices: Ref<any[]> = ref([]);
 const availableDevices: Ref<any[]> = ref([]);
 const isTogglingBluetooth: Ref<boolean> = ref(false);
-const bluetoothIcon: Ref<string> = ref("");
-const syncIcon: Ref<string> = ref("");
+const bluetoothIcon: Ref<string> = ref('');
+const syncIcon: Ref<string> = ref('');
 const defaultAdapter = ref<AdapterInfo | null>(null);
 const connectedDevicesCount: Ref<number> = ref(0);
 const loading: Ref<boolean> = ref(true);
@@ -31,96 +31,96 @@ const isScanning = ref(false);
 let unlistenBluetooth: Ref<Function | null> = ref(null);
 
 const toggleBT = async () => {
-  isTogglingBluetooth.value = true;
-  try {
-    await toggleBluetooth();
-    await refreshDevices();
-  } catch (error) {
-    console.error("Error toggling Bluetooth:", error);
-  } finally {
-    isTogglingBluetooth.value = false;
-  }
+	isTogglingBluetooth.value = true;
+	try {
+		await toggleBluetooth();
+		await refreshDevices();
+	} catch (error) {
+		console.error('Error toggling Bluetooth:', error);
+	} finally {
+		isTogglingBluetooth.value = false;
+	}
 };
 
 const isBluetoothOn = computed(() => defaultAdapter.value?.powered);
 
 const handleBluetoothChange = async (event: any) => {
-  applyBluetoothChange(event.payload, {
-    availableDevices,
-    connectedDevices,
-    defaultAdapter,
-  });
-  getBluetoothIcon();
+	applyBluetoothChange(event.payload, {
+		availableDevices,
+		connectedDevices,
+		defaultAdapter,
+	});
+	getBluetoothIcon();
 };
 
 const refreshDevices = async () => {
-  if (!defaultAdapter.value) return;
-  loading.value = true;
-  try {
-    connectedDevices.value = await getConnectedDevices(
-      defaultAdapter.value.path
-    );
-    availableDevices.value = await getAvailableDevices(
-      defaultAdapter.value.path
-    );
-    connectedDevicesCount.value = connectedDevices.value.length;
-  } catch (e) {
-    console.error("Error refreshing devices:", e);
-    connectedDevices.value = [];
-    availableDevices.value = [];
-  }
-  loading.value = false;
+	if (!defaultAdapter.value) return;
+	loading.value = true;
+	try {
+		connectedDevices.value = await getConnectedDevices(
+			defaultAdapter.value.path
+		);
+		availableDevices.value = await getAvailableDevices(
+			defaultAdapter.value.path
+		);
+		connectedDevicesCount.value = connectedDevices.value.length;
+	} catch (e) {
+		console.error('Error refreshing devices:', e);
+		connectedDevices.value = [];
+		availableDevices.value = [];
+	}
+	loading.value = false;
 };
 
 const scanDevices = async () => {
-  if (!defaultAdapter.value) return;
-  isScanning.value = true;
-  try {
-    await scanForDevices(defaultAdapter.value.path);
-    await refreshDevices();
-  } catch (e) {
-    console.error("Error scanning for devices:", e);
-  }
-  isScanning.value = false;
+	if (!defaultAdapter.value) return;
+	isScanning.value = true;
+	try {
+		await scanForDevices(defaultAdapter.value.path);
+		await refreshDevices();
+	} catch (e) {
+		console.error('Error scanning for devices:', e);
+	}
+	isScanning.value = false;
 };
 
 // Lifecycle hooks
 onMounted(async () => {
-  defaultAdapter.value = await getDefaultAdapter();
-  syncIcon.value = await getIconSource("emblem-synchronizing");
-  await refreshDevices();
-  await getBluetoothIcon();
-  unlistenBluetooth.value = await listen(
-    "bluetooth-change",
-    handleBluetoothChange
-  );
+	defaultAdapter.value = await getDefaultAdapter();
+	syncIcon.value = await getIconSource('emblem-synchronizing');
+	await refreshDevices();
+	await getBluetoothIcon();
+	unlistenBluetooth.value = await listen(
+		'bluetooth-change',
+		handleBluetoothChange
+	);
 });
 
 onUnmounted(() => {
-  if (unlistenBluetooth.value) unlistenBluetooth.value();
+	if (unlistenBluetooth.value) unlistenBluetooth.value();
 });
 
 const getBluetoothIcon = async () => {
-  try {
-    connectedDevicesCount.value = connectedDevices.value.length;
-    const iconName = resolveBluetoothIconName(
-      isBluetoothOn.value,
-      connectedDevicesCount.value
-    );
-    bluetoothIcon.value = await getIconSource(iconName);
-  } catch (error) {
-    console.error("Error loading bluetooth icon:", error);
-    bluetoothIcon.value = "";
-  }
+	try {
+		connectedDevicesCount.value = connectedDevices.value.length;
+		const iconName = resolveBluetoothIconName(
+			isBluetoothOn.value,
+			connectedDevicesCount.value
+		);
+		bluetoothIcon.value = await getIconSource(iconName);
+	} catch (error) {
+		console.error('Error loading bluetooth icon:', error);
+		bluetoothIcon.value = '';
+	}
 };
 
 const connect = async (device: any) => {
-  await connectDevice(device.path);
-  await refreshDevices();
+	await connectDevice(device.path);
+	await refreshDevices();
 };
 const disconnect = async (device: any) => {
-  await disconnectDevice(device.path);
-  await refreshDevices();
+	await disconnectDevice(device.path);
+	await refreshDevices();
 };
 </script>
 

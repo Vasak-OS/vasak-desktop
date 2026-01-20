@@ -60,84 +60,84 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, Ref } from "vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 import {
-  getDefaultAdapter,
-  toggleBluetooth,
-  AdapterInfo,
-  getConnectedDevicesCount,
-} from "@vasakgroup/plugin-bluetooth-manager";
-import { listen } from "@tauri-apps/api/event";
+	getDefaultAdapter,
+	toggleBluetooth,
+	AdapterInfo,
+	getConnectedDevicesCount,
+} from '@vasakgroup/plugin-bluetooth-manager';
+import { listen } from '@tauri-apps/api/event';
 import {
-  applyBluetoothChange,
-  resolveBluetoothIconName,
-} from "@/tools/bluetooth.controller";
+	applyBluetoothChange,
+	resolveBluetoothIconName,
+} from '@/tools/bluetooth.controller';
 
 const connectedDevices: Ref<any[]> = ref([]);
 const availableDevices: Ref<any[]> = ref([]);
 const isTogglingBluetooth: Ref<boolean> = ref(false);
-const bluetoothIcon: Ref<string> = ref("");
+const bluetoothIcon: Ref<string> = ref('');
 const defaultAdapter = ref<AdapterInfo | null>(null);
 const connectedDevicesCount: Ref<number> = ref(0);
 
 let unlistenBluetooth: Ref<Function | null> = ref(null);
 
 const toggleBT = async () => {
-  isTogglingBluetooth.value = true;
-  try {
-    await toggleBluetooth();
-  } catch (error) {
-    console.error("Error toggling Bluetooth:", error);
-  } finally {
-    isTogglingBluetooth.value = false;
-  }
+	isTogglingBluetooth.value = true;
+	try {
+		await toggleBluetooth();
+	} catch (error) {
+		console.error('Error toggling Bluetooth:', error);
+	} finally {
+		isTogglingBluetooth.value = false;
+	}
 };
 
 const isBluetoothOn = computed(() => {
-  return defaultAdapter.value?.powered;
+	return defaultAdapter.value?.powered;
 });
 
 const handleBluetoothChange = async (event: any) => {
-  applyBluetoothChange(event.payload, {
-    availableDevices,
-    connectedDevices,
-    defaultAdapter,
-  });
-  await getBluetoothIcon();
+	applyBluetoothChange(event.payload, {
+		availableDevices,
+		connectedDevices,
+		defaultAdapter,
+	});
+	await getBluetoothIcon();
 };
 
 onMounted(async () => {
-  defaultAdapter.value = await getDefaultAdapter();
-  await getBluetoothIcon();
-  connectedDevicesCount.value = await getConnectedDevicesCount(
+	defaultAdapter.value = await getDefaultAdapter();
+	await getBluetoothIcon();
+	connectedDevicesCount.value = await getConnectedDevicesCount(
     defaultAdapter.value?.path as string
-  );
-  unlistenBluetooth.value = await listen(
-    "bluetooth-change",
-    handleBluetoothChange
-  );
+	);
+	unlistenBluetooth.value = await listen(
+		'bluetooth-change',
+		handleBluetoothChange
+	);
 });
 
 onUnmounted(() => {
-  if (unlistenBluetooth.value) {
-    unlistenBluetooth.value();
-  }
+	if (unlistenBluetooth.value) {
+		unlistenBluetooth.value();
+	}
 });
 
 const getBluetoothIcon = async () => {
-  try {
-    connectedDevicesCount.value = await getConnectedDevicesCount(
+	try {
+		connectedDevicesCount.value = await getConnectedDevicesCount(
       defaultAdapter.value?.path as string
-    );
-    const iconName = resolveBluetoothIconName(
-      isBluetoothOn.value,
-      connectedDevicesCount.value
-    );
+		);
+		const iconName = resolveBluetoothIconName(
+			isBluetoothOn.value,
+			connectedDevicesCount.value
+		);
 
-    bluetoothIcon.value = await getIconSource(iconName);
-  } catch (error) {
-    console.error("Error loading bluetooth icon:", error);
-  }
+		bluetoothIcon.value = await getIconSource(iconName);
+	} catch (error) {
+		console.error('Error loading bluetooth icon:', error);
+	}
 };
 </script>

@@ -54,74 +54,74 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, Ref } from "vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
-import { listen } from "@tauri-apps/api/event";
+import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { listen } from '@tauri-apps/api/event';
 import {
-  getCurrentNetworkState,
-  type NetworkInfo,
-  toggleNetwork,
-  WiFiSecurityType,
-} from "@vasakgroup/plugin-network-manager";
+	getCurrentNetworkState,
+	type NetworkInfo,
+	toggleNetwork,
+	WiFiSecurityType,
+} from '@vasakgroup/plugin-network-manager';
 
 let ulisten: Ref<Function | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
-  name: "Unknown",
-  ssid: "Unknown",
-  connection_type: "Unknown",
-  icon: "network-offline-symbolic",
-  ip_address: "0.0.0.0",
-  mac_address: "00:00:00:00:00:00",
-  signal_strength: 0,
-  security_type: WiFiSecurityType.NONE,
-  is_connected: false,
+	name: 'Unknown',
+	ssid: 'Unknown',
+	connection_type: 'Unknown',
+	icon: 'network-offline-symbolic',
+	ip_address: '0.0.0.0',
+	mac_address: '00:00:00:00:00:00',
+	signal_strength: 0,
+	security_type: WiFiSecurityType.NONE,
+	is_connected: false,
 });
-const networkIconSrc: Ref<string> = ref("");
+const networkIconSrc: Ref<string> = ref('');
 const isLoading: Ref<boolean> = ref(false);
 
 const networkAlt = computed(() => {
-  return networkState.value.is_connected
-    ? `Conectado a ${networkState.value.connection_type} ${networkState.value.ssid}`
-    : "Conectado a red desconocida";
+	return networkState.value.is_connected
+		? `Conectado a ${networkState.value.connection_type} ${networkState.value.ssid}`
+		: 'Conectado a red desconocida';
 });
 
 const toggleCurrentNetwork = async () => {
-  if (isLoading.value) return;
+	if (isLoading.value) return;
 
-  isLoading.value = true;
-  try {
-    await toggleNetwork(!networkState.value.is_connected);
-  } catch (error) {
-    console.error("Error toggling network:", error);
-  } finally {
-    isLoading.value = false;
-  }
+	isLoading.value = true;
+	try {
+		await toggleNetwork(!networkState.value.is_connected);
+	} catch (error) {
+		console.error('Error toggling network:', error);
+	} finally {
+		isLoading.value = false;
+	}
 };
 
 const getCurrentNetwork = async () => {
-  try {
-    networkState.value = await getCurrentNetworkState();
-    networkIconSrc.value = await getIconSource(networkState.value.icon);
-    return networkState;
-  } catch (error) {
-    networkIconSrc.value = await getIconSource("network-offline-symbolic");
-    console.error("Error getting current network state:", error);
-    return null;
-  }
+	try {
+		networkState.value = await getCurrentNetworkState();
+		networkIconSrc.value = await getIconSource(networkState.value.icon);
+		return networkState;
+	} catch (error) {
+		networkIconSrc.value = await getIconSource('network-offline-symbolic');
+		console.error('Error getting current network state:', error);
+		return null;
+	}
 };
 
 onMounted(async () => {
-  await getCurrentNetwork();
-  ulisten.value = await listen<NetworkInfo>("network-changed", async (event) => {
-    console.log("Network changed", event.payload);
-    networkState.value = event.payload;
-    networkIconSrc.value = await getIconSource(event.payload.icon);
-  });
+	await getCurrentNetwork();
+	ulisten.value = await listen<NetworkInfo>('network-changed', async (event) => {
+		console.log('Network changed', event.payload);
+		networkState.value = event.payload;
+		networkIconSrc.value = await getIconSource(event.payload.icon);
+	});
 });
 
 onUnmounted(() => {
-  if (ulisten.value !== null) {
-    ulisten.value();
-  }
+	if (ulisten.value !== null) {
+		ulisten.value();
+	}
 });
 </script>
