@@ -13,34 +13,30 @@ const iconMappings: FileIconMapping[] = [
 	{
 		ext: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'],
 		icon: 'image-x-generic',
-		emoji: '🖼️',
 	},
 	// Videos
 	{
 		ext: ['mp4', 'webm', 'mkv', 'avi', 'mov'],
 		icon: 'video-x-generic',
-		emoji: '🎬',
 	},
 	// Audio
-	{ ext: ['mp3', 'wav', 'flac', 'ogg'], icon: 'audio-x-generic', emoji: '🎵' },
+	{ ext: ['mp3', 'wav', 'flac', 'ogg'], icon: 'audio-x-generic' },
 	// Documents
-	{ ext: ['txt', 'md', 'log'], icon: 'text-x-generic', emoji: '📄' },
-	{ ext: ['pdf'], icon: 'application-pdf', emoji: '📕' },
+	{ ext: ['txt', 'md', 'log'], icon: 'text-x-generic' },
+	{ ext: ['pdf'], icon: 'application-pdf' },
 	// Archives
 	{
 		ext: ['zip', 'tar', 'gz', '7z', 'rar'],
 		icon: 'package-x-generic',
-		emoji: '🗜️',
 	},
 	// Code
 	{
 		ext: ['rs', 'ts', 'js', 'vue', 'py', 'c', 'cpp'],
 		icon: 'text-x-script',
-		emoji: '💻',
 	},
-	{ ext: ['html', 'css'], icon: 'text-html', emoji: '💻' },
+	{ ext: ['html', 'css'], icon: 'text-html' },
 	// Executables
-	{ ext: ['exe', 'sh', 'bin'], icon: 'application-x-executable', emoji: '⚙️' },
+	{ ext: ['exe', 'sh', 'bin'], icon: 'application-x-executable' },
 ];
 
 export function getIconNameForFile(filename: string, isDir: boolean): string {
@@ -53,15 +49,6 @@ export function getIconNameForFile(filename: string, isDir: boolean): string {
 	return mapping?.icon || 'text-x-generic';
 }
 
-export function getFileEmoji(filename: string, isDir: boolean): string {
-	if (isDir) return '📁';
-
-	const parts = filename.split('.');
-	const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
-
-	const mapping = iconMappings.find((m) => m.ext.includes(ext));
-	return mapping?.emoji || '📄';
-}
 
 export async function getFileIconSource(
 	filename: string,
@@ -71,7 +58,7 @@ export async function getFileIconSource(
 
 	try {
 		const source = await getIconSource(iconName);
-		if (source && source.startsWith('/')) {
+		if (source?.startsWith('/')) {
 			return convertFileSrc(source);
 		}
 		return source;
@@ -234,7 +221,7 @@ export async function getUserDirectories(
 			const trimmed = line.trim();
 			if (!trimmed || trimmed.startsWith('#')) continue;
 
-			const match = trimmed.match(/^(XDG_[A-Z_]+_DIR)="(.*)"/);
+			const match = /^(XDG_[A-Z_]+_DIR)="(.*)"/.exec(trimmed);
 			if (match) {
 				const key = match[1];
 				const val = match[2];

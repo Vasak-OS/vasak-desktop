@@ -1,16 +1,15 @@
 <script lang="ts" setup>
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
-import { computed, onMounted, onUnmounted, watch } from 'vue';
+import { computed, onMounted, onUnmounted, watch, ref } from 'vue';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { homeDir } from '@tauri-apps/api/path';
 import { listen } from '@tauri-apps/api/event';
-import { Command } from '@tauri-apps/plugin-shell';
 import type { FileEntry } from '@/interfaces/file';
-import { loadDirectory, getFileEmoji, getUserDirectories } from '@/tools/file.controller';
+import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
-import { ref } from 'vue';
 import type { Store } from 'pinia';
+import { Command } from '@tauri-apps/plugin-shell';
 
 const configStore = useConfigStore() as Store<
   'config',
@@ -148,14 +147,15 @@ onUnmounted(() => {
         :style="{ width: `${iconSize + 40}px` }"
         @dblclick="handleFileClick(file)"
       >
-        <div 
-          class="flex items-center justify-center mb-1"
-          :style="{ fontSize: `${iconSize}px`, lineHeight: '1' }"
-        >
-          {{ getFileEmoji(file.name, file.isDirectory) }}
-        </div>
-        <span 
-          class="text-white text-center text-sm break-words max-w-full px-1 py-0.5 rounded"
+        <img
+          v-if="file.icon"
+          :src="file.icon"
+          :alt="file.name"
+          class="mb-1 shrink-0"
+          :style="{ width: `${iconSize}px`, height: `${iconSize}px` }"
+        />
+        <span
+          class="text-white text-center text-sm warp-break-words max-w-full px-1 py-0.5 rounded"
           style="text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6);"
           :style="{ fontSize: `${Math.max(12, iconSize / 6)}px` }"
         >

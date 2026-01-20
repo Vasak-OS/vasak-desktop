@@ -9,7 +9,6 @@ import { useRoute } from 'vue-router';
 import type { FileEntry } from '@/interfaces/file';
 import {
 	loadDirectoryBackend,
-	getFileEmoji,
 	getUserDirectories,
 } from '@/tools/file.controller';
 
@@ -203,11 +202,6 @@ onMounted(async () => {
 
                 <img v-else-if="file.icon" :src="file.icon" alt="File Icon"
                   class="w-full h-full object-contain p-2 opacity-80" />
-
-                <!-- Fallback Text Icon -->
-                <span v-else class="text-3xl opacity-50">{{
-                  getFileEmoji(file.name, file.isDirectory)
-                  }}</span>
               </div>
 
               <span
