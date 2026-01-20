@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
-import { computed, onMounted, onUnmounted, watch, ref } from 'vue';
+import { computed, onMounted, onUnmounted, watch, ref, ComputedRef } from 'vue';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { homeDir } from '@tauri-apps/api/path';
 import { listen } from '@tauri-apps/api/event';
@@ -36,7 +36,7 @@ const backgroundType = computed(() => {
 
 const showFiles = computed(() => (configStore as any).config?.desktop?.showfiles ?? false);
 const showHiddenFiles = computed(() => (configStore as any).config?.desktop?.showhiddenfiles ?? false);
-const iconSize = computed(() => (configStore as any).config?.desktop?.iconsize ?? 64);
+const iconSize: ComputedRef<number> = computed((): number => (configStore as any).config?.desktop?.iconsize ?? 64);
 
 // Cargar archivos del escritorio
 const loadDesktopFiles = async () => {
@@ -48,10 +48,10 @@ const loadDesktopFiles = async () => {
 	try {
 		const home = await homeDir();
 		const userDirs = await getUserDirectories(home);
-    
+
 		// Buscar el directorio Desktop en las carpetas XDG
 		const desktopDir = userDirs.find(dir => dir.xdgKey === 'XDG_DESKTOP_DIR');
-    
+
 		if (desktopDir) {
 			desktopFiles.value = await loadDirectory(desktopDir.path, showHiddenFiles.value);
 		} else {
@@ -111,63 +111,31 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <video
-    v-if="backgroundType.includes('video')"
-    style="border-radius: 0px"
-    :type="backgroundType"
-    :src="background"
-    class="w-screen h-screen object-cover absolute z-10"
-    loop
-    autoplay
-    muted
-  ></video>
-  <img
-    v-else
-    :src="background"
-    alt="Background"
-    class="w-screen h-screen object-cover absolute z-10"
-    style="border-radius: 0px"
-  />
-  
+  <video v-if="backgroundType.includes('video')" style="border-radius: 0px" :type="backgroundType" :src="background"
+    class="w-screen h-screen object-cover absolute z-10" loop autoplay muted></video>
+  <img v-else :src="background" alt="Background" class="w-screen h-screen object-cover absolute z-10"
+    style="border-radius: 0px" />
+
   <!-- Grid de archivos del escritorio -->
-  <div
-    v-if="showFiles && desktopFiles.length > 0"
-    class="absolute z-15 w-full h-full overflow-auto px-4 py-14"
-  >
-    <div 
-      class="grid gap-4 content-start"
-      :style="{
-        gridTemplateColumns: `repeat(auto-fill, minmax(${iconSize + 40}px, 1fr))`
-      }"
-    >
-      <div
-        v-for="file in desktopFiles"
-        :key="file.path"
+  <div v-if="showFiles && desktopFiles.length > 0" class="absolute z-15 w-full h-full overflow-auto px-4 py-14">
+    <div class="grid gap-4 content-start" :style="{
+      gridTemplateColumns: `repeat(auto-fill, minmax(${40 + iconSize}px, 1fr))`
+    }">
+      <div v-for="file in desktopFiles" :key="file.path"
         class="flex flex-col items-center justify-start cursor-pointer hover:bg-white/10 rounded-lg p-2 transition-colors"
-        :style="{ width: `${iconSize + 40}px` }"
-        @dblclick="handleFileClick(file)"
-      >
-        <img
-          v-if="file.icon"
-          :src="file.icon"
-          :alt="file.name"
-          class="mb-1 shrink-0"
-          :style="{ width: `${iconSize}px`, height: `${iconSize}px` }"
-        />
-        <span
-          class="text-white text-center text-sm warp-break-words max-w-full px-1 py-0.5 rounded"
+        :style="{ width: `${(iconSize as number) + 40}px` }" @dblclick="handleFileClick(file)">
+        <img v-if="file.icon" :src="file.icon" :alt="file.name" class="mb-1 shrink-0"
+          :style="{ width: `${iconSize}px`, height: `${iconSize}px` }" />
+        <span class="text-white text-center text-sm warp-break-words max-w-full px-1 py-0.5 rounded"
           style="text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6);"
-          :style="{ fontSize: `${Math.max(12, iconSize / 6)}px` }"
-        >
+          :style="{ fontSize: `${Math.max(12, iconSize / 6)}px` }">
           {{ file.name }}
         </span>
       </div>
     </div>
   </div>
 
-  <main
-    class="w-screen h-screen flex flex-col items-center justify-center absolute z-20 pointer-events-none"
-  >
+  <main class="w-screen h-screen flex flex-col items-center justify-center absolute z-20 pointer-events-none">
     <MusicWidget class="pointer-events-auto" />
     <DesktopClockWidget class="pointer-events-auto" />
   </main>
