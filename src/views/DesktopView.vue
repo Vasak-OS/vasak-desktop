@@ -71,8 +71,7 @@ const handleFileClick = async (file: FileEntry) => {
   if (file.isDirectory) {
     // Abrir el file manager en la carpeta seleccionada
     try {
-      await invoke("open_file_manager_window");
-      // TODO: Pasar la ruta de la carpeta al file manager cuando se implemente
+      await invoke("open_file_manager_window", { path: file.path });
     } catch (error) {
       console.error("Error al abrir file manager:", error);
     }
