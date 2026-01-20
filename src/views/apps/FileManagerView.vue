@@ -5,6 +5,7 @@ import { join, homeDir } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { getIconSource } from "@vasakgroup/plugin-vicons";
 import { Command } from "@tauri-apps/plugin-shell";
+import { useRoute } from "vue-router";
 import type { FileEntry } from "@/interfaces/file";
 import {
   loadDirectoryBackend,
@@ -19,6 +20,7 @@ interface SidebarItem {
 }
 
 // State
+const route = useRoute();
 const sidebarItems = ref([] as SidebarItem[]);
 const files = ref<FileEntry[]>([]);
 const loading = ref(false);
@@ -122,11 +124,15 @@ const loadSidebar = async () => {
 onMounted(async () => {
   try {
     homePath.value = await homeDir();
-    currentPath.value = homePath.value;
+    
+    // Verroute = useRoute();
+    const initialPath = route.query.path as string || homePath.value;
+    
+    currentPath.value = initialPath;
 
     await loadSidebar();
 
-    loadFiles(homePath.value);
+    loadFiles(initialPath);
   } catch (e) {
     console.error("Failed to get home dir", e);
   }
