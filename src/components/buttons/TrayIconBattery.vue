@@ -9,7 +9,7 @@
       :src="currentIcon"
       :alt="batteryAltText"
       :title="batteryTitle"
-      class="m-auto h-[22px] w-auto transition-all duration-300"
+      class="m-auto h-5.5 w-auto transition-all duration-300"
       :class="{ 
         'opacity-60': !batteryInfo.has_battery,
         'animate-pulse': batteryInfo.is_charging,
@@ -150,7 +150,6 @@ async function getBatteryInfo() {
 }
 
 async function toggleBatteryInfo() {
-	// Aquí podrías mostrar un panel detallado de batería o alternar el porcentaje
 	showPercentage.value = !showPercentage.value;
 }
 

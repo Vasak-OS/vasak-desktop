@@ -63,7 +63,7 @@ onUnmounted(() => {
     <img
       :src="networkIconSrc"
       :alt="networkAlt"
-      class="m-auto h-[22px] w-auto transition-all duration-300"
+      class="m-auto h-5.5 w-auto transition-all duration-300"
       :class="{
         'filter brightness-75': !networkState.is_connected,
       }"

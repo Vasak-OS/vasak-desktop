@@ -22,7 +22,7 @@
         }"
       />
       <div
-        class="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        class="absolute inset-0 rounded-full bg-lineal-to-tr from-transparent to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
       ></div>
     </div>
     <div class="flex flex-col flex-1 space-y-1">
