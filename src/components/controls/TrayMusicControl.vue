@@ -141,7 +141,7 @@ onMounted(async () => {
       :src="imgSrc"
       :alt="musicInfo.title"
       :title="musicInfo.title"
-      class="w-6 h-6 rounded-full origin-center"
+      class="w-[22px] h-[22px] rounded-full origin-center"
       :class="{ 'animate-spin': isPlaying }"
       @error="onImgError"
     />
