@@ -13,7 +13,6 @@ export interface FileEntry {
 export interface FileIconMapping {
   ext: string[];
   icon: string;
-  emoji?: string;
 }
 
 export interface UserDirectory {
