@@ -259,10 +259,10 @@ export async function getUserDirectories(
     console.warn("Failed to load user-dirs.dirs, falling back to defaults", e);
     // Fallback to default directories
     directories.push(
-      { name: "Documents", icon: "folder-documents", path: "Documents" },
-      { name: "Downloads", icon: "folder-download", path: "Downloads" },
-      { name: "Pictures", icon: "folder-pictures", path: "Pictures" },
-      { name: "Music", icon: "folder-music", path: "Music" },
+      { name: "Documents", icon: "folder-documents", path: `${homePath}/Documents` },
+      { name: "Downloads", icon: "folder-download", path: `${homePath}/Downloads` },
+      { name: "Pictures", icon: "folder-pictures", path: `${homePath}/Pictures` },
+      { name: "Music", icon: "folder-music", path: `${homePath}/Music` },
     );
   }
 
