@@ -20,6 +20,7 @@ import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { listen } from '@tauri-apps/api/event';
 import type { VolumeInfo } from '@/interfaces/volume';
 import type { UnlistenFn } from '@/interfaces/event';
+import { getVolumeIconName, calculateVolumePercentage } from '@/utils/volume';
 
 const volumeInfo: Ref<VolumeInfo> = ref({
 	current: 0,
@@ -31,28 +32,19 @@ const currentVolume: Ref<number> = ref(0);
 const currentIcon: Ref<string> = ref('');
 const unlistenVolume: Ref<UnlistenFn | null> = ref(null);
 
-function getIconName(isMuted: boolean, percentage: number): string {
-	if (isMuted) return 'audio-volume-muted-symbolic';
-	if (percentage <= 0) return 'audio-volume-muted-symbolic';
-	if (percentage <= 33) return 'audio-volume-low-symbolic';
-	if (percentage <= 66) return 'audio-volume-medium-symbolic';
-	return 'audio-volume-high-symbolic';
-}
-
 async function updateIcon(): Promise<void> {
 	try {
-		const iconName = getIconName(volumeInfo.value.is_muted, volumePercentage.value);
+		const percentage = calculateVolumePercentage(volumeInfo.value, currentVolume.value);
+		const iconName = getVolumeIconName(volumeInfo.value.is_muted, percentage);
 		currentIcon.value = await getSymbolSource(iconName);
 	} catch (error) {
 		console.error('Error loading icon:', error);
 	}
 }
 
-const volumePercentage = computed(() => {
-	const range = volumeInfo.value.max - volumeInfo.value.min;
-	const current = currentVolume.value - volumeInfo.value.min;
-	return Math.round((current / range) * 100);
-});
+const volumePercentage = computed(() => 
+	calculateVolumePercentage(volumeInfo.value, currentVolume.value)
+);
 
 watch([() => volumeInfo.value.is_muted, volumePercentage], updateIcon, {
 	immediate: true,
