@@ -5,12 +5,12 @@ export interface TrayItem {
   icon_data?: string;
   title?: string;
   tooltip?: string;
-  status: "Active" | "Passive" | "NeedsAttention";
+  status: 'Active' | 'Passive' | 'NeedsAttention';
   category:
-    | "ApplicationStatus"
-    | "Communications"
-    | "SystemServices"
-    | "Hardware";
+    | 'ApplicationStatus'
+    | 'Communications'
+    | 'SystemServices'
+    | 'Hardware';
   menu_path?: string;
 }
 
@@ -19,7 +19,7 @@ export interface TrayMenu {
   label: string;
   enabled: boolean;
   visible: boolean;
-  type: "standard" | "separator" | "submenu";
+  type: 'standard' | 'separator' | 'submenu';
   checked?: boolean;
   icon?: string;
   children?: TrayMenu[];
