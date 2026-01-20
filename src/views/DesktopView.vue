@@ -91,11 +91,16 @@ watch(showFiles, () => {
   loadDesktopFiles();
 });
 
+watch(showHiddenFiles, () => {
+  loadDesktopFiles();
+});
+
 onMounted(async () => {
   await (configStore as any).loadConfig();
   await loadDesktopFiles();
   unlistenConfigChanged = await listen("config-changed", async () => {
     await (configStore as any).loadConfig();
+    await loadDesktopFiles();
   });
 });
 
