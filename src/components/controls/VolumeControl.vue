@@ -38,8 +38,10 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { listen } from '@tauri-apps/api/event';
+import type { VolumeInfo } from '@/interfaces/volume';
+import type { UnlistenFn } from '@/interfaces/event';
 
-const volumeInfo = ref<any>({
+const volumeInfo = ref<VolumeInfo>({
 	current: 0,
 	min: 0,
 	max: 100,
@@ -47,7 +49,7 @@ const volumeInfo = ref<any>({
 });
 const currentVolume = ref(0);
 const currentIcon = ref('');
-const unlistenVolume = ref<(() => void) | null>(null);
+const unlistenVolume = ref<UnlistenFn | null>(null);
 
 /**
  * Determines the icon name based on volume level and mute status
@@ -83,7 +85,7 @@ watch([() => volumeInfo.value.is_muted, volumePercentage], updateIcon, {
 
 async function getVolumeInfo(): Promise<void> {
 	try {
-		const info = await invoke<any>('get_audio_volume');
+		const info = await invoke<VolumeInfo>('get_audio_volume');
 		volumeInfo.value = info;
 		currentVolume.value = info.current;
 		await updateIcon();
@@ -114,8 +116,8 @@ async function toggleMute(): Promise<void> {
 
 onMounted(async () => {
 	unlistenVolume.value = await listen('volume-changed', (event) => {
-		volumeInfo.value = event.payload;
-		currentVolume.value = (event.payload as any).current;
+		volumeInfo.value = event.payload as VolumeInfo;
+		currentVolume.value = (event.payload as VolumeInfo).current;
 		updateIcon();
 	});
 	await getVolumeInfo();
