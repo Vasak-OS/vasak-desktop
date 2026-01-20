@@ -64,7 +64,7 @@ import {
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
 
-let ulisten: Ref<Function | null> = ref(null);
+let ulisten: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 	name: 'Unknown',
 	ssid: 'Unknown',

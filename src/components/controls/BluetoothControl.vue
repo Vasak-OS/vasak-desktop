@@ -81,7 +81,7 @@ const bluetoothIcon: Ref<string> = ref('');
 const defaultAdapter = ref<AdapterInfo | null>(null);
 const connectedDevicesCount: Ref<number> = ref(0);
 
-let unlistenBluetooth: Ref<Function | null> = ref(null);
+let unlistenBluetooth: Ref<(() => void) | null> = ref(null);
 
 const toggleBT = async () => {
 	isTogglingBluetooth.value = true;

@@ -47,7 +47,7 @@ const volumeInfo: Ref<any> = ref({
 });
 const currentVolume: Ref<number> = ref(0);
 const currentIcon: Ref<string> = ref('');
-const unlistenVolume: Ref<Function | null> = ref(null);
+const unlistenVolume: Ref<(() => void) | null> = ref(null);
 
 async function updateIcon() {
 	const getIconName = () => {

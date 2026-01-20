@@ -18,7 +18,7 @@ const availableDevices: Ref<any[]> = ref([]);
 const bluetoothIcon: Ref<string> = ref('');
 const defaultAdapter = ref<AdapterInfo | null>(null);
 const connectedDevicesCount: Ref<number> = ref(0);
-let unlistenBluetooth: Ref<Function | null> = ref(null);
+let unlistenBluetooth: Ref<(() => void) | null> = ref(null);
 
 const isBluetoothOn = computed(() => {
 	return defaultAdapter.value?.powered;

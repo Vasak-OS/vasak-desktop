@@ -11,6 +11,7 @@ const props = defineProps<{
   connected?: boolean;
 }>();
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const emit = defineEmits(['action']);
 
 onMounted(async () => {

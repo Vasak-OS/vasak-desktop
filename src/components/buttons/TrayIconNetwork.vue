@@ -9,7 +9,7 @@ import {
 } from '@vasakgroup/plugin-network-manager';
 import { toggleNetworkApplet } from '@/tools/network.controller';
 
-let ulisten: Ref<Function | null> = ref(null);
+let ulisten: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 	name: 'Unknown',
 	ssid: 'Unknown',
