@@ -18,8 +18,10 @@ import { ref, computed, onMounted, watch, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { listen } from '@tauri-apps/api/event';
+import type { VolumeInfo } from '@/interfaces/volume';
+import type { UnlistenFn } from '@/interfaces/event';
 
-const volumeInfo: Ref<any> = ref({
+const volumeInfo: Ref<VolumeInfo> = ref({
 	current: 0,
 	min: 0,
 	max: 100,
@@ -27,21 +29,20 @@ const volumeInfo: Ref<any> = ref({
 });
 const currentVolume: Ref<number> = ref(0);
 const currentIcon: Ref<string> = ref('');
-const unlistenVolume: Ref<(() => void) | null> = ref(null);
+const unlistenVolume: Ref<UnlistenFn | null> = ref(null);
 
-async function updateIcon() {
-	const getIconName = () => {
-		if (volumeInfo.value.is_muted) return 'audio-volume-muted-symbolic';
+function getIconName(isMuted: boolean, percentage: number): string {
+	if (isMuted) return 'audio-volume-muted-symbolic';
+	if (percentage <= 0) return 'audio-volume-muted-symbolic';
+	if (percentage <= 33) return 'audio-volume-low-symbolic';
+	if (percentage <= 66) return 'audio-volume-medium-symbolic';
+	return 'audio-volume-high-symbolic';
+}
 
-		const percentage = volumePercentage.value;
-		if (percentage <= 0) return 'audio-volume-muted-symbolic';
-		if (percentage <= 33) return 'audio-volume-low-symbolic';
-		if (percentage <= 66) return 'audio-volume-medium-symbolic';
-		return 'audio-volume-high-symbolic';
-	};
-
+async function updateIcon(): Promise<void> {
 	try {
-		currentIcon.value = await getSymbolSource(getIconName());
+		const iconName = getIconName(volumeInfo.value.is_muted, volumePercentage.value);
+		currentIcon.value = await getSymbolSource(iconName);
 	} catch (error) {
 		console.error('Error loading icon:', error);
 	}
@@ -57,9 +58,9 @@ watch([() => volumeInfo.value.is_muted, volumePercentage], updateIcon, {
 	immediate: true,
 });
 
-async function getVolumeInfo() {
+async function getVolumeInfo(): Promise<void> {
 	try {
-		const info: any = await invoke('get_audio_volume');
+		const info = (await invoke('get_audio_volume')) as VolumeInfo;
 		volumeInfo.value = info;
 		currentVolume.value = info.current;
 		await updateIcon();
@@ -68,7 +69,7 @@ async function getVolumeInfo() {
 	}
 }
 
-async function toggleApplet() {
+async function toggleApplet(): Promise<void> {
 	try {
 		await invoke('toggle_audio_applet');
 	} catch (error) {
@@ -78,8 +79,8 @@ async function toggleApplet() {
 
 onMounted(async () => {
 	unlistenVolume.value = await listen('volume-changed', (event) => {
-		volumeInfo.value = event.payload;
-		currentVolume.value = (event.payload as any).current;
+		volumeInfo.value = event.payload as VolumeInfo;
+		currentVolume.value = (event.payload as VolumeInfo).current;
 		updateIcon();
 	});
 	await getVolumeInfo();
