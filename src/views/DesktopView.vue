@@ -1,19 +1,19 @@
 <script lang="ts" setup>
-import DesktopClockWidget from "@/components/widgets/DesktopClockWidget.vue";
-import MusicWidget from "@/components/widgets/MusicWidget.vue";
-import { computed, onMounted, onUnmounted, watch } from "vue";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-import { homeDir } from "@tauri-apps/api/path";
-import { listen } from "@tauri-apps/api/event";
-import { Command } from "@tauri-apps/plugin-shell";
-import type { FileEntry } from "@/interfaces/file";
-import { loadDirectory, getFileEmoji, getUserDirectories } from "@/tools/file.controller";
-import { useConfigStore, type VSKConfig } from "@vasakgroup/plugin-config-manager";
-import { ref } from "vue";
-import type { Store } from "pinia";
+import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
+import MusicWidget from '@/components/widgets/MusicWidget.vue';
+import { computed, onMounted, onUnmounted, watch } from 'vue';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { homeDir } from '@tauri-apps/api/path';
+import { listen } from '@tauri-apps/api/event';
+import { Command } from '@tauri-apps/plugin-shell';
+import type { FileEntry } from '@/interfaces/file';
+import { loadDirectory, getFileEmoji, getUserDirectories } from '@/tools/file.controller';
+import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
+import { ref } from 'vue';
+import type { Store } from 'pinia';
 
 const configStore = useConfigStore() as Store<
-  "config",
+  'config',
   { config: VSKConfig; loadConfig: () => Promise<void> }
 >;
 const desktopFiles = ref<FileEntry[]>([]);
@@ -22,17 +22,17 @@ let unlistenConfigChanged: (() => void) | null = null;
 
 // Computados reactivos que leen directamente de la configuración del store
 const backgroundPath = computed(() => {
-  return (configStore as any).config?.desktop?.wallpaper?.[0] || "/usr/share/backgrounds/cutefishos/wallpaper-9.jpg";
+	return (configStore as any).config?.desktop?.wallpaper?.[0] || '/usr/share/backgrounds/cutefishos/wallpaper-9.jpg';
 });
 
 const background = computed(() => convertFileSrc(backgroundPath.value));
 
 const backgroundType = computed(() => {
-  const ext = backgroundPath.value.toLowerCase().split('.').pop();
-  if (ext === 'mp4' || ext === 'webm' || ext === 'ogv') {
-    return `video/${ext}`;
-  }
-  return `image/${ext || 'jpeg'}`;
+	const ext = backgroundPath.value.toLowerCase().split('.').pop();
+	if (ext === 'mp4' || ext === 'webm' || ext === 'ogv') {
+		return `video/${ext}`;
+	}
+	return `image/${ext || 'jpeg'}`;
 });
 
 const showFiles = computed(() => (configStore as any).config?.desktop?.showfiles ?? false);
@@ -41,73 +41,73 @@ const iconSize = computed(() => (configStore as any).config?.desktop?.iconsize ?
 
 // Cargar archivos del escritorio
 const loadDesktopFiles = async () => {
-  if (!showFiles.value) {
-    desktopFiles.value = [];
-    return;
-  }
+	if (!showFiles.value) {
+		desktopFiles.value = [];
+		return;
+	}
 
-  try {
-    const home = await homeDir();
-    const userDirs = await getUserDirectories(home);
+	try {
+		const home = await homeDir();
+		const userDirs = await getUserDirectories(home);
     
-    // Buscar el directorio Desktop en las carpetas XDG
-    const desktopDir = userDirs.find(dir => dir.xdgKey === 'XDG_DESKTOP_DIR');
+		// Buscar el directorio Desktop en las carpetas XDG
+		const desktopDir = userDirs.find(dir => dir.xdgKey === 'XDG_DESKTOP_DIR');
     
-    if (desktopDir) {
-      desktopFiles.value = await loadDirectory(desktopDir.path, showHiddenFiles.value);
-    } else {
-      // Fallback al directorio Desktop tradicional si no se encuentra en XDG
-      const desktopPath = `${home}/Desktop`;
-      desktopFiles.value = await loadDirectory(desktopPath, showHiddenFiles.value);
-    }
-  } catch (error) {
-    console.error("Error loading desktop files:", error);
-    desktopFiles.value = [];
-  }
+		if (desktopDir) {
+			desktopFiles.value = await loadDirectory(desktopDir.path, showHiddenFiles.value);
+		} else {
+			// Fallback al directorio Desktop tradicional si no se encuentra en XDG
+			const desktopPath = `${home}/Desktop`;
+			desktopFiles.value = await loadDirectory(desktopPath, showHiddenFiles.value);
+		}
+	} catch (error) {
+		console.error('Error loading desktop files:', error);
+		desktopFiles.value = [];
+	}
 };
 
 // Manejar clicks en archivos y carpetas
 const handleFileClick = async (file: FileEntry) => {
-  if (file.isDirectory) {
-    // Abrir el file manager en la carpeta seleccionada
-    try {
-      await invoke("open_file_manager_window", { path: file.path });
-    } catch (error) {
-      console.error("Error al abrir file manager:", error);
-    }
-  } else {
-    // Abrir el archivo con la aplicación predeterminada del sistema
-    try {
-      const cmd = Command.create("open", [file.path]);
-      await cmd.spawn();
-    } catch (error) {
-      console.error("Error al abrir archivo:", file.path, error);
-    }
-  }
+	if (file.isDirectory) {
+		// Abrir el file manager en la carpeta seleccionada
+		try {
+			await invoke('open_file_manager_window', { path: file.path });
+		} catch (error) {
+			console.error('Error al abrir file manager:', error);
+		}
+	} else {
+		// Abrir el archivo con la aplicación predeterminada del sistema
+		try {
+			const cmd = Command.create('open', [file.path]);
+			await cmd.spawn();
+		} catch (error) {
+			console.error('Error al abrir archivo:', file.path, error);
+		}
+	}
 };
 
 // Ver cambios en showFiles para recargar archivos
 watch(showFiles, () => {
-  loadDesktopFiles();
+	loadDesktopFiles();
 });
 
 watch(showHiddenFiles, () => {
-  loadDesktopFiles();
+	loadDesktopFiles();
 });
 
 onMounted(async () => {
-  await (configStore as any).loadConfig();
-  await loadDesktopFiles();
-  unlistenConfigChanged = await listen("config-changed", async () => {
-    await (configStore as any).loadConfig();
-    await loadDesktopFiles();
-  });
+	await (configStore as any).loadConfig();
+	await loadDesktopFiles();
+	unlistenConfigChanged = await listen('config-changed', async () => {
+		await (configStore as any).loadConfig();
+		await loadDesktopFiles();
+	});
 });
 
 onUnmounted(() => {
-  if (unlistenConfigChanged) {
-    unlistenConfigChanged();
-  }
+	if (unlistenConfigChanged) {
+		unlistenConfigChanged();
+	}
 });
 </script>
 

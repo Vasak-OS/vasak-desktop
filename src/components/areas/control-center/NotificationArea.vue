@@ -45,88 +45,88 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import NotificationGroupCard from "@/components/cards/NotificationGroupCard.vue";
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
 import {
-  Notification,
-  NotificationGroupData,
-} from "@/interfaces/notifications";
+	Notification,
+	NotificationGroupData,
+} from '@/interfaces/notifications';
 
 const notifications = ref<Notification[]>([]);
 let unlistenNotifications: (() => void) | null = null;
 
 // Computed para agrupar notificaciones por aplicación
 const groupedNotifications = computed<NotificationGroupData[]>(() => {
-  const groups = new Map<string, NotificationGroupData>();
+	const groups = new Map<string, NotificationGroupData>();
 
-  notifications.value.forEach((notification) => {
-    const appName = notification.app_name;
+	notifications.value.forEach((notification) => {
+		const appName = notification.app_name;
 
-    if (!groups.has(appName)) {
-      groups.set(appName, {
-        app_name: appName,
-        app_icon: notification.app_icon,
-        notifications: [],
-        count: 0,
-        latest_timestamp: 0,
-        has_unread: false,
-      });
-    }
+		if (!groups.has(appName)) {
+			groups.set(appName, {
+				app_name: appName,
+				app_icon: notification.app_icon,
+				notifications: [],
+				count: 0,
+				latest_timestamp: 0,
+				has_unread: false,
+			});
+		}
 
-    const group = groups.get(appName)!;
-    group.notifications.push(notification);
-    group.count = group.notifications.length;
-    group.latest_timestamp = Math.max(
-      group.latest_timestamp,
-      notification.timestamp
-    );
-    group.has_unread = group.has_unread || !notification.seen;
-  });
+		const group = groups.get(appName)!;
+		group.notifications.push(notification);
+		group.count = group.notifications.length;
+		group.latest_timestamp = Math.max(
+			group.latest_timestamp,
+			notification.timestamp
+		);
+		group.has_unread = group.has_unread || !notification.seen;
+	});
 
-  return Array.from(groups.values()).sort(
-    (a, b) => b.latest_timestamp - a.latest_timestamp
-  );
+	return Array.from(groups.values()).sort(
+		(a, b) => b.latest_timestamp - a.latest_timestamp
+	);
 });
 
 async function loadNotifications() {
-  try {
-    notifications.value = await invoke("get_all_notifications");
-  } catch (error) {
-    console.error("Error loading notifications:", error);
-  }
+	try {
+		notifications.value = await invoke('get_all_notifications');
+	} catch (error) {
+		console.error('Error loading notifications:', error);
+	}
 }
 
 async function removeNotification(id: number) {
-  try {
-    await invoke("delete_notification", { id });
-    // No necesitamos actualizar la lista local aquí porque el evento lo hará
-  } catch (error) {
-    console.error("Error removing notification:", error);
-  }
+	try {
+		await invoke('delete_notification', { id });
+		// No necesitamos actualizar la lista local aquí porque el evento lo hará
+	} catch (error) {
+		console.error('Error removing notification:', error);
+	}
 }
 
 async function clearAllNotifications() {
-  try {
-    await invoke("clear_notifications");
-  } catch (error) {
-    console.error("Error clearing all notifications:", error);
-  }
+	try {
+		await invoke('clear_notifications');
+	} catch (error) {
+		console.error('Error clearing all notifications:', error);
+	}
 }
 
 onMounted(async () => {
-  await loadNotifications();
+	await loadNotifications();
 
-  unlistenNotifications = await listen("notifications-updated", (event) => {
-    notifications.value = event.payload as Notification[];
-  });
+	unlistenNotifications = await listen('notifications-updated', (event) => {
+		notifications.value = event.payload as Notification[];
+	});
 });
 
 onUnmounted(() => {
-  if (unlistenNotifications) {
-    unlistenNotifications();
-  }
+	if (unlistenNotifications) {
+		unlistenNotifications();
+	}
 });
 </script>
 

@@ -131,139 +131,139 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, Ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { ref, onMounted, onUnmounted, Ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import {
-  listWifiNetworks,
-  NetworkInfo,
-  getCurrentNetworkState,
-} from "@vasakgroup/plugin-network-manager";
-import NetworkWiFiCard from "@/components/cards/NetworkWiFiCard.vue";
+	listWifiNetworks,
+	NetworkInfo,
+	getCurrentNetworkState,
+} from '@vasakgroup/plugin-network-manager';
+import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
 
 const wifiEnabled: Ref<boolean> = ref(true);
 const wifiAvailable: Ref<boolean> = ref(true);
 const loading: Ref<boolean> = ref(false);
 const availableNetworks: Ref<NetworkInfo[]> = ref([]);
-const wifiStatus: Ref<string> = ref("Checking...");
-const ethernetStatus: Ref<string> = ref("Checking...");
+const wifiStatus: Ref<string> = ref('Checking...');
+const ethernetStatus: Ref<string> = ref('Checking...');
 let unlisten: (() => void) | null = null;
 
 defineProps({
-  hideX: {
-    type: Boolean,
-    default: false,
-  },
+	hideX: {
+		type: Boolean,
+		default: false,
+	},
 });
 
 const checkWirelessStatus = async () => {
-  try {
-    const available = await invoke(
-      "plugin:network-manager|is_wireless_available"
-    );
-    wifiAvailable.value = available as boolean;
+	try {
+		const available = await invoke(
+			'plugin:network-manager|is_wireless_available'
+		);
+		wifiAvailable.value = available as boolean;
 
-    if (available) {
-      const enabled = await invoke(
-        "plugin:network-manager|get_wireless_enabled"
-      );
-      wifiEnabled.value = enabled as boolean;
-      wifiStatus.value = enabled ? "On" : "Off";
+		if (available) {
+			const enabled = await invoke(
+				'plugin:network-manager|get_wireless_enabled'
+			);
+			wifiEnabled.value = enabled as boolean;
+			wifiStatus.value = enabled ? 'On' : 'Off';
 
-      if (enabled) {
-        await refreshNetworks();
-      }
-    } else {
-      wifiStatus.value = "Hardware unavailable";
-      wifiEnabled.value = false;
-    }
-  } catch (e) {
-    console.error("Error checking wireless status:", e);
-  }
+			if (enabled) {
+				await refreshNetworks();
+			}
+		} else {
+			wifiStatus.value = 'Hardware unavailable';
+			wifiEnabled.value = false;
+		}
+	} catch (e) {
+		console.error('Error checking wireless status:', e);
+	}
 };
 
 const toggleWifi = async () => {
-  if (!wifiAvailable.value) return;
+	if (!wifiAvailable.value) return;
 
-  try {
-    const newState = !wifiEnabled.value;
-    await invoke("plugin:network-manager|set_wireless_enabled", {
-      enabled: newState,
-    });
+	try {
+		const newState = !wifiEnabled.value;
+		await invoke('plugin:network-manager|set_wireless_enabled', {
+			enabled: newState,
+		});
 
-    wifiEnabled.value = newState;
-    wifiStatus.value = newState ? "On" : "Off";
+		wifiEnabled.value = newState;
+		wifiStatus.value = newState ? 'On' : 'Off';
 
-    if (wifiEnabled.value) {
-      await refreshNetworks();
-    } else {
-      availableNetworks.value = [];
-    }
-  } catch (error) {
-    console.error("Error toggling WiFi:", error);
-  }
+		if (wifiEnabled.value) {
+			await refreshNetworks();
+		} else {
+			availableNetworks.value = [];
+		}
+	} catch (error) {
+		console.error('Error toggling WiFi:', error);
+	}
 };
 
 const updateEthernetStatus = (state: NetworkInfo | null) => {
-  if (!state) {
-    ethernetStatus.value = "Unknown";
-    return;
-  }
+	if (!state) {
+		ethernetStatus.value = 'Unknown';
+		return;
+	}
 
-  const isEthernet = state.connection_type?.toLowerCase() === "ethernet";
-  if (isEthernet && state.is_connected) {
-    ethernetStatus.value = "Connected";
-    return;
-  }
+	const isEthernet = state.connection_type?.toLowerCase() === 'ethernet';
+	if (isEthernet && state.is_connected) {
+		ethernetStatus.value = 'Connected';
+		return;
+	}
 
-  if (isEthernet && !state.is_connected) {
-    ethernetStatus.value = "Disconnected";
-    return;
-  }
+	if (isEthernet && !state.is_connected) {
+		ethernetStatus.value = 'Disconnected';
+		return;
+	}
 
-  ethernetStatus.value = "Not connected";
+	ethernetStatus.value = 'Not connected';
 };
 
 const refreshEthernetStatus = async () => {
-  try {
-    const state = await getCurrentNetworkState();
-    updateEthernetStatus(state);
-  } catch (error) {
-    console.error("Error fetching ethernet status:", error);
-    ethernetStatus.value = "Unknown";
-  }
+	try {
+		const state = await getCurrentNetworkState();
+		updateEthernetStatus(state);
+	} catch (error) {
+		console.error('Error fetching ethernet status:', error);
+		ethernetStatus.value = 'Unknown';
+	}
 };
 
 const refreshNetworks = async () => {
-  if (!wifiEnabled.value || !wifiAvailable.value) return;
-  loading.value = true;
-  try {
-    availableNetworks.value = await listWifiNetworks();
-  } catch (error) {
-    console.error("Error refreshing networks:", error);
-  } finally {
-    loading.value = false;
-  }
+	if (!wifiEnabled.value || !wifiAvailable.value) return;
+	loading.value = true;
+	try {
+		availableNetworks.value = await listWifiNetworks();
+	} catch (error) {
+		console.error('Error refreshing networks:', error);
+	} finally {
+		loading.value = false;
+	}
 };
 
 const closeApplet = async () => {
-  try {
-    await invoke("toggle_network_applet");
-  } catch (error) {
-    console.error("Error closing applet:", error);
-  }
+	try {
+		await invoke('toggle_network_applet');
+	} catch (error) {
+		console.error('Error closing applet:', error);
+	}
 };
 
 onMounted(async () => {
-  await checkWirelessStatus();
-  await refreshEthernetStatus();
-  unlisten = await listen<any>("network-changed", async () => {
-    await checkWirelessStatus();
-    await refreshEthernetStatus();
-  });
+	await checkWirelessStatus();
+	await refreshEthernetStatus();
+	unlisten = await listen<any>('network-changed', async () => {
+		await checkWirelessStatus();
+		await refreshEthernetStatus();
+	});
 });
 
 onUnmounted(() => {
-  if (unlisten) unlisten();
+	if (unlisten) unlisten();
 });
 </script>

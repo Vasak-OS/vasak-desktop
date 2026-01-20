@@ -1,86 +1,86 @@
 <script lang="ts" setup>
-import { onMounted, ref, computed, Ref, watch } from "vue";
-import { listen } from "@tauri-apps/api/event";
-import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { getIconSource, getSymbolSource } from "@vasakgroup/plugin-vicons";
+import { onMounted, ref, computed, Ref, watch } from 'vue';
+import { listen } from '@tauri-apps/api/event';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 
 const musicInfo: Ref<any> = ref({
-  title: "",
-  artist: "",
-  player: "",
-  artUrl: "",
-  status: "",
+	title: '',
+	artist: '',
+	player: '',
+	artUrl: '',
+	status: '',
 });
 
 // Watch for artUrl changes to update imgSrc
 watch(
-  () => musicInfo.value?.artUrl,
-  async (newUrl) => {
-    if (!newUrl || newUrl.trim() === "") {
-      // URL vacía o undefined: usar icono por defecto
-      imgSrc.value = await getIconSource("applications-multimedia");
-      return;
-    }
+	() => musicInfo.value?.artUrl,
+	async (newUrl) => {
+		if (!newUrl || newUrl.trim() === '') {
+			// URL vacía o undefined: usar icono por defecto
+			imgSrc.value = await getIconSource('applications-multimedia');
+			return;
+		}
 
-    const url = newUrl.trim();
+		const url = newUrl.trim();
 
-    if (url.startsWith("file://")) {
-      // Remover prefijo file:// (puede ser file:// o file:///)
-      const path = url.replace(/^file:\/+/, "/");
-      imgSrc.value = convertFileSrc(path);
-    } else if (url.startsWith("http://") || url.startsWith("https://")) {
-      // URL remota HTTP/HTTPS: usar directamente
-      imgSrc.value = url;
-    } else if (url.startsWith("/")) {
-      // Ruta absoluta: convertir con convertFileSrc
-      imgSrc.value = convertFileSrc(url);
-    } else {
-      // Otros formatos o relativos: intentar directamente
-      imgSrc.value = url;
-    }
-  },
-  { immediate: true }
+		if (url.startsWith('file://')) {
+			// Remover prefijo file:// (puede ser file:// o file:///)
+			const path = url.replace(/^file:\/+/, '/');
+			imgSrc.value = convertFileSrc(path);
+		} else if (url.startsWith('http://') || url.startsWith('https://')) {
+			// URL remota HTTP/HTTPS: usar directamente
+			imgSrc.value = url;
+		} else if (url.startsWith('/')) {
+			// Ruta absoluta: convertir con convertFileSrc
+			imgSrc.value = convertFileSrc(url);
+		} else {
+			// Otros formatos o relativos: intentar directamente
+			imgSrc.value = url;
+		}
+	},
+	{ immediate: true }
 );
 
 async function onImgError() {
-  imgSrc.value = await getIconSource("applications-multimedia");
+	imgSrc.value = await getIconSource('applications-multimedia');
 }
 
-const imgSrc: Ref<string> = ref("");
-const prevIcon: Ref<string> = ref("");
-const nextIcon: Ref<string> = ref("");
-const playIcon: Ref<string> = ref("");
-const pauseIcon: Ref<string> = ref("");
+const imgSrc: Ref<string> = ref('');
+const prevIcon: Ref<string> = ref('');
+const nextIcon: Ref<string> = ref('');
+const playIcon: Ref<string> = ref('');
+const pauseIcon: Ref<string> = ref('');
 
 // Nuevo: computed que devuelve true si el status (normalizado) es "playing"
 const isPlaying = computed(() => {
-  const s = musicInfo.value?.status;
-  if (!s) return false;
-  return String(s).toLowerCase() === "playing";
+	const s = musicInfo.value?.status;
+	if (!s) return false;
+	return String(s).toLowerCase() === 'playing';
 });
 
 // helpers para invocar comandos Tauri (el frontend siempre pasa el player)
 async function sendCommand(cmd: string) {
-  const player = musicInfo.value?.player || "";
-  if (!player) {
-    console.warn("[music] no player bus name available");
-    return;
-  }
-  try {
-    await invoke(cmd, { player });
-  } catch (e) {
-    console.error(`[music] invoke ${cmd} failed:`, e);
-  }
+	const player = musicInfo.value?.player || '';
+	if (!player) {
+		console.warn('[music] no player bus name available');
+		return;
+	}
+	try {
+		await invoke(cmd, { player });
+	} catch (e) {
+		console.error(`[music] invoke ${cmd} failed:`, e);
+	}
 }
 function onPrev() {
-  sendCommand("music_previous_track");
+	sendCommand('music_previous_track');
 }
 function onNext() {
-  sendCommand("music_next_track");
+	sendCommand('music_next_track');
 }
 function onPlayPause() {
-  sendCommand("music_play_pause");
+	sendCommand('music_play_pause');
 }
 
 // Nuevo: control de visibilidad con display (v-show) y animación de entrada/salida
@@ -90,42 +90,42 @@ let hideTimer: ReturnType<typeof setTimeout> | null = null;
 const ANIM_MS = 180;
 
 function onEnter() {
-  if (hideTimer) {
-    clearTimeout(hideTimer);
-    hideTimer = null;
-  }
-  isHiding.value = false;
-  visible.value = true;
+	if (hideTimer) {
+		clearTimeout(hideTimer);
+		hideTimer = null;
+	}
+	isHiding.value = false;
+	visible.value = true;
 }
 
 function onLeave() {
-  // iniciar animación de salida
-  if (!visible.value) return;
-  isHiding.value = true;
-  if (hideTimer) clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => {
-    visible.value = false;
-    isHiding.value = false;
-    hideTimer = null;
-  }, ANIM_MS);
+	// iniciar animación de salida
+	if (!visible.value) return;
+	isHiding.value = true;
+	if (hideTimer) clearTimeout(hideTimer);
+	hideTimer = setTimeout(() => {
+		visible.value = false;
+		isHiding.value = false;
+		hideTimer = null;
+	}, ANIM_MS);
 }
 
 onMounted(async () => {
-  imgSrc.value = await getIconSource("applications-multimedia");
-  prevIcon.value = await getSymbolSource("media-seek-backward");
-  nextIcon.value = await getSymbolSource("media-skip-forward");
-  playIcon.value = await getSymbolSource("media-playback-start");
-  pauseIcon.value = await getSymbolSource("media-playback-pause");
-  musicInfo.value = await invoke("music_now_playing");
-  listen("music-playing-update", (event) => {
-    const payload = (event.payload || {}) as Record<string, unknown>;
-    for (const key of Object.keys(payload)) {
-      const val = payload[key];
-      if (val === undefined) continue;
-      // asignar individualmente para mantener la referencia reactiva
-      musicInfo.value[key] = val;
-    }
-  });
+	imgSrc.value = await getIconSource('applications-multimedia');
+	prevIcon.value = await getSymbolSource('media-seek-backward');
+	nextIcon.value = await getSymbolSource('media-skip-forward');
+	playIcon.value = await getSymbolSource('media-playback-start');
+	pauseIcon.value = await getSymbolSource('media-playback-pause');
+	musicInfo.value = await invoke('music_now_playing');
+	listen('music-playing-update', (event) => {
+		const payload = (event.payload || {}) as Record<string, unknown>;
+		for (const key of Object.keys(payload)) {
+			const val = payload[key];
+			if (val === undefined) continue;
+			// asignar individualmente para mantener la referencia reactiva
+			musicInfo.value[key] = val;
+		}
+	});
 });
 </script>
 

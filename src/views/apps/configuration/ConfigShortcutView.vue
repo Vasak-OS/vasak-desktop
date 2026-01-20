@@ -2,7 +2,7 @@
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import { getIconSource } from '@vasakgroup/plugin-vicons'
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 
 interface Shortcut {
   id: string
@@ -19,192 +19,192 @@ interface ConflictInfo {
   message: string
 }
 
-const shortcuts = ref<Shortcut[]>([])
-const editingId = ref<string | null>(null)
-const editingKeys = ref('')
-const error = ref('')
-const successMessage = ref('')
-const loading = ref(true)
-const testingId = ref<string | null>(null)
+const shortcuts = ref<Shortcut[]>([]);
+const editingId = ref<string | null>(null);
+const editingKeys = ref('');
+const error = ref('');
+const successMessage = ref('');
+const loading = ref(true);
+const testingId = ref<string | null>(null);
 
 // Iconos
-const keyboardIconSrc = ref('')
-const saveIconSrc = ref('')
-const cancelIconSrc = ref('')
-const trashIconSrc = ref('')
-const playIconSrc = ref('')
+const keyboardIconSrc = ref('');
+const saveIconSrc = ref('');
+const cancelIconSrc = ref('');
+const trashIconSrc = ref('');
+const playIconSrc = ref('');
 
 // Conflicto actual mientras edita
-const currentConflict = ref<ConflictInfo | null>(null)
+const currentConflict = ref<ConflictInfo | null>(null);
 
 onMounted(async () => {
-  // Cargar iconos
-  keyboardIconSrc.value = await getIconSource('keyboard')
-  saveIconSrc.value = await getIconSource('check')
-  cancelIconSrc.value = await getIconSource('x')
-  trashIconSrc.value = await getIconSource('trash2')
-  playIconSrc.value = await getIconSource('play')
+	// Cargar iconos
+	keyboardIconSrc.value = await getIconSource('keyboard');
+	saveIconSrc.value = await getIconSource('check');
+	cancelIconSrc.value = await getIconSource('x');
+	trashIconSrc.value = await getIconSource('trash2');
+	playIconSrc.value = await getIconSource('play');
 
-  // Cargar atajos
-  try {
-    const data = await invoke<Shortcut[]>('get_shortcuts')
-    shortcuts.value = data
-  } catch (err) {
-    console.error('Error loading shortcuts:', err)
-    error.value = 'Error al cargar los atajos'
-  } finally {
-    loading.value = false
-  }
-})
+	// Cargar atajos
+	try {
+		const data = await invoke<Shortcut[]>('get_shortcuts');
+		shortcuts.value = data;
+	} catch (err) {
+		console.error('Error loading shortcuts:', err);
+		error.value = 'Error al cargar los atajos';
+	} finally {
+		loading.value = false;
+	}
+});
 
 const startEdit = (shortcut: Shortcut) => {
-  if (!shortcut.editable) return
-  editingId.value = shortcut.id
-  editingKeys.value = shortcut.keys
-  error.value = ''
-  successMessage.value = ''
-  currentConflict.value = null
-}
+	if (!shortcut.editable) return;
+	editingId.value = shortcut.id;
+	editingKeys.value = shortcut.keys;
+	error.value = '';
+	successMessage.value = '';
+	currentConflict.value = null;
+};
 
 const cancelEdit = () => {
-  editingId.value = null
-  editingKeys.value = ''
-  error.value = ''
-  currentConflict.value = null
-}
+	editingId.value = null;
+	editingKeys.value = '';
+	error.value = '';
+	currentConflict.value = null;
+};
 
 const checkConflicts = async () => {
-  if (!editingKeys.value.trim()) {
-    currentConflict.value = null
-    return
-  }
+	if (!editingKeys.value.trim()) {
+		currentConflict.value = null;
+		return;
+	}
 
-  try {
-    const conflict = await invoke<ConflictInfo>('check_shortcut_conflicts', {
-      keys: editingKeys.value,
-      exclude_id: editingId.value
-    })
-    currentConflict.value = conflict
-  } catch (err) {
-    console.error('Error checking conflicts:', err)
-  }
-}
+	try {
+		const conflict = await invoke<ConflictInfo>('check_shortcut_conflicts', {
+			keys: editingKeys.value,
+			exclude_id: editingId.value
+		});
+		currentConflict.value = conflict;
+	} catch (err) {
+		console.error('Error checking conflicts:', err);
+	}
+};
 
 const saveShortcut = async () => {
-  if (!editingId.value || !editingKeys.value.trim()) {
-    error.value = 'Las teclas no pueden estar vacías'
-    return
-  }
+	if (!editingId.value || !editingKeys.value.trim()) {
+		error.value = 'Las teclas no pueden estar vacías';
+		return;
+	}
 
-  // Validar formato (Ctrl+Key, Alt+Key, Super+Key, etc.)
-  const validPattern = /^(Ctrl|Alt|Super|Shift)(\+[A-Za-z0-9])?$/
-  if (!validPattern.test(editingKeys.value)) {
-    error.value = 'Formato inválido. Usa: Ctrl+A, Alt+F, Super+S, etc.'
-    return
-  }
+	// Validar formato (Ctrl+Key, Alt+Key, Super+Key, etc.)
+	const validPattern = /^(Ctrl|Alt|Super|Shift)(\+[A-Za-z0-9])?$/;
+	if (!validPattern.test(editingKeys.value)) {
+		error.value = 'Formato inválido. Usa: Ctrl+A, Alt+F, Super+S, etc.';
+		return;
+	}
 
-  // Verificar conflictos
-  if (currentConflict.value?.has_conflict) {
-    error.value = `Conflicto: ${currentConflict.value.message}`
-    return
-  }
+	// Verificar conflictos
+	if (currentConflict.value?.has_conflict) {
+		error.value = `Conflicto: ${currentConflict.value.message}`;
+		return;
+	}
 
-  try {
-    await invoke('update_shortcut', {
-      id: editingId.value,
-      keys: editingKeys.value
-    })
+	try {
+		await invoke('update_shortcut', {
+			id: editingId.value,
+			keys: editingKeys.value
+		});
 
-    const shortcut = shortcuts.value.find(s => s.id === editingId.value)
-    if (shortcut) {
-      shortcut.keys = editingKeys.value
-    }
+		const shortcut = shortcuts.value.find(s => s.id === editingId.value);
+		if (shortcut) {
+			shortcut.keys = editingKeys.value;
+		}
 
-    editingId.value = null
-    editingKeys.value = ''
-    error.value = ''
-    successMessage.value = '✅ Atajo guardado exitosamente'
-    setTimeout(() => { successMessage.value = '' }, 3000)
-  } catch (err) {
-    error.value = `Error al guardar: ${err}`
-  }
-}
+		editingId.value = null;
+		editingKeys.value = '';
+		error.value = '';
+		successMessage.value = '✅ Atajo guardado exitosamente';
+		setTimeout(() => { successMessage.value = ''; }, 3000);
+	} catch (err) {
+		error.value = `Error al guardar: ${err}`;
+	}
+};
 
 const testShortcut = async (shortcutId: string) => {
-  testingId.value = shortcutId
-  try {
-    await invoke('execute_shortcut', { shortcutId })
-    successMessage.value = '✅ Atajo ejecutado'
-    setTimeout(() => { successMessage.value = '' }, 2000)
-  } catch (err) {
-    error.value = `Error al ejecutar: ${err}`
-    setTimeout(() => { error.value = '' }, 3000)
-  } finally {
-    testingId.value = null
-  }
-}
+	testingId.value = shortcutId;
+	try {
+		await invoke('execute_shortcut', { shortcutId });
+		successMessage.value = '✅ Atajo ejecutado';
+		setTimeout(() => { successMessage.value = ''; }, 2000);
+	} catch (err) {
+		error.value = `Error al ejecutar: ${err}`;
+		setTimeout(() => { error.value = ''; }, 3000);
+	} finally {
+		testingId.value = null;
+	}
+};
 
 const deleteShortcut = async (id: string) => {
-  if (!confirm('¿Estás seguro de que deseas eliminar este atajo personalizado?')) return
+	if (!confirm('¿Estás seguro de que deseas eliminar este atajo personalizado?')) return;
 
-  try {
-    await invoke('delete_shortcut', { id })
-    shortcuts.value = shortcuts.value.filter(s => s.id !== id)
-    successMessage.value = '✅ Atajo eliminado'
-    setTimeout(() => { successMessage.value = '' }, 2000)
-  } catch (err) {
-    error.value = `Error al eliminar: ${err}`
-  }
-}
+	try {
+		await invoke('delete_shortcut', { id });
+		shortcuts.value = shortcuts.value.filter(s => s.id !== id);
+		successMessage.value = '✅ Atajo eliminado';
+		setTimeout(() => { successMessage.value = ''; }, 2000);
+	} catch (err) {
+		error.value = `Error al eliminar: ${err}`;
+	}
+};
 
 const addCustomShortcut = async () => {
-  const name = prompt('Nombre del atajo:')
-  if (!name) return
+	const name = prompt('Nombre del atajo:');
+	if (!name) return;
 
-  const description = prompt('Descripción (opcional):')
-  const keys = prompt('Teclas (ej: Ctrl+K):')
-  if (!keys) return
+	const description = prompt('Descripción (opcional):');
+	const keys = prompt('Teclas (ej: Ctrl+K):');
+	if (!keys) return;
 
-  const command = prompt('Comando a ejecutar:')
-  if (!command) return
+	const command = prompt('Comando a ejecutar:');
+	if (!command) return;
 
-  try {
-    const newShortcut = await invoke<Shortcut>('add_custom_shortcut', {
-      name,
-      description: description || '',
-      keys,
-      command
-    })
-    shortcuts.value.push(newShortcut)
-    successMessage.value = '✅ Atajo personalizado creado'
-    setTimeout(() => { successMessage.value = '' }, 2000)
-  } catch (err) {
-    error.value = `Error al crear atajo: ${err}`
-  }
-}
+	try {
+		const newShortcut = await invoke<Shortcut>('add_custom_shortcut', {
+			name,
+			description: description || '',
+			keys,
+			command
+		});
+		shortcuts.value.push(newShortcut);
+		successMessage.value = '✅ Atajo personalizado creado';
+		setTimeout(() => { successMessage.value = ''; }, 2000);
+	} catch (err) {
+		error.value = `Error al crear atajo: ${err}`;
+	}
+};
 
 const getCategoryLabel = (category: string): string => {
-  const labels: Record<string, string> = {
-    system: 'Sistema',
-    vasak: 'VasakOS',
-    custom: 'Personalizado'
-  }
-  return labels[category] || category
-}
+	const labels: Record<string, string> = {
+		system: 'Sistema',
+		vasak: 'VasakOS',
+		custom: 'Personalizado'
+	};
+	return labels[category] || category;
+};
 
 const getCategoryColor = (category: string): string => {
-  const colors: Record<string, string> = {
-    system: 'bg-blue-500/10 text-blue-600',
-    vasak: 'bg-purple-500/10 text-purple-600',
-    custom: 'bg-green-500/10 text-green-600'
-  }
-  return colors[category] || 'bg-gray-500/10 text-gray-600'
-}
+	const colors: Record<string, string> = {
+		system: 'bg-blue-500/10 text-blue-600',
+		vasak: 'bg-purple-500/10 text-purple-600',
+		custom: 'bg-green-500/10 text-green-600'
+	};
+	return colors[category] || 'bg-gray-500/10 text-gray-600';
+};
 
-const hasConflict = computed(() => currentConflict.value?.has_conflict ?? false)
+const hasConflict = computed(() => currentConflict.value?.has_conflict ?? false);
 const showConflictWarning = computed(() => {
-  return editingId.value && currentConflict.value?.has_conflict
-})
+	return editingId.value && currentConflict.value?.has_conflict;
+});
 </script>
 
 <template>

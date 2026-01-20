@@ -68,80 +68,80 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
-import { getUserData, type UserInfo } from "@vasakgroup/plugin-user-data";
+import { ref, onMounted, onUnmounted } from 'vue';
+import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 
 const userInfo = ref<UserInfo>({
-  username: "",
-  full_name: "",
-  avatar_data: "",
+	username: '',
+	full_name: '',
+	avatar_data: '',
 });
 
-const currentTime = ref("");
-const currentDate = ref("");
+const currentTime = ref('');
+const currentDate = ref('');
 const isTimeUpdating = ref(false);
 const isLoaded = ref(false);
 
 const getCurrentRingColor = () => {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 12) return "250, 204, 21";
-  if (hour >= 12 && hour < 18) return "251, 146, 60";
-  if (hour >= 18 && hour < 22) return "168, 85, 247";
-  return "96, 165, 250";
+	const hour = new Date().getHours();
+	if (hour >= 6 && hour < 12) return '250, 204, 21';
+	if (hour >= 12 && hour < 18) return '251, 146, 60';
+	if (hour >= 18 && hour < 22) return '168, 85, 247';
+	return '96, 165, 250';
 };
 
 const updateDateTime = () => {
-  isTimeUpdating.value = true;
+	isTimeUpdating.value = true;
 
-  const now = new Date();
-  const newTime = now.toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const newDate = now.toLocaleDateString("es-ES", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+	const now = new Date();
+	const newTime = now.toLocaleTimeString('es-ES', {
+		hour: '2-digit',
+		minute: '2-digit',
+	});
+	const newDate = now.toLocaleDateString('es-ES', {
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+	});
 
-  if (currentTime.value !== newTime) {
-    currentTime.value = newTime;
-  }
-  if (currentDate.value !== newDate) {
-    currentDate.value = newDate;
-  }
+	if (currentTime.value !== newTime) {
+		currentTime.value = newTime;
+	}
+	if (currentDate.value !== newDate) {
+		currentDate.value = newDate;
+	}
 
-  setTimeout(() => {
-    isTimeUpdating.value = false;
-  }, 200);
+	setTimeout(() => {
+		isTimeUpdating.value = false;
+	}, 200);
 };
 
 const getUserInfo = async () => {
-  try {
-    const info = await getUserData();
-    userInfo.value = info as UserInfo;
-  } catch (error) {
-    console.error("Error getting user info:", error);
-  }
+	try {
+		const info = await getUserData();
+		userInfo.value = info as UserInfo;
+	} catch (error) {
+		console.error('Error getting user info:', error);
+	}
 };
 
 let timeInterval: NodeJS.Timeout;
 
 onMounted(async () => {
-  await getUserInfo();
-  updateDateTime();
+	await getUserInfo();
+	updateDateTime();
 
-  setTimeout(() => {
-    isLoaded.value = true;
-  }, 100);
+	setTimeout(() => {
+		isLoaded.value = true;
+	}, 100);
 
-  timeInterval = globalThis.setInterval(updateDateTime, 1000);
+	timeInterval = globalThis.setInterval(updateDateTime, 1000);
 });
 
 onUnmounted(() => {
-  if (timeInterval) {
-    clearInterval(timeInterval);
-  }
+	if (timeInterval) {
+		clearInterval(timeInterval);
+	}
 });
 </script>
 

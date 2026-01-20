@@ -1,16 +1,16 @@
 <script lang="ts" setup>
 const vFocus = {
-  mounted: (el: HTMLElement) => el.focus(),
+	mounted: (el: HTMLElement) => el.focus(),
 };
 
 defineProps({
-  filter: {
-    type: String,
-    required: true,
-  },
+	filter: {
+		type: String,
+		required: true,
+	},
 });
 
-const emit = defineEmits(["update:filter"]);
+const emit = defineEmits(['update:filter']);
 </script>
 
 <template>

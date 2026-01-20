@@ -1,15 +1,15 @@
 <script lang="ts" setup>
-import { ref, onMounted, computed, type Ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, onMounted, computed, type Ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import {
-  useConfigStore,
-  setDarkMode,
-  type VSKConfig,
-  readConfig,
-  writeConfig,
-} from "@vasakgroup/plugin-config-manager";
-import ConfigAppLayout from "@/layouts/ConfigAppLayout.vue";
-import { Store } from "pinia";
+	useConfigStore,
+	setDarkMode,
+	type VSKConfig,
+	readConfig,
+	writeConfig,
+} from '@vasakgroup/plugin-config-manager';
+import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
+import { Store } from 'pinia';
 
 const configStore = ref<any>(null);
 const gtkThemes = ref<string[]>([]);
@@ -17,146 +17,146 @@ const cursorThemes = ref<string[]>([]);
 const iconPacks = ref<string[]>([]);
 const loading = ref(true);
 const saving = ref(false);
-const error = ref("");
-const successMessage = ref("");
+const error = ref('');
+const successMessage = ref('');
 
 const vskConfig: Ref<VSKConfig | null> = ref(null);
-const selectedGtkTheme = ref("Adwaita");
-const selectedCursorTheme = ref("Adwaita");
-const selectedIconPack = ref("Adwaita");
+const selectedGtkTheme = ref('Adwaita');
+const selectedCursorTheme = ref('Adwaita');
+const selectedIconPack = ref('Adwaita');
 
 onMounted(async () => {
-  try {
-    // Cargar config store
-    configStore.value = useConfigStore() as Store<
-      "config",
+	try {
+		// Cargar config store
+		configStore.value = useConfigStore() as Store<
+      'config',
       { config: VSKConfig; loadConfig: () => Promise<void> }
     >;
 
-    await configStore.value.loadConfig();
+		await configStore.value.loadConfig();
 
-    // Cargar valores actuales del config store para borderRadius y primaryColor
-    vskConfig.value = await readConfig();
+		// Cargar valores actuales del config store para borderRadius y primaryColor
+		vskConfig.value = await readConfig();
 
-    // Cargar estado actual real del sistema (GTK, cursor, icons)
-    try {
-      const systemState = await invoke<{
+		// Cargar estado actual real del sistema (GTK, cursor, icons)
+		try {
+			const systemState = await invoke<{
         gtk_theme: string;
         cursor_theme: string;
         icon_pack: string;
         dark_mode: boolean;
-      }>("get_current_system_state");
+      }>('get_current_system_state');
 
-      selectedGtkTheme.value = systemState.gtk_theme;
-      selectedCursorTheme.value = systemState.cursor_theme;
-      selectedIconPack.value = systemState.icon_pack;
-      // Preferir darkMode del config store ya que es el canonical
-    } catch (err) {
-      console.warn(
-        "No se pudo obtener estado del sistema, usando valores por defecto:",
-        err
-      );
-      selectedGtkTheme.value = "Adwaita";
-      selectedCursorTheme.value = "Adwaita";
-      selectedIconPack.value = "Adwaita";
-    }
+			selectedGtkTheme.value = systemState.gtk_theme;
+			selectedCursorTheme.value = systemState.cursor_theme;
+			selectedIconPack.value = systemState.icon_pack;
+			// Preferir darkMode del config store ya que es el canonical
+		} catch (err) {
+			console.warn(
+				'No se pudo obtener estado del sistema, usando valores por defecto:',
+				err
+			);
+			selectedGtkTheme.value = 'Adwaita';
+			selectedCursorTheme.value = 'Adwaita';
+			selectedIconPack.value = 'Adwaita';
+		}
 
-    // Cargar opciones disponibles
-    const [themes, cursors, icons] = await Promise.all([
-      invoke<string[]>("get_gtk_themes"),
-      invoke<string[]>("get_cursor_themes"),
-      invoke<string[]>("get_icon_packs"),
-    ]);
+		// Cargar opciones disponibles
+		const [themes, cursors, icons] = await Promise.all([
+			invoke<string[]>('get_gtk_themes'),
+			invoke<string[]>('get_cursor_themes'),
+			invoke<string[]>('get_icon_packs'),
+		]);
 
-    gtkThemes.value = themes;
-    cursorThemes.value = cursors;
-    iconPacks.value = icons;
+		gtkThemes.value = themes;
+		cursorThemes.value = cursors;
+		iconPacks.value = icons;
 
-    // Asegurar que el estado actual esté presente en los desplegables
-    if (
-      selectedGtkTheme.value &&
+		// Asegurar que el estado actual esté presente en los desplegables
+		if (
+			selectedGtkTheme.value &&
       !gtkThemes.value.includes(selectedGtkTheme.value)
-    ) {
-      gtkThemes.value.unshift(selectedGtkTheme.value);
-    }
-    if (
-      selectedCursorTheme.value &&
+		) {
+			gtkThemes.value.unshift(selectedGtkTheme.value);
+		}
+		if (
+			selectedCursorTheme.value &&
       !cursorThemes.value.includes(selectedCursorTheme.value)
-    ) {
-      cursorThemes.value.unshift(selectedCursorTheme.value);
-    }
-    if (
-      selectedIconPack.value &&
+		) {
+			cursorThemes.value.unshift(selectedCursorTheme.value);
+		}
+		if (
+			selectedIconPack.value &&
       !iconPacks.value.includes(selectedIconPack.value)
-    ) {
-      iconPacks.value.unshift(selectedIconPack.value);
-    }
-  } catch (err) {
-    error.value = `Error cargando configuración: ${err}`;
-    console.error(err);
-  } finally {
-    loading.value = false;
-  }
+		) {
+			iconPacks.value.unshift(selectedIconPack.value);
+		}
+	} catch (err) {
+		error.value = `Error cargando configuración: ${err}`;
+		console.error(err);
+	} finally {
+		loading.value = false;
+	}
 });
 
 const saveConfig = async () => {
-  saving.value = true;
-  error.value = "";
-  successMessage.value = "";
+	saving.value = true;
+	error.value = '';
+	successMessage.value = '';
 
-  try {
-    // Validar border radius
-    if (
+	try {
+		// Validar border radius
+		if (
       vskConfig.value?.style?.radius! < 1 ||
       vskConfig.value?.style?.radius! > 20
-    ) {
-      throw new Error("Border radius debe estar entre 1 y 20");
-    }
+		) {
+			throw new Error('Border radius debe estar entre 1 y 20');
+		}
 
-    // Actualizar modo oscuro via plugin
-    if (
-      vskConfig.value?.style?.darkmode !==
+		// Actualizar modo oscuro via plugin
+		if (
+			vskConfig.value?.style?.darkmode !==
       (configStore.value.config?.style?.darkmode || false)
-    ) {
-      await setDarkMode(vskConfig.value?.style?.darkmode || false);
-    }
+		) {
+			await setDarkMode(vskConfig.value?.style?.darkmode || false);
+		}
 
-    await writeConfig(vskConfig.value!);
-    await applySystemChanges();
+		await writeConfig(vskConfig.value!);
+		await applySystemChanges();
 
-    successMessage.value = "Configuración guardada exitosamente";
-    setTimeout(() => {
-      successMessage.value = "";
-    }, 3000);
-  } catch (err) {
-    error.value = `Error guardando configuración: ${err}`;
-    console.error(err);
-  } finally {
-    saving.value = false;
-  }
+		successMessage.value = 'Configuración guardada exitosamente';
+		setTimeout(() => {
+			successMessage.value = '';
+		}, 3000);
+	} catch (err) {
+		error.value = `Error guardando configuración: ${err}`;
+		console.error(err);
+	} finally {
+		saving.value = false;
+	}
 };
 
 const applySystemChanges = async () => {
-  try {
-    const config = {
-      dark_mode: vskConfig!.value?.style?.darkmode || false,
-      icon_pack: selectedIconPack.value,
-      cursor_theme: selectedCursorTheme.value,
-      gtk_theme: selectedGtkTheme.value,
-    };
+	try {
+		const config = {
+			dark_mode: vskConfig!.value?.style?.darkmode || false,
+			icon_pack: selectedIconPack.value,
+			cursor_theme: selectedCursorTheme.value,
+			gtk_theme: selectedGtkTheme.value,
+		};
 
-    await invoke("set_system_config", { config });
-  } catch (err) {
-    console.error("Error aplicando cambios del sistema:", err);
-  }
+		await invoke('set_system_config', { config });
+	} catch (err) {
+		console.error('Error aplicando cambios del sistema:', err);
+	}
 };
 
 const isFormValid = computed(() => {
-  return (
-    selectedGtkTheme.value &&
+	return (
+		selectedGtkTheme.value &&
     selectedCursorTheme.value &&
     selectedIconPack.value
-  );
+	);
 });
 </script>
 

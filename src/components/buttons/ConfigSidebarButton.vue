@@ -6,10 +6,10 @@ const props = defineProps<{
   to: string;
   icon: string;
 }>();
-const iconSrc: Ref<string> = ref("");
+const iconSrc: Ref<string> = ref('');
 
 onMounted(async () => {
-  iconSrc.value = await getIconSource(props.icon);
+	iconSrc.value = await getIconSource(props.icon);
 });
 </script>
 <template>

@@ -10,30 +10,30 @@ interface TimeData {
 }
 
 const timeData = ref<TimeData>({
-  day: '00',
-  month: '00',
-  year: '0000',
-  hour: '00',
-  minute: '00'
+	day: '00',
+	month: '00',
+	year: '0000',
+	hour: '00',
+	minute: '00'
 });
 
 const formatNumber = (num: number): string => 
-  num.toString().padStart(2, '0');
+	num.toString().padStart(2, '0');
 
 const updateTime = () => {
-  const date = new Date();
-  timeData.value = {
-    hour: formatNumber(date.getHours()),
-    minute: formatNumber(date.getMinutes()),
-    day: formatNumber(date.getDate()),
-    month: formatNumber(date.getMonth() + 1),
-    year: date.getFullYear().toString()
-  };
+	const date = new Date();
+	timeData.value = {
+		hour: formatNumber(date.getHours()),
+		minute: formatNumber(date.getMinutes()),
+		day: formatNumber(date.getDate()),
+		month: formatNumber(date.getMonth() + 1),
+		year: date.getFullYear().toString()
+	};
 };
 
 onMounted(() => {
-  updateTime();
-  setInterval(updateTime, 5000);
+	updateTime();
+	setInterval(updateTime, 5000);
 });
 </script>
 

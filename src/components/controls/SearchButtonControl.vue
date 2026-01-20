@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { invoke } from "@tauri-apps/api/core";
-import { onMounted, Ref, ref } from "vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { invoke } from '@tauri-apps/api/core';
+import { onMounted, Ref, ref } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 
-const iconSrc: Ref<string> = ref("");
+const iconSrc: Ref<string> = ref('');
 
 const openSearch = async () => {
-  try {
-    await invoke("toggle_search");
-  } catch (error) {
-    console.error("Error opening search:", error);
-  }
+	try {
+		await invoke('toggle_search');
+	} catch (error) {
+		console.error('Error opening search:', error);
+	}
 };
 
 onMounted(async () => {
-  iconSrc.value = await getIconSource("search");
+	iconSrc.value = await getIconSource('search');
 });
 </script>
 

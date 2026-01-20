@@ -84,38 +84,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, Ref, onMounted } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-import { useConfigStore, setDarkMode } from "@vasakgroup/plugin-config-manager";
-import dark from "@/assets/img/dark.png";
-import light from "@/assets/img/light.png";
-import { Store } from "pinia";
+import { ref, computed, Ref, onMounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { useConfigStore, setDarkMode } from '@vasakgroup/plugin-config-manager';
+import dark from '@/assets/img/dark.png';
+import light from '@/assets/img/light.png';
+import { Store } from 'pinia';
 
 const configStore = ref<any>(null);
 const isSwitching: Ref<boolean> = ref(false);
 
 onMounted(() => {
-  configStore.value = useConfigStore() as Store<"config", { config: any; loadConfig: () => Promise<void>; }>;; 
+	configStore.value = useConfigStore() as Store<'config', { config: any; loadConfig: () => Promise<void>; }>;; 
 });
 
 const icon = computed(() => {
-  return configStore.value?.config?.style?.darkmode ? light : dark;
+	return configStore.value?.config?.style?.darkmode ? light : dark;
 });
 
 const toggleTheme = async () => {
-  if (isSwitching.value || !configStore.value) return;
+	if (isSwitching.value || !configStore.value) return;
 
-  isSwitching.value = true;
-  try {
-    await invoke("toggle_system_theme");
-    await setDarkMode(!(configStore.value.config as any).style.darkmode || false);
-  } catch (error) {
-    console.error("Error toggling system theme:", error);
-  } finally {
-    setTimeout(() => {
-      isSwitching.value = false;
-    }, 800);
-  }
+	isSwitching.value = true;
+	try {
+		await invoke('toggle_system_theme');
+		await setDarkMode(!(configStore.value.config as any).style.darkmode || false);
+	} catch (error) {
+		console.error('Error toggling system theme:', error);
+	} finally {
+		setTimeout(() => {
+			isSwitching.value = false;
+		}, 800);
+	}
 };
 </script>
 
