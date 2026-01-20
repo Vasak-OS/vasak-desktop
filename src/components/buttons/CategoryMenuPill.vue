@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { ref, onMounted, Ref } from "vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
+import { ref, onMounted, Ref } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 
-const emit = defineEmits(["update:categorySelected"]);
+const emit = defineEmits(['update:categorySelected']);
 
 const props = defineProps<{
   category: any;
@@ -14,15 +14,15 @@ const props = defineProps<{
 const appIcon: Ref<string> = ref(props.image);
 
 const setCategory = (category: string) => {
-  emit("update:categorySelected", category);
+	emit('update:categorySelected', category);
 };
 
 const getAppIcon = async () => {
-  appIcon.value = await getIconSource(props.image);
+	appIcon.value = await getIconSource(props.image);
 };
 
 onMounted(() => {
-  getAppIcon();
+	getAppIcon();
 });
 </script>
 

@@ -31,10 +31,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, Ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
-import { getSymbolSource } from "@vasakgroup/plugin-vicons";
+import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 
 interface BrightnessInfo {
   current: number;
@@ -43,94 +43,94 @@ interface BrightnessInfo {
 }
 
 const brightnessInfo: Ref<BrightnessInfo> = ref<BrightnessInfo>({
-  current: 100,
-  min: 0,
-  max: 100,
+	current: 100,
+	min: 0,
+	max: 100,
 });
 
 const currentBrightness: Ref<number> = ref(100);
-const currentIcon: Ref<string> = ref("");
+const currentIcon: Ref<string> = ref('');
 let unlisten: (() => void) | null = null;
 let setDebitTimeout: ReturnType<typeof setTimeout> | null = null;
 
 async function updateIcon() {
-  try {
-    let iconName: string;
+	try {
+		let iconName: string;
 
-    if (brightnessPercentage.value > 66) {
-      iconName = "display-brightness-high-symbolic";
-    } else if (brightnessPercentage.value > 33) {
-      iconName = "display-brightness-medium-symbolic";
-    } else {
-      iconName = "display-brightness-low-symbolic";
-    }
+		if (brightnessPercentage.value > 66) {
+			iconName = 'display-brightness-high-symbolic';
+		} else if (brightnessPercentage.value > 33) {
+			iconName = 'display-brightness-medium-symbolic';
+		} else {
+			iconName = 'display-brightness-low-symbolic';
+		}
 
-    currentIcon.value = await getSymbolSource(iconName);
-  } catch (error) {
-    console.error("Error loading brightness icon:", error);
-  }
+		currentIcon.value = await getSymbolSource(iconName);
+	} catch (error) {
+		console.error('Error loading brightness icon:', error);
+	}
 }
 
 const brightnessPercentage = computed(() => {
-  if (brightnessInfo.value.max <= 0) return 0;
-  // Calculate percentage from raw value
-  const range = brightnessInfo.value.max - brightnessInfo.value.min;
-  const loading = currentBrightness.value - brightnessInfo.value.min;
-  return Math.round((loading / range) * 100);
+	if (brightnessInfo.value.max <= 0) return 0;
+	// Calculate percentage from raw value
+	const range = brightnessInfo.value.max - brightnessInfo.value.min;
+	const loading = currentBrightness.value - brightnessInfo.value.min;
+	return Math.round((loading / range) * 100);
 });
 
 async function getBrightnessInfo() {
-  try {
-    const info = (await invoke("get_brightness_info")) as BrightnessInfo;
-    brightnessInfo.value = info;
-    currentBrightness.value = info.current;
-    await updateIcon();
-  } catch (error) {
-    console.error("Error getting brightness:", error);
-  }
+	try {
+		const info = (await invoke('get_brightness_info')) as BrightnessInfo;
+		brightnessInfo.value = info;
+		currentBrightness.value = info.current;
+		await updateIcon();
+	} catch (error) {
+		console.error('Error getting brightness:', error);
+	}
 }
 
 // Debounce the outgoing update to avoid flooding the backend/hardware
 async function updateBrightness() {
-  if (setDebitTimeout) clearTimeout(setDebitTimeout);
+	if (setDebitTimeout) clearTimeout(setDebitTimeout);
 
-  // Optimistic update of UI
-  await updateIcon();
+	// Optimistic update of UI
+	await updateIcon();
 
-  setDebitTimeout = setTimeout(async () => {
-    try {
-      await invoke("set_brightness_info", {
-        brightness: Number(currentBrightness.value),
-      });
-    } catch (error) {
-      console.error("Error setting brightness:", error);
-    }
-  }, 50); // Short debounce for responsiveness
+	setDebitTimeout = setTimeout(async () => {
+		try {
+			await invoke('set_brightness_info', {
+				brightness: Number(currentBrightness.value),
+			});
+		} catch (error) {
+			console.error('Error setting brightness:', error);
+		}
+	}, 50); // Short debounce for responsiveness
 }
 
 onMounted(async () => {
-  await getBrightnessInfo();
+	await getBrightnessInfo();
 
-  unlisten = await listen("brightness-changed", (event: any) => {
-    const payload = event.payload;
-    // Payload: { value: number, max: number, percentage: number }
-    if (payload) {
-      // Avoid loop if the value is close to what we just set
-      // We check raw value difference.
-      if (Math.abs(currentBrightness.value - payload.value) > 1) {
-        currentBrightness.value = payload.value;
-        // Update max if changed (adaptive max?)
-        if (payload.max > 0) brightnessInfo.value.max = payload.max;
-        brightnessInfo.value.current = payload.value;
-        updateIcon();
-      }
-    }
-  });
+	unlisten = await listen('brightness-changed', (event: any) => {
+		const payload = event.payload;
+		// Payload: { value: number, max: number, percentage: number }
+		if (payload) {
+			// Avoid loop if the value is close to what we just set
+			// We check raw value difference.
+			if (Math.abs(currentBrightness.value - payload.value) > 1) {
+				currentBrightness.value = payload.value;
+				// Update max if changed (adaptive max?)
+				if (payload.max > 0) brightnessInfo.value.max = payload.max;
+				brightnessInfo.value.current = payload.value;
+				updateIcon();
+			}
+		}
+	});
 });
 
 onUnmounted(() => {
-  if (unlisten) unlisten();
-  if (setDebitTimeout) clearTimeout(setDebitTimeout);
+	if (unlisten) unlisten();
+	if (setDebitTimeout) clearTimeout(setDebitTimeout);
 });
 </script>
 

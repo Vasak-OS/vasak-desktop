@@ -2,9 +2,9 @@ use tauri::{async_runtime::spawn, AppHandle, Manager};
 use crate::windows_apps::{create_app_configuration_window, create_file_manager_window};
 
 #[tauri::command]
-pub fn open_file_manager_window(app: AppHandle) -> Result<(), String> {
+pub fn open_file_manager_window(app: AppHandle, path: Option<String>) -> Result<(), String> {
     spawn(async move {
-        let _ = create_file_manager_window(app);
+        let _ = create_file_manager_window(app, path);
     });
 
     Ok(())

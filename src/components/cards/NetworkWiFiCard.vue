@@ -1,39 +1,39 @@
 <script lang="ts" setup>
-import { NetworkInfo, connectToWifi, WiFiConnectionConfig } from "@vasakgroup/plugin-network-manager";
-import { getSymbolSource } from "@vasakgroup/plugin-vicons";
-import { onMounted, Ref, ref, nextTick } from "vue";
+import { NetworkInfo, connectToWifi, WiFiConnectionConfig } from '@vasakgroup/plugin-network-manager';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { onMounted, Ref, ref, nextTick } from 'vue';
 
-const netIcon: Ref<string> = ref("");
+const netIcon: Ref<string> = ref('');
 const props = defineProps<NetworkInfo>();
 
 const showModal = ref(false);
-const password = ref("");
+const password = ref('');
 const connecting = ref(false);
-const errorMsg = ref("");
+const errorMsg = ref('');
 
 const connectToNetwork = async () => {
-  if (props.is_connected) return;
-  showModal.value = true;
-  await nextTick();
+	if (props.is_connected) return;
+	showModal.value = true;
+	await nextTick();
 };
 
 const confirmConnect = async () => {
-  connecting.value = true;
-  errorMsg.value = "";
-  try {
-    // Aquí llamas al plugin con la pass
-    await connectToWifi({ ssid: props.ssid, password: password.value } as WiFiConnectionConfig);
-    showModal.value = false;
-    password.value = "";
-  } catch (error) {
-    errorMsg.value = "Error al conectar: " + (error as any)?.message;
-  } finally {
-    connecting.value = false;
-  }
+	connecting.value = true;
+	errorMsg.value = '';
+	try {
+		// Aquí llamas al plugin con la pass
+		await connectToWifi({ ssid: props.ssid, password: password.value } as WiFiConnectionConfig);
+		showModal.value = false;
+		password.value = '';
+	} catch (error) {
+		errorMsg.value = 'Error al conectar: ' + (error as any)?.message;
+	} finally {
+		connecting.value = false;
+	}
 };
 
 onMounted(async () => {
-  netIcon.value = await getSymbolSource(props.icon);
+	netIcon.value = await getSymbolSource(props.icon);
 });
 </script>
 

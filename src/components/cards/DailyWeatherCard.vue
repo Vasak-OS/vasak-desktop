@@ -3,42 +3,44 @@ import WeatherIcon from '@/components/icon/WeatherIcon.vue';
 import { computed } from 'vue';
 
 const props = defineProps({
-  date: {
-    type: String,
-    required: true
-  },
-  min: {
-    type: Number,
-    required: true
-  },
-  max: {
-    type: Number,
-    required: true
-  },
-  units: {
-    type: Object,
-    required: true
-  },
-  dayOrNight: {
-    type: String as () => "day" | "night",
-    required: true
-  },
-  weatherCode: {
-    type: Number,
-    required: true
-  }
+	date: {
+		type: String,
+		required: true
+	},
+	min: {
+		type: Number,
+		required: true
+	},
+	max: {
+		type: Number,
+		required: true
+	},
+	units: {
+		type: Object,
+		required: true
+	},
+	dayOrNight: {
+		type: String as () => 'day' | 'night',
+		required: true
+	},
+	weatherCode: {
+		type: Number,
+		required: true
+	}
 });
 
 const formattedDate = computed(() => {
-  const dateObj = new Date(props.date);
-  dateObj.setDate(dateObj.getDate() + 1);
-  return dateObj.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+	const dateObj = new Date(props.date);
+	dateObj.setDate(dateObj.getDate() + 1);
+	return dateObj.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
 });
+
+const dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');
 </script>
 <template>
-  <div class="daily-weather-card-layout">
+  <div class="flex flex-col items-center gap-1 p-2 rounded-vsk bg-vsk-primary/50 daily-weather-card-layout">
     <div class="date-display">{{ formattedDate }}</div>
-    <WeatherIcon :code="weatherCode" :dayOrNight="dayOrNight as 'day' | 'night'" class="weather-icon" />
+	<WeatherIcon :code="weatherCode" :dayOrNight="dayOrNightType" class="weather-icon" />
     <div class="temperatures">
       <span class="temp-max">{{ max }}°</span>
       <span class="temp-min">{{ min }}°</span>
@@ -47,10 +49,7 @@ const formattedDate = computed(() => {
 </template>
 
 <style scoped>
-@reference "../../style.css";
-
 .daily-weather-card-layout {
-  @apply flex flex-col items-center gap-1 p-2 rounded-vsk bg-vsk-primary/50;
   transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 

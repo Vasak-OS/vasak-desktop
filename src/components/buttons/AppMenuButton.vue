@@ -1,35 +1,35 @@
 <script lang="ts" setup>
-import { ref, onMounted, Ref } from "vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, onMounted, Ref } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 
 const props = defineProps({
-  app: {
-    type: Object,
-    required: true,
-  },
+	app: {
+		type: Object,
+		required: true,
+	},
 });
 
 const appIcon: Ref<string> = ref(props.app.icon);
 const appWindow = getCurrentWindow();
 
 const openApp = async () => {
-  try {
-    await invoke("open_app", { path: props.app.path });
-  } catch (error) {
-    console.error("Error al abrir la aplicación:", error);
-  } finally {
-    appWindow.close();
-  }
+	try {
+		await invoke('open_app', { path: props.app.path });
+	} catch (error) {
+		console.error('Error al abrir la aplicación:', error);
+	} finally {
+		appWindow.close();
+	}
 };
 
 const getAppIcon = async () => {
-  appIcon.value = await getIconSource(props.app.icon);
+	appIcon.value = await getIconSource(props.app.icon);
 };
 
 onMounted(() => {
-  getAppIcon();
+	getAppIcon();
 });
 </script>
 

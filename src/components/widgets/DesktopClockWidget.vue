@@ -4,7 +4,7 @@ import { ref } from 'vue';
 const time = ref(new Date().toLocaleTimeString());
 
 setInterval(() => {
-    time.value = new Date().toLocaleTimeString();
+	time.value = new Date().toLocaleTimeString();
 }, 1000);
 </script>
 

@@ -6,6 +6,7 @@ use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
 pub fn create_file_manager_window(
     app: AppHandle,
+    path: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
     
@@ -34,7 +35,19 @@ pub fn create_file_manager_window(
         }
     }
 
-    let complete_url = format!("{}/index.html#/apps/file_manager", get_app_url());
+    // Determinar el path: usar el proporcionado o el home por defecto
+    let target_path = match path {
+        Some(p) => p,
+        None => dirs::home_dir()
+            .and_then(|p| p.to_str().map(String::from))
+            .unwrap_or_else(|| "/home".to_string()),
+    };
+    
+    let complete_url = format!(
+        "{}/index.html#/apps/file_manager?path={}",
+        get_app_url(),
+        urlencoding::encode(&target_path)
+    );
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
     let _ = file_manager_window.navigate(url);
 

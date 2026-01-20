@@ -439,8 +439,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, onMounted, onUnmounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 
 interface SystemInfo {
   cpu: {
@@ -496,71 +496,71 @@ const systemInfo = ref<SystemInfo | null>(null);
 const loading = ref(true);
 const isInitialLoad = ref(true);
 const isUpdating = ref(false);
-const error = ref("");
-const lastUpdate = ref("");
+const error = ref('');
+const lastUpdate = ref('');
 let updateInterval: number | null = null;
 
 const loadSystemInfo = async (silent = false) => {
-  try {
-    if (silent) {
-      isUpdating.value = true;
-    } else {
-      loading.value = true;
-    }
-    error.value = "";
-    systemInfo.value = await invoke<SystemInfo>("get_system_info");
-    lastUpdate.value = new Date().toLocaleTimeString();
-    isInitialLoad.value = false;
-  } catch (e) {
-    error.value = "Error al cargar información del sistema: " + e;
-    console.error(e);
-  } finally {
-    loading.value = false;
-    isUpdating.value = false;
-  }
+	try {
+		if (silent) {
+			isUpdating.value = true;
+		} else {
+			loading.value = true;
+		}
+		error.value = '';
+		systemInfo.value = await invoke<SystemInfo>('get_system_info');
+		lastUpdate.value = new Date().toLocaleTimeString();
+		isInitialLoad.value = false;
+	} catch (e) {
+		error.value = 'Error al cargar información del sistema: ' + e;
+		console.error(e);
+	} finally {
+		loading.value = false;
+		isUpdating.value = false;
+	}
 };
 
 const formatUptime = (seconds: number | undefined): string => {
-  if (!seconds) return "0 segundos";
+	if (!seconds) return '0 segundos';
 
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
+	const days = Math.floor(seconds / 86400);
+	const hours = Math.floor((seconds % 86400) / 3600);
+	const minutes = Math.floor((seconds % 3600) / 60);
 
-  const parts = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
+	const parts = [];
+	if (days > 0) parts.push(`${days}d`);
+	if (hours > 0) parts.push(`${hours}h`);
+	if (minutes > 0) parts.push(`${minutes}m`);
 
-  return parts.join(" ") || "< 1m";
+	return parts.join(' ') || '< 1m';
 };
 
 const usageClass = (usage: number | undefined): string => {
-  if (!usage) return "";
-  if (usage > 80) return "high";
-  if (usage > 60) return "medium";
-  return "low";
+	if (!usage) return '';
+	if (usage > 80) return 'high';
+	if (usage > 60) return 'medium';
+	return 'low';
 };
 
 const tempClass = (temp: number | undefined): string => {
-  if (!temp) return "";
-  if (temp > 80) return "critical";
-  if (temp > 60) return "warm";
-  return "normal";
+	if (!temp) return '';
+	if (temp > 80) return 'critical';
+	if (temp > 60) return 'warm';
+	return 'normal';
 };
 
 onMounted(() => {
-  loadSystemInfo();
-  // Actualizar cada 5 segundos en modo silencioso (sin loading)
-  updateInterval = setInterval(
-    () => loadSystemInfo(true),
-    5000
-  ) as unknown as number;
+	loadSystemInfo();
+	// Actualizar cada 5 segundos en modo silencioso (sin loading)
+	updateInterval = setInterval(
+		() => loadSystemInfo(true),
+		5000
+	) as unknown as number;
 });
 
 onUnmounted(() => {
-  if (updateInterval) {
-    clearInterval(updateInterval);
-  }
+	if (updateInterval) {
+		clearInterval(updateInterval);
+	}
 });
 </script>

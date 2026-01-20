@@ -62,9 +62,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
-import NotificationCard from "@/components/cards/NotificationCard.vue";
+import { ref, onMounted, computed } from 'vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import NotificationCard from '@/components/cards/NotificationCard.vue';
 
 interface Notification {
   id: number;
@@ -97,79 +97,79 @@ const emit = defineEmits<{
 }>();
 
 const isExpanded = ref(false);
-const iconSrc = ref("");
-const closeIconSrc = ref("");
+const iconSrc = ref('');
+const closeIconSrc = ref('');
 
 // Auto-expandir si hay notificaciones no leídas
 const shouldAutoExpand = computed(() => {
-  return props.group.has_unread && props.group.count <= 3;
+	return props.group.has_unread && props.group.count <= 3;
 });
 
 function toggleExpanded() {
-  isExpanded.value = !isExpanded.value;
+	isExpanded.value = !isExpanded.value;
 }
 
 function formatGroupSummary() {
-  const unreadCount = props.group.notifications.filter((n) => !n.seen).length;
-  if (unreadCount > 0) {
-    return `${unreadCount} nueva${unreadCount === 1 ? "" : "s"}`;
-  }
-  return props.group.notifications[0]?.summary || "Sin notificaciones";
+	const unreadCount = props.group.notifications.filter((n) => !n.seen).length;
+	if (unreadCount > 0) {
+		return `${unreadCount} nueva${unreadCount === 1 ? '' : 's'}`;
+	}
+	return props.group.notifications[0]?.summary || 'Sin notificaciones';
 }
 
 function formatTime(timestamp: number) {
-  const date = new Date(timestamp * 1000);
-  const now = new Date();
-  const diffMinutes = Math.floor(
-    (now.getTime() - date.getTime()) / (1000 * 60)
-  );
+	const date = new Date(timestamp * 1000);
+	const now = new Date();
+	const diffMinutes = Math.floor(
+		(now.getTime() - date.getTime()) / (1000 * 60)
+	);
 
-  if (diffMinutes < 1) return "ahora";
-  if (diffMinutes < 60) return `${diffMinutes}m`;
-  if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h`;
-  return date.toLocaleDateString();
+	if (diffMinutes < 1) return 'ahora';
+	if (diffMinutes < 60) return `${diffMinutes}m`;
+	if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h`;
+	return date.toLocaleDateString();
 }
 
 function removeAllFromGroup() {
-  props.group.notifications.forEach((notification) => {
-    emit("remove", notification.id as number);
-  });
+	props.group.notifications.forEach((notification) => {
+		emit('remove', notification.id as number);
+	});
 }
 
 function onEnter(el: Element) {
-  const element = el as HTMLElement;
-  element.style.height = "0";
-  element.style.overflow = "hidden";
+	const element = el as HTMLElement;
+	element.style.height = '0';
+	element.style.overflow = 'hidden';
 
-  requestAnimationFrame(() => {
-    element.style.height = element.scrollHeight + "px";
-    element.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
-  });
+	requestAnimationFrame(() => {
+		element.style.height = element.scrollHeight + 'px';
+		element.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+	});
 }
 
 function onLeave(el: Element) {
-  const element = el as HTMLElement;
-  element.style.height = element.scrollHeight + "px";
-  element.style.overflow = "hidden";
+	const element = el as HTMLElement;
+	element.style.height = element.scrollHeight + 'px';
+	element.style.overflow = 'hidden';
 
-  requestAnimationFrame(() => {
-    element.style.height = "0";
-    element.style.transition = "height 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
-  });
+	requestAnimationFrame(() => {
+		element.style.height = '0';
+		element.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+	});
 }
 
 onMounted(async () => {
-  try {
-    iconSrc.value = await getIconSource(props.group.app_icon);
-    closeIconSrc.value = await getIconSource("window-close-symbolic");
+	try {
+		iconSrc.value = await getIconSource(props.group.app_icon);
+		closeIconSrc.value = await getIconSource('window-close-symbolic');
 
-    // Auto-expandir si cumple condiciones
-    if (shouldAutoExpand.value) {
-      isExpanded.value = true;
-    }
-  } catch (error) {
-    console.error("Error loading icons:", error);
-  }
+		// Auto-expandir si cumple condiciones
+		if (shouldAutoExpand.value) {
+			isExpanded.value = true;
+		}
+	} catch (error) {
+		console.error('Error loading icons:', error);
+	}
 });
 </script>
 

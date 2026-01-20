@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { ref, onMounted, onUnmounted } from "vue";
-import { listen } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, onMounted, onUnmounted } from 'vue';
+import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 
-import WindowPanelButton from "@/components/buttons/WindowPanelButton.vue";
+import WindowPanelButton from '@/components/buttons/WindowPanelButton.vue';
 
 interface WindowInfo {
   id: string;
@@ -16,20 +16,20 @@ const windows = ref<WindowInfo[]>([]);
 let unlisten: (() => void) | null = null;
 
 const refreshWindows = async (): Promise<void> => {
-  try {
-    windows.value = await invoke("get_windows");
-  } catch (error) {
-    console.error("[Windows Error] Error obteniendo ventanas:", error);
-  }
+	try {
+		windows.value = await invoke('get_windows');
+	} catch (error) {
+		console.error('[Windows Error] Error obteniendo ventanas:', error);
+	}
 };
 
 onMounted(async () => {
-  await refreshWindows();
-  unlisten = await listen("window-update", refreshWindows);
+	await refreshWindows();
+	unlisten = await listen('window-update', refreshWindows);
 });
 
 onUnmounted(() => {
-  unlisten?.();
+	unlisten?.();
 });
 </script>
 

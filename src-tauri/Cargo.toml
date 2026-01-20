@@ -53,6 +53,7 @@ async-trait = "0.1.89"
 dirs = "5.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 thiserror = "2.0"
+urlencoding = "2.1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-positioner = { version = "2.0.0", features = ["tray-icon"] }

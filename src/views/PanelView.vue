@@ -1,97 +1,97 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, type Ref } from "vue";
-import { listen } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
-import WindowsArea from "@/components/areas/panel/WindowsArea.vue";
-import TrayBarArea from "@/components/areas/panel/TrayBarArea.vue";
-import PanelClockwidget from "@/components/widgets/PanelClockwidget.vue";
-import { getIconSource } from "@vasakgroup/plugin-vicons";
-import menuIcon from "@/assets/img/icon.png";
+import { onMounted, onUnmounted, ref, type Ref } from 'vue';
+import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
+import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
+import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import menuIcon from '@/assets/img/icon.png';
 
-const notifyIcon: Ref<string> = ref("");
-const configIcon: Ref<string> = ref("");
-const fileManagerIcon: Ref<string> = ref("");
+const notifyIcon: Ref<string> = ref('');
+const configIcon: Ref<string> = ref('');
+const fileManagerIcon: Ref<string> = ref('');
 
 const notifications = ref<Notification[]>([]);
 const hasNewNotifications = ref(false);
 let unlistenNotifications: Ref<(() => void) | null> = ref(null);
 
 const setIcons = async () => {
-  try {
-    notifyIcon.value = await getIconSource("preferences-desktop-notification");
-    configIcon.value = await getIconSource("preferences-system");
-    fileManagerIcon.value = await getIconSource("system-file-manager");
-  } catch (err) {
-    console.error("Error finding icons:", err);
-  }
+	try {
+		notifyIcon.value = await getIconSource('preferences-desktop-notification');
+		configIcon.value = await getIconSource('preferences-system');
+		fileManagerIcon.value = await getIconSource('system-file-manager');
+	} catch (err) {
+		console.error('Error finding icons:', err);
+	}
 };
 
 const openMenu = async () => {
-  try {
-    await invoke("toggle_menu");
-  } catch (error) {
-    console.error("Error al abrir el menu:", error);
-  }
+	try {
+		await invoke('toggle_menu');
+	} catch (error) {
+		console.error('Error al abrir el menu:', error);
+	}
 };
 
 const openConfig = async () => {
-  try {
-    await invoke("toggle_config_app");
-  } catch (error) {
-    console.error("Error al abrir config:", error);
-  }
+	try {
+		await invoke('toggle_config_app');
+	} catch (error) {
+		console.error('Error al abrir config:', error);
+	}
 };
 
 const openFileManager = async () => {
-  try {
-    await invoke("open_file_manager_window");
-  } catch (error) {
-    console.error("Error al abrir file manager:", error);
-  }
+	try {
+		await invoke('open_file_manager_window');
+	} catch (error) {
+		console.error('Error al abrir file manager:', error);
+	}
 };
 
 const openNotificationCenter = async () => {
-  try {
-    await invoke("toggle_control_center");
-  } catch (error) {
-    console.error("Error al abrir el centro de control:", error);
-  }
+	try {
+		await invoke('toggle_control_center');
+	} catch (error) {
+		console.error('Error al abrir el centro de control:', error);
+	}
 };
 
 async function loadNotifications() {
-  try {
-    notifications.value = await invoke("get_all_notifications");
-  } catch (error) {
-    console.error("Error loading notifications:", error);
-  }
+	try {
+		notifications.value = await invoke('get_all_notifications');
+	} catch (error) {
+		console.error('Error loading notifications:', error);
+	}
 }
 
 onMounted(async () => {
-  setIcons();
-  await loadNotifications();
+	setIcons();
+	await loadNotifications();
 
-  unlistenNotifications.value = await listen(
-    "notifications-updated",
-    (event) => {
-      const newNotifications = event.payload as Notification[];
-      hasNewNotifications.value =
+	unlistenNotifications.value = await listen(
+		'notifications-updated',
+		(event) => {
+			const newNotifications = event.payload as Notification[];
+			hasNewNotifications.value =
         newNotifications.length > notifications.value.length;
-      notifications.value = newNotifications;
+			notifications.value = newNotifications;
 
-      // Reset animation after a short delay
-      if (hasNewNotifications.value) {
-        setTimeout(() => {
-          hasNewNotifications.value = false;
-        }, 1000);
-      }
-    }
-  );
+			// Reset animation after a short delay
+			if (hasNewNotifications.value) {
+				setTimeout(() => {
+					hasNewNotifications.value = false;
+				}, 1000);
+			}
+		}
+	);
 });
 
 onUnmounted(() => {
-  if (unlistenNotifications.value) {
-    unlistenNotifications.value();
-  }
+	if (unlistenNotifications.value) {
+		unlistenNotifications.value();
+	}
 });
 </script>
 

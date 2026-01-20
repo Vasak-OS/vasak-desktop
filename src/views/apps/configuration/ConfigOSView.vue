@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
@@ -14,13 +14,13 @@ interface SystemConfig {
 }
 
 const config = ref<SystemConfig>({
-  border_radius: 8,
-  primary_color: '#0084FF',
-  accent_color: '#FF6B6B',
-  dark_mode: false,
-  icon_pack: 'Adwaita',
-  cursor_theme: 'Adwaita',
-  gtk_theme: 'Adwaita',
+	border_radius: 8,
+	primary_color: '#0084FF',
+	accent_color: '#FF6B6B',
+	dark_mode: false,
+	icon_pack: 'Adwaita',
+	cursor_theme: 'Adwaita',
+	gtk_theme: 'Adwaita',
 });
 
 const gtkThemes = ref<string[]>([]);
@@ -32,99 +32,99 @@ const error = ref('');
 const successMessage = ref('');
 
 onMounted(async () => {
-  try {
-    // Cargar configuración actual
-    const loadedConfig: SystemConfig = await invoke('get_system_config');
-    config.value = loadedConfig;
+	try {
+		// Cargar configuración actual
+		const loadedConfig: SystemConfig = await invoke('get_system_config');
+		config.value = loadedConfig;
 
-    // Cargar opciones disponibles
-    const [themes, cursors, icons] = await Promise.all([
-      invoke<string[]>('get_gtk_themes'),
-      invoke<string[]>('get_cursor_themes'),
-      invoke<string[]>('get_icon_packs'),
-    ]);
+		// Cargar opciones disponibles
+		const [themes, cursors, icons] = await Promise.all([
+			invoke<string[]>('get_gtk_themes'),
+			invoke<string[]>('get_cursor_themes'),
+			invoke<string[]>('get_icon_packs'),
+		]);
 
-    gtkThemes.value = themes;
-    cursorThemes.value = cursors;
-    iconPacks.value = icons;
-  } catch (err) {
-    error.value = `Error cargando configuración: ${err}`;
-    console.error(err);
-  } finally {
-    loading.value = false;
-  }
+		gtkThemes.value = themes;
+		cursorThemes.value = cursors;
+		iconPacks.value = icons;
+	} catch (err) {
+		error.value = `Error cargando configuración: ${err}`;
+		console.error(err);
+	} finally {
+		loading.value = false;
+	}
 });
 
 const saveConfig = async () => {
-  saving.value = true;
-  error.value = '';
-  successMessage.value = '';
+	saving.value = true;
+	error.value = '';
+	successMessage.value = '';
 
-  try {
-    // Validar border radius
-    if (config.value.border_radius < 1 || config.value.border_radius > 20) {
-      throw new Error('Border radius debe estar entre 1 y 20');
-    }
+	try {
+		// Validar border radius
+		if (config.value.border_radius < 1 || config.value.border_radius > 20) {
+			throw new Error('Border radius debe estar entre 1 y 20');
+		}
 
-    // Guardar configuración
-    await invoke('set_system_config', { config: config.value });
+		// Guardar configuración
+		await invoke('set_system_config', { config: config.value });
 
-    // Aplicar CSS variables
-    applyThemeToDOM();
+		// Aplicar CSS variables
+		applyThemeToDOM();
 
-    successMessage.value = 'Configuración guardada exitosamente';
-    setTimeout(() => {
-      successMessage.value = '';
-    }, 3000);
-  } catch (err) {
-    error.value = `Error guardando configuración: ${err}`;
-    console.error(err);
-  } finally {
-    saving.value = false;
-  }
+		successMessage.value = 'Configuración guardada exitosamente';
+		setTimeout(() => {
+			successMessage.value = '';
+		}, 3000);
+	} catch (err) {
+		error.value = `Error guardando configuración: ${err}`;
+		console.error(err);
+	} finally {
+		saving.value = false;
+	}
 };
 
 const applyThemeToDOM = () => {
-  // Aplicar CSS variables al documento
-  const root = document.documentElement;
-  root.style.setProperty('--border-radius', `${config.value.border_radius}px`);
-  root.style.setProperty('--primary-color', config.value.primary_color);
-  root.style.setProperty('--accent-color', config.value.accent_color);
+	// Aplicar CSS variables al documento
+	const root = document.documentElement;
+	root.style.setProperty('--border-radius', `${config.value.border_radius}px`);
+	root.style.setProperty('--primary-color', config.value.primary_color);
+	root.style.setProperty('--accent-color', config.value.accent_color);
 
-  // Aplicar clase para modo oscuro
-  if (config.value.dark_mode) {
-    document.documentElement.classList.add('dark-mode');
-  } else {
-    document.documentElement.classList.remove('dark-mode');
-  }
+	// Aplicar clase para modo oscuro
+	if (config.value.dark_mode) {
+		document.documentElement.classList.add('dark-mode');
+	} else {
+		document.documentElement.classList.remove('dark-mode');
+	}
 };
 
 const resetToDefaults = async () => {
-  if (confirm('¿Estás seguro de que deseas restablecer a los valores por defecto?')) {
-    config.value = {
-      border_radius: 8,
-      primary_color: '#0084FF',
-      accent_color: '#FF6B6B',
-      dark_mode: false,
-      icon_pack: 'Adwaita',
-      cursor_theme: 'Adwaita',
-      gtk_theme: 'Adwaita',
-    };
-    applyThemeToDOM();
-    await saveConfig();
-  }
+	if (confirm('¿Estás seguro de que deseas restablecer a los valores por defecto?')) {
+		config.value = {
+			border_radius: 8,
+			primary_color: '#0084FF',
+			accent_color: '#FF6B6B',
+			dark_mode: false,
+			icon_pack: 'Adwaita',
+			cursor_theme: 'Adwaita',
+			gtk_theme: 'Adwaita',
+		};
+		applyThemeToDOM();
+		await saveConfig();
+	}
 };
 
 const isFormValid = computed(() => {
-  return (
-    config.value.border_radius >= 1 &&
+	return (
+		config.value.border_radius >= 1 &&
     config.value.border_radius <= 20 &&
     config.value.primary_color &&
     config.value.accent_color &&
     config.value.gtk_theme &&
     config.value.cursor_theme &&
     config.value.icon_pack
-  );
+	);
 });
 </script>
 
