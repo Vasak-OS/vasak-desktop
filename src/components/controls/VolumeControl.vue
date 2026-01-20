@@ -113,8 +113,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-@reference '../../style.css';
-
 :root {
 	--slider-height: 6px;
 	--thumb-size: 20px;

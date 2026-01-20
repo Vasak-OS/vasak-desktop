@@ -7,7 +7,7 @@
       :src="currentIcon"
       :alt="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
       :title="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
-      class="m-auto h-[22px] w-auto transition-all duration-3000"
+      class="m-auto h-5.5 w-auto transition-all duration-300"
       :class="{ 'opacity-60': volumeInfo.is_muted }"
     />
   </div>

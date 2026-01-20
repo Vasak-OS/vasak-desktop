@@ -1,7 +1,7 @@
 <template>
   <button
     @click="toggleBT"
-    class="p-2 rounded-vsk background hover:opacity-50 transition-all duration-300 h-[70px] w-[70px] group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95"
+    class="p-2 rounded-vsk background hover:opacity-50 transition-all duration-300 h-17.5 w-17.5 group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95"
     :class="{
       'animate-pulse': isTogglingBluetooth,
       'ring-2 ring-vsk-primary/50': isBluetoothOn,
@@ -49,7 +49,7 @@
     <img
       :src="bluetoothIcon"
       alt="Bluetooth Icon"
-      class="m-auto w-[50px] h-[50px] transition-all duration-300 group-hover:scale-110 relative z-10"
+      class="m-auto w-12.5 h-12.5 transition-all duration-300 group-hover:scale-110 relative z-10"
       :class="{
         'animate-spin': isTogglingBluetooth,
         'filter brightness-75': !isBluetoothOn,
@@ -60,30 +60,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
+import { ref, Ref } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import {
-	getDefaultAdapter,
 	toggleBluetooth,
-	AdapterInfo,
-	getConnectedDevicesCount,
 } from '@vasakgroup/plugin-bluetooth-manager';
-import { listen } from '@tauri-apps/api/event';
-import {
-	applyBluetoothChange,
-	resolveBluetoothIconName,
-} from '@/tools/bluetooth.controller';
+import { useBluetoothState } from '@/composables/useBluetoothState';
 
-const connectedDevices: Ref<any[]> = ref([]);
-const availableDevices: Ref<any[]> = ref([]);
 const isTogglingBluetooth: Ref<boolean> = ref(false);
-const bluetoothIcon: Ref<string> = ref('');
-const defaultAdapter = ref<AdapterInfo | null>(null);
-const connectedDevicesCount: Ref<number> = ref(0);
 
-let unlistenBluetooth: Ref<(() => void) | null> = ref(null);
+const {
+	bluetoothIcon,
+	isBluetoothOn,
+	connectedDevicesCount,
+} = useBluetoothState({
+	getIcon: getIconSource,
+});
 
-const toggleBT = async () => {
+const toggleBT = async (): Promise<void> => {
 	isTogglingBluetooth.value = true;
 	try {
 		await toggleBluetooth();
@@ -91,53 +85,6 @@ const toggleBT = async () => {
 		console.error('Error toggling Bluetooth:', error);
 	} finally {
 		isTogglingBluetooth.value = false;
-	}
-};
-
-const isBluetoothOn = computed(() => {
-	return defaultAdapter.value?.powered;
-});
-
-const handleBluetoothChange = async (event: any) => {
-	applyBluetoothChange(event.payload, {
-		availableDevices,
-		connectedDevices,
-		defaultAdapter,
-	});
-	await getBluetoothIcon();
-};
-
-onMounted(async () => {
-	defaultAdapter.value = await getDefaultAdapter();
-	await getBluetoothIcon();
-	connectedDevicesCount.value = await getConnectedDevicesCount(
-    defaultAdapter.value?.path as string
-	);
-	unlistenBluetooth.value = await listen(
-		'bluetooth-change',
-		handleBluetoothChange
-	);
-});
-
-onUnmounted(() => {
-	if (unlistenBluetooth.value) {
-		unlistenBluetooth.value();
-	}
-});
-
-const getBluetoothIcon = async () => {
-	try {
-		connectedDevicesCount.value = await getConnectedDevicesCount(
-      defaultAdapter.value?.path as string
-		);
-		const iconName = resolveBluetoothIconName(
-			isBluetoothOn.value,
-			connectedDevicesCount.value
-		);
-
-		bluetoothIcon.value = await getIconSource(iconName);
-	} catch (error) {
-		console.error('Error loading bluetooth icon:', error);
 	}
 };
 </script>
