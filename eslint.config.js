@@ -1,17 +1,26 @@
 import js from '@eslint/js';
-import vue from 'eslint-plugin-vue';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
+import vue from 'eslint-plugin-vue';
 
 export default [
 	js.configs.recommended,
+	...tseslint.configs.recommended,
 	...vue.configs['flat/essential'],
 	{
+		files: ['**/*.{js,mjs,cjs,ts,vue}'],
 		languageOptions: {
 			ecmaVersion: 'latest',
 			sourceType: 'module',
 			globals: {
+				...globals.browser,
 				...globals.node,
 				...globals.es2021,
+			},
+			parser: tseslint.parser,
+			parserOptions: {
+				parser: tseslint.parser,
+				extraFileExtensions: ['.vue'],
 			},
 		},
 		rules: {
@@ -19,19 +28,18 @@ export default [
 			'linebreak-style': ['error', 'unix'],
 			'quotes': ['error', 'single'],
 			'semi': ['error', 'always'],
-			'sort-imports': [
-				'error',
-				{
-					ignoreCase: true,
-					ignoreDeclarationSort: false,
-					ignoreMemberSort: false,
-					memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
-					allowSeparatedGroups: true,
-				},
-			],
+			'@typescript-eslint/no-explicit-any': 'off',
 		},
 	},
 	{
-		ignores: ['dist/', 'node_modules/', 'src-tauri/target/'],
+		files: ['**/*.vue'],
+		languageOptions: {
+			parserOptions: {
+				parser: tseslint.parser,
+			},
+		},
+	},
+	{
+		ignores: ['dist/', 'node_modules/', 'src-tauri/target/', '*.config.js', '*.config.ts'],
 	},
 ];
