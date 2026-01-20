@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-  import SystemAudioArea from "@/components/areas/audio/SystemAudioArea.vue";
-  import ConfigAppLayout from "@/layouts/ConfigAppLayout.vue";
+import SystemAudioArea from '@/components/areas/audio/SystemAudioArea.vue';
+import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 </script>
 
 <template>

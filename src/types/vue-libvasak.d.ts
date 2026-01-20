@@ -1,5 +1,5 @@
 declare module '@vasakgroup/vue-libvasak' {
-  import { Component, App } from 'vue'
+  import { Component, App } from 'vue';
 
   export interface WindowFrameProps {
     class?: string
@@ -16,15 +16,15 @@ declare module '@vasakgroup/vue-libvasak' {
     [key: string]: any
   }
 
-  export const WindowFrame: Component<WindowFrameProps>
-  export const SideBar: Component<SideBarProps>
-  export const SideButton: Component<SideButtonProps>
+  export const WindowFrame: Component<WindowFrameProps>;
+  export const SideBar: Component<SideBarProps>;
+  export const SideButton: Component<SideButtonProps>;
 
   // Plugin de Vue
   export interface VueLibVasakPlugin {
     install(app: App): void
   }
 
-  declare const plugin: VueLibVasakPlugin
-  export default plugin
+  declare const plugin: VueLibVasakPlugin;
+  export default plugin;
 }
