@@ -125,7 +125,7 @@ const getUserInfo = async () => {
 	}
 };
 
-let timeInterval: NodeJS.Timeout;
+let timeInterval: ReturnType<typeof setInterval>;
 
 onMounted(async () => {
 	await getUserInfo();

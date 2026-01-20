@@ -5,7 +5,7 @@ import { Store } from 'pinia';
 import { listen } from '@tauri-apps/api/event';
 import { onMounted, onUnmounted } from 'vue';
 
-let unlistenConfig: Function | null = null;
+let unlistenConfig: (() => void) | null = null;
 
 onMounted(async () => {
 	const configStore = useConfigStore() as Store<

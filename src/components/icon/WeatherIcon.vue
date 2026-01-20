@@ -318,12 +318,13 @@ onMounted(async () => {
 
 <template>
   <transition name="icon-fade" mode="out-in">
-    <img
-      :src="iconPath"
-      :alt="weatherInfo ? weatherInfo[dayOrNight].description : 'Unknown weather condition'"
-      :title="weatherInfo ? weatherInfo[dayOrNight].description : 'Unknown weather condition'"
-      class="img-fluid weather-icon-img h-24"
-    />
+	<img
+	  v-if="iconPath"
+	  :src="iconPath"
+	  :alt="weatherInfo ? weatherInfo[dayOrNight].description : 'Unknown weather condition'"
+	  :title="weatherInfo ? weatherInfo[dayOrNight].description : 'Unknown weather condition'"
+	  class="img-fluid weather-icon-img h-24"
+	/>
   </transition>
 </template>
 

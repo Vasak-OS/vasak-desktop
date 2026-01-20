@@ -28,7 +28,7 @@ const connectedDevicesCount: Ref<number> = ref(0);
 const loading: Ref<boolean> = ref(true);
 const isScanning = ref(false);
 
-let unlistenBluetooth: Ref<Function | null> = ref(null);
+let unlistenBluetooth: Ref<(() => void) | null> = ref(null);
 
 const toggleBT = async () => {
 	isTogglingBluetooth.value = true;

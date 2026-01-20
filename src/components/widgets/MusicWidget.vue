@@ -20,7 +20,7 @@ const pauseIcon: Ref<string> = ref('');
 
 const commandError = ref('');
 const showError = ref(false);
-let errorTimeout: NodeJS.Timeout | null = null;
+let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const dbusStatus = ref('connected');
 const dbusMessage = ref('');

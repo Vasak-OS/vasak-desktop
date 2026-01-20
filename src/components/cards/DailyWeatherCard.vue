@@ -34,11 +34,13 @@ const formattedDate = computed(() => {
 	dateObj.setDate(dateObj.getDate() + 1);
 	return dateObj.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
 });
+
+const dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');
 </script>
 <template>
   <div class="daily-weather-card-layout">
     <div class="date-display">{{ formattedDate }}</div>
-    <WeatherIcon :code="weatherCode" :dayOrNight="dayOrNight as 'day' | 'night'" class="weather-icon" />
+	<WeatherIcon :code="weatherCode" :dayOrNight="dayOrNightType" class="weather-icon" />
     <div class="temperatures">
       <span class="temp-max">{{ max }}°</span>
       <span class="temp-min">{{ min }}°</span>

@@ -51,7 +51,7 @@ const batteryInfo: Ref<BatteryInfo> = ref({
 const currentIcon: Ref<string> = ref('');
 const showPercentage: Ref<boolean> = ref(true);
 const showTooltip: Ref<boolean> = ref(false);
-const unlistenBattery: Ref<Function | null> = ref(null);
+const unlistenBattery: Ref<(() => void) | null> = ref(null);
 
 const batteryAltText = computed(() => {
 	if (!batteryInfo.value.has_battery) return 'No battery detected';
