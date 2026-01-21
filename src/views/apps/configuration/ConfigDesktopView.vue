@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, onMounted, computed, type Ref } from 'vue';
+import { ref, onMounted, onUnmounted, computed, type Ref } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import {
@@ -22,6 +22,7 @@ const showFiles = ref(false);
 const showHiddenFiles = ref(false);
 const iconSize = ref(64);
 const wallpaper = ref('');
+let unlistenFileDrop: (() => void) | null = null;
 
 onMounted(async () => {
 	try {
@@ -54,11 +55,27 @@ onMounted(async () => {
 				wallpaper.value = vskConfig.value.desktop.wallpaper?.[0] || '';
 			}
 		});
+
+		// Escuchar eventos de drag-drop de archivos en Tauri v2
+		unlistenFileDrop = await listen<{ paths: string[]; position: { x: number; y: number } }>('tauri://drag-drop', (event) => {
+			const paths = event.payload.paths;
+			if (paths && paths.length > 0) {
+				handleDropZone(paths[0]);
+			}
+		});
+
+
 	} catch (err) {
 		error.value = `Error cargando configuración: ${err}`;
 		console.error(err);
 	} finally {
 		loading.value = false;
+	}
+});
+
+onUnmounted(() => {
+	if (unlistenFileDrop) {
+		unlistenFileDrop();
 	}
 });
 
@@ -102,40 +119,15 @@ const isFormValid = computed(() => {
 	return iconSize.value >= 24 && iconSize.value <= 128;
 });
 
-const selectWallpaper = async (): Promise<void> => {
-	try {
-		const fileInput = document.createElement('input');
-		fileInput.type = 'file';
-		fileInput.accept = 'image/jpeg,image/png,image/webp,image/bmp,image/gif';
-		
-		fileInput.onchange = (event: Event) => {
-			const target = event.target as HTMLInputElement;
-			const files = target.files;
-			if (files && files.length > 0) {
-				const file = files[0];
-				// Obtener la ruta del archivo
-				const filePath = (file as any).path;
-				if (filePath) {
-					wallpaper.value = filePath;
-				} else {
-					// Fallback: usar file API
-					const reader = new FileReader();
-					reader.onload = (e) => {
-						if (e.target?.result) {
-							wallpaper.value = e.target.result as string;
-						}
-					};
-					reader.readAsDataURL(file);
-				}
-			}
-		};
-		
-		fileInput.click();
-	} catch (err) {
-		console.error('Error seleccionando imagen:', err);
-		error.value = `Error al seleccionar imagen: ${err}`;
+const handleDropZone = (filePath: string) => {
+	const imageExts = ['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif'];
+	if (imageExts.some(e => filePath.toLowerCase().endsWith(e))) {
+		wallpaper.value = filePath;
+	} else {
+		error.value = 'El archivo seleccionado no es una imagen válida';
 	}
 };
+
 
 const wallpaperPreviewUrl = computed(() => {
 	if (!wallpaper.value) return '';
@@ -151,8 +143,7 @@ const wallpaperPreviewUrl = computed(() => {
       </h2>
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-15 px-5 gap-4">
-        <div
-          class="w-10 h-10 border-4 border-t-vsk-primary rounded-full animate-spin">
+        <div class="w-10 h-10 border-4 border-t-vsk-primary rounded-full animate-spin">
         </div>
         <p>Cargando configuración...</p>
       </div>
@@ -175,31 +166,25 @@ const wallpaperPreviewUrl = computed(() => {
               🖼️ Fondo de Pantalla
             </h3>
 
-            <!-- Preview de la imagen -->
-            <div v-if="wallpaper" class="flex flex-col gap-3">
-              <div class="relative w-full h-40 rounded-vsk overflow-hidden border-2 border-vsk-primary/30">
-                <img 
-                  :src="wallpaperPreviewUrl" 
-                  alt="Wallpaper preview" 
-                  class="w-full h-full object-cover"
-                  @error="() => console.error('Error loading wallpaper image')"
-                />
+            <!-- Preview y drag-drop area -->
+            <div
+              class="flex items-center justify-center w-full h-40 rounded-vsk border-2 border-dashed border-vsk-primary/30 background hover:border-vsk-primary/50 hover:bg-vsk-primary/5 transition-colors relative overflow-hidden">
+
+              <!-- Background image si existe -->
+              <img v-if="wallpaper" :src="wallpaperPreviewUrl" alt="Wallpaper preview"
+                class="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                @error="() => console.error('Error loading wallpaper image')" />
+
+              <!-- Overlay y texto -->
+              <div
+                class="absolute inset-0 flex items-center justify-center bg-black/30 hover:bg-black/20 transition-colors">
+                <div class="text-center pointer-events-none">
+                  <span class="text-sm block mb-2 text-white">📂 Arrastra una imagen aquí para cambiar</span>
+                  <span class="text-xs text-white/70" v-if="wallpaper">{{ wallpaper.split('/').pop() }}</span>
+                </div>
               </div>
-              <p class="text-xs wrap-break-words m-0">
-                {{ wallpaper }}
-              </p>
-            </div>
-            
-            <div v-else class="flex items-center justify-center w-full h-40 rounded-vsk border-2 border-dashed border-vsk-primary/30 background">
-              <span class="text-sm">Sin fondo de pantalla seleccionado</span>
             </div>
 
-            <button
-              @click="selectWallpaper"
-              class="w-full py-2.5 px-4 border-0 rounded-vsk text-sm font-medium cursor-pointer transition-all duration-200 bg-vsk-primary/20 text-vsk hover:bg-vsk-primary/30 border border-vsk-primary/50"
-            >
-              Cambiar Fondo
-            </button>
           </div>
 
           <!-- Sección Archivos del Escritorio -->
