@@ -62,6 +62,11 @@ const routes = [
 							import('@/views/apps/configuration/ConfigStyleView.vue'),
 					},
 					{
+						path: 'desktop',
+						component: () =>
+							import('@/views/apps/configuration/ConfigDesktopView.vue'),
+					},
+					{
 						path: 'audio',
 						component: () =>
 							import('@/views/apps/configuration/ConfigAudioView.vue'),
