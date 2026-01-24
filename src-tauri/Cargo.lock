@@ -5639,6 +5639,7 @@ dependencies = [
  "gdk",
  "gtk",
  "image",
+ "libc",
  "log",
  "once_cell",
  "serde",
