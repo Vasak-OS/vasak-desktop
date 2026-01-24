@@ -1,5 +1,9 @@
-use std::process::Command;
 use std::env;
+use zbus::Connection;
+
+extern "C" {
+    fn getuid() -> u32;
+}
 
 #[tauri::command]
 pub fn detect_display_server() -> String {
@@ -13,92 +17,84 @@ pub fn detect_display_server() -> String {
 }
 
 #[tauri::command]
-pub fn logout(display_server: String) -> Result<(), String> {
-    let commands = match display_server.as_str() {
-        "wayland" => vec![
-            "loginctl terminate-user $USER",
-            "pkill -KILL -u $USER",
-        ],
-        "x11" => vec![
-            "loginctl terminate-user $USER",
-            "pkill -KILL -u $USER",
-            "pkill -f 'gnome-session|kde-session|xfce4-session'",
-        ],
-        _ => vec!["loginctl terminate-user $USER"],
-    };
+pub async fn logout(_display_server: String) -> Result<(), String> {
+    // Usar D-Bus para terminar la sesión del usuario actual
+    let connection = Connection::system()
+        .await
+        .map_err(|e| format!("No se pudo conectar a D-Bus: {}", e))?;
 
-    for cmd in commands {
-        let _ = Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .output();
-    }
+    let uid = unsafe { getuid() };
+
+    connection
+        .call_method(
+            Some("org.freedesktop.login1"),
+            "/org/freedesktop/login1",
+            Some("org.freedesktop.login1.Manager"),
+            "TerminateUser",
+            &(uid,),
+        )
+        .await
+        .map_err(|e| format!("Error al terminar sesión: {}", e))?;
+
     Ok(())
 }
 
 #[tauri::command]
-pub fn shutdown() -> Result<(), String> {
-    let commands = vec![
-        "systemctl poweroff",
-        "shutdown -h now",
-        "poweroff",
-    ];
+pub async fn shutdown() -> Result<(), String> {
+    let connection = Connection::system()
+        .await
+        .map_err(|e| format!("No se pudo conectar a D-Bus: {}", e))?;
 
-    for cmd in commands {
-        if Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .status()
-            .is_ok() {
-            return Ok(());
-        }
-    }
-    Err("No se pudo ejecutar shutdown".to_string())
+    connection
+        .call_method(
+            Some("org.freedesktop.login1"),
+            "/org/freedesktop/login1",
+            Some("org.freedesktop.login1.Manager"),
+            "PowerOff",
+            &(true,),
+        )
+        .await
+        .map_err(|e| format!("No se pudo ejecutar shutdown: {}", e))?;
+
+    Ok(())
 }
 
 #[tauri::command]
-pub fn reboot() -> Result<(), String> {
-    let commands = vec![
-        "systemctl reboot",
-        "shutdown -r now",
-        "reboot",
-    ];
+pub async fn reboot() -> Result<(), String> {
+    let connection = Connection::system()
+        .await
+        .map_err(|e| format!("No se pudo conectar a D-Bus: {}", e))?;
 
-    for cmd in commands {
-        if Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .status()
-            .is_ok() {
-            return Ok(());
-        }
-    }
-    Err("No se pudo ejecutar reboot".to_string())
+    connection
+        .call_method(
+            Some("org.freedesktop.login1"),
+            "/org/freedesktop/login1",
+            Some("org.freedesktop.login1.Manager"),
+            "Reboot",
+            &(true,),
+        )
+        .await
+        .map_err(|e| format!("No se pudo ejecutar reboot: {}", e))?;
+
+    Ok(())
 }
 
 #[tauri::command]
-pub fn suspend(display_server: String) -> Result<(), String> {
-    let commands = match display_server.as_str() {
-        "wayland" => vec![
-            "systemctl suspend",
-            "loginctl suspend",
-        ],
-        "x11" => vec![
-            "systemctl suspend",
-            "loginctl suspend",
-            "dbus-send --system --print-reply --dest=org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower.Suspend",
-        ],
-        _ => vec!["systemctl suspend"],
-    };
+pub async fn suspend(_display_server: String) -> Result<(), String> {
+    let connection = Connection::system()
+        .await
+        .map_err(|e| format!("No se pudo conectar a D-Bus: {}", e))?;
 
-    for cmd in commands {
-        if Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .status()
-            .is_ok() {
-            return Ok(());
-        }
-    }
-    Err("No se pudo ejecutar suspend".to_string())
+    connection
+        .call_method(
+            Some("org.freedesktop.login1"),
+            "/org/freedesktop/login1",
+            Some("org.freedesktop.login1.Manager"),
+            "Suspend",
+            &(true,),
+        )
+        .await
+        .map_err(|e| format!("No se pudo ejecutar suspend: {}", e))?;
+
+    Ok(())
 }
