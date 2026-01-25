@@ -1,18 +1,3 @@
-<template>
-  <div
-    class="p-1 rounded-vsk relative hover:bg-vsk-primary/30"
-    @click="toggleApplet"
-  >
-    <img
-      :src="currentIcon"
-      :alt="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
-      :title="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
-      class="m-auto h-5.5 w-auto transition-all duration-300"
-      :class="{ 'opacity-60': volumeInfo.is_muted }"
-    />
-  </div>
-</template>
-
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
@@ -21,6 +6,7 @@ import { listen } from '@tauri-apps/api/event';
 import type { VolumeInfo } from '@/interfaces/volume';
 import type { UnlistenFn } from '@/interfaces/event';
 import { getVolumeIconName, calculateVolumePercentage } from '@/utils/volume';
+import TrayIconButton from '@/components/base/TrayIconButton.vue';
 
 const volumeInfo: Ref<VolumeInfo> = ref({
 	current: 0,
@@ -78,3 +64,12 @@ onMounted(async () => {
 	await getVolumeInfo();
 });
 </script>
+<template>
+  <TrayIconButton
+    :icon="currentIcon"
+    :tooltip="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
+    :alt="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
+    :icon-class="{ 'opacity-60': volumeInfo.is_muted }"
+    @click="toggleApplet"
+  />
+</template>

@@ -2,6 +2,7 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { invoke } from '@tauri-apps/api/core';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
+import TrayIconButton from '@/components/base/TrayIconButton.vue';
 
 const {
 	bluetoothIcon,
@@ -19,25 +20,14 @@ const toggleBluetooth = async (): Promise<void> => {
 	}
 };
 </script>
+
 <template>
-  <div
-    class="p-1 relative hover:bg-vsk-primary/30 rounded-vsk"
-    :title="isBluetoothOn ? 'Bluetooth On' : 'Bluetooth Off'"
+  <TrayIconButton
+    :icon="bluetoothIcon"
+    :tooltip="isBluetoothOn ? 'Bluetooth On' : 'Bluetooth Off'"
+    alt="Bluetooth Icon"
+    :badge="isBluetoothOn && connectedDevicesCount > 0 ? connectedDevicesCount : null"
+    :icon-class="{ 'filter brightness-75': !isBluetoothOn }"
     @click="toggleBluetooth"
-  >
-    <img
-      :src="bluetoothIcon"
-      alt="Bluetooth Icon"
-      class="m-auto h-5.5 w-auto transition-all duration-300"
-      :class="{
-        'filter brightness-75': !isBluetoothOn,
-      }"
-    />
-    <div
-      v-if="isBluetoothOn && connectedDevicesCount > 0"
-      class="absolute bottom-1 right-1 bg-vsk-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold animate-bounce"
-    >
-      {{ connectedDevicesCount }}
-    </div>
-  </div>
+  />
 </template>

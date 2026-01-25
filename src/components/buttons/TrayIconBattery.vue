@@ -1,45 +1,10 @@
-<template>
-  <div
-    class="p-1 rounded-vsk relative hover:bg-vsk-primary/30 group"
-    @click="toggleBatteryInfo"
-    @mouseenter="showTooltip = true"
-    @mouseleave="showTooltip = false"
-  >
-    <img
-      :src="currentIcon"
-      :alt="batteryAltText"
-      :title="batteryTitle"
-      class="m-auto h-5.5 w-auto transition-all duration-300"
-      :class="{ 
-        'opacity-60': !batteryInfo.has_battery,
-        'animate-pulse': batteryInfo.is_charging,
-        'text-red-500': batteryInfo.percentage < 20 && !batteryInfo.is_charging
-      }"
-    />
-    
-    <div 
-      v-if="batteryInfo.has_battery"
-      class="absolute top-1 left-1/2 transform -translate-x-1/2 text-xs font-semibold p-1 rounded-vsk transition-all duration-300 pointer-events-none background"
-      :class="{
-        'text-green-400': batteryInfo.is_charging,
-        'text-red-400': batteryInfo.percentage < 20 && !batteryInfo.is_charging,
-        'text-yellow-400': batteryInfo.percentage < 50 && batteryInfo.percentage >= 20 && !batteryInfo.is_charging,
-        'text-vsk-primary': batteryInfo.percentage >= 50 && !batteryInfo.is_charging,
-        'opacity-0 -translate-y-2': !showTooltip,
-        'opacity-100 translate-y-0': showTooltip
-      }"
-    >
-      {{ Math.round(batteryInfo.percentage) }}%
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, Ref, onUnmounted } from 'vue';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { listen } from '@tauri-apps/api/event';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { fetchBatteryInfo } from '@/tools/battery.controller';
+import TrayIconButton from '@/components/base/TrayIconButton.vue';
 
 const batteryInfo: Ref<BatteryInfo> = ref({
 	has_battery: false,
@@ -48,9 +13,8 @@ const batteryInfo: Ref<BatteryInfo> = ref({
 	is_present: false,
 	is_charging: false,
 });
-const currentIcon: Ref<string> = ref('');
-const showPercentage: Ref<boolean> = ref(true);
-const showTooltip: Ref<boolean> = ref(false);
+
+const batteryIconSrc: Ref<string> = ref('');
 const unlistenBattery: Ref<(() => void) | null> = ref(null);
 
 const batteryAltText = computed(() => {
@@ -58,29 +22,12 @@ const batteryAltText = computed(() => {
 	return `Battery ${Math.round(batteryInfo.value.percentage)}% - ${batteryInfo.value.state}`;
 });
 
-const batteryTitle = computed(() => {
-	if (!batteryInfo.value.has_battery) return 'No battery detected';
-  
-	let title = `Battery: ${Math.round(batteryInfo.value.percentage)}% (${batteryInfo.value.state})`;
-  
-	if (batteryInfo.value.time_to_empty && !batteryInfo.value.is_charging) {
-		const hours = Math.floor(batteryInfo.value.time_to_empty / 3600);
-		const minutes = Math.floor((batteryInfo.value.time_to_empty % 3600) / 60);
-		title += `\nTime remaining: ${hours}h ${minutes}m`;
-	}
-  
-	if (batteryInfo.value.time_to_full && batteryInfo.value.is_charging) {
-		const hours = Math.floor(batteryInfo.value.time_to_full / 3600);
-		const minutes = Math.floor((batteryInfo.value.time_to_full % 3600) / 60);
-		title += `\nTime to full: ${hours}h ${minutes}m`;
-	}
-  
-	if (batteryInfo.value.vendor && batteryInfo.value.model) {
-		title += `\n${batteryInfo.value.vendor} ${batteryInfo.value.model}`;
-	}
-  
-	return title;
-});
+const tooltipClass = computed(() => ({
+	'text-green-400': batteryInfo.value.is_charging,
+	'text-red-400': batteryInfo.value.percentage < 20 && !batteryInfo.value.is_charging,
+	'text-yellow-400': batteryInfo.value.percentage < 50 && batteryInfo.value.percentage >= 20 && !batteryInfo.value.is_charging,
+	'text-vsk-primary': batteryInfo.value.percentage >= 50 && !batteryInfo.value.is_charging,
+}));
 
 async function updateIcon() {
 	const getIconName = () => {
@@ -109,11 +56,11 @@ async function updateIcon() {
 	};
 
 	try {
-		currentIcon.value = await getSymbolSource(getIconName());
+		batteryIconSrc.value = await getSymbolSource(getIconName());
 	} catch (error) {
 		console.error('Error loading battery icon:', error);
 		try {
-			currentIcon.value = await getSymbolSource('battery-symbolic');
+			batteryIconSrc.value = await getSymbolSource('battery-symbolic');
 		} catch (fallbackError) {
 			console.error('Error loading fallback battery icon:', fallbackError);
 		}
@@ -150,7 +97,7 @@ async function getBatteryInfo() {
 }
 
 async function toggleBatteryInfo() {
-	showPercentage.value = !showPercentage.value;
+	// Toggle behavior for battery info display
 }
 
 onMounted(async () => {
@@ -168,3 +115,20 @@ onUnmounted(() => {
 	}
 });
 </script>
+
+<template>
+  <TrayIconButton
+    :icon="batteryIconSrc"
+    :alt="batteryAltText"
+    :tooltip="batteryAltText"
+    :show-custom-tooltip="batteryInfo.has_battery"
+    :custom-tooltip-text="batteryInfo.has_battery ? Math.round(batteryInfo.percentage) + '%' : ''"
+    :tooltip-class="tooltipClass"
+    :icon-class="{
+      'opacity-60': !batteryInfo.has_battery,
+      'animate-pulse': batteryInfo.is_charging,
+    }"
+    @click="toggleBatteryInfo"
+  />
+</template>
+
