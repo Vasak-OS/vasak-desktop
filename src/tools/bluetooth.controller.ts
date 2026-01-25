@@ -1,16 +1,8 @@
-import { Ref } from 'vue';
-import { AdapterInfo } from '@vasakgroup/plugin-bluetooth-manager';
-
-export interface BluetoothStateRefs {
-  availableDevices: Ref<any[]>;
-  connectedDevices: Ref<any[]>;
-  defaultAdapter: Ref<AdapterInfo | null>;
-}
-
-export interface BluetoothChangePayload {
-  change_type: string;
-  data: any;
-}
+import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
+import { getDefaultAdapter, getConnectedDevicesCount } from '@vasakgroup/plugin-bluetooth-manager';
+import { listen } from '@tauri-apps/api/event';
+import type { UnlistenFn } from '@/interfaces/event';
+import type { BluetoothStateRefs, BluetoothChangePayload, BluetoothComposableOptions } from '@/interfaces/bluetooth';
 
 const findDeviceIndex = (devices: any[], path: string) => {
 	return devices.findIndex((d) => d.path === path);
@@ -134,3 +126,71 @@ export const resolveBluetoothIconName = (
 		? 'bluetooth-active-symbolic'
 		: 'bluetooth-symbolic';
 };
+
+/**
+ * Composable shared logic for Bluetooth components
+ */
+export function useBluetoothState(options: BluetoothComposableOptions) {
+	const connectedDevices: Ref<any[]> = ref([]);
+	const availableDevices: Ref<any[]> = ref([]);
+	const bluetoothIcon: Ref<string> = ref('');
+	const defaultAdapter = ref<any>(null);
+	const connectedDevicesCount: Ref<number> = ref(0);
+	const unlistenBluetooth: Ref<UnlistenFn | null> = ref(null);
+
+	const isBluetoothOn = computed(() => defaultAdapter.value?.powered);
+
+	const handleBluetoothChange = async (event: any): Promise<void> => {
+		applyBluetoothChange(event.payload, {
+			availableDevices,
+			connectedDevices,
+			defaultAdapter,
+		});
+		await getBluetoothIcon();
+	};
+
+	const getBluetoothIcon = async (): Promise<void> => {
+		try {
+			connectedDevicesCount.value = await getConnectedDevicesCount(
+				defaultAdapter.value?.path as string
+			);
+			const iconName = resolveBluetoothIconName(
+				isBluetoothOn.value,
+				connectedDevicesCount.value
+			);
+			bluetoothIcon.value = await options.getIcon(iconName);
+		} catch (error) {
+			console.error('Error loading bluetooth icon:', error);
+		}
+	};
+
+	const initializeBluetoothState = async (): Promise<void> => {
+		defaultAdapter.value = await getDefaultAdapter();
+		await getBluetoothIcon();
+		connectedDevicesCount.value = await getConnectedDevicesCount(
+			defaultAdapter.value?.path as string
+		);
+		unlistenBluetooth.value = await listen(
+			'bluetooth-change',
+			handleBluetoothChange
+		);
+	};
+
+	onMounted(initializeBluetoothState);
+
+	onUnmounted(() => {
+		if (unlistenBluetooth.value) {
+			unlistenBluetooth.value();
+		}
+	});
+
+	return {
+		connectedDevices,
+		availableDevices,
+		bluetoothIcon,
+		defaultAdapter,
+		connectedDevicesCount,
+		isBluetoothOn,
+		getBluetoothIcon,
+	};
+}

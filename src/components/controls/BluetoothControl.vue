@@ -65,7 +65,7 @@ import { getIconSource } from '@vasakgroup/plugin-vicons';
 import {
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
-import { useBluetoothState } from '@/composables/useBluetoothState';
+import { useBluetoothState } from '@/tools/bluetooth.controller';
 
 const isTogglingBluetooth: Ref<boolean> = ref(false);
 
