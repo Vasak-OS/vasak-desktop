@@ -34,8 +34,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
 	disabled: false,
 	size: 'small',
-	activeClass: 'bg-green-500',
-	inactiveClass: 'bg-vsk-primary/30',
+	activeClass: 'bg-vsk-primary',
+	inactiveClass: 'background',
 	customClass: '',
 });
 
