@@ -8,6 +8,7 @@ import {
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
 import { toggleNetworkApplet } from '@/tools/network.controller';
+import TrayIconButton from '@/components/base/TrayIconButton.vue';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
@@ -58,21 +59,19 @@ onUnmounted(() => {
 	}
 });
 </script>
+
 <template>
-  <div class="p-1 rounded-vsk relative hover:bg-vsk-primary/30" @click="toggleNetworkApplet">
-    <img
-      :src="networkIconSrc"
-      :alt="networkAlt"
-      class="m-auto h-5.5 w-auto transition-all duration-300"
-      :class="{
-        'filter brightness-75': !networkState.is_connected,
-      }"
-    />
+  <TrayIconButton
+    :icon="networkIconSrc"
+    :alt="networkAlt"
+    :tooltip="networkAlt"
+    :custom-class="{ 'relative': true }"
+    :icon-class="{ 'filter brightness-75': !networkState.is_connected }"
+    @click="toggleNetworkApplet"
+  >
     <div
       class="absolute top-3 right-0.5 w-3 h-3 rounded-full transition-all duration-300"
-      :class="
-        networkState.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'
-      "
+      :class="networkState.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'"
     ></div>
-  </div>
+  </TrayIconButton>
 </template>
