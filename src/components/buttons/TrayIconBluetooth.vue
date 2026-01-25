@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { invoke } from '@tauri-apps/api/core';
-import { useBluetoothState } from '@/composables/useBluetoothState';
+import { useBluetoothState } from '@/tools/bluetooth.controller';
 
 const {
 	bluetoothIcon,
