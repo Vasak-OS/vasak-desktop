@@ -1,38 +1,3 @@
-<template>
-  <div
-    class="background rounded-vsk flex flex-row items-center gap-2 justify-between w-full h-auto p-4 transition-all duration-200 hover:bg-white/60 dark:hover:bg-black/60"
-  >
-    <button
-      @click="toggleMute"
-      class="w-8 h-8 flex items-center justify-center rounded-vsk transition-all duration-200 hover:bg-white/30 dark:hover:bg-black/30 hover:scale-110 active:scale-95"
-    >
-      <img
-        :src="currentIcon"
-        :alt="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
-        :title="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
-        class="w-6 h-6 transition-all duration-200"
-        :class="{ 'opacity-60': volumeInfo.is_muted }"
-      />
-    </button>
-    <input
-      type="range"
-      :min="volumeInfo.min"
-      :max="volumeInfo.max"
-      v-model="currentVolume"
-      @input="updateVolume"
-      class="flex-1 transition-all duration-200 hover:scale-105"
-    />
-    <span
-      class="w-12 text-right transition-all duration-200 font-medium"
-      :class="{
-        'text-red-500': volumeInfo.is_muted,
-        'text-green-500': volumePercentage > 80,
-      }"
-      >{{ volumePercentage }}%</span
-    >
-  </div>
-</template>
-
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
@@ -41,6 +6,7 @@ import { listen } from '@tauri-apps/api/event';
 import type { VolumeInfo } from '@/interfaces/volume';
 import type { UnlistenFn } from '@/interfaces/event';
 import { getVolumeIconName, calculateVolumePercentage } from '@/utils/volume';
+import SliderControl from '@/components/base/SliderControl.vue';
 
 const volumeInfo = ref<VolumeInfo>({
 	current: 0,
@@ -84,9 +50,8 @@ async function getVolumeInfo(): Promise<void> {
 
 async function updateVolume(): Promise<void> {
 	try {
-		await invoke('set_audio_volume', {
-			volume: Number(currentVolume.value),
-		});
+		await invoke('set_audio_volume', { volume: currentVolume.value });
+		await updateIcon();
 	} catch (error) {
 		console.error('Error setting volume:', error);
 	}
@@ -94,23 +59,44 @@ async function updateVolume(): Promise<void> {
 
 async function toggleMute(): Promise<void> {
 	try {
-		const isUnmuted = await invoke<boolean>('toggle_audio_mute');
-		volumeInfo.value.is_muted = !isUnmuted;
+		await invoke('toggle_audio_mute');
 		await getVolumeInfo();
 	} catch (error) {
 		console.error('Error toggling mute:', error);
 	}
 }
 
+const getPercentageClass = (percentage: number) => {
+	if (volumeInfo.value.is_muted) return 'text-red-500';
+	if (percentage > 80) return 'text-green-500';
+	return '';
+};
+
 onMounted(async () => {
-	unlistenVolume.value = await listen('volume-changed', (event) => {
-		volumeInfo.value = event.payload as VolumeInfo;
-		currentVolume.value = (event.payload as VolumeInfo).current;
-		updateIcon();
-	});
 	await getVolumeInfo();
+	unlistenVolume.value = await listen<VolumeInfo>('volume-changed', async (event) => {
+		volumeInfo.value = event.payload;
+		currentVolume.value = event.payload.current;
+		await updateIcon();
+	});
 });
 </script>
+
+<template>
+  <SliderControl
+    :icon="currentIcon"
+    :alt="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
+    :tooltip="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
+    v-model="currentVolume"
+    :min="volumeInfo.min"
+    :max="volumeInfo.max"
+    :show-button="true"
+    :icon-class="{ 'opacity-60': volumeInfo.is_muted }"
+    :get-percentage-class="getPercentageClass"
+    @update:model-value="updateVolume"
+    @button-click="toggleMute"
+  />
+</template>
 
 <style scoped>
 :root {
