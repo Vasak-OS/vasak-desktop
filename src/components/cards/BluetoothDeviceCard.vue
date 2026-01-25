@@ -12,8 +12,6 @@ const props = defineProps<{
   connected?: boolean;
 }>();
 
-const emit = defineEmits(['action']);
-
 const deviceTitle = computed(() => 
 	props.device.alias || props.device.name || props.device.address
 );
