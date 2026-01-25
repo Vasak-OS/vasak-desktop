@@ -2,15 +2,9 @@
 import { ref, onMounted, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import type { WindowPanelButtonProps } from '@/interfaces/window';
 
-interface Props {
-  id: string;
-  title: string;
-  is_minimized: boolean;
-  icon: string;
-}
-
-const props = defineProps<Props>();
+const props = defineProps<WindowPanelButtonProps>();
 const iconSource: Ref<string> = ref<string>('');
 
 const toggleWindow = async (): Promise<void> => {

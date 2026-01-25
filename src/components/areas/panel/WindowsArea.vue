@@ -4,13 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 
 import WindowPanelButton from '@/components/buttons/WindowPanelButton.vue';
-
-interface WindowInfo {
-  id: string;
-  title: string;
-  is_minimized: boolean;
-  icon: string;
-}
+import type { WindowInfo } from '@/interfaces/window';
 
 const windows = ref<WindowInfo[]>([]);
 let unlisten: (() => void) | null = null;
