@@ -9,6 +9,7 @@ import {
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
+import SwitchToggle from '@/components/base/SwitchToggle.vue';
 import { Store } from 'pinia';
 
 const configStore = ref<any>(null);
@@ -226,11 +227,13 @@ const isFormValid = computed(() => {
 
             <!-- Dark Mode Toggle -->
             <div class="flex flex-row items-center justify-between gap-2">
-              <label for="dark-mode" class="text-sm font-medium text-vsk-primary">Modo Oscuro</label>
+              <label class="text-sm font-medium text-vsk-primary">Modo Oscuro</label>
               <div class="flex items-center gap-3">
-                <input v-if="vskConfig" id="dark-mode" :checked="vskConfig.style.darkmode"
-                  @change="e => (vskConfig!.style.darkmode = (e.target as HTMLInputElement).checked)" type="checkbox"
-                  class="w-12 h-7 appearance-none bg-[var(--surface-3,rgba(255,255,255,0.1))] border-2 border-[var(--surface-3,rgba(255,255,255,0.2))] rounded-[14px] cursor-pointer relative transition-all duration-300 outline-none before:content-[''] before:absolute before:w-5 before:h-5 before:rounded-full before:bg-white before:left-1 before:top-0.5 before:transition-all before:duration-300 checked:bg-[var(--primary-color,#0084ff)] checked:border-[var(--primary-color,#0084ff)] checked:before:left-[22px]" />
+                <SwitchToggle
+                  v-if="vskConfig"
+                  :is-on="vskConfig.style.darkmode"
+                  @toggle="vskConfig!.style.darkmode = $event"
+                />
                 <span class="text-sm text-[var(--text-secondary,rgba(255,255,255,0.7))]">{{
                   vskConfig?.style.darkmode ? "Activado" : "Desactivado"
                 }}</span>

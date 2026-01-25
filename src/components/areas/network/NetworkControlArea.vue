@@ -50,20 +50,10 @@
           <p class="text-sm text-vsk-text/70">{{ wifiStatus }}</p>
         </div>
       </div>
-      <button
-        @click="toggleWifi"
-        :class="[
-          'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-          wifiEnabled ? 'bg-green-500' : 'bg-vsk-primary/30',
-        ]"
-      >
-        <span
-          :class="[
-            'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-            wifiEnabled ? 'translate-x-6' : 'translate-x-1',
-          ]"
-        />
-      </button>
+      <SwitchToggle
+        :is-on="wifiEnabled"
+        @toggle="toggleWifi"
+      />
     </div>
 
     <div

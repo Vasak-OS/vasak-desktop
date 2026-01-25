@@ -9,6 +9,7 @@ import {
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
+import SwitchToggle from '@/components/base/SwitchToggle.vue';
 import { Store } from 'pinia';
 
 const configStore = ref<any>(null);
@@ -195,11 +196,13 @@ const wallpaperPreviewUrl = computed(() => {
 
             <!-- Mostrar Archivos -->
             <div class="flex flex-row items-center justify-between gap-2">
-              <label for="show-files" class="text-sm font-medium text-vsk-primary">Mostrar Archivos</label>
+              <label class="text-sm font-medium text-vsk-primary">Mostrar Archivos</label>
               <div class="flex items-center gap-3">
-                <input id="show-files" v-model="showFiles" type="checkbox"
-                  class="w-12 h-7 appearance-none background rounded-vsk cursor-pointer relative transition-all duration-300 outline-none before:content-[''] before:absolute before:w-5 before:h-5 before:rounded-full before:bg-white before:left-1 before:top-0.5 before:transition-all before:duration-300 checked:bg-vsk-primary checked:border-vsk-primary checked:before:left-5.5" />
-                <span class="text-sm ">
+                <SwitchToggle
+                  :is-on="showFiles"
+                  @toggle="showFiles = $event"
+                />
+                <span class="text-sm">
                   {{ showFiles ? "Activado" : "Desactivado" }}
                 </span>
               </div>
@@ -207,11 +210,14 @@ const wallpaperPreviewUrl = computed(() => {
 
             <!-- Mostrar Archivos Ocultos -->
             <div class="flex flex-row items-center justify-between gap-2">
-              <label for="show-hidden" class="text-sm font-medium text-vsk-primary">Mostrar Archivos Ocultos</label>
+              <label class="text-sm font-medium text-vsk-primary">Mostrar Archivos Ocultos</label>
               <div class="flex items-center gap-3">
-                <input id="show-hidden" v-model="showHiddenFiles" type="checkbox" :disabled="!showFiles"
-                  class="w-12 h-7 appearance-none background rounded-vsk cursor-pointer relative transition-all duration-300 outline-none before:content-[''] before:absolute before:w-5 before:h-5 before:rounded-full before:bg-white before:left-1 before:top-0.5 before:transition-all before:duration-300 checked:bg-vsk-primary checked:border-vsk-primary checked:before:left-5.5 disabled:opacity-50 disabled:cursor-not-allowed" />
-                <span class="text-sm ">
+                <SwitchToggle
+                  :is-on="showHiddenFiles"
+                  :disabled="!showFiles"
+                  @toggle="showHiddenFiles = $event"
+                />
+                <span class="text-sm">
                   {{ showHiddenFiles ? "Activado" : "Desactivado" }}
                 </span>
               </div>

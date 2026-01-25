@@ -127,18 +127,15 @@ const disconnect = async (device: any) => {
 <template>
   <div class="flex flex-col h-full">
     <div class="flex items-center mb-4">
-      <button
-        type="button"
-        class="relative inline-flex items-center h-7 w-12 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-vsk-primary mr-2"
-        :class="isBluetoothOn ? 'bg-vsk-primary' : 'bg-gray-400'"
-        @click="toggleBT"
+      <SwitchToggle
+        :is-on="isBluetoothOn"
         :disabled="isTogglingBluetooth"
-      >
-        <span
-          class="inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform"
-          :class="isBluetoothOn ? 'translate-x-5' : 'translate-x-1'"
-        ></span>
-      </button>
+        size="medium"
+        active-class="bg-vsk-primary"
+        inactive-class="bg-gray-400"
+        custom-class="mr-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-vsk-primary"
+        @toggle="toggleBT"
+      />
       <img :src="bluetoothIcon" alt="Bluetooth" class="h-8 w-auto mr-3" />
       <span class="font-bold text-2xl flex-1">Bluetooth</span>
       <button
