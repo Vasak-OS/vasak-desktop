@@ -74,20 +74,38 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <ToggleControl
-    :icon="networkIconSrc"
-    :alt="networkAlt"
-    :tooltip="networkAlt"
-    :is-active="networkState.is_connected"
-    :is-loading="isLoading"
-    :show-signal-strength="networkState.is_connected"
-    :signal-strength="networkState.signal_strength"
-    :status-indicator-class="networkState.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'"
-    :custom-class="{
-      'ring-2 ring-green-400/50': networkState.is_connected,
-      'ring-2 ring-red-400/50': !networkState.is_connected,
-    }"
-    glow-class="from-blue-500/20 to-cyan-500/20"
-    @click="toggleCurrentNetwork"
-  />
+	<div class="relative inline-block">
+		<!-- Indicador de estado -->
+		<div
+			class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-300"
+			:class="networkState.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'"
+		></div>
+
+		<!-- Indicador de intensidad de señal -->
+		<div v-if="networkState.is_connected" class="absolute bottom-1 left-1 flex space-x-0.5">
+			<div
+				v-for="i in 4"
+				:key="i"
+				class="w-1 bg-vsk-primary rounded-full transition-all duration-300"
+				:class="{
+					'opacity-100': i <= Math.ceil(networkState.signal_strength / 25),
+					'opacity-30': i > Math.ceil(networkState.signal_strength / 25),
+				}"
+				:style="{ height: `${4 + i * 2}px` }"
+			></div>
+		</div>
+
+		<ToggleControl
+			:icon="networkIconSrc"
+			:alt="networkAlt"
+			:tooltip="networkAlt"
+			:is-active="networkState.is_connected"
+			:is-loading="isLoading"
+			:custom-class="{
+				'ring-2 ring-green-400/50': networkState.is_connected,
+				'ring-2 ring-red-400/50': !networkState.is_connected,
+			}"
+			@click="toggleCurrentNetwork"
+		/>
+	</div>
 </template>
