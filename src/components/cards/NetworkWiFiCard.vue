@@ -2,6 +2,8 @@
 import { NetworkInfo, connectToWifi, WiFiConnectionConfig } from '@vasakgroup/plugin-network-manager';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, Ref, ref, nextTick } from 'vue';
+import ListCard from '@/components/base/ListCard.vue';
+import ActionButton from '@/components/base/ActionButton.vue';
 
 const netIcon: Ref<string> = ref('');
 const props = defineProps<NetworkInfo>();
@@ -38,11 +40,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div
-    @click="connectToNetwork()"
-    class="flex items-center justify-between background p-3 rounded-vsk border border-vsk-primary/70 hover:bg-vsk-primary/5 cursor-pointer transition-colors"
-  >
-    <div class="flex items-center gap-3">
+  <ListCard :clickable="true" @click="connectToNetwork()">
+    <div class="flex items-center gap-3 flex-1">
       <img :src="netIcon" :alt="props.ssid" class="w-8 h-8" />
 
       <div>
@@ -71,7 +70,7 @@ onMounted(async () => {
         />
       </svg>
     </div>
-  </div>
+  </ListCard>
 
   <!-- Modal para pedir contraseña -->
   <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center">
@@ -86,10 +85,8 @@ onMounted(async () => {
       />
       <div v-if="errorMsg" class="text-red-500 text-sm">{{ errorMsg }}</div>
       <div class="flex gap-2 justify-end mt-2">
-        <button @click="showModal = false" class="px-3 py-1 rounded-vsk bg-vsk-border text-vsk-text">Cancelar</button>
-        <button @click="confirmConnect" :disabled="connecting || !password" class="px-3 py-1 rounded-vsk bg-vsk-primary text-white">
-          {{ connecting ? 'Conectando...' : 'Conectar' }}
-        </button>
+        <ActionButton label="Cancelar" variant="secondary" @click="showModal = false" />
+        <ActionButton label="Conectar" :loading="connecting" :disabled="!password" @click="confirmConnect" />
       </div>
     </div>
   </div>

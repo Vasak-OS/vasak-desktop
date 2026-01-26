@@ -34,11 +34,16 @@
         <span class="text-xs text-gray-500 dark:text-gray-400">
           {{ formatTime(group.latest_timestamp) }}
         </span>
-        <button @click.stop="removeAllFromGroup"
-          class="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
-          title="Eliminar todas las notificaciones de esta app">
-          <img :src="closeIconSrc" alt="Cerrar grupo" class="w-3 h-3" />
-        </button>
+        <ActionButton
+          label=""
+          :iconSrc="closeIconSrc"
+          iconAlt="Eliminar grupo"
+          size="sm"
+          variant="secondary"
+          :stopPropagation="true"
+          customClass="bg-transparent text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent"
+          @click="removeAllFromGroup"
+        />
         <div class="w-5 h-5 flex items-center justify-center transition-transform duration-200"
           :class="{ 'rotate-180': isExpanded }">
           <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,6 +70,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
+import ActionButton from '@/components/base/ActionButton.vue';
 
 interface Notification {
   id: number;

@@ -10,6 +10,9 @@ import {
 } from '@vasakgroup/plugin-config-manager';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import SwitchToggle from '@/components/base/SwitchToggle.vue';
+import ConfigSection from '@/components/base/ConfigSection.vue';
+import FormGroup from '@/components/base/FormGroup.vue';
+import ActionButton from '@/components/base/ActionButton.vue';
 import { Store } from 'pinia';
 
 const configStore = ref<any>(null);
@@ -164,7 +167,7 @@ const isFormValid = computed(() => {
 
 <template>
   <ConfigAppLayout>
-    <div class="p-6 max-w-[600px] mx-auto">
+    <div class="p-6 max-w-7xl mx-auto">
       <h2 class="text-2xl font-semibold mb-6 text-vsk-primary">
         Configuración de Estilos
       </h2>
@@ -187,20 +190,15 @@ const isFormValid = computed(() => {
         </div>
 
         <!-- Formulario de configuración -->
-        <div class="flex flex-col gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Sección Apariencia -->
-          <div class="flex flex-col gap-4 p-4 background rounded-vsk">
-            <h3 class="text-base font-semibold m-0 text-vsk-primary">
-              🎨 Apariencia
-            </h3>
-
+          <ConfigSection icon="🎨" title="Apariencia">
             <!-- Border Radius -->
-            <div class="flex flex-col gap-2">
-              <label for="border-radius" class="text-sm font-medium text-vsk-primary flex justify-between items-center">
+            <FormGroup label="Border Radius" html-for="border-radius" :label-class="{ 'flex justify-between items-center': true }">
+              <div class="flex justify-between items-center text-xs text-[var(--text-secondary,rgba(255,255,255,0.7))]">
                 <span>Border Radius</span>
-                <span class="text-xs text-[var(--text-secondary,rgba(255,255,255,0.7))] font-normal">{{
-                  vskConfig?.style.radius }}px</span>
-              </label>
+                <span class="font-normal">{{ vskConfig?.style.radius }}px</span>
+              </div>
               <input v-if="vskConfig" id="border-radius" :value="vskConfig.style.radius"
                 @input="e => (vskConfig!.style.radius = parseInt((e.target as HTMLInputElement).value))" type="range"
                 min="1" max="20"
@@ -209,11 +207,10 @@ const isFormValid = computed(() => {
                 <span>1px</span>
                 <span>20px</span>
               </div>
-            </div>
+            </FormGroup>
 
             <!-- Primary Color -->
-            <div class="flex flex-col gap-2">
-              <label for="primary-color" class="text-sm font-medium text-vsk-primary">Color Primario</label>
+            <FormGroup label="Color Primario" html-for="primary-color">
               <div class="flex gap-3 items-center">
                 <input v-if="vskConfig" id="primary-color" :value="vskConfig.style.primarycolor"
                   @input="e => (vskConfig!.style.primarycolor = (e.target as HTMLInputElement).value)" type="color"
@@ -223,7 +220,7 @@ const isFormValid = computed(() => {
                   placeholder="#0084FF"
                   class="flex-1 py-2 px-3 background rounded-vsk text-vsk-primary text-sm font-mono transition-all duration-200 focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))]" />
               </div>
-            </div>
+            </FormGroup>
 
             <!-- Dark Mode Toggle -->
             <div class="flex flex-row items-center justify-between gap-2">
@@ -239,16 +236,11 @@ const isFormValid = computed(() => {
                 }}</span>
               </div>
             </div>
-          </div>
+          </ConfigSection>
 
           <!-- Sección Tema GTK -->
-          <div class="flex flex-col gap-4 p-4 background rounded-vsk">
-            <h3 class="text-base font-semibold m-0 text-vsk-primary">
-              🖥️ Tema GTK
-            </h3>
-
-            <div class="flex flex-col gap-2">
-              <label for="gtk-theme" class="text-sm font-medium text-vsk-primary">Tema GTK</label>
+          <ConfigSection icon="🖥️" title="Tema GTK">
+            <FormGroup label="Tema GTK" html-for="gtk-theme">
               <select v-model="selectedGtkTheme" id="gtk-theme"
                 class="py-2.5 px-3 background rounded-vsk text-vsk-primary text-sm cursor-pointer transition-all duration-200 appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_24_24%27_fill=%27none%27_stroke=%27white%27_stroke-width=%272%27_stroke-linecap=%27round%27_stroke-linejoin=%27round%27%3e%3cpolyline_points=%276_9_12_15_18_9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[right_8px_center] bg-[length:20px] hover:border-[var(--primary-color,#0084ff)] hover:bg-[var(--surface-2,rgba(255,255,255,0.08))] focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))] focus:shadow-[0_0_0_3px_rgba(0,132,255,0.1)]">
                 <option v-for="theme in gtkThemes" :key="theme" :value="theme"
@@ -256,17 +248,12 @@ const isFormValid = computed(() => {
                   {{ theme }}
                 </option>
               </select>
-            </div>
-          </div>
+            </FormGroup>
+          </ConfigSection>
 
           <!-- Sección Cursor -->
-          <div class="flex flex-col gap-4 p-4 background rounded-vsk">
-            <h3 class="text-base font-semibold m-0 text-vsk-primary">
-              🖱️ Cursor
-            </h3>
-
-            <div class="flex flex-col gap-2">
-              <label for="cursor-theme" class="text-sm font-medium text-vsk-primary">Tema de Cursor</label>
+          <ConfigSection icon="🖱️" title="Cursor">
+            <FormGroup label="Tema de Cursor" html-for="cursor-theme">
               <select v-model="selectedCursorTheme" id="cursor-theme"
                 class="py-2.5 px-3 background rounded-vsk text-vsk-primary text-sm cursor-pointer transition-all duration-200 appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_24_24%27_fill=%27none%27_stroke=%27white%27_stroke-width=%272%27_stroke-linecap=%27round%27_stroke-linejoin=%27round%27%3e%3cpolyline_points=%276_9_12_15_18_9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[right_8px_center] bg-[length:20px] hover:border-[var(--primary-color,#0084ff)] hover:bg-[var(--surface-2,rgba(255,255,255,0.08))] focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))] focus:shadow-[0_0_0_3px_rgba(0,132,255,0.1)]">
                 <option v-for="cursor in cursorThemes" :key="cursor" :value="cursor"
@@ -274,17 +261,12 @@ const isFormValid = computed(() => {
                   {{ cursor }}
                 </option>
               </select>
-            </div>
-          </div>
+            </FormGroup>
+          </ConfigSection>
 
           <!-- Sección Iconos -->
-          <div class="flex flex-col gap-4 p-4 background rounded-vsk">
-            <h3 class="text-base font-semibold m-0 text-vsk-primary">
-              🎯 Iconos
-            </h3>
-
-            <div class="flex flex-col gap-2">
-              <label for="icon-pack" class="text-sm font-medium text-vsk-primary">Pack de Iconos</label>
+          <ConfigSection icon="🎯" title="Iconos">
+            <FormGroup label="Pack de Iconos" html-for="icon-pack">
               <select v-model="selectedIconPack" id="icon-pack"
                 class="py-2.5 px-3 background rounded-vsk text-vsk-primary text-sm cursor-pointer transition-all duration-200 appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_24_24%27_fill=%27none%27_stroke=%27white%27_stroke-width=%272%27_stroke-linecap=%27round%27_stroke-linejoin=%27round%27%3e%3cpolyline_points=%276_9_12_15_18_9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[right_8px_center] bg-[length:20px] hover:border-[var(--primary-color,#0084ff)] hover:bg-[var(--surface-2,rgba(255,255,255,0.08))] focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))] focus:shadow-[0_0_0_3px_rgba(0,132,255,0.1)]">
                 <option v-for="pack in iconPacks" :key="pack" :value="pack"
@@ -295,18 +277,20 @@ const isFormValid = computed(() => {
               <p class="text-xs text-yellow-500 m-0">
                 ⚠️ Cambiar el pack de iconos requiere refrescar las aplicaciones
               </p>
-            </div>
-          </div>
+            </FormGroup>
+          </ConfigSection>
 
-          <!-- Botones de acción -->
-          <div class="flex gap-3 mt-6">
-            <button @click="saveConfig" :disabled="!isFormValid || saving"
-              class="flex-1 py-3 px-6 border-0 rounded-vsk text-sm font-medium cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 bg-[var(--primary-color,#0084ff)] text-white hover:opacity-90 hover:shadow-[0_4px_12px_rgba(0,132,255,0.3)] disabled:opacity-50 disabled:cursor-not-allowed">
-              <span v-if="saving"
-                class="inline-block w-4 h-4 border-2 border-transparent border-t-current rounded-full animate-spin"></span>
-              {{ saving ? "Guardando..." : "Guardar Cambios" }}
-            </button>
-          </div>
+        </div>
+        
+        <!-- Botones de acción -->
+        <div class="flex gap-3 mt-6">
+          <ActionButton
+            :label="saving ? 'Guardando...' : 'Guardar Cambios'"
+            :loading="saving"
+            :disabled="!isFormValid"
+            custom-class="flex-1 py-3 px-6"
+            @click="saveConfig"
+          />
         </div>
       </div>
     </div>

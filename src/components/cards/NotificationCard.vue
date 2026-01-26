@@ -24,11 +24,15 @@
       </div>
 
       <!-- Actions -->
-      <div v-if="parsedActions.length > 0" class="flex flex-wrap gap-2 mt-2">
-        <button v-for="action in parsedActions" :key="action.key" @click.stop="handleAction(action.key)"
-          class="px-3 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-blue-900 text-gray-700 dark:text-gray-200 rounded transition-colors">
-          {{ action.label }}
-        </button>
+      <div v-if="parsedActions.length > 0" class="flex flex-wrap gap-2 mt-2" @click.stop>
+        <ActionButton
+          v-for="action in parsedActions"
+          :key="action.key"
+          :label="action.label"
+          variant="secondary"
+          custom-class="text-xs"
+          @click="() => handleAction(action.key)"
+        />
       </div>
     </div>
   </div>
@@ -38,6 +42,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { invoke } from '@tauri-apps/api/core';
+import ActionButton from '@/components/base/ActionButton.vue';
 
 const props = defineProps<{
   notification: {

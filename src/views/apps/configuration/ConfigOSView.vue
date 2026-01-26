@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
+import ActionButton from '@/components/base/ActionButton.vue';
 
 interface SystemConfig {
   border_radius: number;
@@ -269,21 +270,18 @@ const isFormValid = computed(() => {
 
           <!-- Botones de acción -->
           <div class="form-actions">
-            <button
+            <ActionButton
+              label="Guardar Cambios"
+              :loading="saving"
+              :disabled="!isFormValid"
               @click="saveConfig"
-              :disabled="!isFormValid || saving"
-              class="btn btn-primary"
-            >
-              <span v-if="saving" class="spinner-small"></span>
-              {{ saving ? 'Guardando...' : 'Guardar Cambios' }}
-            </button>
-            <button
-              @click="resetToDefaults"
+            />
+            <ActionButton
+              label="Restablecer Valores por Defecto"
+              variant="secondary"
               :disabled="saving"
-              class="btn btn-secondary"
-            >
-              Restablecer Valores por Defecto
-            </button>
+              @click="resetToDefaults"
+            />
           </div>
         </div>
       </div>

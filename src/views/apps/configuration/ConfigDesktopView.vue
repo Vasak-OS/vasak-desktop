@@ -10,6 +10,9 @@ import {
 } from '@vasakgroup/plugin-config-manager';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import SwitchToggle from '@/components/base/SwitchToggle.vue';
+import ConfigSection from '@/components/base/ConfigSection.vue';
+import FormGroup from '@/components/base/FormGroup.vue';
+import ActionButton from '@/components/base/ActionButton.vue';
 import { Store } from 'pinia';
 
 const configStore = ref<any>(null);
@@ -138,7 +141,7 @@ const wallpaperPreviewUrl = computed(() => {
 
 <template>
   <ConfigAppLayout>
-    <div class="p-6 max-w-200 mx-auto">
+    <div class="p-6 max-w-7xl mx-auto">
       <h2 class="text-2xl font-semibold mb-6 text-vsk-primary">
         Configuración del Escritorio
       </h2>
@@ -160,13 +163,9 @@ const wallpaperPreviewUrl = computed(() => {
         </div>
 
         <!-- Formulario de configuración -->
-        <div class="flex flex-col gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Sección Fondo de Pantalla -->
-          <div class="flex flex-col gap-4 p-4 background rounded-vsk">
-            <h3 class="text-base font-semibold m-0 text-vsk-primary">
-              🖼️ Fondo de Pantalla
-            </h3>
-
+          <ConfigSection icon="🖼️" title="Fondo de Pantalla" custom-class="lg:col-span-2">
             <!-- Preview y drag-drop area -->
             <div
               class="flex items-center justify-center w-full h-40 rounded-vsk border-2 border-dashed border-vsk-primary/30 background hover:border-vsk-primary/50 hover:bg-vsk-primary/5 transition-colors relative overflow-hidden">
@@ -186,13 +185,10 @@ const wallpaperPreviewUrl = computed(() => {
               </div>
             </div>
 
-          </div>
+          </ConfigSection>
 
           <!-- Sección Archivos del Escritorio -->
-          <div class="flex flex-col gap-4 p-4 background rounded-vsk">
-            <h3 class="text-base font-semibold m-0 text-vsk-primary">
-              📁 Archivos del Escritorio
-            </h3>
+          <ConfigSection icon="📁" title="Archivos del Escritorio">
 
             <!-- Mostrar Archivos -->
             <div class="flex flex-row items-center justify-between gap-2">
@@ -222,37 +218,35 @@ const wallpaperPreviewUrl = computed(() => {
                 </span>
               </div>
             </div>
-          </div>
+          </ConfigSection>
 
           <!-- Sección Tamaño de Icono -->
-          <div class="flex flex-col gap-4 p-4 background rounded-vsk">
-            <h3 class="text-base font-semibold m-0 text-vsk-primary">
-              📐 Tamaño de Icono
-            </h3>
+          <ConfigSection icon="📐" title="Tamaño de Icono">
 
-            <div class="flex flex-col gap-2">
-              <label for="icon-size" class="text-sm font-medium text-vsk-primary flex justify-between items-center">
-                <span>Tamaño</span>
-                <span class="text-xs  font-normal">{{ iconSize }}px</span>
-              </label>
+            <FormGroup label="Tamaño" html-for="icon-size" :label-class="{ 'flex justify-between items-center': true }">
+              <div class="flex justify-between items-center text-xs">
+                <span></span>
+                <span class="font-normal">{{ iconSize }}px</span>
+              </div>
               <input id="icon-size" v-model.number="iconSize" type="range" min="24" max="128"
                 class="w-full h-1.5 rounded-vsk background outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4.5 [&::-webkit-slider-thumb]:h-4.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-vsk-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:duration-200 [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-webkit-slider-thumb]:scale-110 [&::-moz-range-thumb]:w-4.5 [&::-moz-range-thumb]:h-4.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-vsk-primary [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:duration-200 [&::-moz-range-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-moz-range-thumb]:scale-110" />
               <div class="flex justify-between text-xs ">
                 <span>24px (Pequeño)</span>
                 <span>128px (Grande)</span>
               </div>
-            </div>
-          </div>
+            </FormGroup>
+          </ConfigSection>
+        </div>
 
-          <!-- Botones de acción -->
-          <div class="flex gap-3 mt-6">
-            <button @click="saveConfig" :disabled="!isFormValid || saving"
-              class="flex-1 py-3 px-6 border-0 rounded-vsk text-sm font-medium cursor-pointer transition-all duration-200 flex items-center justify-center gap-2 bg-vsk-primary text-white hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
-              <span v-if="saving"
-                class="inline-block w-4 h-4 border-2 border-transparent border-t-current rounded-full animate-spin"></span>
-              {{ saving ? "Guardando..." : "Guardar Cambios" }}
-            </button>
-          </div>
+        <!-- Botones de acción -->
+        <div class="flex gap-3 mt-6">
+          <ActionButton
+            :label="saving ? 'Guardando...' : 'Guardar Cambios'"
+            :loading="saving"
+            :disabled="!isFormValid"
+            custom-class="flex-1 py-3 px-6"
+            @click="saveConfig"
+          />
         </div>
       </div>
     </div>
