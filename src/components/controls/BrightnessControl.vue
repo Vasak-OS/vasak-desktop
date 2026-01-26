@@ -49,7 +49,7 @@ const brightnessPercentage = computed(() => {
 
 async function getBrightnessInfo() {
 	try {
-		const info = await invoke<BrightnessInfo>('get_backlight_brightness');
+		const info = await invoke<BrightnessInfo>('get_brightness_info');
 		brightnessInfo.value = info;
 		currentBrightness.value = info.current;
 		await updateIcon();
@@ -65,7 +65,7 @@ async function updateBrightness() {
 		}
 
 		setDebitTimeout = setTimeout(async () => {
-			await invoke('set_backlight_brightness', {
+			await invoke('set_brightness_info', {
 				brightness: Number(currentBrightness.value),
 			});
 			await updateIcon();
