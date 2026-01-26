@@ -30,19 +30,35 @@ const toggleBT = async (): Promise<void> => {
 </script>
 
 <template>
-  <ToggleControl
-    :icon="bluetoothIcon"
-    alt="Bluetooth Icon"
-    tooltip="Toggle Bluetooth"
-    :is-active="isBluetoothOn"
-    :is-loading="isTogglingBluetooth"
-    :badge="connectedDevicesCount > 0 ? connectedDevicesCount : null"
-    :show-waves="true"
-    :status-indicator-class="{
-      'bg-blue-400 animate-pulse': isBluetoothOn && connectedDevicesCount > 0,
-      'bg-blue-400': isBluetoothOn && connectedDevicesCount === 0,
-      'bg-gray-400': !isBluetoothOn,
-    }"
-    @click="toggleBT"
-  />
+  <div class="relative inline-block">
+    <!-- Indicador de estado -->
+    <div
+      class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-300"
+      :class="{
+        'bg-blue-400 animate-pulse': isBluetoothOn && connectedDevicesCount > 0,
+        'bg-blue-400': isBluetoothOn && connectedDevicesCount === 0,
+        'bg-gray-400': !isBluetoothOn,
+      }"
+    ></div>
+
+    <!-- Badge de dispositivos conectados -->
+    <div
+      v-if="connectedDevicesCount > 0"
+      class="absolute bottom-1 right-1 bg-vsk-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"
+    >
+      {{ connectedDevicesCount }}
+    </div>
+
+    <ToggleControl
+      :icon="bluetoothIcon"
+      alt="Bluetooth Icon"
+      tooltip="Toggle Bluetooth"
+      :is-active="isBluetoothOn"
+      :is-loading="isTogglingBluetooth"
+      :custom-class="{
+        'ring-2 ring-blue-400/50': isBluetoothOn,
+      }"
+      @click="toggleBT"
+    />
+  </div>
 </template>
