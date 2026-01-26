@@ -1,92 +1,57 @@
 <template>
-  <button
-    @click="toggleTheme"
-    class="p-2 rounded-vsk background hover:opacity-50 transition-all duration-500 h-[70px] w-[70px] group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95 ring-2 ring-vsk-primary/50"
-    :class="{ 'theme-switching': isSwitching }"
-  >
-    <!-- Background gradient effect -->
-    <div
-      class="absolute inset-0 rounded-vsk transition-all duration-500"
-      :class="{
-        'bg-gradient-to-br from-orange-400/20 to-yellow-400/20':
-          !(configStore?.config as any)?.style?.darkmode,
-        'bg-gradient-to-br from-purple-500/20 to-blue-600/20':
-          (configStore?.config as any)?.style?.darkmode,
-      }"
-      style="opacity: 0"
-    ></div>
-
+  <div class="relative inline-block theme-toggle-wrapper" :class="{ 'theme-switching': isSwitching }">
     <!-- Sun/Moon indicator -->
     <div
-      class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-500"
+      class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-500 z-20"
       :class="{
         'bg-yellow-400 animate-pulse': !(configStore?.config as any)?.style?.darkmode,
         'bg-blue-400 animate-pulse': (configStore?.config as any)?.style?.darkmode,
       }"
     ></div>
 
-    <!-- Animated rays for sun (light mode) -->
+    <!-- Background gradient effect -->
     <div
-      v-if="configStore && !(configStore.config as any).style.darkmode"
-      class="absolute inset-0 flex items-center justify-center"
-    >
-      <div
-        class="absolute w-12 h-12 animate-spin"
-        style="animation-duration: 8s"
-      >
-        <div
-          v-for="i in 8"
-          :key="i"
-          class="absolute w-0.5 h-2 bg-yellow-400/40 rounded-full"
-          :style="{
-            transform: `rotate(${i * 45}deg) translateY(-20px)`,
-            'transform-origin': 'center 20px',
-          }"
-        ></div>
-      </div>
-    </div>
+      class="absolute inset-0 rounded-vsk transition-all duration-500 pointer-events-none opacity-0 group-hover:opacity-100"
+      :class="{
+        'bg-gradient-to-br from-orange-400/20 to-yellow-400/20':
+          !(configStore?.config as any)?.style?.darkmode,
+        'bg-gradient-to-br from-purple-500/20 to-blue-600/20':
+          (configStore?.config as any)?.style?.darkmode,
+      }"
+    ></div>
 
-    <!-- Twinkling stars for moon (dark mode) -->
-    <div v-if="configStore && (configStore.config as any).style.darkmode" class="absolute inset-0">
-      <div
-        v-for="i in 6"
-        :key="i"
-        class="absolute w-1 h-1 bg-blue-300 rounded-full animate-pulse"
-        :style="{
-          top: `${10 + i * 8}%`,
-          left: `${15 + i * 12}%`,
-          'animation-delay': `${i * 0.3}s`,
-          'animation-duration': '2s',
-        }"
-      ></div>
-    </div>
-
-    <img
-      :src="icon"
+    <ToggleControl
+      :icon="icon"
       :alt="
         (configStore?.config as any)?.style?.darkmode
           ? 'Toggle light theme'
           : 'Toggle dark theme'
       "
-      :title="
+      :tooltip="
         (configStore?.config as any)?.style?.darkmode
           ? 'Toggle light theme'
           : 'Toggle dark theme'
       "
-      class="m-auto w-[50px] h-[50px] transition-all duration-500 group-hover:scale-110 relative z-10"
-      :class="{
-        'animate-spin': isSwitching,
-        'drop-shadow-lg group-hover:drop-shadow-xl': true,
+      :is-active="true"
+      :is-loading="isSwitching"
+      :custom-class="{
+        'h-[70px] w-[70px] p-2': true,
+        'ring-2 ring-vsk-primary/50': true,
+      }"
+      :icon-class="{
+        'w-[50px] h-[50px]': true,
         'filter brightness-110': !(configStore?.config as any)?.style?.darkmode,
       }"
+      @click="toggleTheme"
     />
-  </button>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, Ref, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useConfigStore, setDarkMode } from '@vasakgroup/plugin-config-manager';
+import ToggleControl from '@/components/base/ToggleControl.vue';
 import dark from '@/assets/img/dark.png';
 import light from '@/assets/img/light.png';
 import { Store } from 'pinia';
@@ -120,8 +85,8 @@ const toggleTheme = async () => {
 </script>
 
 <style scoped>
-/* Efecto especial para el cambio de tema */
-.theme-switching {
+/* Efecto especial para el cambio de tema - aplicado al wrapper */
+.theme-toggle-wrapper.theme-switching :deep(button) {
   animation: themeTransition 0.8s ease-in-out;
 }
 
@@ -144,34 +109,16 @@ const toggleTheme = async () => {
 }
 
 /* Efecto de hover en el fondo */
-.group:hover .absolute.inset-0.rounded-vsk {
+.theme-toggle-wrapper :deep(button:hover) ~ .absolute.inset-0.rounded-vsk {
   opacity: 1 !important;
 }
 
-/* Animación de parpadeo para las estrellas */
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
+.theme-toggle-wrapper:hover .absolute.inset-0.rounded-vsk {
+  opacity: 1 !important;
 }
 
-/* Efecto de rayos del sol */
-@keyframes sunRays {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.group:hover img {
+/* Efecto de hover en la imagen */
+.theme-toggle-wrapper :deep(button:hover img) {
   filter: brightness(1.2) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
 }
 </style>
