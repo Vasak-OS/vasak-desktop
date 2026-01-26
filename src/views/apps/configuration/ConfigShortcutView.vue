@@ -3,6 +3,7 @@ import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import ActionButton from '@/components/base/ActionButton.vue';
 
 interface Shortcut {
   id: string
@@ -294,34 +295,40 @@ const showConflictWarning = computed(() => {
 
               <!-- Action Buttons -->
               <div class="flex gap-2">
-                <button
+                <ActionButton
                   v-if="editingId === shortcut.id"
-                  @click="saveShortcut"
+                  label=""
+                  :iconSrc="saveIconSrc"
+                  iconAlt="Guardar"
+                  size="sm"
+                  variant="secondary"
                   :disabled="hasConflict"
-                  class="p-2 rounded-vsk hover:bg-green-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Guardar"
-                >
-                  <img :src="saveIconSrc" alt="Save" class="w-5 h-5 opacity-60 hover:opacity-100" />
-                </button>
+                  customClass="bg-transparent text-green-600 hover:bg-green-500/20 border border-transparent"
+                  @click="saveShortcut"
+                />
 
-                <button
+                <ActionButton
                   v-if="editingId === shortcut.id"
+                  label=""
+                  :iconSrc="cancelIconSrc"
+                  iconAlt="Cancelar"
+                  size="sm"
+                  variant="secondary"
+                  customClass="bg-transparent text-red-600 hover:bg-red-500/20 border border-transparent"
                   @click="cancelEdit"
-                  class="p-2 rounded-vsk hover:bg-red-500/20 transition-colors"
-                  title="Cancelar"
-                >
-                  <img :src="cancelIconSrc" alt="Cancel" class="w-5 h-5 opacity-60 hover:opacity-100" />
-                </button>
+                />
 
-                <button
+                <ActionButton
                   v-if="editingId !== shortcut.id"
-                  @click="testShortcut(shortcut.id)"
+                  label=""
+                  :iconSrc="playIconSrc"
+                  iconAlt="Probar"
+                  size="sm"
+                  variant="secondary"
                   :disabled="testingId === shortcut.id"
-                  class="p-2 rounded-vsk hover:bg-blue-500/20 transition-colors disabled:opacity-50"
-                  title="Probar atajo"
-                >
-                  <img :src="playIconSrc" alt="Test" class="w-5 h-5 opacity-60 hover:opacity-100" />
-                </button>
+                  customClass="bg-transparent text-blue-600 hover:bg-blue-500/20 border border-transparent"
+                  @click="testShortcut(shortcut.id)"
+                />
 
                 <button
                   v-if="editingId !== shortcut.id && shortcut.editable"
@@ -331,14 +338,16 @@ const showConflictWarning = computed(() => {
                   Editar
                 </button>
 
-                <button
+                <ActionButton
                   v-if="editingId !== shortcut.id && shortcut.category === 'custom'"
+                  label=""
+                  :iconSrc="trashIconSrc"
+                  iconAlt="Eliminar"
+                  size="sm"
+                  variant="secondary"
+                  customClass="bg-transparent text-red-600 hover:bg-red-500/20 border border-transparent"
                   @click="deleteShortcut(shortcut.id)"
-                  class="p-2 rounded-vsk hover:bg-red-500/20 transition-colors"
-                  title="Eliminar"
-                >
-                  <img :src="trashIconSrc" alt="Delete" class="w-5 h-5 opacity-60 hover:opacity-100" />
-                </button>
+                />
               </div>
             </div>
           </div>
