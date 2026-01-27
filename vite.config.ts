@@ -1,10 +1,12 @@
-// file: vite.config.ts (Mejorado)
 import { defineConfig } from 'vite';
 import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
+import fs from 'node:fs';
 import path from 'node:path';
 
 const host = process.env.TAURI_DEV_HOST;
+const localLibPath = path.resolve(__dirname, '../vue-libvasak/src');
+const hasLocalLib = fs.existsSync(localLibPath);
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -12,7 +14,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'@': path.resolve(__dirname, './src'),
-			'@vasakgroup/vue-libvasak': path.resolve(__dirname, '../vue-libvasak/src'),
+			...(hasLocalLib ? { '@vasakgroup/vue-libvasak': localLibPath } : {}),
 		},
 		// Evita duplicados de módulos
 		dedupe: ['vue', 'pinia'],
