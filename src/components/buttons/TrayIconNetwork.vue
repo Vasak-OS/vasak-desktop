@@ -8,7 +8,7 @@ import {
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
 import { toggleNetworkApplet } from '@/tools/network.controller';
-import TrayIconButton from '@/components/base/TrayIconButton.vue';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({

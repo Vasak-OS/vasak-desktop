@@ -4,7 +4,7 @@ import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { listen } from '@tauri-apps/api/event';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { fetchBatteryInfo } from '@/tools/battery.controller';
-import TrayIconButton from '@/components/base/TrayIconButton.vue';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 
 const batteryInfo: Ref<BatteryInfo> = ref({
 	has_battery: false,

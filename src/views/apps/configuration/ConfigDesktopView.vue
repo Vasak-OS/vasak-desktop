@@ -9,10 +9,7 @@ import {
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
-import SwitchToggle from '@/components/base/SwitchToggle.vue';
-import ConfigSection from '@/components/base/ConfigSection.vue';
-import FormGroup from '@/components/base/FormGroup.vue';
-import ActionButton from '@/components/base/ActionButton.vue';
+import { SwitchToggle, ConfigSection, FormGroup, ActionButton } from '@vasakgroup/vue-libvasak';
 import { Store } from 'pinia';
 
 const configStore = ref<any>(null);

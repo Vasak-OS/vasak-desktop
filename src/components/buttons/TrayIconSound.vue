@@ -6,7 +6,7 @@ import { listen } from '@tauri-apps/api/event';
 import type { VolumeInfo } from '@/interfaces/volume';
 import type { UnlistenFn } from '@/interfaces/event';
 import { getVolumeIconName, calculateVolumePercentage } from '@/utils/volume';
-import TrayIconButton from '@/components/base/TrayIconButton.vue';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 
 const volumeInfo: Ref<VolumeInfo> = ref({
 	current: 0,

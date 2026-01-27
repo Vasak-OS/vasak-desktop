@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import SliderControl from '@/components/base/SliderControl.vue';
+import { SliderControl } from '@vasakgroup/vue-libvasak';
 
 interface BrightnessInfo {
   current: number;

@@ -13,9 +13,9 @@
     <div
       class="absolute inset-0 rounded-vsk transition-all duration-500 pointer-events-none opacity-0 group-hover:opacity-100"
       :class="{
-        'bg-gradient-to-br from-orange-400/20 to-yellow-400/20':
+        'bg-lineal-to-br from-orange-400/20 to-yellow-400/20':
           !(configStore?.config as any)?.style?.darkmode,
-        'bg-gradient-to-br from-purple-500/20 to-blue-600/20':
+        'bg-lineal-to-br from-purple-500/20 to-blue-600/20':
           (configStore?.config as any)?.style?.darkmode,
       }"
     ></div>
@@ -51,7 +51,7 @@
 import { ref, computed, Ref, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { useConfigStore, setDarkMode } from '@vasakgroup/plugin-config-manager';
-import ToggleControl from '@/components/base/ToggleControl.vue';
+import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import dark from '@/assets/img/dark.png';
 import light from '@/assets/img/light.png';
 import { Store } from 'pinia';

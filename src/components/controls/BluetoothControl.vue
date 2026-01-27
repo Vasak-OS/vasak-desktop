@@ -5,7 +5,7 @@ import {
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
-import ToggleControl from '@/components/base/ToggleControl.vue';
+import { ToggleControl } from '@vasakgroup/vue-libvasak';
 
 const isTogglingBluetooth: Ref<boolean> = ref(false);
 

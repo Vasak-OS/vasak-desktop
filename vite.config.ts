@@ -12,6 +12,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'@': path.resolve(__dirname, './src'),
+			'@vasakgroup/vue-libvasak': path.resolve(__dirname, '../vue-libvasak/src'),
 		},
 		// Evita duplicados de módulos
 		dedupe: ['vue', 'pinia'],

@@ -70,7 +70,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
-import ActionButton from '@/components/base/ActionButton.vue';
+import { ActionButton } from '@vasakgroup/vue-libvasak';
 
 interface Notification {
   id: number;

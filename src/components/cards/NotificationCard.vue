@@ -42,7 +42,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { invoke } from '@tauri-apps/api/core';
-import ActionButton from '@/components/base/ActionButton.vue';
+import { ActionButton } from '@vasakgroup/vue-libvasak';
 
 const props = defineProps<{
   notification: {
