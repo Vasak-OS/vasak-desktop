@@ -6,7 +6,7 @@ import { listen } from '@tauri-apps/api/event';
 import type { VolumeInfo } from '@/interfaces/volume';
 import type { UnlistenFn } from '@/interfaces/event';
 import { getVolumeIconName, calculateVolumePercentage } from '@/utils/volume';
-import SliderControl from '@/components/base/SliderControl.vue';
+import { SliderControl } from '@vasakgroup/vue-libvasak';
 
 const volumeInfo = ref<VolumeInfo>({
 	current: 0,

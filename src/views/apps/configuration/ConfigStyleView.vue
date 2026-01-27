@@ -9,10 +9,7 @@ import {
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
-import SwitchToggle from '@/components/base/SwitchToggle.vue';
-import ConfigSection from '@/components/base/ConfigSection.vue';
-import FormGroup from '@/components/base/FormGroup.vue';
-import ActionButton from '@/components/base/ActionButton.vue';
+import { SwitchToggle, ConfigSection, FormGroup, ActionButton } from '@vasakgroup/vue-libvasak';
 import { Store } from 'pinia';
 
 const configStore = ref<any>(null);
@@ -194,7 +191,8 @@ const isFormValid = computed(() => {
           <!-- Sección Apariencia -->
           <ConfigSection icon="🎨" title="Apariencia">
             <!-- Border Radius -->
-            <FormGroup label="Border Radius" html-for="border-radius" :label-class="{ 'flex justify-between items-center': true }">
+            <FormGroup label="Border Radius" html-for="border-radius"
+              :label-class="{ 'flex justify-between items-center': true }">
               <div class="flex justify-between items-center text-xs text-[var(--text-secondary,rgba(255,255,255,0.7))]">
                 <span>Border Radius</span>
                 <span class="font-normal">{{ vskConfig?.style.radius }}px</span>
@@ -226,14 +224,11 @@ const isFormValid = computed(() => {
             <div class="flex flex-row items-center justify-between gap-2">
               <label class="text-sm font-medium text-vsk-primary">Modo Oscuro</label>
               <div class="flex items-center gap-3">
-                <SwitchToggle
-                  v-if="vskConfig"
-                  :is-on="vskConfig.style.darkmode"
-                  @toggle="vskConfig!.style.darkmode = $event"
-                />
+                <SwitchToggle v-if="vskConfig" :is-on="vskConfig.style.darkmode"
+                  @toggle="vskConfig!.style.darkmode = $event" />
                 <span class="text-sm text-[var(--text-secondary,rgba(255,255,255,0.7))]">{{
                   vskConfig?.style.darkmode ? "Activado" : "Desactivado"
-                }}</span>
+                  }}</span>
               </div>
             </div>
           </ConfigSection>
@@ -281,16 +276,11 @@ const isFormValid = computed(() => {
           </ConfigSection>
 
         </div>
-        
+
         <!-- Botones de acción -->
         <div class="flex gap-3 mt-6">
-          <ActionButton
-            :label="saving ? 'Guardando...' : 'Guardar Cambios'"
-            :loading="saving"
-            :disabled="!isFormValid"
-            custom-class="flex-1 py-3 px-6"
-            @click="saveConfig"
-          />
+          <ActionButton :label="saving ? 'Guardando...' : 'Guardar Cambios'" :loading="saving" :disabled="!isFormValid"
+            custom-class="flex-1 py-3 px-6" @click="saveConfig" />
         </div>
       </div>
     </div>

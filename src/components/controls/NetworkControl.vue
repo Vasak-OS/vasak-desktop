@@ -8,7 +8,7 @@ import {
 	toggleNetwork,
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
-import ToggleControl from '@/components/base/ToggleControl.vue';
+import { ToggleControl } from '@vasakgroup/vue-libvasak';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({

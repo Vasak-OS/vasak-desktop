@@ -2,7 +2,7 @@
 import { Ref, ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
-import DeviceCard from '@/components/base/DeviceCard.vue';
+import { DeviceCard } from '@vasakgroup/vue-libvasak';
 
 const icon: Ref<string> = ref('');
 const extraInfo: Ref<any> = ref({});

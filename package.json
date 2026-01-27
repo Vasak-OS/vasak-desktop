@@ -22,7 +22,7 @@
     "@vasakgroup/plugin-network-manager": "^2.0.3",
     "@vasakgroup/plugin-user-data": "^2.0.0",
     "@vasakgroup/plugin-vicons": "^2.0.0",
-    "@vasakgroup/vue-libvasak": "~0.1.0",
+    "@vasakgroup/vue-libvasak": "~0.2.0",
     "path": "^0.12.7",
     "pinia": "^3.0.4",
     "url": "^0.11.4",
@@ -34,8 +34,8 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@tauri-apps/cli": "^2.9.6",
     "@types/node": "^25.0.10",
-    "@typescript-eslint/eslint-plugin": "^8.53.1",
-    "@typescript-eslint/parser": "^8.53.1",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
     "@vitejs/plugin-vue": "^6.0.3",
     "eslint": "^9.39.2",
     "eslint-plugin-vue": "^10.7.0",
@@ -44,8 +44,8 @@
     "tailwindcss": "^4.1.18",
     "terser": "^5.46.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.53.1",
+    "typescript-eslint": "^8.54.0",
     "vite": "^7.3.1",
-    "vue-tsc": "^3.2.3"
+    "vue-tsc": "^3.2.4"
   }
 }

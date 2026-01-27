@@ -2,7 +2,7 @@
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { invoke } from '@tauri-apps/api/core';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
-import TrayIconButton from '@/components/base/TrayIconButton.vue';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 
 const {
 	bluetoothIcon,

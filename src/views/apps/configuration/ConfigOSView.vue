@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
-import ActionButton from '@/components/base/ActionButton.vue';
+import { ActionButton } from '@vasakgroup/vue-libvasak';
 
 interface SystemConfig {
   border_radius: number;

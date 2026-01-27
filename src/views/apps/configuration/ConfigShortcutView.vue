@@ -3,7 +3,7 @@ import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import ActionButton from '@/components/base/ActionButton.vue';
+import ActionButton from '@vasakgroup/vue-libvasak';
 
 interface Shortcut {
   id: string
