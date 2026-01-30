@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { SliderControl } from '@vasakgroup/vue-libvasak';
+import { logError } from '@/utils/logger';
 
 interface BrightnessInfo {
   current: number;
@@ -36,7 +37,7 @@ async function updateIcon() {
 
 		currentIcon.value = await getSymbolSource(iconName);
 	} catch (error) {
-		console.error('Error loading brightness icon:', error);
+		logError('Error loading brightness icon:', error);
 	}
 }
 
@@ -54,7 +55,7 @@ async function getBrightnessInfo() {
 		currentBrightness.value = info.current;
 		await updateIcon();
 	} catch (error) {
-		console.error('Error getting brightness:', error);
+		logError('Error getting brightness:', error);
 	}
 }
 
@@ -71,7 +72,7 @@ async function updateBrightness() {
 			await updateIcon();
 		}, 50);
 	} catch (error) {
-		console.error('Error setting brightness:', error);
+		logError('Error setting brightness:', error);
 	}
 }
 

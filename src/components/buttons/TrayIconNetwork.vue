@@ -9,6 +9,7 @@ import {
 } from '@vasakgroup/plugin-network-manager';
 import { toggleNetworkApplet } from '@/tools/network.controller';
 import { TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { logError } from '@/utils/logger';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
@@ -37,7 +38,7 @@ const getCurrentNetwork = async () => {
 		return networkState;
 	} catch (error) {
 		networkIconSrc.value = await getSymbolSource('network-offline-symbolic');
-		console.error('Error getting current network state:', error);
+		logError('Error getting current network state:', error);
 		return null;
 	}
 };

@@ -6,6 +6,7 @@ import {
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { ToggleControl } from '@vasakgroup/vue-libvasak';
+import { logError } from '@/utils/logger';
 
 const isTogglingBluetooth: Ref<boolean> = ref(false);
 
@@ -22,7 +23,7 @@ const toggleBT = async (): Promise<void> => {
 		isTogglingBluetooth.value = true;
 		await toggleBluetooth();
 	} catch (error) {
-		console.error('[Bluetooth Control Error] Error toggling bluetooth:', error);
+		logError('[Bluetooth Control Error] Error toggling bluetooth:', error);
 	} finally {
 		isTogglingBluetooth.value = false;
 	}

@@ -9,6 +9,7 @@ import {
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
 import { ToggleControl } from '@vasakgroup/vue-libvasak';
+import { logError } from '@/utils/logger';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
@@ -35,9 +36,8 @@ const toggleCurrentNetwork = async (): Promise<void> => {
 	isLoading.value = true;
 	try {
 		await toggleNetwork(!networkState.value.is_connected);
-		console.log('Network toggled successfully');
 	} catch (error) {
-		console.error('Error toggling network:', error);
+		logError('Error toggling network:', error);
 	} finally {
 		isLoading.value = false;
 	}
@@ -50,7 +50,7 @@ const getCurrentNetwork = async () => {
 		return networkState;
 	} catch (error) {
 		networkIconSrc.value = await getIconSource('network-offline-symbolic');
-		console.error('Error getting current network state:', error);
+		logError('Error getting current network state:', error);
 		return null;
 	}
 };

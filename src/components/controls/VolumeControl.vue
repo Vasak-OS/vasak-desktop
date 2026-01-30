@@ -7,6 +7,7 @@ import type { VolumeInfo } from '@/interfaces/volume';
 import type { UnlistenFn } from '@/interfaces/event';
 import { getVolumeIconName, calculateVolumePercentage } from '@/utils/volume';
 import { SliderControl } from '@vasakgroup/vue-libvasak';
+import { logError } from '@/utils/logger';
 
 const volumeInfo = ref<VolumeInfo>({
 	current: 0,
@@ -24,7 +25,7 @@ async function updateIcon(): Promise<void> {
 		const iconName = getVolumeIconName(volumeInfo.value.is_muted, percentage);
 		currentIcon.value = await getSymbolSource(iconName);
 	} catch (error) {
-		console.error('Error loading icon:', error);
+		logError('Error loading volume icon:', error);
 	}
 }
 
@@ -40,11 +41,11 @@ watch([() => volumeInfo.value.is_muted, volumePercentage], updateIcon, {
 async function getVolumeInfo(): Promise<void> {
 	try {
 		const info = await invoke<VolumeInfo>('get_audio_volume');
-		volumeInfo.value = info;
+		volumInfo.value = info;
 		currentVolume.value = info.current;
 		await updateIcon();
 	} catch (error) {
-		console.error('Error getting volume:', error);
+		logError('Error getting volume:', error);
 	}
 }
 
@@ -53,7 +54,7 @@ async function updateVolume(): Promise<void> {
 		await invoke('set_audio_volume', { volume: currentVolume.value });
 		await updateIcon();
 	} catch (error) {
-		console.error('Error setting volume:', error);
+		logError('Error setting volume:', error);
 	}
 }
 
@@ -62,7 +63,7 @@ async function toggleMute(): Promise<void> {
 		await invoke('toggle_audio_mute');
 		await getVolumeInfo();
 	} catch (error) {
-		console.error('Error toggling mute:', error);
+		logError('Error toggling mute:', error);
 	}
 }
 

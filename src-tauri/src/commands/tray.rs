@@ -2,6 +2,7 @@ use crate::structs::{TrayItem, TrayManager, TrayMenu};
 use crate::tray::sni_watcher::SniWatcher;
 use crate::tray::sni_item::SniItemProxy;
 use crate::tray::dbus_menu::{DbusMenuProxy, DbusMenuLayout};
+use crate::logger::{log_info, log_error, log_debug};
 use zbus::Connection;
 use zbus::zvariant::Value;
 
@@ -10,16 +11,24 @@ pub async fn init_sni_watcher(
     app_handle: tauri::AppHandle,
     tray_manager: tauri::State<'_, TrayManager>,
 ) -> Result<(), String> {
+    log_info("Inicializando SNI watcher para sistema de bandeja");
     let manager = tray_manager.inner().clone();
     let watcher = SniWatcher::new(manager, app_handle)
         .await
-        .map_err(|e| format!("Error inicializando SNI watcher: {}", e))?;
+        .map_err(|e| {
+            log_error(&format!("Error inicializando SNI watcher: {}", e));
+            format!("Error inicializando SNI watcher: {}", e)
+        })?;
 
     watcher
         .start_watching()
         .await
-        .map_err(|e| format!("Error iniciando watcher: {}", e))?;
+        .map_err(|e| {
+            log_error(&format!("Error iniciando watcher: {}", e));
+            format!("Error iniciando watcher: {}", e)
+        })?;
 
+    log_info("SNI watcher iniciado correctamente");
     Ok(())
 }
 
@@ -27,8 +36,11 @@ pub async fn init_sni_watcher(
 pub async fn get_tray_items(
     tray_manager: tauri::State<'_, TrayManager>,
 ) -> Result<Vec<TrayItem>, String> {
+    log_debug("Obteniendo items de la bandeja del sistema");
     let manager = tray_manager.read().await;
-    Ok(manager.values().cloned().collect())
+    let items: Vec<TrayItem> = manager.values().cloned().collect();
+    log_debug(&format!("Obtenidos {} items de bandeja", items.len()));
+    Ok(items)
 }
 
 async fn get_sni_proxy<'a>(conn: &'a Connection, service_name: &'a str) -> Result<SniItemProxy<'a>, String> {
@@ -49,10 +61,18 @@ async fn get_sni_proxy<'a>(conn: &'a Connection, service_name: &'a str) -> Resul
 
 #[tauri::command]
 pub async fn tray_item_activate(service_name: String, x: i32, y: i32) -> Result<(), String> {
-    let conn = Connection::session().await.map_err(|e| e.to_string())?;
+    log_info(&format!("Activando item de bandeja: {} en ({}, {})", service_name, x, y));
+    let conn = Connection::session().await.map_err(|e| {
+        log_error(&format!("Error conectando a D-Bus session: {}", e));
+        e.to_string()
+    })?;
     let proxy = get_sni_proxy(&conn, &service_name).await?;
     
-    proxy.activate(x, y).await.map_err(|e| e.to_string())?;
+    proxy.activate(x, y).await.map_err(|e| {
+        log_error(&format!("Error activando item '{}': {}", service_name, e));
+        e.to_string()
+    })?;
+    log_debug(&format!("Item '{}' activado correctamente", service_name));
     Ok(())
 }
 
@@ -62,10 +82,15 @@ pub async fn tray_item_secondary_activate(
     x: i32,
     y: i32,
 ) -> Result<(), String> {
+    log_info(&format!("Activación secundaria de item de bandeja: {} en ({}, {})", service_name, x, y));
     let conn = Connection::session().await.map_err(|e| e.to_string())?;
     let proxy = get_sni_proxy(&conn, &service_name).await?;
     
-    proxy.secondary_activate(x, y).await.map_err(|e| e.to_string())?;
+    proxy.secondary_activate(x, y).await.map_err(|e| {
+        log_error(&format!("Error en activación secundaria de '{}': {}", service_name, e));
+        e.to_string()
+    })?;
+    log_debug(&format!("Activación secundaria de '{}' correcta", service_name));
     Ok(())
 }
 

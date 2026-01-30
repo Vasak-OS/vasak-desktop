@@ -2,6 +2,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { onMounted, Ref, ref } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { logError } from '@/utils/logger';
 
 const iconSrc: Ref<string> = ref('');
 
@@ -9,7 +10,7 @@ const openSearch = async () => {
 	try {
 		await invoke('toggle_search');
 	} catch (error) {
-		console.error('Error opening search:', error);
+		logError('Error opening search:', error);
 	}
 };
 
