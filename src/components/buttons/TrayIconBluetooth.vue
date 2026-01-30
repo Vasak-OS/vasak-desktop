@@ -3,6 +3,7 @@ import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { invoke } from '@tauri-apps/api/core';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { logError } from '@/utils/logger';
 
 const {
 	bluetoothIcon,
@@ -16,7 +17,7 @@ const toggleBluetooth = async (): Promise<void> => {
 	try {
 		await invoke('toggle_bluetooth_applet');
 	} catch (error) {
-		console.error('Error toggling bluetooth applet:', error);
+		logError('Error toggling bluetooth applet:', error);
 	}
 };
 </script>

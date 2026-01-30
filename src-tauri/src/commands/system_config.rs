@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::Command;
+use crate::logger::{log_info, log_error, log_debug, log_warning};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemConfig {
@@ -24,21 +25,32 @@ impl Default for SystemConfig {
 /// Obtiene la configuración actual del sistema desde archivo
 #[tauri::command]
 pub async fn get_system_config() -> Result<SystemConfig, String> {
+    log_debug("Obteniendo configuración del sistema desde archivo");
     let config_path = get_config_path()?;
 
     if config_path.exists() {
         let content = std::fs::read_to_string(&config_path)
-            .map_err(|e| format!("Error leyendo configuración: {}", e))?;
+            .map_err(|e| {
+                log_error(&format!("Error leyendo configuración: {}", e));
+                format!("Error leyendo configuración: {}", e)
+            })?;
 
-        serde_json::from_str(&content).map_err(|e| format!("Error parseando configuración: {}", e))
+        let config: SystemConfig = serde_json::from_str(&content).map_err(|e| {
+            log_error(&format!("Error parseando configuración: {}", e));
+            format!("Error parseando configuración: {}", e)
+        })?;
+        log_debug(&format!("Configuración cargada: GTK={}, Icons={}, Cursor={}, Dark={}", 
+            config.gtk_theme, config.icon_pack, config.cursor_theme, config.dark_mode));
+        Ok(config)
     } else {
-        eprintln!("[get_system_config] Archivo no existe, usando defaults");
+        log_warning("Archivo de configuración no existe, usando valores por defecto");
         Ok(SystemConfig::default())
     }
 }
 
 #[tauri::command]
 pub async fn get_current_system_state() -> Result<SystemConfig, String> {
+    log_debug("Obteniendo estado actual del sistema desde gsettings");
     let gtk_theme = get_current_gtk_theme()
         .await
         .unwrap_or_else(|_| "Adwaita".to_string());
@@ -50,6 +62,9 @@ pub async fn get_current_system_state() -> Result<SystemConfig, String> {
         .unwrap_or_else(|_| "Adwaita".to_string());
     let dark_mode = get_current_dark_mode().await.unwrap_or(false);
 
+    log_debug(&format!("Estado actual: GTK={}, Icons={}, Cursor={}, Dark={}", 
+        gtk_theme, icon_pack, cursor_theme, dark_mode));
+    
     Ok(SystemConfig {
         dark_mode,
         icon_pack,
@@ -142,21 +157,29 @@ fn get_config_path() -> Result<PathBuf, String> {
 }
 
 async fn apply_system_config(config: &SystemConfig) -> Result<(), String> {
+    log_info("Aplicando configuración del sistema");
+    log_info(&format!("  GTK Theme: {}", config.gtk_theme));
+    log_info(&format!("  Icon Pack: {}", config.icon_pack));
+    log_info(&format!("  Cursor: {}", config.cursor_theme));
+    log_info(&format!("  Dark Mode: {}", config.dark_mode));
+    
     if let Err(e) = set_gtk_theme(&config.gtk_theme, config.dark_mode).await {
-        eprintln!("⚠️  Error GTK (no crítico): {}", e);
+        log_warning(&format!("Error GTK (no crítico): {}", e));
     }
 
     if let Err(e) = set_cursor_theme(&config.cursor_theme).await {
-        eprintln!("⚠️  Error Cursor (no crítico): {}", e);
+        log_warning(&format!("Error Cursor (no crítico): {}", e));
     }
 
     set_icon_pack(&config.icon_pack).await?;
     set_dark_mode(config.dark_mode).await?;
 
+    log_info("Configuración del sistema aplicada correctamente");
     Ok(())
 }
 
 pub async fn set_gtk_theme(theme: &str, _dark_mode: bool) -> Result<(), String> {
+    log_debug(&format!("Estableciendo tema GTK: {}", theme));
     let output = Command::new("gsettings")
         .args(&[
             "set",
@@ -165,40 +188,50 @@ pub async fn set_gtk_theme(theme: &str, _dark_mode: bool) -> Result<(), String> 
             &theme.to_string(),
         ])
         .output()
-        .map_err(|e| format!("Error setting GTK theme: {}", e))?;
+        .map_err(|e| {
+            log_error(&format!("Error ejecutando gsettings para GTK theme: {}", e));
+            format!("Error setting GTK theme: {}", e)
+        })?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        log_error(&format!("Error al aplicar tema GTK '{}': {}", theme, stderr));
         return Err(format!("Error al aplicar tema GTK: {}", stderr));
     }
 
-    println!("GTK theme aplicado: {}", &theme.to_string());
+    log_info(&format!("Tema GTK aplicado: {}", theme));
     Ok(())
 }
 
 pub async fn set_cursor_theme(cursor: &str) -> Result<(), String> {
+    log_debug(&format!("Estableciendo tema de cursor: {}", cursor));
     let output = Command::new("gsettings")
         .args(&["set", "org.gnome.desktop.interface", "cursor-theme", cursor])
         .output()
-        .map_err(|e| format!("Error setting cursor theme: {}", e))?;
+        .map_err(|e| {
+            log_error(&format!("Error ejecutando gsettings para cursor: {}", e));
+            format!("Error setting cursor theme: {}", e)
+        })?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
+        log_error(&format!("Error al aplicar cursor '{}': {}", cursor, stderr));
         return Err(format!("Error al aplicar cursor: {}", stderr));
     }
 
-    println!("Cursor theme aplicado: {}", cursor);
+    log_info(&format!("Tema de cursor aplicado: {}", cursor));
     Ok(())
 }
 
 pub async fn set_icon_pack(icon_pack: &str) -> Result<(), String> {
+    log_debug(&format!("Estableciendo pack de iconos: {}", icon_pack));
     let available_packs = get_icon_packs().await?;
     if !available_packs.contains(&icon_pack.to_string()) {
         let msg = format!(
             "Icon pack '{}' no encontrado. Disponibles: {:?}",
             icon_pack, available_packs
         );
-        eprintln!("{}", msg);
+        log_error(&msg);
         return Err(msg);
     }
 
@@ -226,8 +259,10 @@ pub async fn set_icon_pack(icon_pack: &str) -> Result<(), String> {
             stdout
         );
         eprintln!("{}", err_msg);
+        log_error(&format!("Error al aplicar pack de iconos '{}': {}", icon_pack, stderr));
         return Err(format!("Error al aplicar pack de iconos: {}", stderr));
     }
+    log_info(&format!("Pack de iconos aplicado: {}", icon_pack));
     Ok(())
 }
 
@@ -237,17 +272,23 @@ pub async fn set_dark_mode(dark_mode: bool) -> Result<(), String> {
     } else {
         "prefer-light"
     };
+    
+    log_debug(&format!("Estableciendo modo oscuro: {} (scheme: {})", dark_mode, scheme));
 
     let output = Command::new("gsettings")
         .args(&["set", "org.gnome.desktop.interface", "color-scheme", scheme])
         .output()
-        .map_err(|e| format!("Error setting color scheme: {}", e))?;
+        .map_err(|e| {
+            log_error(&format!("Error ejecutando gsettings para color scheme: {}", e));
+            format!("Error setting color scheme: {}", e)
+        })?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eprintln!("[set_dark_mode] Error: {}", stderr);
+        log_error(&format!("Error al aplicar esquema de color '{}': {}", scheme, stderr));
         return Err(format!("Error al aplicar esquema de color: {}", stderr));
     }
+    log_info(&format!("Modo oscuro establecido: {}", dark_mode));
     Ok(())
 }
 

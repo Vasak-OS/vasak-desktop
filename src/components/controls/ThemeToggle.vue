@@ -55,6 +55,7 @@ import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import dark from '@/assets/img/dark.png';
 import light from '@/assets/img/light.png';
 import { Store } from 'pinia';
+import { logError } from '@/utils/logger';
 
 const configStore = ref<any>(null);
 const isSwitching: Ref<boolean> = ref(false);
@@ -75,7 +76,7 @@ const toggleTheme = async () => {
 		await invoke('toggle_system_theme');
 		await setDarkMode(!(configStore.value.config as any).style.darkmode || false);
 	} catch (error) {
-		console.error('Error toggling system theme:', error);
+		logError('Error toggling system theme:', error);
 	} finally {
 		setTimeout(() => {
 			isSwitching.value = false;

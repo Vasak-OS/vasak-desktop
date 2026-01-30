@@ -3,6 +3,7 @@ import { onMounted, ref, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { logError } from '@/utils/logger';
 
 interface AudioDevice {
   id: string;
@@ -28,7 +29,7 @@ async function loadDevices() {
 			selectedDeviceId.value = defaultDevice.id;
 		}
 	} catch (e) {
-		console.error('[audio] Failed to load devices:', e);
+		logError('[audio] Failed to load devices:', e);
 	} finally {
 		isLoading.value = false;
 	}
@@ -40,7 +41,7 @@ async function onDeviceChange(deviceId: string) {
 		await invoke('set_audio_device', { deviceId });
 		await loadDevices();
 	} catch (e) {
-		console.error('[audio] Failed to set device:', e);
+		logError('[audio] Failed to set device:', e);
 	}
 }
 

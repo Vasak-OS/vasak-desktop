@@ -11,6 +11,7 @@ import { onMounted, Ref, ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
+import { logError } from '@/utils/logger';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 
@@ -21,7 +22,7 @@ onMounted(async () => {
 			try {
 				invoke('toggle_control_center');
 			} catch (error) {
-				console.error('Error al cerrar:', error);
+				logError('Error al cerrar:', error);
 			}
 		}
 	});

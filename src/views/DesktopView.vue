@@ -10,6 +10,7 @@ import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { Command } from '@tauri-apps/plugin-shell';
+import { logError } from '@/utils/logger';
 
 const configStore = useConfigStore() as Store<
   'config',
@@ -60,7 +61,7 @@ const loadDesktopFiles = async () => {
 			desktopFiles.value = await loadDirectory(desktopPath, showHiddenFiles.value);
 		}
 	} catch (error) {
-		console.error('Error loading desktop files:', error);
+		logError('Error loading desktop files:', error);
 		desktopFiles.value = [];
 	}
 };
@@ -72,7 +73,7 @@ const handleFileClick = async (file: FileEntry) => {
 		try {
 			await invoke('open_file_manager_window', { path: file.path });
 		} catch (error) {
-			console.error('Error al abrir file manager:', error);
+			logError('Error al abrir file manager:', error);
 		}
 	} else {
 		// Abrir el archivo con la aplicación predeterminada del sistema
@@ -80,7 +81,7 @@ const handleFileClick = async (file: FileEntry) => {
 			const cmd = Command.create('open', [file.path]);
 			await cmd.spawn();
 		} catch (error) {
-			console.error('Error al abrir archivo:', file.path, error);
+			logError('Error al abrir archivo:', file.path, error);
 		}
 	}
 };

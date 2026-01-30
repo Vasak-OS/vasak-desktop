@@ -5,6 +5,7 @@ import { listen } from '@tauri-apps/api/event';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { fetchBatteryInfo } from '@/tools/battery.controller';
 import { TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { logError } from '@/utils/logger';
 
 const batteryInfo: Ref<BatteryInfo> = ref({
 	has_battery: false,
@@ -58,11 +59,11 @@ async function updateIcon() {
 	try {
 		batteryIconSrc.value = await getSymbolSource(getIconName());
 	} catch (error) {
-		console.error('Error loading battery icon:', error);
+		logError('Error loading battery icon:', error);
 		try {
 			batteryIconSrc.value = await getSymbolSource('battery-symbolic');
 		} catch (fallbackError) {
-			console.error('Error loading fallback battery icon:', fallbackError);
+			logError('Error loading fallback battery icon:', fallbackError);
 		}
 	}
 }
@@ -90,7 +91,7 @@ async function getBatteryInfo() {
 		}
 		await updateIcon();
 	} catch (error) {
-		console.error('Error getting battery info:', error);
+		logError('Error getting battery info:', error);
 		batteryInfo.value.has_battery = false;
 		await updateIcon();
 	}
