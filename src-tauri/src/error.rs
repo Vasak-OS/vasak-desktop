@@ -1,4 +1,5 @@
 use thiserror::Error;
+use crate::logger;
 
 /// Tipo de error principal para la aplicación Vasak Desktop
 #[derive(Error, Debug)]
@@ -34,11 +35,20 @@ pub enum VasakError {
     InvalidState(String),
 }
 
+impl VasakError {
+    /// Log el error automáticamente
+    pub fn log(&self) {
+        logger::log_error(&format!("VasakError: {}", self));
+    }
+}
+
 /// Tipo Result personalizado para la aplicación
 pub type Result<T> = std::result::Result<T, VasakError>;
 
 impl From<VasakError> for String {
     fn from(err: VasakError) -> String {
+        // Log el error cuando se convierte a String
+        logger::log_error(&format!("Error convertido a String: {}", err));
         err.to_string()
     }
 }

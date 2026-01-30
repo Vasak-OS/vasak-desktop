@@ -2,6 +2,7 @@
 mod app_url;
 mod constants;
 mod error;
+mod logger;
 mod structs;
 
 // Feature modules
@@ -48,6 +49,9 @@ use applets::{
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Inicializar el sistema de logging
+    logger::log_info("Vasak Desktop iniciando...");
+    
     let window_manager = Arc::new(Mutex::new(
         WindowManager::new().expect("Failed to initialize window manager"),
     ));
@@ -129,9 +133,15 @@ pub fn run() {
             get_gtk_themes,
             get_cursor_themes,
             get_icon_packs,
-            read_directory
+            read_directory,
+            log_from_frontend,
+            get_log_file_path,
+            read_log_file,
+            get_last_log_lines
         ])
         .setup(move |app| {
+            logger::log_info("Configurando aplicación Tauri...");
+            
             let _ = create_desktops(app);
             let _ = create_panel(app);
 
@@ -144,6 +154,7 @@ pub fn run() {
                 let shortcuts_handler = utils::shortcuts::shortcuts_handler::GlobalShortcutsHandler::new();
                 if let Err(e) = shortcuts_handler.register_all(app_handle).await {
                     log::warn!("Failed to register global shortcuts: {}", e);
+                    logger::log_warning(&format!("Error al registrar atajos globales: {}", e));
                 }
             });
             
@@ -161,8 +172,10 @@ pub fn run() {
                 manager.register(NotificationApplet).await;
                 
                 manager.start_all(app_handle).await;
+                logger::log_info("Todos los applets iniciados correctamente");
             });
 
+            logger::log_info("Aplicación Tauri configurada correctamente");
             Ok(())
         })
         .run(tauri::generate_context!())
