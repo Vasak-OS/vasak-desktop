@@ -18,7 +18,7 @@ const openApp = async (path: string) => {
 	try {
 		await invoke('open_app', { path });
 	} catch (error) {
-		console.error('Error al abrir la aplicación:', error);
+		logError('Error al abrir aplicación:', error);
 	} finally {
 		appWindow.close();
 	}

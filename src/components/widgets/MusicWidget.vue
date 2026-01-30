@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import type { MusicInfo } from '@/interfaces/music';
 import { processImageUrl } from '@/utils/image';
+import { logError } from '@/utils/logger';
 
 const musicInfo: Ref<MusicInfo> = ref({
 	title: '',
@@ -44,7 +45,7 @@ async function sendCommand(cmd: string): Promise<void> {
 			commandError.value = '';
 		}
 	} catch (e: any) {
-		console.error(`[music] invoke ${cmd} failed:`, e);
+		logError(`[music] Error en comando ${cmd}:`, e);
 		const msg = e?.message || e?.toString() || 'Error al ejecutar comando';
 		showErrorMessage(msg);
 	}

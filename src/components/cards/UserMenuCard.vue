@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { logError } from '@/utils/logger';
 import { ref, onMounted, computed, Ref } from 'vue';
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 
@@ -12,7 +13,7 @@ const loadUserInfo = async () => {
 	try {
 		userInfo.value = await getUserData();
 	} catch (error) {
-		console.error('Error al cargar información del usuario:', error);
+		logError('Error al cargar información del usuario:', error);
 	}
 };
 

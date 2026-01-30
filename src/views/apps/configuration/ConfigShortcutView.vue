@@ -87,7 +87,7 @@ const checkConflicts = async () => {
 		});
 		currentConflict.value = conflict;
 	} catch (err) {
-		console.error('Error checking conflicts:', err);
+		logError('Error verificando conflictos de atajos:', err);
 	}
 };
 

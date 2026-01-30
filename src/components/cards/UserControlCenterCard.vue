@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+import { logError } from '@/utils/logger';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 
@@ -121,7 +122,7 @@ const getUserInfo = async () => {
 		const info = await getUserData();
 		userInfo.value = info as UserInfo;
 	} catch (error) {
-		console.error('Error getting user info:', error);
+		logError('Error obteniendo información de usuario:', error);
 	}
 };
 

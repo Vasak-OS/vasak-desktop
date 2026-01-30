@@ -3,6 +3,7 @@ import { Ref, ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
 import { DeviceCard } from '@vasakgroup/vue-libvasak';
+import { logError } from '@/utils/logger';
 
 const icon: Ref<string> = ref('');
 const extraInfo: Ref<any> = ref({});
@@ -42,7 +43,7 @@ onMounted(async () => {
 		try {
 			extraInfo.value = await getDeviceInfo(props.device.path);
 		} catch (e) {
-			console.error('Error fetching device info:', e);
+			logError('Error obteniendo info de dispositivo Bluetooth:', e);
 			extraInfo.value = {};
 		}
 	}

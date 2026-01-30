@@ -121,6 +121,7 @@
 </template>
 
 <script setup lang="ts">
+import { logError } from '@/utils/logger';
 import { ref, onMounted, onUnmounted, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -168,7 +169,7 @@ const checkWirelessStatus = async () => {
 			wifiEnabled.value = false;
 		}
 	} catch (e) {
-		console.error('Error checking wireless status:', e);
+		logError('Error verificando estado wireless:', e);
 	}
 };
 

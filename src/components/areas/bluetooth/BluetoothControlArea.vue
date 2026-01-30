@@ -36,7 +36,7 @@ const toggleBT = async () => {
 		await toggleBluetooth();
 		await refreshDevices();
 	} catch (error) {
-		console.error('Error toggling Bluetooth:', error);
+		logError('Error alternando Bluetooth:', error);
 	} finally {
 		isTogglingBluetooth.value = false;
 	}

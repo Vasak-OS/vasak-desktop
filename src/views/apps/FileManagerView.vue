@@ -11,6 +11,7 @@ import {
 	loadDirectoryBackend,
 	getUserDirectories,
 } from '@/tools/file.controller';
+import { logError } from '@/utils/logger';
 
 interface SidebarItem {
   name: string;
@@ -68,7 +69,7 @@ const handleItemClick = async (file: FileEntry) => {
 			const cmd = Command.create('open', [file.path]);
 			await cmd.spawn();
 		} catch (e) {
-			console.error('Failed to open file:', file.path, e);
+			logError('Error al abrir archivo:', file.path, e);
 		}
 	}
 };
@@ -114,8 +115,7 @@ const loadSidebar = async () => {
 				? convertFileSrc(source)
 				: source;
 		} catch (e) {
-			console.warn('Sidebar icon fail', item.icon);
-			console.error('Sidebar icon error: ', e);
+			logError('Error cargando icono de sidebar:', item.icon, e);
 		}
 	}
 };
@@ -130,7 +130,7 @@ onMounted(async () => {
 
 		loadFiles(initialPath);
 	} catch (e) {
-		console.error('Failed to get home dir', e);
+		logError('Error obteniendo directorio home:', e);
 	}
 });
 </script>

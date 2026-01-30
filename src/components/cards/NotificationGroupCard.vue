@@ -67,6 +67,7 @@
 </template>
 
 <script setup lang="ts">
+import { logError } from '@/utils/logger';
 import { ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
@@ -174,7 +175,7 @@ onMounted(async () => {
 			isExpanded.value = true;
 		}
 	} catch (error) {
-		console.error('Error loading icons:', error);
+		logError('Error cargando iconos de notificaciones:', error);
 	}
 });
 </script>
