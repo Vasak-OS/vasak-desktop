@@ -3,6 +3,7 @@ use std::fs;
 use std::sync::OnceLock;
 use crate::constants::{CMD_BRIGHTNESSCTL, CMD_XRANDR, BACKLIGHT_PATH};
 use crate::error::{Result, VasakError};
+use crate::logger::{log_info, log_error};
 use crate::structs::BrightnessInfo;
 use crate::utils::CommandExecutor;
 
@@ -40,21 +41,26 @@ fn get_brightness_method() -> Result<BrightnessMethod> {
 
 /// Detecta el mejor método de control de brillo disponible
 fn detect_brightness_method() -> Result<BrightnessMethod> {
+    log_info("Detectando método de control de brillo");
     // 1. Intentar brightnessctl (funciona en Wayland y X11)
     if CommandExecutor::run_silent(CMD_BRIGHTNESSCTL, &["--version"]) {
+        log_info("Usando brightnessctl para control de brillo");
         return Ok(BrightnessMethod::Brightnessctl);
     }
 
     // 2. Intentar sysfs directo
     if let Ok(device_path) = find_backlight_device() {
+        log_info(&format!("Usando sysfs para control de brillo: {:?}", device_path));
         return Ok(BrightnessMethod::Sysfs(device_path));
     }
 
     // 3. Intentar xrandr si estamos en X11
     if !is_wayland() && CommandExecutor::run_silent(CMD_XRANDR, &["--version"]) {
+        log_info("Usando xrandr para control de brillo");
         return Ok(BrightnessMethod::Xrandr);
     }
 
+    log_error("No se encontró método de control de brillo disponible");
     Err(VasakError::Brightness(
         "No brightness control method available. Try installing 'brightnessctl'".to_string()
     ))

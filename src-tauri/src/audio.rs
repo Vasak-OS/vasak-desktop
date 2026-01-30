@@ -1,11 +1,13 @@
 use crate::constants::CMD_WPCTL;
 use crate::error::{Result, VasakError};
+use crate::logger::{log_info, log_error, log_debug};
 use crate::structs::{VolumeInfo, AudioDevice};
 use crate::utils::CommandExecutor;
 use tauri::{AppHandle, Emitter};
 
 /// Obtiene el ID del sink de audio por defecto
 fn get_default_sink_id() -> Result<String> {
+    log_debug("Obteniendo ID del sink de audio por defecto");
     let status_output = CommandExecutor::run(CMD_WPCTL, &["status"])?;
 
     // Buscar el sink por defecto
@@ -44,13 +46,18 @@ fn get_default_sink_id() -> Result<String> {
                 None
             }
         })
-        .ok_or_else(|| VasakError::NotFound("No se encontró el sink por defecto".to_string()))?;
+        .ok_or_else(|| {
+            log_error("No se encontró el sink de audio por defecto");
+            VasakError::NotFound("No se encontró el sink por defecto".to_string())
+        })?;
 
+    log_debug(&format!("Sink de audio por defecto: {}", default_sink_id));
     Ok(default_sink_id)
 }
 
 /// Obtiene la información actual del volumen del sistema usando wpctl
 pub fn get_volume() -> Result<VolumeInfo> {
+    log_debug("Obteniendo información del volumen");
     let default_sink_id = get_default_sink_id()?;
 
     // Obtener información del volumen
@@ -79,6 +86,7 @@ pub fn get_volume() -> Result<VolumeInfo> {
 
 /// Establece el volumen del sistema
 pub fn set_volume(volume: i64, app: AppHandle) -> Result<()> {
+    log_info(&format!("Estableciendo volumen a: {}%", volume));
     let default_sink_id = get_default_sink_id()?;
 
     let volume_percent = format!("{}%", volume);
@@ -86,6 +94,7 @@ pub fn set_volume(volume: i64, app: AppHandle) -> Result<()> {
 
     // Si se aplicó correctamente, leer estado y notificar al frontend
     if let Ok(info) = get_volume() {
+        log_debug(&format!("Volumen actualizado: {}%", info.current));
         let _ = app.emit("volume-changed", info.clone());
     }
     Ok(())
@@ -93,6 +102,7 @@ pub fn set_volume(volume: i64, app: AppHandle) -> Result<()> {
 
 /// Alterna el estado de silencio del audio
 pub fn toggle_mute(app: AppHandle) -> Result<bool> {
+    log_info("Alternando estado de mute");
     let default_sink_id = get_default_sink_id()?;
 
     // Obtener estado actual
@@ -103,6 +113,7 @@ pub fn toggle_mute(app: AppHandle) -> Result<bool> {
     
     // Después del toggle, obtener estado actualizado y notificar al frontend
     if let Ok(info) = get_volume() {
+        log_debug(&format!("Mute actualizado: {}", info.is_muted));
         let _ = app.emit("volume-changed", info.clone());
     }
     
@@ -112,6 +123,7 @@ pub fn toggle_mute(app: AppHandle) -> Result<bool> {
 
 /// Lista todos los dispositivos de salida de audio (sinks)
 pub fn list_audio_devices() -> Result<Vec<AudioDevice>> {
+    log_debug("Listando dispositivos de audio");
     let status_output = CommandExecutor::run(CMD_WPCTL, &["status"])?;
     let default_sink_id = get_default_sink_id().ok();
     
@@ -167,17 +179,21 @@ pub fn list_audio_devices() -> Result<Vec<AudioDevice>> {
         }
     }
     
+    log_debug(&format!("Encontrados {} dispositivos de audio", devices.len()));
     Ok(devices)
 }
 
 /// Establece el dispositivo de salida de audio por defecto
 pub fn set_default_audio_device(device_id: &str, app: AppHandle) -> Result<()> {
+    log_info(&format!("Estableciendo dispositivo de audio por defecto: {}", device_id));
     CommandExecutor::run(CMD_WPCTL, &["set-default", device_id])?;
     
     // Notify frontend of change
     if let Ok(devices) = list_audio_devices() {
+        log_debug("Notificando cambio de dispositivos de audio al frontend");
         let _ = app.emit("audio-devices-changed", devices);
     }
     
+    log_info("Dispositivo de audio por defecto establecido correctamente");
     Ok(())
 }
