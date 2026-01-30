@@ -13,7 +13,7 @@ const refreshWindows = async (): Promise<void> => {
 	try {
 		windows.value = await invoke('get_windows');
 	} catch (error) {
-		console.error('[Windows Error] Error obteniendo ventanas:', error);
+		logError('[Windows] Error obteniendo ventanas:', error);
 	}
 };
 

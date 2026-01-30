@@ -51,7 +51,7 @@ async function sendCommand(cmd: string): Promise<void> {
 	try {
 		await invoke(cmd, { player });
 	} catch (e) {
-		console.error(`[music] invoke ${cmd} failed:`, e);
+		logError(`[music] Error en comando ${cmd}:`, e);
 	}
 }
 

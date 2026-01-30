@@ -4,6 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
+use crate::logger::{log_debug, log_error};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

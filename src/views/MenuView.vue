@@ -110,7 +110,7 @@ onMounted(async () => {
 			try {
 				invoke('toggle_menu');
 			} catch (error) {
-				console.error('Error al cerrar:', error);
+				logError('Error al cerrar menú:', error);
 			}
 		}
 	});

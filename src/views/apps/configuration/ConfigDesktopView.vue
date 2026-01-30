@@ -11,6 +11,7 @@ import {
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import { SwitchToggle, ConfigSection, FormGroup, ActionButton } from '@vasakgroup/vue-libvasak';
 import { Store } from 'pinia';
+import { logError } from '@/utils/logger';
 
 const configStore = ref<any>(null);
 const loading = ref(true);
@@ -68,7 +69,7 @@ onMounted(async () => {
 
 	} catch (err) {
 		error.value = `Error cargando configuración: ${err}`;
-		console.error(err);
+		logError('Error cargando configuración de escritorio:', err);
 	} finally {
 		loading.value = false;
 	}
@@ -110,7 +111,7 @@ const saveConfig = async (): Promise<void> => {
 		}
 	} catch (err) {
 		error.value = `Error guardando configuración: ${err}`;
-		console.error(err);
+		logError('Error aplicando configuración de escritorio:', err);
 	} finally {
 		saving.value = false;
 	}

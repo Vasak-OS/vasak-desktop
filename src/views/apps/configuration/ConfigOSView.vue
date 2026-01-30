@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { logError } from '@/utils/logger';
 import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';

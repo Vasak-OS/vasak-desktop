@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { logError } from '@/utils/logger';
 import { ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { invoke } from '@tauri-apps/api/core';
@@ -92,7 +93,7 @@ async function handleAction(action_key: string) {
 			action_key,
 		});
 	} catch (error) {
-		console.error('Failed to invoke action:', error);
+		logError('Error ejecutando acción de notificación:', error);
 	}
 }
 
@@ -101,7 +102,7 @@ onMounted(async () => {
 		iconSrc.value = await getIconSource(props.notification.app_icon);
 		closeIconSrc.value = await getIconSource('window-close-symbolic');
 	} catch (error) {
-		console.error('Error loading icons:', error);
+		logError('Error cargando iconos de notificación:', error);
 	}
 });
 </script>

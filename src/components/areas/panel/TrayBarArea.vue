@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { logError } from '@/utils/logger';
 import { ref, onMounted, onUnmounted, Ref } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
@@ -36,7 +37,7 @@ const refreshTrayItems = async (): Promise<void> => {
 	try {
 		trayItems.value = await getTrayItems();
 	} catch (error) {
-		console.error('[TrayPanel Error] Error obteniendo items del tray:', error);
+		logError('[TrayPanel] Error obteniendo items del tray:', error);
 	}
 };
 
@@ -62,7 +63,7 @@ const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
 			});
 		}
 	} catch (error) {
-		console.error('[TrayPanel Error] Error manejando click:', error);
+		logError('[TrayPanel] Error manejando click:', error);
 	}
 };
 
@@ -82,7 +83,7 @@ const showContextMenu = async (item: TrayItem, event: MouseEvent) => {
 			trayId: item.service_name,
 		};
 	} catch (error) {
-		console.error('[TrayPanel Error] Error obteniendo menú:', error);
+		logError('[TrayPanel] Error obteniendo menú:', error);
 	}
 };
 
@@ -94,7 +95,7 @@ const handleMenuItemClick = async (menuItem: TrayMenu) => {
 		});
 		contextMenu.value.visible = false;
 	} catch (error) {
-		console.error('[TrayPanel Error] Error en click de menú:', error);
+		logError('[TrayPanel] Error en click de menú:', error);
 	}
 };
 

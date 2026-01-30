@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { logError } from '@/utils/logger';
 import { ref, onMounted, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
@@ -11,7 +12,7 @@ const toggleWindow = async (): Promise<void> => {
 	try {
 		await invoke('toggle_window', { windowId: props.id });
 	} catch (error) {
-		console.error('[Window Error] Error alternando ventana:', error);
+		logError('[Window] Error alternando ventana:', error);
 	}
 };
 
