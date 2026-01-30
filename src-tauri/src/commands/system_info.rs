@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::process::Command;
+use crate::logger::{log_info, log_debug, log_error};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SystemInfo {
@@ -402,7 +403,8 @@ fn get_temperature_info() -> Option<TemperatureInfo> {
 
 #[tauri::command]
 pub fn get_system_info() -> Result<SystemInfo, String> {
-    Ok(SystemInfo {
+    log_debug("Obteniendo información completa del sistema");
+    let info = SystemInfo {
         cpu: CpuInfo {
             model: get_cpu_model(),
             cores: get_cpu_cores(),
@@ -415,15 +417,25 @@ pub fn get_system_info() -> Result<SystemInfo, String> {
         gpu: get_gpu_info(),
         system: get_system_details(),
         temperature: get_temperature_info(),
-    })
+    };
+    log_info(&format!("Info del sistema: CPU={} ({}%), Mem={}GB/{:.1}GB, Discos={}", 
+        info.cpu.model, info.cpu.usage as u32, 
+        info.memory.used_gb as u32, info.memory.total_gb,
+        info.disks.len()));
+    Ok(info)
 }
 
 #[tauri::command]
 pub fn get_cpu_usage_only() -> Result<f32, String> {
-    Ok(get_cpu_usage())
+    let usage = get_cpu_usage();
+    log_debug(&format!("Uso de CPU: {:.1}%", usage));
+    Ok(usage)
 }
 
 #[tauri::command]
 pub fn get_memory_usage_only() -> Result<MemoryInfo, String> {
-    Ok(get_memory_info())
+    let mem = get_memory_info();
+    log_debug(&format!("Uso de memoria: {:.1}GB/{:.1}GB ({:.1}%)", 
+        mem.used_gb, mem.total_gb, mem.usage_percent));
+    Ok(mem)
 }
