@@ -2,6 +2,7 @@ use freedesktop_entry_parser::parse_entry;
 use std::fs;
 use std::path::Path;
 use std::collections::HashMap;
+use crate::logger::log_info;
 use crate::structs::{AppEntry, CategoryInfo};
 
 fn normalize_category(categories: &str) -> String {
@@ -25,6 +26,7 @@ fn normalize_category(categories: &str) -> String {
 }
 
 pub fn get_menu() -> HashMap<String, CategoryInfo> {
+    log_info("Cargando menú de aplicaciones");
     let mut menu_items: HashMap<String, CategoryInfo> = HashMap::new();
     let apps_dir = Path::new("/usr/share/applications");
     

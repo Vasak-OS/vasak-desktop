@@ -1,4 +1,5 @@
 use crate::structs::{Notification, NotificationUrgency};
+use crate::logger::{log_info, log_error, log_debug};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -16,6 +17,7 @@ static NOTIFY_UPDATE: Lazy<Arc<Notify>> = Lazy::new(|| Arc::new(Notify::new()));
 const MAX_NOTIFICATIONS: usize = 50;
 
 pub async fn initialize_app_handle(app_handle: AppHandle) {
+    log_info("Inicializando sistema de notificaciones");
     let mut handle = APP_HANDLE.write().await;
     *handle = Some(app_handle);
 
@@ -59,7 +61,9 @@ async fn emit_notifications_updated() {
 async fn perform_emit_notifications() {
     if let Some(app_handle) = APP_HANDLE.read().await.as_ref() {
         let notifications = NOTIFICATIONS.read().await;
+        log_debug(&format!("Emitiendo actualización de notificaciones ({} total)", notifications.len()));
         if let Err(e) = app_handle.emit("notifications-updated", &*notifications) {
+            log_error(&format!("Error al emitir evento notifications-updated: {}", e));
             eprintln!("Error emitting notifications-updated event: {}", e);
         }
     }
@@ -71,11 +75,13 @@ pub async fn get_notifications() -> Result<Vec<Notification>, String> {
 }
 
 pub async fn remove_notification(id: u32) -> Result<bool, String> {
+    log_info(&format!("Eliminando notificación con ID: {}", id));
     let mut notifications = NOTIFICATIONS.write().await;
     let initial_len = notifications.len();
     notifications.retain(|n| n.id != id);
 
     if notifications.len() < initial_len {
+        log_debug(&format!("Notificación {} eliminada correctamente", id));
         drop(notifications);
         emit_notifications_updated().await;
         Ok(true)
