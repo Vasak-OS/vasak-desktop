@@ -2,6 +2,7 @@
 import BluetoothControlArea from '@/components/areas/bluetooth/BluetoothControlArea.vue';
 import { invoke } from '@tauri-apps/api/core';
 import { onMounted } from 'vue';
+import { logError } from '@/utils/logger';
 
 onMounted(async () => {
 	document.addEventListener('keydown', (event) => {
@@ -9,7 +10,7 @@ onMounted(async () => {
 			try {
 				invoke('toggle_bluetooth_applet');
 			} catch (error) {
-				console.error('Error al cerrar:', error);
+				logError('Error al cerrar applet de Bluetooth:', error);
 			}
 		}
 	});

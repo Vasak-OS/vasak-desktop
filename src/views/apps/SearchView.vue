@@ -3,6 +3,7 @@ import { ref, watch, nextTick, onMounted, onUnmounted, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { logError } from '@/utils/logger';
 
 interface SearchResult {
   id: string;
@@ -48,7 +49,7 @@ watch(query, (newQuery) => {
 			results.value = searchResults;
 			selectedIndex.value = 0;
 		} catch (error) {
-			console.error('[search] Error:', error);
+			logError('[search] Error:', error);
 			results.value = [];
 		} finally {
 			loading.value = false;
@@ -99,7 +100,7 @@ const executeResult = async (result: SearchResult) => {
 		});
 		await currentWindow.close();
 	} catch (error) {
-		console.error('[search] Execution error:', error);
+		logError('[search] Execution error:', error);
 	}
 };
 
