@@ -10,6 +10,7 @@ import SessionButton from '@/components/buttons/SessionButton.vue';
 import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { logError } from '@/utils/logger';
 
 const menuData: Ref<Array<any>> = ref([]);
 const categorySelected: Ref<any> = ref('all');
@@ -24,7 +25,7 @@ const setMenu = async () => {
 	try {
 		menuData.value = await invoke('get_menu_items');
 	} catch (error) {
-		console.error('Error al cargar el menú:', error);
+		logError('Error al cargar el menú:', error);
 	}
 };
 
@@ -33,7 +34,7 @@ const detectDisplayServer = async () => {
 		const result = await invoke('detect_display_server');
 		return result;
 	} catch (error) {
-		console.error('Error detectando servidor de display:', error);
+		logError('Error detectando servidor de display:', error);
 		return 'unknown';
 	}
 };
@@ -43,7 +44,7 @@ const logout = async () => {
 		const displayServer = await detectDisplayServer();
 		await invoke('logout', { displayServer });
 	} catch (error) {
-		console.error('Error al hacer logout:', error);
+		logError('Error al hacer logout:', error);
 	}
 };
 
@@ -51,7 +52,7 @@ const shutdown = async () => {
 	try {
 		await invoke('shutdown');
 	} catch (error) {
-		console.error('Error al apagar:', error);
+		logError('Error al apagar:', error);
 	}
 };
 
@@ -59,7 +60,7 @@ const reboot = async () => {
 	try {
 		await invoke('reboot');
 	} catch (error) {
-		console.error('Error al reiniciar:', error);
+		logError('Error al reiniciar:', error);
 	}
 };
 
@@ -68,7 +69,7 @@ const suspend = async () => {
 		const displayServer = await detectDisplayServer();
 		await invoke('suspend', { displayServer });
 	} catch (error) {
-		console.error('Error al suspender:', error);
+		logError('Error al suspender:', error);
 	}
 };
 
@@ -76,7 +77,7 @@ const openConfiguration = async () => {
 	try {
 		await invoke('open_configuration_window');
 	} catch (error) {
-		console.error('Error al abrir configuración:', error);
+		logError('Error al abrir configuración:', error);
 	}
 };
 
@@ -97,7 +98,7 @@ const setImages = async () => {
 		suspendImg.value = await getIconSource('system-suspend');
 		settingsImg.value = await getIconSource('settings');
 	} catch (error) {
-		console.error('Error loading session icons:', error);
+		logError('Error loading session icons:', error);
 	}
 };
 

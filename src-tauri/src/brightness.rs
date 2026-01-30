@@ -3,7 +3,7 @@ use std::fs;
 use std::sync::OnceLock;
 use crate::constants::{CMD_BRIGHTNESSCTL, CMD_XRANDR, BACKLIGHT_PATH};
 use crate::error::{Result, VasakError};
-use crate::logger::{log_info, log_error};
+use crate::logger::{log_info, log_error, log_debug};
 use crate::structs::BrightnessInfo;
 use crate::utils::CommandExecutor;
 
@@ -170,13 +170,19 @@ fn get_brightness_xrandr() -> Result<BrightnessInfo> {
 
 /// Obtiene la información actual del brillo del sistema
 pub fn get_brightness() -> Result<BrightnessInfo> {
+    log_debug("Obteniendo información de brillo del sistema");
     let method = get_brightness_method()?;
     
-    match method {
+    let result = match method {
         BrightnessMethod::Brightnessctl => get_brightness_brightnessctl(),
         BrightnessMethod::Sysfs(device_path) => get_brightness_sysfs(&device_path),
         BrightnessMethod::Xrandr => get_brightness_xrandr(),
+    };
+    
+    if let Ok(ref info) = result {
+        log_debug(&format!("Brillo actual: {}%", info.current));
     }
+    result
 }
 
 /// Establece el brillo usando brightnessctl
@@ -229,11 +235,19 @@ fn set_brightness_xrandr(brightness: u32) -> Result<()> {
 
 /// Establece el brillo del sistema
 pub fn set_brightness(brightness: u32) -> Result<()> {
+    log_debug(&format!("Estableciendo brillo del sistema a: {}%", brightness));
     let method = get_brightness_method()?;
     
-    match method {
+    let result = match method {
         BrightnessMethod::Brightnessctl => set_brightness_brightnessctl(brightness),
         BrightnessMethod::Sysfs(device_path) => set_brightness_sysfs(&device_path, brightness),
         BrightnessMethod::Xrandr => set_brightness_xrandr(brightness),
+    };
+    
+    if result.is_ok() {
+        log_debug(&format!("Brillo establecido correctamente a: {}%", brightness));
+    } else if let Err(ref e) = result {
+        log_error(&format!("Error al establecer brillo: {}", e));
     }
+    result
 }
