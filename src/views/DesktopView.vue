@@ -6,8 +6,6 @@ import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
-import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import type { FileEntry } from '@/interfaces/file';
 import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
@@ -28,9 +26,9 @@ const backgroundPath = computed(() => {
 	);
 });
 
-const background = computed(() => convertFileSrc(backgroundPath.value));
+const _background = computed(() => convertFileSrc(backgroundPath.value));
 
-const backgroundType = computed(() => {
+const _backgroundType = computed(() => {
 	const ext = backgroundPath.value.toLowerCase().split('.').pop();
 	if (ext === 'mp4' || ext === 'webm' || ext === 'ogv') {
 		return `video/${ext}`;
@@ -42,7 +40,7 @@ const showFiles = computed(() => (configStore as any).config?.desktop?.showfiles
 const showHiddenFiles = computed(
 	() => (configStore as any).config?.desktop?.showhiddenfiles ?? false
 );
-const iconSize: ComputedRef<number> = computed(
+const _iconSize: ComputedRef<number> = computed(
 	(): number => (configStore as any).config?.desktop?.iconsize ?? 64
 );
 
@@ -74,7 +72,7 @@ const loadDesktopFiles = async () => {
 };
 
 // Manejar clicks en archivos y carpetas
-const handleFileClick = async (file: FileEntry) => {
+const _handleFileClick = async (file: FileEntry) => {
 	if (file.isDirectory) {
 		// Abrir el file manager en la carpeta seleccionada
 		try {

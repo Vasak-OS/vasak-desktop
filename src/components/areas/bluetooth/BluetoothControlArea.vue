@@ -12,7 +12,6 @@ import {
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
-import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
 
 const connectedDevices: Ref<any[]> = ref([]);
@@ -27,7 +26,7 @@ const isScanning = ref(false);
 
 let unlistenBluetooth: Ref<(() => void) | null> = ref(null);
 
-const toggleBT = async () => {
+const _toggleBT = async () => {
 	isTogglingBluetooth.value = true;
 	try {
 		await toggleBluetooth();
@@ -65,7 +64,7 @@ const refreshDevices = async () => {
 	loading.value = false;
 };
 
-const scanDevices = async () => {
+const _scanDevices = async () => {
 	if (!defaultAdapter.value) return;
 	isScanning.value = true;
 	try {
@@ -101,11 +100,11 @@ const getBluetoothIcon = async () => {
 	}
 };
 
-const connect = async (device: any) => {
+const _connect = async (device: any) => {
 	await connectDevice(device.path);
 	await refreshDevices();
 };
-const disconnect = async (device: any) => {
+const _disconnect = async (device: any) => {
 	await disconnectDevice(device.path);
 	await refreshDevices();
 };

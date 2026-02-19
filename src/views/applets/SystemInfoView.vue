@@ -441,7 +441,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { onMounted, onUnmounted, ref } from 'vue';
-import { logError } from '@/utils/logger';
 
 interface SystemInfo {
 	cpu: {
@@ -513,7 +512,7 @@ const loadSystemInfo = async (silent = false) => {
 		lastUpdate.value = new Date().toLocaleTimeString();
 		isInitialLoad.value = false;
 	} catch (e) {
-		error.value = 'Error al cargar información del sistema: ' + e;
+		error.value = `Error al cargar información del sistema: ${e}`;
 		console.error(e);
 	} finally {
 		loading.value = false;
@@ -521,7 +520,7 @@ const loadSystemInfo = async (silent = false) => {
 	}
 };
 
-const formatUptime = (seconds: number | undefined): string => {
+const _formatUptime = (seconds: number | undefined): string => {
 	if (!seconds) return '0 segundos';
 
 	const days = Math.floor(seconds / 86400);
@@ -536,14 +535,14 @@ const formatUptime = (seconds: number | undefined): string => {
 	return parts.join(' ') || '< 1m';
 };
 
-const usageClass = (usage: number | undefined): string => {
+const _usageClass = (usage: number | undefined): string => {
 	if (!usage) return '';
 	if (usage > 80) return 'high';
 	if (usage > 60) return 'medium';
 	return 'low';
 };
 
-const tempClass = (temp: number | undefined): string => {
+const _tempClass = (temp: number | undefined): string => {
 	if (!temp) return '';
 	if (temp > 80) return 'critical';
 	if (temp > 60) return 'warm';

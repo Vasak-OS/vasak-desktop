@@ -8,7 +8,7 @@ import { logError } from '@/utils/logger';
 const props = defineProps<WindowPanelButtonProps>();
 const iconSource: Ref<string> = ref<string>('');
 
-const toggleWindow = async (): Promise<void> => {
+const _toggleWindow = async (): Promise<void> => {
 	try {
 		await invoke('toggle_window', { windowId: props.id });
 	} catch (error) {

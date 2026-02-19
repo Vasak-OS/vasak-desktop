@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import ConfigSidebarButton from '@/components/buttons/ConfigSidebarButton.vue';
 </script>
 
 <template>

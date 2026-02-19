@@ -1,9 +1,9 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { homeDir, join } from '@tauri-apps/api/path';
 import { Command } from '@tauri-apps/plugin-shell';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { WindowFrame } from '@vasakgroup/vue-libvasak';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { FileEntry } from '@/interfaces/file';
@@ -66,7 +66,7 @@ const handleItemClick = async (file: FileEntry) => {
 			const cmd = Command.create('open', [file.path]);
 			await cmd.spawn();
 		} catch (e) {
-			logError('Error al abrir archivo:', file.path, e);
+			logError('Error al abrir archivo:', file.path);
 		}
 	}
 };
@@ -104,7 +104,7 @@ const loadSidebar = async () => {
 			const source = await getIconSource(item.icon);
 			sidebarIcons.value[item.name] = source.startsWith('/') ? convertFileSrc(source) : source;
 		} catch (e) {
-			logError('Error cargando icono de sidebar:', item.icon, e);
+			logError('Error cargando icono de sidebar:', item.icon);
 		}
 	}
 };

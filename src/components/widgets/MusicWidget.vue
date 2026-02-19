@@ -28,7 +28,9 @@ let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 const dbusStatus = ref('connected');
 const dbusMessage = ref('');
 
-const isPlaying = computed(() => String(musicInfo.value?.status || '').toLowerCase() === 'playing');
+const _isPlaying = computed(
+	() => String(musicInfo.value?.status || '').toLowerCase() === 'playing'
+);
 
 async function sendCommand(cmd: string): Promise<void> {
 	const player = musicInfo.value?.player || '';
@@ -59,15 +61,15 @@ function showErrorMessage(msg: string): void {
 	}, 3000);
 }
 
-function onPrev(): void {
+function _onPrev(): void {
 	sendCommand('music_previous_track');
 }
 
-function onNext(): void {
+function _onNext(): void {
 	sendCommand('music_next_track');
 }
 
-function onPlayPause(): void {
+function _onPlayPause(): void {
 	sendCommand('music_play_pause');
 }
 
@@ -149,7 +151,7 @@ watch(
 	{ immediate: true }
 );
 
-async function onImgError(): Promise<void> {
+async function _onImgError(): Promise<void> {
 	try {
 		const defaultIcon = await getIconSource('applications-multimedia');
 		if (defaultIcon) {

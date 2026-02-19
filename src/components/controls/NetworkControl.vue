@@ -7,7 +7,6 @@ import {
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
@@ -26,13 +25,13 @@ const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 const networkIconSrc: Ref<string> = ref('');
 const isLoading: Ref<boolean> = ref(false);
 
-const networkAlt = computed(() => {
+const _networkAlt = computed(() => {
 	return networkState.value.is_connected
 		? `Conectado a ${networkState.value.connection_type} ${networkState.value.ssid}`
 		: 'Desconectado';
 });
 
-const toggleCurrentNetwork = async (): Promise<void> => {
+const _toggleCurrentNetwork = async (): Promise<void> => {
 	isLoading.value = true;
 	try {
 		await toggleNetwork(!networkState.value.is_connected);

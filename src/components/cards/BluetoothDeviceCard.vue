@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { DeviceCard } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
@@ -13,15 +12,17 @@ const props = defineProps<{
 	connected?: boolean;
 }>();
 
-const deviceTitle = computed(() => props.device.alias || props.device.name || props.device.address);
+const _deviceTitle = computed(
+	() => props.device.alias || props.device.name || props.device.address
+);
 
-const deviceSubtitle = computed(() => props.device.address);
+const _deviceSubtitle = computed(() => props.device.address);
 
-const deviceMetadata = computed(() =>
+const _deviceMetadata = computed(() =>
 	props.device.icon || props.device.type ? props.device.type : ''
 );
 
-const deviceExtraInfo = computed(() => {
+const _deviceExtraInfo = computed(() => {
 	const info: string[] = [];
 	if (extraInfo.value.battery !== undefined) {
 		info.push(`🔋 ${extraInfo.value.battery}%`);

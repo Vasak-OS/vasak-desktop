@@ -1,8 +1,8 @@
-
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
 import { invoke } from '@tauri-apps/api/core';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
 

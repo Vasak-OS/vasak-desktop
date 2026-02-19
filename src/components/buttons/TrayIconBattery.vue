@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, type Ref, ref, watch } from 'vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { fetchBatteryInfo } from '@/tools/battery.controller';
@@ -18,12 +17,12 @@ const batteryInfo: Ref<BatteryInfo> = ref({
 const batteryIconSrc: Ref<string> = ref('');
 const unlistenBattery: Ref<(() => void) | null> = ref(null);
 
-const batteryAltText = computed(() => {
+const _batteryAltText = computed(() => {
 	if (!batteryInfo.value.has_battery) return 'No battery detected';
 	return `Battery ${Math.round(batteryInfo.value.percentage)}% - ${batteryInfo.value.state}`;
 });
 
-const tooltipClass = computed(() => ({
+const _tooltipClass = computed(() => ({
 	'text-green-400': batteryInfo.value.is_charging,
 	'text-red-400': batteryInfo.value.percentage < 20 && !batteryInfo.value.is_charging,
 	'text-yellow-400':
@@ -104,7 +103,7 @@ async function getBatteryInfo() {
 	}
 }
 
-async function toggleBatteryInfo() {
+async function _toggleBatteryInfo() {
 	// Toggle behavior for battery info display
 }
 

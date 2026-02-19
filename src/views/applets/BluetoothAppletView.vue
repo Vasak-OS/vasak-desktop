@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { invoke } from '@tauri-apps/api/core';
 import { onMounted } from 'vue';
-import BluetoothControlArea from '@/components/areas/bluetooth/BluetoothControlArea.vue';
 import { logError } from '@/utils/logger';
 
 onMounted(async () => {

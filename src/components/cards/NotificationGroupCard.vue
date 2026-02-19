@@ -68,9 +68,7 @@
 
 <script setup lang="ts">
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { ActionButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
-import NotificationCard from '@/components/cards/NotificationCard.vue';
 import { logError } from '@/utils/logger';
 
 interface Notification {
@@ -112,11 +110,11 @@ const shouldAutoExpand = computed(() => {
 	return props.group.has_unread && props.group.count <= 3;
 });
 
-function toggleExpanded() {
+function _toggleExpanded() {
 	isExpanded.value = !isExpanded.value;
 }
 
-function formatGroupSummary() {
+function _formatGroupSummary() {
 	const unreadCount = props.group.notifications.filter((n) => !n.seen).length;
 	if (unreadCount > 0) {
 		return `${unreadCount} nueva${unreadCount === 1 ? '' : 's'}`;
@@ -124,7 +122,7 @@ function formatGroupSummary() {
 	return props.group.notifications[0]?.summary || 'Sin notificaciones';
 }
 
-function formatTime(timestamp: number) {
+function _formatTime(timestamp: number) {
 	const date = new Date(timestamp * 1000);
 	const now = new Date();
 	const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
@@ -135,26 +133,26 @@ function formatTime(timestamp: number) {
 	return date.toLocaleDateString();
 }
 
-function removeAllFromGroup() {
+function _removeAllFromGroup() {
 	props.group.notifications.forEach((notification) => {
 		emit('remove', notification.id as number);
 	});
 }
 
-function onEnter(el: Element) {
+function _onEnter(el: Element) {
 	const element = el as HTMLElement;
 	element.style.height = '0';
 	element.style.overflow = 'hidden';
 
 	requestAnimationFrame(() => {
-		element.style.height = element.scrollHeight + 'px';
+		element.style.height = `${element.scrollHeight}px`;
 		element.style.transition = 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 	});
 }
 
-function onLeave(el: Element) {
+function _onLeave(el: Element) {
 	const element = el as HTMLElement;
-	element.style.height = element.scrollHeight + 'px';
+	element.style.height = `${element.scrollHeight}px`;
 	element.style.overflow = 'hidden';
 
 	requestAnimationFrame(() => {

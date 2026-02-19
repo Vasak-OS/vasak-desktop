@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { WindowFrame } from '@vasakgroup/vue-libvasak';
 </script>
 <template>
   <WindowFrame class="rounded-t-window">

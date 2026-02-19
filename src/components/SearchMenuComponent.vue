@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-const vFocus = {
+const _vFocus = {
 	mounted: (el: HTMLElement) => el.focus(),
 };
 
@@ -10,7 +10,7 @@ defineProps({
 	},
 });
 
-const emit = defineEmits(['update:filter']);
+const _emit = defineEmits(['update:filter']);
 </script>
 
 <template>

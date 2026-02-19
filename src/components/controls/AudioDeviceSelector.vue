@@ -35,7 +35,7 @@ async function loadDevices() {
 	}
 }
 
-async function onDeviceChange(deviceId: string) {
+async function _onDeviceChange(deviceId: string) {
 	selectedDeviceId.value = deviceId;
 	try {
 		await invoke('set_audio_device', { deviceId });
@@ -58,7 +58,7 @@ onMounted(async () => {
 	});
 });
 
-function getDeviceName(device: AudioDevice): string {
+function _getDeviceName(device: AudioDevice): string {
 	return device.name
 		.replaceAll('ALSA', '')
 		.replaceAll('PulseAudio', '')

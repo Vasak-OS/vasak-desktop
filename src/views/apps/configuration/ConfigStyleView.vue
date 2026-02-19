@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import {
 	readConfig,
@@ -7,10 +8,8 @@ import {
 	type VSKConfig,
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
-import { ActionButton, ConfigSection, FormGroup, SwitchToggle } from '@vasakgroup/vue-libvasak';
 import type { Store } from 'pinia';
 import { computed, onMounted, type Ref, ref } from 'vue';
-import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 
 const configStore = ref<any>(null);
 const gtkThemes = ref<string[]>([]);
@@ -108,7 +107,7 @@ const saveConfig = async () => {
 			await setDarkMode(vskConfig.value?.style?.darkmode || false);
 		}
 
-		await writeConfig(vskConfig.value!);
+		await writeConfig(vskConfig.value);
 		await applySystemChanges();
 
 		successMessage.value = 'Configuración guardada exitosamente';
@@ -126,7 +125,7 @@ const saveConfig = async () => {
 const applySystemChanges = async () => {
 	try {
 		const config = {
-			dark_mode: vskConfig!.value?.style?.darkmode || false,
+			dark_mode: vskConfig?.value?.style?.darkmode || false,
 			icon_pack: selectedIconPack.value,
 			cursor_theme: selectedCursorTheme.value,
 			gtk_theme: selectedGtkTheme.value,

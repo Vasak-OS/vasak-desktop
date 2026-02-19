@@ -2,18 +2,11 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref } from 'vue';
-import FilterArea from '@/components/areas/menu/FilterArea.vue';
-import MenuArea from '@/components/areas/menu/MenuArea.vue';
-import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
-import SessionButton from '@/components/buttons/SessionButton.vue';
-import UserMenuCard from '@/components/cards/UserMenuCard.vue';
-import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
-import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import { logError } from '@/utils/logger';
 
 const menuData: Ref<Array<any>> = ref([]);
 const categorySelected: Ref<any> = ref('all');
-const filter: Ref<string> = ref('');
+const _filter: Ref<string> = ref('');
 const logoutImg: Ref<string> = ref('');
 const shutdownImg: Ref<string> = ref('');
 const rebootImg: Ref<string> = ref('');
@@ -38,7 +31,7 @@ const detectDisplayServer = async () => {
 	}
 };
 
-const logout = async () => {
+const _logout = async () => {
 	try {
 		const displayServer = await detectDisplayServer();
 		await invoke('logout', { displayServer });
@@ -47,7 +40,7 @@ const logout = async () => {
 	}
 };
 
-const shutdown = async () => {
+const _shutdown = async () => {
 	try {
 		await invoke('shutdown');
 	} catch (error) {
@@ -55,7 +48,7 @@ const shutdown = async () => {
 	}
 };
 
-const reboot = async () => {
+const _reboot = async () => {
 	try {
 		await invoke('reboot');
 	} catch (error) {
@@ -63,7 +56,7 @@ const reboot = async () => {
 	}
 };
 
-const suspend = async () => {
+const _suspend = async () => {
 	try {
 		const displayServer = await detectDisplayServer();
 		await invoke('suspend', { displayServer });
@@ -72,7 +65,7 @@ const suspend = async () => {
 	}
 };
 
-const openConfiguration = async () => {
+const _openConfiguration = async () => {
 	try {
 		await invoke('open_configuration_window');
 	} catch (error) {
@@ -80,12 +73,12 @@ const openConfiguration = async () => {
 	}
 };
 
-const apps = computed(() => {
-	const allApps = (menuData.value as any)['all']?.apps;
+const _apps = computed(() => {
+	const allApps = (menuData.value as any).all?.apps;
 	return allApps;
 });
 
-const appsOfCategory = computed(() => (menuData.value as any)[categorySelected.value]?.apps);
+const _appsOfCategory = computed(() => (menuData.value as any)[categorySelected.value]?.apps);
 
 const setImages = async () => {
 	try {

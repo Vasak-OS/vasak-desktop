@@ -28,7 +28,7 @@ watch(
 	{ immediate: true }
 );
 
-async function onImgError(): Promise<void> {
+async function _onImgError(): Promise<void> {
 	imgSrc.value = await getIconSource('applications-multimedia');
 }
 
@@ -38,7 +38,9 @@ const nextIcon: Ref<string> = ref('');
 const playIcon: Ref<string> = ref('');
 const pauseIcon: Ref<string> = ref('');
 
-const isPlaying = computed(() => String(musicInfo.value?.status || '').toLowerCase() === 'playing');
+const _isPlaying = computed(
+	() => String(musicInfo.value?.status || '').toLowerCase() === 'playing'
+);
 
 async function sendCommand(cmd: string): Promise<void> {
 	const player = musicInfo.value?.player || '';
@@ -53,15 +55,15 @@ async function sendCommand(cmd: string): Promise<void> {
 	}
 }
 
-function onPrev(): void {
+function _onPrev(): void {
 	sendCommand('music_previous_track');
 }
 
-function onNext(): void {
+function _onNext(): void {
 	sendCommand('music_next_track');
 }
 
-function onPlayPause(): void {
+function _onPlayPause(): void {
 	sendCommand('music_play_pause');
 }
 
@@ -70,7 +72,7 @@ const isHiding = ref(false);
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 const ANIM_MS = 180;
 
-function onEnter(): void {
+function _onEnter(): void {
 	if (hideTimer) {
 		clearTimeout(hideTimer);
 		hideTimer = null;
@@ -79,7 +81,7 @@ function onEnter(): void {
 	visible.value = true;
 }
 
-function onLeave(): void {
+function _onLeave(): void {
 	if (!visible.value) return;
 	isHiding.value = true;
 	if (hideTimer) clearTimeout(hideTimer);

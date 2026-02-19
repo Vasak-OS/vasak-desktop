@@ -2,8 +2,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { onMounted, onUnmounted, ref } from 'vue';
-
-import WindowPanelButton from '@/components/buttons/WindowPanelButton.vue';
 import type { WindowInfo } from '@/interfaces/window';
 
 const windows = ref<WindowInfo[]>([]);

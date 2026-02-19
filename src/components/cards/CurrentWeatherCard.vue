@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import WeatherIcon from '@/components/icon/WeatherIcon.vue';
 
 const { units, current } = defineProps({
 	current: {
@@ -17,8 +16,8 @@ const { units, current } = defineProps({
 	},
 });
 
-const getTemUnit = computed(() => units.temperature_2m);
-const getTemperature = computed(() => current.temperature_2m);
+const _getTemUnit = computed(() => units.temperature_2m);
+const _getTemperature = computed(() => current.temperature_2m);
 </script>
 
 <template>

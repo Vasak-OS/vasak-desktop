@@ -2,7 +2,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { SliderControl } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
@@ -59,7 +58,7 @@ async function getBrightnessInfo() {
 	}
 }
 
-async function updateBrightness() {
+async function _updateBrightness() {
 	try {
 		if (setDebitTimeout) {
 			clearTimeout(setDebitTimeout);
@@ -76,7 +75,7 @@ async function updateBrightness() {
 	}
 }
 
-const getPercentageClass = (percentage: number) => {
+const _getPercentageClass = (percentage: number) => {
 	if (percentage > 80) return 'text-yellow-500';
 	if (percentage < 20) return 'text-orange-500';
 	return '';

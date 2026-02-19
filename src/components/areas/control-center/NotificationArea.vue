@@ -45,10 +45,11 @@
 </template>
 
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
 import type { Notification, NotificationGroupData } from '@/interfaces/notifications';
 
 const notifications = ref<Notification[]>([]);
@@ -72,6 +73,7 @@ const groupedNotifications = computed<NotificationGroupData[]>(() => {
 			});
 		}
 
+		// biome-ignore lint/style/noNonNullAssertion: <Is necessary for dinamic grouping>
 		const group = groups.get(appName)!;
 		group.notifications.push(notification);
 		group.count = group.notifications.length;

@@ -2,7 +2,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { SliderControl } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref, watch } from 'vue';
 import type { UnlistenFn } from '@/interfaces/event';
 import type { VolumeInfo } from '@/interfaces/volume';
@@ -49,7 +48,7 @@ async function getVolumeInfo(): Promise<void> {
 	}
 }
 
-async function updateVolume(): Promise<void> {
+async function _updateVolume(): Promise<void> {
 	try {
 		await invoke('set_audio_volume', { volume: currentVolume.value });
 		await updateIcon();
@@ -58,7 +57,7 @@ async function updateVolume(): Promise<void> {
 	}
 }
 
-async function toggleMute(): Promise<void> {
+async function _toggleMute(): Promise<void> {
 	try {
 		await invoke('toggle_audio_mute');
 		await getVolumeInfo();
@@ -67,7 +66,7 @@ async function toggleMute(): Promise<void> {
 	}
 }
 
-const getPercentageClass = (percentage: number) => {
+const _getPercentageClass = (percentage: number) => {
 	if (volumeInfo.value.is_muted) return 'text-red-500';
 	if (percentage > 80) return 'text-green-500';
 	return '';

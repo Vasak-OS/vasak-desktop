@@ -6,9 +6,7 @@ import {
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
-import { toggleNetworkApplet } from '@/tools/network.controller';
 import { logError } from '@/utils/logger';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
@@ -25,7 +23,7 @@ const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 });
 const networkIconSrc: Ref<string> = ref('');
 
-const networkAlt = computed(() => {
+const _networkAlt = computed(() => {
 	return networkState.value.is_connected
 		? `Conectado a ${networkState.value.connection_type} ${networkState.value.ssid}`
 		: 'Conectado a red desconocida';
