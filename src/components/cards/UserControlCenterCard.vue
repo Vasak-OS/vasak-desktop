@@ -68,6 +68,7 @@
 </template>
 
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { logError } from '@/utils/logger';
@@ -83,7 +84,7 @@ const currentDate = ref('');
 const isTimeUpdating = ref(false);
 const isLoaded = ref(false);
 
-const _getCurrentRingColor = () => {
+const getCurrentRingColor = () => {
 	const hour = new Date().getHours();
 	if (hour >= 6 && hour < 12) return '250, 204, 21';
 	if (hour >= 12 && hour < 18) return '251, 146, 60';

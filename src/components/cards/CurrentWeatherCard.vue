@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { computed } from 'vue';
 
 const { units, current } = defineProps({
@@ -16,8 +17,8 @@ const { units, current } = defineProps({
 	},
 });
 
-const _getTemUnit = computed(() => units.temperature_2m);
-const _getTemperature = computed(() => current.temperature_2m);
+const getTemUnit = computed(() => units.temperature_2m);
+const getTemperature = computed(() => current.temperature_2m);
 </script>
 
 <template>

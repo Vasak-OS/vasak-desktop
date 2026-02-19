@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
@@ -58,7 +59,7 @@ async function getBrightnessInfo() {
 	}
 }
 
-async function _updateBrightness() {
+async function updateBrightness() {
 	try {
 		if (setDebitTimeout) {
 			clearTimeout(setDebitTimeout);
@@ -75,7 +76,7 @@ async function _updateBrightness() {
 	}
 }
 
-const _getPercentageClass = (percentage: number) => {
+const getPercentageClass = (percentage: number) => {
 	if (percentage > 80) return 'text-yellow-500';
 	if (percentage < 20) return 'text-orange-500';
 	return '';

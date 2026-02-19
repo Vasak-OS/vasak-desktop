@@ -1,8 +1,11 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
+import { logError } from '@/utils/logger';
 
 const props = defineProps({
 	app: {
@@ -14,7 +17,7 @@ const props = defineProps({
 const appIcon: Ref<string> = ref(props.app.icon);
 const appWindow = getCurrentWindow();
 
-const _openApp = async (path: string) => {
+const openApp = async (path: string) => {
 	try {
 		await invoke('open_app', { path });
 	} catch (error) {

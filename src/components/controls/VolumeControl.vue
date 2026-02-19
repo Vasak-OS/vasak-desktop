@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
@@ -40,7 +41,7 @@ watch([() => volumeInfo.value.is_muted, volumePercentage], updateIcon, {
 async function getVolumeInfo(): Promise<void> {
 	try {
 		const info = await invoke<VolumeInfo>('get_audio_volume');
-		volumInfo.value = info;
+		volumeInfo.value = info;
 		currentVolume.value = info.current;
 		await updateIcon();
 	} catch (error) {
@@ -48,7 +49,7 @@ async function getVolumeInfo(): Promise<void> {
 	}
 }
 
-async function _updateVolume(): Promise<void> {
+async function updateVolume(): Promise<void> {
 	try {
 		await invoke('set_audio_volume', { volume: currentVolume.value });
 		await updateIcon();
@@ -57,7 +58,7 @@ async function _updateVolume(): Promise<void> {
 	}
 }
 
-async function _toggleMute(): Promise<void> {
+async function toggleMute(): Promise<void> {
 	try {
 		await invoke('toggle_audio_mute');
 		await getVolumeInfo();
@@ -66,7 +67,7 @@ async function _toggleMute(): Promise<void> {
 	}
 }
 
-const _getPercentageClass = (percentage: number) => {
+const getPercentageClass = (percentage: number) => {
 	if (volumeInfo.value.is_muted) return 'text-red-500';
 	if (percentage > 80) return 'text-green-500';
 	return '';

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref, watch } from 'vue';
@@ -17,12 +18,12 @@ const batteryInfo: Ref<BatteryInfo> = ref({
 const batteryIconSrc: Ref<string> = ref('');
 const unlistenBattery: Ref<(() => void) | null> = ref(null);
 
-const _batteryAltText = computed(() => {
+const batteryAltText = computed(() => {
 	if (!batteryInfo.value.has_battery) return 'No battery detected';
 	return `Battery ${Math.round(batteryInfo.value.percentage)}% - ${batteryInfo.value.state}`;
 });
 
-const _tooltipClass = computed(() => ({
+const tooltipClass = computed(() => ({
 	'text-green-400': batteryInfo.value.is_charging,
 	'text-red-400': batteryInfo.value.percentage < 20 && !batteryInfo.value.is_charging,
 	'text-yellow-400':
@@ -103,13 +104,12 @@ async function getBatteryInfo() {
 	}
 }
 
-async function _toggleBatteryInfo() {
+async function toggleBatteryInfo() {
 	// Toggle behavior for battery info display
 }
 
 onMounted(async () => {
 	unlistenBattery.value = await listen('battery-update', (event) => {
-		console.log('Battery update event received:', event.payload);
 		batteryInfo.value = event.payload as BatteryInfo;
 		updateIcon();
 	});

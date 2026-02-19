@@ -439,6 +439,7 @@
 </template>
 
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { onMounted, onUnmounted, ref } from 'vue';
 
@@ -520,7 +521,7 @@ const loadSystemInfo = async (silent = false) => {
 	}
 };
 
-const _formatUptime = (seconds: number | undefined): string => {
+const formatUptime = (seconds: number | undefined): string => {
 	if (!seconds) return '0 segundos';
 
 	const days = Math.floor(seconds / 86400);
@@ -535,14 +536,14 @@ const _formatUptime = (seconds: number | undefined): string => {
 	return parts.join(' ') || '< 1m';
 };
 
-const _usageClass = (usage: number | undefined): string => {
+const usageClass = (usage: number | undefined): string => {
 	if (!usage) return '';
 	if (usage > 80) return 'high';
 	if (usage > 60) return 'medium';
 	return 'low';
 };
 
-const _tempClass = (temp: number | undefined): string => {
+const tempClass = (temp: number | undefined): string => {
 	if (!temp) return '';
 	if (temp > 80) return 'critical';
 	if (temp > 60) return 'warm';

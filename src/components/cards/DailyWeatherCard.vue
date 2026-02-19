@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -28,13 +29,13 @@ const props = defineProps({
 	},
 });
 
-const _formattedDate = computed(() => {
+const formattedDate = computed(() => {
 	const dateObj = new Date(props.date);
 	dateObj.setDate(dateObj.getDate() + 1);
 	return dateObj.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
 });
 
-const _dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');
+const dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');
 </script>
 <template>
   <div class="flex flex-col items-center gap-1 p-2 rounded-vsk bg-vsk-primary/50 daily-weather-card-layout">

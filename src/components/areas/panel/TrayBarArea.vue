@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
@@ -6,7 +7,7 @@ import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import type { TrayItem, TrayMenu } from '@/interfaces/tray';
 import { batteryExists } from '@/tools/battery.controller';
 import { getTrayItems, startSNIWatcher } from '@/tools/tray.controller';
-import { logError } from '@/utils/logger';
+import { logError, logWarning } from '@/utils/logger';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
@@ -36,7 +37,7 @@ const refreshTrayItems = async (): Promise<void> => {
 	}
 };
 
-const _handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
+const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
 	try {
 		if (event.button === 2) {
 			// Right click
@@ -82,7 +83,7 @@ const showContextMenu = async (item: TrayItem, event: MouseEvent) => {
 	}
 };
 
-const _handleMenuItemClick = async (menuItem: TrayMenu) => {
+const handleMenuItemClick = async (menuItem: TrayMenu) => {
 	try {
 		await invoke('tray_menu_item_click', {
 			service_name: contextMenu.value.trayId,
@@ -98,11 +99,11 @@ const hideContextMenu = () => {
 	contextMenu.value.visible = false;
 };
 
-const _getItemPulseClass = (item: TrayItem) => {
+const getItemPulseClass = (item: TrayItem) => {
 	return item.status === 'NeedsAttention' ? 'animate-pulse-attention' : '';
 };
 
-const _getItemStatusClass = (item: TrayItem) => {
+const getItemStatusClass = (item: TrayItem) => {
 	switch (item.status) {
 		case 'Active':
 			return 'tray-item-active';
@@ -123,7 +124,7 @@ onMounted(async () => {
 	try {
 		existBattery.value = await batteryExists();
 	} catch (e) {
-		console.warn('[TrayPanel] batteryExists failed:', e);
+		logWarning('[TrayPanel] batteryExists failed:', e);
 		existBattery.value = false;
 	}
 

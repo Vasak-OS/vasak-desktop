@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { computed, onMounted, ref } from 'vue';
 
 const weather = ref({
@@ -62,7 +63,7 @@ const getWeather = async () => {
 	return weather;
 };
 
-const _dayOrNight = computed(() => {
+const dayOrNight = computed(() => {
 	return weather.value.current.is_day ? 'day' : 'night';
 });
 
