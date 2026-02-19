@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import {
 	connectToWifi,
 	type NetworkInfo,
@@ -15,13 +16,13 @@ const password = ref('');
 const connecting = ref(false);
 const errorMsg = ref('');
 
-const _connectToNetwork = async () => {
+const connectToNetwork = async () => {
 	if (props.is_connected) return;
 	showModal.value = true;
 	await nextTick();
 };
 
-const _confirmConnect = async () => {
+const confirmConnect = async () => {
 	connecting.value = true;
 	errorMsg.value = '';
 	try {

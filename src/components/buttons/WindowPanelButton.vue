@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
@@ -8,7 +9,7 @@ import { logError } from '@/utils/logger';
 const props = defineProps<WindowPanelButtonProps>();
 const iconSource: Ref<string> = ref<string>('');
 
-const _toggleWindow = async (): Promise<void> => {
+const toggleWindow = async (): Promise<void> => {
 	try {
 		await invoke('toggle_window', { windowId: props.id });
 	} catch (error) {

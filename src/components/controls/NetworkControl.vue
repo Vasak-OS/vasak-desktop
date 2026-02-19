@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import {
 	getCurrentNetworkState,
@@ -25,13 +26,13 @@ const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 const networkIconSrc: Ref<string> = ref('');
 const isLoading: Ref<boolean> = ref(false);
 
-const _networkAlt = computed(() => {
+const networkAlt = computed(() => {
 	return networkState.value.is_connected
 		? `Conectado a ${networkState.value.connection_type} ${networkState.value.ssid}`
 		: 'Desconectado';
 });
 
-const _toggleCurrentNetwork = async (): Promise<void> => {
+const toggleCurrentNetwork = async (): Promise<void> => {
 	isLoading.value = true;
 	try {
 		await toggleNetwork(!networkState.value.is_connected);

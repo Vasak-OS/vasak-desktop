@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
@@ -28,7 +29,7 @@ let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 const dbusStatus = ref('connected');
 const dbusMessage = ref('');
 
-const _isPlaying = computed(
+const isPlaying = computed(
 	() => String(musicInfo.value?.status || '').toLowerCase() === 'playing'
 );
 
@@ -61,15 +62,15 @@ function showErrorMessage(msg: string): void {
 	}, 3000);
 }
 
-function _onPrev(): void {
+function onPrev(): void {
 	sendCommand('music_previous_track');
 }
 
-function _onNext(): void {
+function onNext(): void {
 	sendCommand('music_next_track');
 }
 
-function _onPlayPause(): void {
+function onPlayPause(): void {
 	sendCommand('music_play_pause');
 }
 
@@ -151,7 +152,7 @@ watch(
 	{ immediate: true }
 );
 
-async function _onImgError(): Promise<void> {
+async function onImgError(): Promise<void> {
 	try {
 		const defaultIcon = await getIconSource('applications-multimedia');
 		if (defaultIcon) {

@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
@@ -67,7 +68,7 @@ const iconSrc = ref('');
 const closeIconSrc = ref('');
 
 // Parse standard DBus actions [key, label, key, label...]
-const _parsedActions = computed(() => {
+const parsedActions = computed(() => {
 	const acts = props.notification.actions || [];
 	const result = [];
 	for (let i = 0; i < acts.length; i += 2) {
@@ -80,12 +81,12 @@ const _parsedActions = computed(() => {
 	return result;
 });
 
-function _formatTime(timestamp: number): string {
+function formatTime(timestamp: number): string {
 	const date = new Date(timestamp * 1000);
 	return date.toLocaleTimeString();
 }
 
-async function _handleAction(action_key: string) {
+async function handleAction(action_key: string) {
 	try {
 		await invoke('invoke_notification_action', {
 			id: props.notification.id,

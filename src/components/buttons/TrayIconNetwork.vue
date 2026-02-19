@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import {
 	getCurrentNetworkState,
@@ -8,6 +10,7 @@ import {
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
+import { toggleNetworkApplet } from '../../tools/network.controller';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
@@ -23,7 +26,7 @@ const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 });
 const networkIconSrc: Ref<string> = ref('');
 
-const _networkAlt = computed(() => {
+const networkAlt = computed(() => {
 	return networkState.value.is_connected
 		? `Conectado a ${networkState.value.connection_type} ${networkState.value.ssid}`
 		: 'Conectado a red desconocida';

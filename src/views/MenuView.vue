@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref } from 'vue';
@@ -6,7 +7,7 @@ import { logError } from '@/utils/logger';
 
 const menuData: Ref<Array<any>> = ref([]);
 const categorySelected: Ref<any> = ref('all');
-const _filter: Ref<string> = ref('');
+const filter: Ref<string> = ref('');
 const logoutImg: Ref<string> = ref('');
 const shutdownImg: Ref<string> = ref('');
 const rebootImg: Ref<string> = ref('');
@@ -31,7 +32,7 @@ const detectDisplayServer = async () => {
 	}
 };
 
-const _logout = async () => {
+const logout = async () => {
 	try {
 		const displayServer = await detectDisplayServer();
 		await invoke('logout', { displayServer });
@@ -40,7 +41,7 @@ const _logout = async () => {
 	}
 };
 
-const _shutdown = async () => {
+const shutdown = async () => {
 	try {
 		await invoke('shutdown');
 	} catch (error) {
@@ -48,7 +49,7 @@ const _shutdown = async () => {
 	}
 };
 
-const _reboot = async () => {
+const reboot = async () => {
 	try {
 		await invoke('reboot');
 	} catch (error) {
@@ -56,7 +57,7 @@ const _reboot = async () => {
 	}
 };
 
-const _suspend = async () => {
+const suspend = async () => {
 	try {
 		const displayServer = await detectDisplayServer();
 		await invoke('suspend', { displayServer });
@@ -65,7 +66,7 @@ const _suspend = async () => {
 	}
 };
 
-const _openConfiguration = async () => {
+const openConfiguration = async () => {
 	try {
 		await invoke('open_configuration_window');
 	} catch (error) {
@@ -73,12 +74,12 @@ const _openConfiguration = async () => {
 	}
 };
 
-const _apps = computed(() => {
+const apps = computed(() => {
 	const allApps = (menuData.value as any).all?.apps;
 	return allApps;
 });
 
-const _appsOfCategory = computed(() => (menuData.value as any)[categorySelected.value]?.apps);
+const appsOfCategory = computed(() => (menuData.value as any)[categorySelected.value]?.apps);
 
 const setImages = async () => {
 	try {

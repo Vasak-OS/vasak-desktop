@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { homeDir } from '@tauri-apps/api/path';
@@ -26,9 +27,9 @@ const backgroundPath = computed(() => {
 	);
 });
 
-const _background = computed(() => convertFileSrc(backgroundPath.value));
+const background = computed(() => convertFileSrc(backgroundPath.value));
 
-const _backgroundType = computed(() => {
+const backgroundType = computed(() => {
 	const ext = backgroundPath.value.toLowerCase().split('.').pop();
 	if (ext === 'mp4' || ext === 'webm' || ext === 'ogv') {
 		return `video/${ext}`;
@@ -40,7 +41,7 @@ const showFiles = computed(() => (configStore as any).config?.desktop?.showfiles
 const showHiddenFiles = computed(
 	() => (configStore as any).config?.desktop?.showhiddenfiles ?? false
 );
-const _iconSize: ComputedRef<number> = computed(
+const iconSize: ComputedRef<number> = computed(
 	(): number => (configStore as any).config?.desktop?.iconsize ?? 64
 );
 
@@ -72,7 +73,7 @@ const loadDesktopFiles = async () => {
 };
 
 // Manejar clicks en archivos y carpetas
-const _handleFileClick = async (file: FileEntry) => {
+const handleFileClick = async (file: FileEntry) => {
 	if (file.isDirectory) {
 		// Abrir el file manager en la carpeta seleccionada
 		try {
@@ -86,7 +87,7 @@ const _handleFileClick = async (file: FileEntry) => {
 			const cmd = Command.create('open', [file.path]);
 			await cmd.spawn();
 		} catch (error) {
-			logError('Error al abrir archivo:', file.path, error);
+			logError('Error al abrir archivo:', file.path);
 		}
 	}
 };

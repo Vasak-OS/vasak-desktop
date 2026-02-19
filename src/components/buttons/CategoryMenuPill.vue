@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
 
@@ -13,7 +14,7 @@ const props = defineProps<{
 
 const appIcon: Ref<string> = ref(props.image);
 
-const _setCategory = (category: string) => {
+const setCategory = (category: string) => {
 	emit('update:categorySelected', category);
 };
 

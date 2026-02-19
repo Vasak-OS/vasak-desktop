@@ -1,9 +1,12 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
+import menuIcon from '@/assets/vectors/icon.svg';
 
 const notifyIcon: Ref<string> = ref('');
 const configIcon: Ref<string> = ref('');
@@ -23,7 +26,7 @@ const setIcons = async () => {
 	}
 };
 
-const _openMenu = async () => {
+const openMenu = async () => {
 	try {
 		await invoke('toggle_menu');
 	} catch (error) {
@@ -31,7 +34,7 @@ const _openMenu = async () => {
 	}
 };
 
-const _openConfig = async () => {
+const openConfig = async () => {
 	try {
 		await invoke('toggle_config_app');
 	} catch (error) {
@@ -39,7 +42,7 @@ const _openConfig = async () => {
 	}
 };
 
-const _openFileManager = async () => {
+const openFileManager = async () => {
 	try {
 		await invoke('open_file_manager_window');
 	} catch (error) {
@@ -47,7 +50,7 @@ const _openFileManager = async () => {
 	}
 };
 
-const _openNotificationCenter = async () => {
+const openNotificationCenter = async () => {
 	try {
 		await invoke('toggle_control_center');
 	} catch (error) {

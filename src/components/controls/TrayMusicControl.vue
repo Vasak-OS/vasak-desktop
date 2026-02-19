@@ -1,10 +1,12 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref, watch } from 'vue';
 import type { MusicInfo } from '@/interfaces/music';
 import { processImageUrl } from '@/utils/image';
+import { logError } from '@/utils/logger';
 
 const musicInfo: Ref<MusicInfo> = ref({
 	title: '',
@@ -28,7 +30,7 @@ watch(
 	{ immediate: true }
 );
 
-async function _onImgError(): Promise<void> {
+async function onImgError(): Promise<void> {
 	imgSrc.value = await getIconSource('applications-multimedia');
 }
 
@@ -38,7 +40,7 @@ const nextIcon: Ref<string> = ref('');
 const playIcon: Ref<string> = ref('');
 const pauseIcon: Ref<string> = ref('');
 
-const _isPlaying = computed(
+const isPlaying = computed(
 	() => String(musicInfo.value?.status || '').toLowerCase() === 'playing'
 );
 
@@ -55,15 +57,15 @@ async function sendCommand(cmd: string): Promise<void> {
 	}
 }
 
-function _onPrev(): void {
+function onPrev(): void {
 	sendCommand('music_previous_track');
 }
 
-function _onNext(): void {
+function onNext(): void {
 	sendCommand('music_next_track');
 }
 
-function _onPlayPause(): void {
+function onPlayPause(): void {
 	sendCommand('music_play_pause');
 }
 
@@ -72,7 +74,7 @@ const isHiding = ref(false);
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 const ANIM_MS = 180;
 
-function _onEnter(): void {
+function onEnter(): void {
 	if (hideTimer) {
 		clearTimeout(hideTimer);
 		hideTimer = null;
@@ -81,7 +83,7 @@ function _onEnter(): void {
 	visible.value = true;
 }
 
-function _onLeave(): void {
+function onLeave(): void {
 	if (!visible.value) return;
 	isHiding.value = true;
 	if (hideTimer) clearTimeout(hideTimer);

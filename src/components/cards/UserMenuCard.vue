@@ -1,11 +1,12 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
 const userInfo: Ref<UserInfo | null> = ref<UserInfo | null>(null);
 
-const _avatarSrc = computed(() => {
+const avatarSrc = computed(() => {
 	return userInfo.value?.avatar_data;
 });
 

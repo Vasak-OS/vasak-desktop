@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref } from 'vue';
@@ -12,17 +13,17 @@ const props = defineProps<{
 	connected?: boolean;
 }>();
 
-const _deviceTitle = computed(
+const deviceTitle = computed(
 	() => props.device.alias || props.device.name || props.device.address
 );
 
-const _deviceSubtitle = computed(() => props.device.address);
+const deviceSubtitle = computed(() => props.device.address);
 
-const _deviceMetadata = computed(() =>
+const deviceMetadata = computed(() =>
 	props.device.icon || props.device.type ? props.device.type : ''
 );
 
-const _deviceExtraInfo = computed(() => {
+const deviceExtraInfo = computed(() => {
 	const info: string[] = [];
 	if (extraInfo.value.battery !== undefined) {
 		info.push(`🔋 ${extraInfo.value.battery}%`);
