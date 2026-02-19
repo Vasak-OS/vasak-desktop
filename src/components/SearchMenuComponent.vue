@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-const _vFocus = {
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+const vFocus = {
 	mounted: (el: HTMLElement) => el.focus(),
 };
 
@@ -10,7 +11,7 @@ defineProps({
 	},
 });
 
-const _emit = defineEmits(['update:filter']);
+const emit = defineEmits(['update:filter']);
 </script>
 
 <template>

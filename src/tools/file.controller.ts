@@ -39,7 +39,7 @@ export function getIconNameForFile(filename: string, isDir: boolean): string {
 	if (isDir) return 'folder';
 
 	const parts = filename.split('.');
-	const ext = parts.length > 1 ? parts.pop()?.toLowerCase() : '';
+	const ext: string = parts.length > 1 ? parts.pop()?.toLowerCase() || '' : '';
 
 	const mapping = iconMappings.find((m) => m.ext.includes(ext));
 	return mapping?.icon || 'text-x-generic';
@@ -75,7 +75,7 @@ export function getFileMimeType(
 	filename: string
 ): 'image' | 'video' | 'audio' | 'text' | 'application' | 'unknown' {
 	const parts = filename.split('.');
-	const ext = parts.length > 1 ? parts.pop()?.toLowerCase() : '';
+	const ext: string = parts.length > 1 ? parts.pop()?.toLowerCase() || '' : '';
 
 	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
 	if (['mp4', 'webm', 'mkv', 'avi', 'mov'].includes(ext)) return 'video';

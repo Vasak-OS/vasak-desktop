@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -80,7 +81,7 @@ onUnmounted(() => {
 	}
 });
 
-const _saveConfig = async (): Promise<void> => {
+const saveConfig = async (): Promise<void> => {
 	saving.value = true;
 	error.value = '';
 	successMessage.value = '';
@@ -116,7 +117,7 @@ const _saveConfig = async (): Promise<void> => {
 	}
 };
 
-const _isFormValid = computed(() => {
+const isFormValid = computed(() => {
 	return iconSize.value >= 24 && iconSize.value <= 128;
 });
 
@@ -129,7 +130,7 @@ const handleDropZone = (filePath: string) => {
 	}
 };
 
-const _wallpaperPreviewUrl = computed(() => {
+const wallpaperPreviewUrl = computed(() => {
 	if (!wallpaper.value) return '';
 	return convertFileSrc(wallpaper.value);
 });
@@ -169,7 +170,7 @@ const _wallpaperPreviewUrl = computed(() => {
               <!-- Background image si existe -->
               <img v-if="wallpaper" :src="wallpaperPreviewUrl" alt="Wallpaper preview"
                 class="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                @error="() => console.error('Error loading wallpaper image')" />
+                @error="() => logError('Error loading wallpaper image')" />
 
               <!-- Overlay y texto -->
               <div
