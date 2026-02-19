@@ -5,10 +5,10 @@ import { convertFileSrc } from '@tauri-apps/api/core';
 import { homeDir, join } from '@tauri-apps/api/path';
 import { Command } from '@tauri-apps/plugin-shell';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { WindowFrame } from '@vasakgroup/vue-libvasak';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { FileEntry } from '@/interfaces/file';
+import AppWindowFrame from '@/layouts/AppWindowFrame.vue';
 import { getUserDirectories, loadDirectoryBackend } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
 
@@ -127,8 +127,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <WindowFrame>
-    <div class="h-[calc(100vh-32px)] w-screen rounded-b-window background flex flex-col overflow-hidden">
+  <AppWindowFrame container-class="w-screen rounded-t-window flex flex-col overflow-hidden">
       <div class="h-12 border-b border-vsk-primary flex items-center px-4 background backdrop-blur-sm shrink-0">
         <div class="flex gap-2 mr-4">
           <button @click="navigateUp" aria-label="up" class="hover:text-vsk-primary transition-colors text-lg">
@@ -204,8 +203,7 @@ onMounted(async () => {
           </div>
         </div>
       </div>
-    </div>
-  </WindowFrame>
+  </AppWindowFrame>
 </template>
 
 <style scoped>

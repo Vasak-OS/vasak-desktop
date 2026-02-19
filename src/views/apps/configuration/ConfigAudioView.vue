@@ -2,11 +2,9 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 
 import SystemAudioArea from '@/components/areas/audio/SystemAudioArea.vue';
-import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
+import ConfigAppPage from '@/layouts/ConfigAppPage.vue';
 </script>
 
 <template>
-  <ConfigAppLayout>
-    <SystemAudioArea />
-  </ConfigAppLayout>
+  <ConfigAppPage :component="SystemAudioArea" />
 </template>

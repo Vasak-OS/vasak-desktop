@@ -2,11 +2,12 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 
 import BluetoothControlArea from '@/components/areas/bluetooth/BluetoothControlArea.vue';
-import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
+import ConfigAppPage from '@/layouts/ConfigAppPage.vue';
 </script>
 
 <template>
-  <ConfigAppLayout>
-    <BluetoothControlArea class="w-full" />
-  </ConfigAppLayout>
+  <ConfigAppPage
+    :component="BluetoothControlArea"
+    :component-props="{ class: 'w-full' }"
+  />
 </template>
