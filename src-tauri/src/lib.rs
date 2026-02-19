@@ -98,7 +98,6 @@ pub fn run() {
             toggle_audio_applet,
             get_brightness_info,
             set_brightness_info,
-            toggle_system_theme,
             send_notify,
             clear_notifications,
             get_all_notifications,
