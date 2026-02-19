@@ -5,8 +5,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
-import { logError } from '@/utils/logger';
 import menuIcon from '@/assets/vectors/icon.svg';
+import { logError } from '@/utils/logger';
 
 const notifyIcon: Ref<string> = ref('');
 const configIcon: Ref<string> = ref('');

@@ -29,9 +29,7 @@ let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 const dbusStatus = ref('connected');
 const dbusMessage = ref('');
 
-const isPlaying = computed(
-	() => String(musicInfo.value?.status || '').toLowerCase() === 'playing'
-);
+const isPlaying = computed(() => String(musicInfo.value?.status || '').toLowerCase() === 'playing');
 
 async function sendCommand(cmd: string): Promise<void> {
 	const player = musicInfo.value?.player || '';
