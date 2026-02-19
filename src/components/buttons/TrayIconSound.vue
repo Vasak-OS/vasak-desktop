@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
@@ -39,7 +40,7 @@ watch([() => volumeInfo.value.is_muted, volumePercentage], updateIcon, {
 async function getVolumeInfo(): Promise<void> {
 	try {
 		const info = (await invoke('get_audio_volume')) as VolumeInfo;
-		volumInfo.value = info;
+		volumeInfo.value = info;
 		currentVolume.value = info.current;
 		await updateIcon();
 	} catch (error) {
@@ -47,7 +48,7 @@ async function getVolumeInfo(): Promise<void> {
 	}
 }
 
-async function _toggleApplet(): Promise<void> {
+async function toggleApplet(): Promise<void> {
 	try {
 		await invoke('toggle_audio_applet');
 	} catch (error) {

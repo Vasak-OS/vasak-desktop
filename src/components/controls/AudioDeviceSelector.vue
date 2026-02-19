@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
@@ -35,7 +36,7 @@ async function loadDevices() {
 	}
 }
 
-async function _onDeviceChange(deviceId: string) {
+async function onDeviceChange(deviceId: string) {
 	selectedDeviceId.value = deviceId;
 	try {
 		await invoke('set_audio_device', { deviceId });
@@ -58,7 +59,7 @@ onMounted(async () => {
 	});
 });
 
-function _getDeviceName(device: AudioDevice): string {
+function getDeviceName(device: AudioDevice): string {
 	return device.name
 		.replaceAll('ALSA', '')
 		.replaceAll('PulseAudio', '')

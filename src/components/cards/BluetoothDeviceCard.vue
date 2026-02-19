@@ -13,9 +13,7 @@ const props = defineProps<{
 	connected?: boolean;
 }>();
 
-const deviceTitle = computed(
-	() => props.device.alias || props.device.name || props.device.address
-);
+const deviceTitle = computed(() => props.device.alias || props.device.name || props.device.address);
 
 const deviceSubtitle = computed(() => props.device.address);
 

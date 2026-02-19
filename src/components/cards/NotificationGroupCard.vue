@@ -67,6 +67,7 @@
 </template>
 
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
 import { logError } from '@/utils/logger';
@@ -110,11 +111,11 @@ const shouldAutoExpand = computed(() => {
 	return props.group.has_unread && props.group.count <= 3;
 });
 
-function _toggleExpanded() {
+function toggleExpanded() {
 	isExpanded.value = !isExpanded.value;
 }
 
-function _formatGroupSummary() {
+function formatGroupSummary() {
 	const unreadCount = props.group.notifications.filter((n) => !n.seen).length;
 	if (unreadCount > 0) {
 		return `${unreadCount} nueva${unreadCount === 1 ? '' : 's'}`;
@@ -122,7 +123,7 @@ function _formatGroupSummary() {
 	return props.group.notifications[0]?.summary || 'Sin notificaciones';
 }
 
-function _formatTime(timestamp: number) {
+function formatTime(timestamp: number) {
 	const date = new Date(timestamp * 1000);
 	const now = new Date();
 	const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
@@ -133,13 +134,13 @@ function _formatTime(timestamp: number) {
 	return date.toLocaleDateString();
 }
 
-function _removeAllFromGroup() {
+function removeAllFromGroup() {
 	props.group.notifications.forEach((notification) => {
 		emit('remove', notification.id as number);
 	});
 }
 
-function _onEnter(el: Element) {
+function onEnter(el: Element) {
 	const element = el as HTMLElement;
 	element.style.height = '0';
 	element.style.overflow = 'hidden';
@@ -150,7 +151,7 @@ function _onEnter(el: Element) {
 	});
 }
 
-function _onLeave(el: Element) {
+function onLeave(el: Element) {
 	const element = el as HTMLElement;
 	element.style.height = `${element.scrollHeight}px`;
 	element.style.overflow = 'hidden';

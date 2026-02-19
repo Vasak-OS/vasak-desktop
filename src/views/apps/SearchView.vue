@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
@@ -129,7 +130,7 @@ onUnmounted(() => {
 });
 
 // Helper functions
-function _getCategoryIcon(category: string): string {
+function getCategoryIcon(category: string): string {
 	switch (category) {
 		case 'application':
 			return '📦';
@@ -142,7 +143,7 @@ function _getCategoryIcon(category: string): string {
 	}
 }
 
-function _getCategoryLabel(category: string): string {
+function getCategoryLabel(category: string): string {
 	switch (category) {
 		case 'application':
 			return 'App';
