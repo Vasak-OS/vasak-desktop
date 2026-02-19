@@ -67,9 +67,12 @@
 </template>
 
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
+import ActionButton from '@/components/ActionButton.vue';
+import NotificationCard from '@/components/NotificationCard.vue';
 import { logError } from '@/utils/logger';
 
 interface Notification {

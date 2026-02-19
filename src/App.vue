@@ -1,8 +1,10 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { onMounted, onUnmounted } from 'vue';
+import { RouterView } from 'vue-router';
 import { logDebug, logError, logInfo } from '@/utils/logger';
 
 let unlistenConfig: (() => void) | null = null;

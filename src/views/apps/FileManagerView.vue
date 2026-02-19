@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { homeDir, join } from '@tauri-apps/api/path';
@@ -6,6 +7,7 @@ import { Command } from '@tauri-apps/plugin-shell';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import WindowFrame from '@/components/WindowFrame.vue';
 import type { FileEntry } from '@/interfaces/file';
 import { getUserDirectories, loadDirectoryBackend } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';

@@ -1,7 +1,9 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, type Ref, ref, watch } from 'vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { fetchBatteryInfo } from '@/tools/battery.controller';

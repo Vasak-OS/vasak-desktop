@@ -1,8 +1,10 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { SliderControl } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 

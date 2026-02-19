@@ -121,8 +121,8 @@
 </template>
 
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -131,6 +131,8 @@ import {
 	type NetworkInfo,
 } from '@vasakgroup/plugin-network-manager';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
+import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
+import SwitchToggle from '@/components/SwitchToggle.vue';
 import { logError } from '@/utils/logger';
 
 const wifiEnabled: Ref<boolean> = ref(true);
