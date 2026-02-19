@@ -1,11 +1,9 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-import WindowFrame from '@/components/WindowFrame.vue';
+import AppWindowFrame from '@/layouts/AppWindowFrame.vue';
 </script>
 <template>
-  <WindowFrame>
-    <div class="h-[calc(100vh-32px)] rounded-b-window background">
-      asdasdasdasdasdasdASDASDASDA
-    </div>
-  </WindowFrame>
+  <AppWindowFrame>
+    asdasdasdasdasdasdASDASDASDA
+  </AppWindowFrame>
 </template>
