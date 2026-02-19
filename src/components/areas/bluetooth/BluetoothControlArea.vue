@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
 import { listen } from '@tauri-apps/api/event';
 import {
 	type AdapterInfo,
@@ -13,6 +15,7 @@ import {
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
+import { logError } from '@/utils/logger';
 
 const connectedDevices: Ref<any[]> = ref([]);
 const availableDevices: Ref<any[]> = ref([]);
@@ -26,7 +29,7 @@ const isScanning = ref(false);
 
 let unlistenBluetooth: Ref<(() => void) | null> = ref(null);
 
-const _toggleBT = async () => {
+const toggleBT = async () => {
 	isTogglingBluetooth.value = true;
 	try {
 		await toggleBluetooth();
@@ -64,7 +67,7 @@ const refreshDevices = async () => {
 	loading.value = false;
 };
 
-const _scanDevices = async () => {
+const scanDevices = async () => {
 	if (!defaultAdapter.value) return;
 	isScanning.value = true;
 	try {
@@ -95,16 +98,16 @@ const getBluetoothIcon = async () => {
 		const iconName = resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
 		bluetoothIcon.value = await getIconSource(iconName);
 	} catch (error) {
-		console.error('Error loading bluetooth icon:', error);
+		logError('Error loading bluetooth icon:', error);
 		bluetoothIcon.value = '';
 	}
 };
 
-const _connect = async (device: any) => {
+const connect = async (device: any) => {
 	await connectDevice(device.path);
 	await refreshDevices();
 };
-const _disconnect = async (device: any) => {
+const disconnect = async (device: any) => {
 	await disconnectDevice(device.path);
 	await refreshDevices();
 };

@@ -1,7 +1,10 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
+import { logError } from '@/utils/logger';
 
 interface Shortcut {
 	id: string;
@@ -49,14 +52,14 @@ onMounted(async () => {
 		const data = await invoke<Shortcut[]>('get_shortcuts');
 		shortcuts.value = data;
 	} catch (err) {
-		console.error('Error loading shortcuts:', err);
+		logError('Error loading shortcuts:', err);
 		error.value = 'Error al cargar los atajos';
 	} finally {
 		loading.value = false;
 	}
 });
 
-const _startEdit = (shortcut: Shortcut) => {
+const startEdit = (shortcut: Shortcut) => {
 	if (!shortcut.editable) return;
 	editingId.value = shortcut.id;
 	editingKeys.value = shortcut.keys;
@@ -65,14 +68,14 @@ const _startEdit = (shortcut: Shortcut) => {
 	currentConflict.value = null;
 };
 
-const _cancelEdit = () => {
+const cancelEdit = () => {
 	editingId.value = null;
 	editingKeys.value = '';
 	error.value = '';
 	currentConflict.value = null;
 };
 
-const _checkConflicts = async () => {
+const checkConflicts = async () => {
 	if (!editingKeys.value.trim()) {
 		currentConflict.value = null;
 		return;
@@ -89,7 +92,7 @@ const _checkConflicts = async () => {
 	}
 };
 
-const _saveShortcut = async () => {
+const saveShortcut = async () => {
 	if (!editingId.value || !editingKeys.value.trim()) {
 		error.value = 'Las teclas no pueden estar vacías';
 		return;
@@ -131,7 +134,7 @@ const _saveShortcut = async () => {
 	}
 };
 
-const _testShortcut = async (shortcutId: string) => {
+const testShortcut = async (shortcutId: string) => {
 	testingId.value = shortcutId;
 	try {
 		await invoke('execute_shortcut', { shortcutId });
@@ -149,7 +152,7 @@ const _testShortcut = async (shortcutId: string) => {
 	}
 };
 
-const _deleteShortcut = async (id: string) => {
+const deleteShortcut = async (id: string) => {
 	if (!confirm('¿Estás seguro de que deseas eliminar este atajo personalizado?')) return;
 
 	try {
@@ -164,7 +167,7 @@ const _deleteShortcut = async (id: string) => {
 	}
 };
 
-const _addCustomShortcut = async () => {
+const addCustomShortcut = async () => {
 	const name = prompt('Nombre del atajo:');
 	if (!name) return;
 
@@ -192,7 +195,7 @@ const _addCustomShortcut = async () => {
 	}
 };
 
-const _getCategoryLabel = (category: string): string => {
+const getCategoryLabel = (category: string): string => {
 	const labels: Record<string, string> = {
 		system: 'Sistema',
 		vasak: 'VasakOS',
@@ -201,7 +204,7 @@ const _getCategoryLabel = (category: string): string => {
 	return labels[category] || category;
 };
 
-const _getCategoryColor = (category: string): string => {
+const getCategoryColor = (category: string): string => {
 	const colors: Record<string, string> = {
 		system: 'bg-blue-500/10 text-blue-600',
 		vasak: 'bg-purple-500/10 text-purple-600',
@@ -210,8 +213,8 @@ const _getCategoryColor = (category: string): string => {
 	return colors[category] || 'bg-gray-500/10 text-gray-600';
 };
 
-const _hasConflict = computed(() => currentConflict.value?.has_conflict ?? false);
-const _showConflictWarning = computed(() => {
+const hasConflict = computed(() => currentConflict.value?.has_conflict ?? false);
+const showConflictWarning = computed(() => {
 	return editingId.value && currentConflict.value?.has_conflict;
 });
 </script>

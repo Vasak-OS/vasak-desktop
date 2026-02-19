@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
 import { computed } from 'vue';
 
 const props = defineProps({
@@ -12,7 +14,7 @@ const props = defineProps({
 	},
 });
 
-const _appsFiltred = computed((): Array<any> => {
+const appsFiltred = computed((): Array<any> => {
 	return props.apps.filter(
 		(app: any) =>
 			app.name.toLowerCase().includes(props.filter) ||

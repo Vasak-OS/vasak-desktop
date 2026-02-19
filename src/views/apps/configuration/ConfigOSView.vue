@@ -1,6 +1,9 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
 import { invoke } from '@tauri-apps/api/core';
 import { computed, onMounted, ref } from 'vue';
+import { logError } from '@/utils/logger';
 
 interface SystemConfig {
 	border_radius: number;
@@ -48,7 +51,7 @@ onMounted(async () => {
 		iconPacks.value = icons;
 	} catch (err) {
 		error.value = `Error cargando configuración: ${err}`;
-		console.error(err);
+		logError(error.value);
 	} finally {
 		loading.value = false;
 	}
@@ -77,14 +80,13 @@ const saveConfig = async () => {
 		}, 3000);
 	} catch (err) {
 		error.value = `Error guardando configuración: ${err}`;
-		console.error(err);
+		logError(error.value);
 	} finally {
 		saving.value = false;
 	}
 };
 
 const applyThemeToDOM = () => {
-	// Aplicar CSS variables al documento
 	const root = document.documentElement;
 	root.style.setProperty('--border-radius', `${config.value.border_radius}px`);
 	root.style.setProperty('--primary-color', config.value.primary_color);
@@ -98,7 +100,7 @@ const applyThemeToDOM = () => {
 	}
 };
 
-const _resetToDefaults = async () => {
+const resetToDefaults = async () => {
 	if (confirm('¿Estás seguro de que deseas restablecer a los valores por defecto?')) {
 		config.value = {
 			border_radius: 8,
@@ -114,7 +116,7 @@ const _resetToDefaults = async () => {
 	}
 };
 
-const _isFormValid = computed(() => {
+const isFormValid = computed(() => {
 	return (
 		config.value.border_radius >= 1 &&
 		config.value.border_radius <= 20 &&

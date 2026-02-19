@@ -121,6 +121,8 @@
 </template>
 
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -168,7 +170,7 @@ const checkWirelessStatus = async () => {
 	}
 };
 
-const _toggleWifi = async () => {
+const toggleWifi = async () => {
 	if (!wifiAvailable.value) return;
 
 	try {
@@ -186,7 +188,7 @@ const _toggleWifi = async () => {
 			availableNetworks.value = [];
 		}
 	} catch (error) {
-		console.error('Error toggling WiFi:', error);
+		logError('Error toggling WiFi:', error);
 	}
 };
 
@@ -215,7 +217,7 @@ const refreshEthernetStatus = async () => {
 		const state = await getCurrentNetworkState();
 		updateEthernetStatus(state);
 	} catch (error) {
-		console.error('Error fetching ethernet status:', error);
+		logError('Error fetching ethernet status:', error);
 		ethernetStatus.value = 'Unknown';
 	}
 };
@@ -226,17 +228,17 @@ const refreshNetworks = async () => {
 	try {
 		availableNetworks.value = await listWifiNetworks();
 	} catch (error) {
-		console.error('Error refreshing networks:', error);
+		logError('Error refreshing networks:', error);
 	} finally {
 		loading.value = false;
 	}
 };
 
-const _closeApplet = async () => {
+const closeApplet = async () => {
 	try {
 		await invoke('toggle_network_applet');
 	} catch (error) {
-		console.error('Error closing applet:', error);
+		logError('Error closing applet:', error);
 	}
 };
 
