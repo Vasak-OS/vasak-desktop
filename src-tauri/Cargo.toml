@@ -33,8 +33,8 @@ gdk = "0.18"
 base64 = "0.22"
 #tauri-plugin-vicons = {path = "../../tauri-plugin-vicons"}
 tauri-plugin-vicons = "2"
-#tauri-plugin-config-manager = {path = "../../tauri-plugin-config-manager"}
-tauri-plugin-config-manager = "2"
+tauri-plugin-config-manager = {path = "../../tauri-plugin-config-manager"}
+#tauri-plugin-config-manager = "2"
 tauri-plugin-user-data = "2"
 tauri-plugin-opener = "2"
 #tauri-plugin-network-manager = { path = "../../tauri-plugin-network-manager" }
