@@ -9,8 +9,8 @@ import {
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { ToggleControl } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
 let ulisten: Ref<(() => void) | null> = ref(null);

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 
-import NetworkControlArea from '@/components/configuration/NetworkControlArea.vue';
+import NetworkControlArea from '@/components/areas/network/NetworkControlArea.vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 </script>
 

@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { ToggleControl } from '@vasakgroup/vue-libvasak';

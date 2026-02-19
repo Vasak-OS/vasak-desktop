@@ -3,8 +3,8 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { DeviceCard } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
-import DeviceCard from '@/components/DeviceCard.vue';
 import { logError } from '@/utils/logger';
 
 const icon: Ref<string> = ref('');

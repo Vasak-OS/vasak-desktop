@@ -70,8 +70,8 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, ref } from 'vue';
 import { ActionButton } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref } from 'vue';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
 import { logError } from '@/utils/logger';
 
