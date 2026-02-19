@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { computed } from 'vue';
-import WeatherIcon from '@/components/WeatherIcon.vue';
+import WeatherIcon from '@/components/icon/WeatherIcon.vue';
 
 const { units, current } = defineProps({
 	current: {

@@ -11,8 +11,8 @@ import {
 } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
-import ActionButton from '@/components/buttons/ActionButton.vue';
-import ConfigAppLayout from '@/components/layouts/ConfigAppLayout.vue';
+import { ActionButton } from '@vasakgroup/vue-libvasak';
+import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import { logError } from '@/utils/logger';
 
 const configStore = ref<any>(null);

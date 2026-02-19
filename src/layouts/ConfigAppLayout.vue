@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 
-import ConfigSidebarArea from '@/components/configuration/ConfigSidebarArea.vue';
-import WindowFrame from '@/components/WindowFrame.vue';
+import ConfigSidebarArea from '@/components/areas/configuration/ConfigSidebarArea.vue';
+import { WindowFrame } from '@vasakgroup/vue-libvasak';
 </script>
 
 <template>
-  <WindowFrame class="rounded-t-window">
-    <div class="h-[calc(100vh-32px)] w-screen rounded-b-window background">
+  <WindowFrame>
+    <div class="h-[calc(100vh-32px)] w-screen rounded-b-window rounded-t-window background">
       <div class="h-full w-full flex p-4 gap-4">
         <ConfigSidebarArea />
         <div class="flex-1 min-h-0">
