@@ -7,7 +7,7 @@ import ConfigSidebarArea from '@/components/areas/configuration/ConfigSidebarAre
 
 <template>
   <WindowFrame>
-    <div class="h-[calc(100vh-32px)] w-screen rounded-b-window rounded-t-window background">
+    <div class="h-[calc(100vh-32px)] w-screen rounded-b-window background">
       <div class="h-full w-full flex p-4 gap-4">
         <ConfigSidebarArea />
         <div class="flex-1 min-h-0">
