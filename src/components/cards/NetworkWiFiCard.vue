@@ -5,7 +5,6 @@ import {
 	type WiFiConnectionConfig,
 } from '@vasakgroup/plugin-network-manager';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { ActionButton, ListCard } from '@vasakgroup/vue-libvasak';
 import { nextTick, onMounted, type Ref, ref } from 'vue';
 
 const netIcon: Ref<string> = ref('');
@@ -16,13 +15,13 @@ const password = ref('');
 const connecting = ref(false);
 const errorMsg = ref('');
 
-const connectToNetwork = async () => {
+const _connectToNetwork = async () => {
 	if (props.is_connected) return;
 	showModal.value = true;
 	await nextTick();
 };
 
-const confirmConnect = async () => {
+const _confirmConnect = async () => {
 	connecting.value = true;
 	errorMsg.value = '';
 	try {
@@ -31,7 +30,7 @@ const confirmConnect = async () => {
 		showModal.value = false;
 		password.value = '';
 	} catch (error) {
-		errorMsg.value = 'Error al conectar: ' + (error as any)?.message;
+		errorMsg.value = `Error al conectar: ${(error as any)?.message}`;
 	} finally {
 		connecting.value = false;
 	}

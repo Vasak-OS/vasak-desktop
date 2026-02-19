@@ -129,7 +129,7 @@ onUnmounted(() => {
 });
 
 // Helper functions
-function getCategoryIcon(category: string): string {
+function _getCategoryIcon(category: string): string {
 	switch (category) {
 		case 'application':
 			return '📦';
@@ -142,7 +142,7 @@ function getCategoryIcon(category: string): string {
 	}
 }
 
-function getCategoryLabel(category: string): string {
+function _getCategoryLabel(category: string): string {
 	switch (category) {
 		case 'application':
 			return 'App';

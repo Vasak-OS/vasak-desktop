@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
-import { ActionButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
-import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
-import { logError } from '@/utils/logger';
 
 interface SystemConfig {
 	border_radius: number;
@@ -101,7 +98,7 @@ const applyThemeToDOM = () => {
 	}
 };
 
-const resetToDefaults = async () => {
+const _resetToDefaults = async () => {
 	if (confirm('¿Estás seguro de que deseas restablecer a los valores por defecto?')) {
 		config.value = {
 			border_radius: 8,
@@ -117,7 +114,7 @@ const resetToDefaults = async () => {
 	}
 };
 
-const isFormValid = computed(() => {
+const _isFormValid = computed(() => {
 	return (
 		config.value.border_radius >= 1 &&
 		config.value.border_radius <= 20 &&

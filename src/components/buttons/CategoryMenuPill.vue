@@ -13,7 +13,7 @@ const props = defineProps<{
 
 const appIcon: Ref<string> = ref(props.image);
 
-const setCategory = (category: string) => {
+const _setCategory = (category: string) => {
 	emit('update:categorySelected', category);
 };
 

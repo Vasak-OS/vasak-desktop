@@ -1,7 +1,5 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import CurrentWeatherCard from '@/components/cards/CurrentWeatherCard.vue';
-import DailyWeatherCard from '@/components/cards/DailyWeatherCard.vue';
 
 const weather = ref({
 	latitude: 52.52,
@@ -64,7 +62,7 @@ const getWeather = async () => {
 	return weather;
 };
 
-const dayOrNight = computed(() => {
+const _dayOrNight = computed(() => {
 	return weather.value.current.is_day ? 'day' : 'night';
 });
 

@@ -129,7 +129,6 @@ import {
 	type NetworkInfo,
 } from '@vasakgroup/plugin-network-manager';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
-import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
 import { logError } from '@/utils/logger';
 
 const wifiEnabled: Ref<boolean> = ref(true);
@@ -169,7 +168,7 @@ const checkWirelessStatus = async () => {
 	}
 };
 
-const toggleWifi = async () => {
+const _toggleWifi = async () => {
 	if (!wifiAvailable.value) return;
 
 	try {
@@ -233,7 +232,7 @@ const refreshNetworks = async () => {
 	}
 };
 
-const closeApplet = async () => {
+const _closeApplet = async () => {
 	try {
 		await invoke('toggle_network_applet');
 	} catch (error) {

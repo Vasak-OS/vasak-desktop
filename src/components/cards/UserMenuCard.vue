@@ -5,7 +5,7 @@ import { logError } from '@/utils/logger';
 
 const userInfo: Ref<UserInfo | null> = ref<UserInfo | null>(null);
 
-const avatarSrc = computed(() => {
+const _avatarSrc = computed(() => {
 	return userInfo.value?.avatar_data;
 });
 

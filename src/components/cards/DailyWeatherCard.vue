@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import WeatherIcon from '@/components/icon/WeatherIcon.vue';
 
 const props = defineProps({
 	date: {
@@ -29,13 +28,13 @@ const props = defineProps({
 	},
 });
 
-const formattedDate = computed(() => {
+const _formattedDate = computed(() => {
 	const dateObj = new Date(props.date);
 	dateObj.setDate(dateObj.getDate() + 1);
 	return dateObj.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
 });
 
-const dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');
+const _dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');
 </script>
 <template>
   <div class="flex flex-col items-center gap-1 p-2 rounded-vsk bg-vsk-primary/50 daily-weather-card-layout">

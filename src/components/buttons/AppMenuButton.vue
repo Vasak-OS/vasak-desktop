@@ -14,7 +14,7 @@ const props = defineProps({
 const appIcon: Ref<string> = ref(props.app.icon);
 const appWindow = getCurrentWindow();
 
-const openApp = async () => {
+const _openApp = async () => {
 	try {
 		await invoke('open_app', { path: props.app.path });
 	} catch (error) {

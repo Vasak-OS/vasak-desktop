@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import AppMenuButton from '@/components/buttons/AppMenuButton.vue';
 
 const props = defineProps({
 	apps: {
@@ -13,7 +12,7 @@ const props = defineProps({
 	},
 });
 
-const appsFiltred = computed((): Array<any> => {
+const _appsFiltred = computed((): Array<any> => {
 	return props.apps.filter(
 		(app: any) =>
 			app.name.toLowerCase().includes(props.filter) ||

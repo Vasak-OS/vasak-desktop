@@ -3,11 +3,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
-import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
-import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
-import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
-import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
-import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import type { TrayItem, TrayMenu } from '@/interfaces/tray';
 import { batteryExists } from '@/tools/battery.controller';
 import { getTrayItems, startSNIWatcher } from '@/tools/tray.controller';
@@ -41,7 +36,7 @@ const refreshTrayItems = async (): Promise<void> => {
 	}
 };
 
-const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
+const _handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
 	try {
 		if (event.button === 2) {
 			// Right click
@@ -87,7 +82,7 @@ const showContextMenu = async (item: TrayItem, event: MouseEvent) => {
 	}
 };
 
-const handleMenuItemClick = async (menuItem: TrayMenu) => {
+const _handleMenuItemClick = async (menuItem: TrayMenu) => {
 	try {
 		await invoke('tray_menu_item_click', {
 			service_name: contextMenu.value.trayId,
@@ -103,11 +98,11 @@ const hideContextMenu = () => {
 	contextMenu.value.visible = false;
 };
 
-const getItemPulseClass = (item: TrayItem) => {
+const _getItemPulseClass = (item: TrayItem) => {
 	return item.status === 'NeedsAttention' ? 'animate-pulse-attention' : '';
 };
 
-const getItemStatusClass = (item: TrayItem) => {
+const _getItemStatusClass = (item: TrayItem) => {
 	switch (item.status) {
 		case 'Active':
 			return 'tray-item-active';

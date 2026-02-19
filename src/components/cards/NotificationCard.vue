@@ -41,7 +41,6 @@
 <script setup lang="ts">
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { ActionButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
@@ -68,7 +67,7 @@ const iconSrc = ref('');
 const closeIconSrc = ref('');
 
 // Parse standard DBus actions [key, label, key, label...]
-const parsedActions = computed(() => {
+const _parsedActions = computed(() => {
 	const acts = props.notification.actions || [];
 	const result = [];
 	for (let i = 0; i < acts.length; i += 2) {
@@ -81,12 +80,12 @@ const parsedActions = computed(() => {
 	return result;
 });
 
-function formatTime(timestamp: number): string {
+function _formatTime(timestamp: number): string {
 	const date = new Date(timestamp * 1000);
 	return date.toLocaleTimeString();
 }
 
-async function handleAction(action_key: string) {
+async function _handleAction(action_key: string) {
 	try {
 		await invoke('invoke_notification_action', {
 			id: props.notification.id,

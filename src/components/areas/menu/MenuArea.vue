@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import AppMenuCard from '@/components/cards/AppMenuCard.vue';
-
 defineProps({
 	apps: {
 		type: Array<any>,

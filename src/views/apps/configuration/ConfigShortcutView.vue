@@ -1,9 +1,7 @@
 <script lang="ts" setup>
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import ActionButton from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
-import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 
 interface Shortcut {
 	id: string;
@@ -58,7 +56,7 @@ onMounted(async () => {
 	}
 });
 
-const startEdit = (shortcut: Shortcut) => {
+const _startEdit = (shortcut: Shortcut) => {
 	if (!shortcut.editable) return;
 	editingId.value = shortcut.id;
 	editingKeys.value = shortcut.keys;
@@ -67,14 +65,14 @@ const startEdit = (shortcut: Shortcut) => {
 	currentConflict.value = null;
 };
 
-const cancelEdit = () => {
+const _cancelEdit = () => {
 	editingId.value = null;
 	editingKeys.value = '';
 	error.value = '';
 	currentConflict.value = null;
 };
 
-const checkConflicts = async () => {
+const _checkConflicts = async () => {
 	if (!editingKeys.value.trim()) {
 		currentConflict.value = null;
 		return;
@@ -91,7 +89,7 @@ const checkConflicts = async () => {
 	}
 };
 
-const saveShortcut = async () => {
+const _saveShortcut = async () => {
 	if (!editingId.value || !editingKeys.value.trim()) {
 		error.value = 'Las teclas no pueden estar vacías';
 		return;
@@ -133,7 +131,7 @@ const saveShortcut = async () => {
 	}
 };
 
-const testShortcut = async (shortcutId: string) => {
+const _testShortcut = async (shortcutId: string) => {
 	testingId.value = shortcutId;
 	try {
 		await invoke('execute_shortcut', { shortcutId });
@@ -151,7 +149,7 @@ const testShortcut = async (shortcutId: string) => {
 	}
 };
 
-const deleteShortcut = async (id: string) => {
+const _deleteShortcut = async (id: string) => {
 	if (!confirm('¿Estás seguro de que deseas eliminar este atajo personalizado?')) return;
 
 	try {
@@ -166,7 +164,7 @@ const deleteShortcut = async (id: string) => {
 	}
 };
 
-const addCustomShortcut = async () => {
+const _addCustomShortcut = async () => {
 	const name = prompt('Nombre del atajo:');
 	if (!name) return;
 
@@ -194,7 +192,7 @@ const addCustomShortcut = async () => {
 	}
 };
 
-const getCategoryLabel = (category: string): string => {
+const _getCategoryLabel = (category: string): string => {
 	const labels: Record<string, string> = {
 		system: 'Sistema',
 		vasak: 'VasakOS',
@@ -203,7 +201,7 @@ const getCategoryLabel = (category: string): string => {
 	return labels[category] || category;
 };
 
-const getCategoryColor = (category: string): string => {
+const _getCategoryColor = (category: string): string => {
 	const colors: Record<string, string> = {
 		system: 'bg-blue-500/10 text-blue-600',
 		vasak: 'bg-purple-500/10 text-purple-600',
@@ -212,8 +210,8 @@ const getCategoryColor = (category: string): string => {
 	return colors[category] || 'bg-gray-500/10 text-gray-600';
 };
 
-const hasConflict = computed(() => currentConflict.value?.has_conflict ?? false);
-const showConflictWarning = computed(() => {
+const _hasConflict = computed(() => currentConflict.value?.has_conflict ?? false);
+const _showConflictWarning = computed(() => {
 	return editingId.value && currentConflict.value?.has_conflict;
 });
 </script>

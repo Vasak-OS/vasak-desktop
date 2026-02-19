@@ -3,10 +3,6 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
-import menuIcon from '@/assets/img/icon.png';
-import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
-import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
-import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import { logError } from '@/utils/logger';
 
 const notifyIcon: Ref<string> = ref('');
@@ -27,7 +23,7 @@ const setIcons = async () => {
 	}
 };
 
-const openMenu = async () => {
+const _openMenu = async () => {
 	try {
 		await invoke('toggle_menu');
 	} catch (error) {
@@ -35,7 +31,7 @@ const openMenu = async () => {
 	}
 };
 
-const openConfig = async () => {
+const _openConfig = async () => {
 	try {
 		await invoke('toggle_config_app');
 	} catch (error) {
@@ -43,7 +39,7 @@ const openConfig = async () => {
 	}
 };
 
-const openFileManager = async () => {
+const _openFileManager = async () => {
 	try {
 		await invoke('open_file_manager_window');
 	} catch (error) {
@@ -51,7 +47,7 @@ const openFileManager = async () => {
 	}
 };
 
-const openNotificationCenter = async () => {
+const _openNotificationCenter = async () => {
 	try {
 		await invoke('toggle_control_center');
 	} catch (error) {

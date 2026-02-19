@@ -6,7 +6,7 @@ import { logError } from '@/utils/logger';
 
 const iconSrc: Ref<string> = ref('');
 
-const openSearch = async () => {
+const _openSearch = async () => {
 	try {
 		await invoke('toggle_search');
 	} catch (error) {

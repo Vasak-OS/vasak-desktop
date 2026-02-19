@@ -7,10 +7,8 @@ import {
 	type VSKConfig,
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
-import { ActionButton, ConfigSection, FormGroup, SwitchToggle } from '@vasakgroup/vue-libvasak';
 import type { Store } from 'pinia';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
-import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import { logError } from '@/utils/logger';
 
 const configStore = ref<any>(null);
@@ -82,7 +80,7 @@ onUnmounted(() => {
 	}
 });
 
-const saveConfig = async (): Promise<void> => {
+const _saveConfig = async (): Promise<void> => {
 	saving.value = true;
 	error.value = '';
 	successMessage.value = '';
@@ -118,7 +116,7 @@ const saveConfig = async (): Promise<void> => {
 	}
 };
 
-const isFormValid = computed(() => {
+const _isFormValid = computed(() => {
 	return iconSize.value >= 24 && iconSize.value <= 128;
 });
 
@@ -131,7 +129,7 @@ const handleDropZone = (filePath: string) => {
 	}
 };
 
-const wallpaperPreviewUrl = computed(() => {
+const _wallpaperPreviewUrl = computed(() => {
 	if (!wallpaper.value) return '';
 	return convertFileSrc(wallpaper.value);
 });

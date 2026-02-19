@@ -2,7 +2,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref, watch } from 'vue';
 import type { UnlistenFn } from '@/interfaces/event';
 import type { VolumeInfo } from '@/interfaces/volume';
@@ -48,7 +47,7 @@ async function getVolumeInfo(): Promise<void> {
 	}
 }
 
-async function toggleApplet(): Promise<void> {
+async function _toggleApplet(): Promise<void> {
 	try {
 		await invoke('toggle_audio_applet');
 	} catch (error) {
