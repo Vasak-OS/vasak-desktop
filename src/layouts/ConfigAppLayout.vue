@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 
-import ConfigSidebarArea from '@/components/areas/configuration/ConfigSidebarArea.vue';
 import { WindowFrame } from '@vasakgroup/vue-libvasak';
+import ConfigSidebarArea from '@/components/areas/configuration/ConfigSidebarArea.vue';
 </script>
 
 <template>

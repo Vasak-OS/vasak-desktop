@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 
-import BluetoothControlArea from '@/components/configuration/BluetoothControlArea.vue';
+import BluetoothControlArea from '@/components/areas/bluetooth/BluetoothControlArea.vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 </script>
 

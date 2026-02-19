@@ -4,8 +4,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, ref, watch } from 'vue';
 import { SliderControl } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref, watch } from 'vue';
 import type { UnlistenFn } from '@/interfaces/event';
 import type { VolumeInfo } from '@/interfaces/volume';
 import { logError } from '@/utils/logger';
