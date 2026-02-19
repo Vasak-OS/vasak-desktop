@@ -101,8 +101,11 @@ class VasakLogger {
    * Envía un log al backend de Rust
    */
 	private async sendLog(level: LogLevel, message: string, data?: any) {
-		const fullMessage = data
-			? `${message} | Data: ${JSON.stringify(data)}`
+		const normalizedData = data instanceof Error
+			? { name: data.name, message: data.message, stack: data.stack }
+			: data;
+		const fullMessage = normalizedData !== undefined
+			? `${message} | Data: ${JSON.stringify(normalizedData)}`
 			: message;
 
 		try {
