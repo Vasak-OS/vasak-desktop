@@ -4,8 +4,8 @@ import AppMenuCard from '@/components/cards/AppMenuCard.vue';
 defineProps({
 	apps: {
 		type: Array<any>,
-		required: true
-	}
+		required: true,
+	},
 });
 </script>
 

@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, type Ref } from 'vue';
-import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
-import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
-import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
+import { listen } from '@tauri-apps/api/event';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import menuIcon from '@/assets/img/icon.png';
+import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
+import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
+import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import { logError } from '@/utils/logger';
 
 const notifyIcon: Ref<string> = ref('');
@@ -71,22 +71,18 @@ onMounted(async () => {
 	setIcons();
 	await loadNotifications();
 
-	unlistenNotifications.value = await listen(
-		'notifications-updated',
-		(event) => {
-			const newNotifications = event.payload as Notification[];
-			hasNewNotifications.value =
-        newNotifications.length > notifications.value.length;
-			notifications.value = newNotifications;
+	unlistenNotifications.value = await listen('notifications-updated', (event) => {
+		const newNotifications = event.payload as Notification[];
+		hasNewNotifications.value = newNotifications.length > notifications.value.length;
+		notifications.value = newNotifications;
 
-			// Reset animation after a short delay
-			if (hasNewNotifications.value) {
-				setTimeout(() => {
-					hasNewNotifications.value = false;
-				}, 1000);
-			}
+		// Reset animation after a short delay
+		if (hasNewNotifications.value) {
+			setTimeout(() => {
+				hasNewNotifications.value = false;
+			}, 1000);
 		}
-	);
+	});
 });
 
 onUnmounted(() => {

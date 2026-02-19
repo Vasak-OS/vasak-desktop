@@ -1,32 +1,32 @@
 <script lang="ts" setup>
-import WeatherIcon from '@/components/icon/WeatherIcon.vue';
 import { computed } from 'vue';
+import WeatherIcon from '@/components/icon/WeatherIcon.vue';
 
 const props = defineProps({
 	date: {
 		type: String,
-		required: true
+		required: true,
 	},
 	min: {
 		type: Number,
-		required: true
+		required: true,
 	},
 	max: {
 		type: Number,
-		required: true
+		required: true,
 	},
 	units: {
 		type: Object,
-		required: true
+		required: true,
 	},
 	dayOrNight: {
 		type: String as () => 'day' | 'night',
-		required: true
+		required: true,
 	},
 	weatherCode: {
 		type: Number,
-		required: true
-	}
+		required: true,
+	},
 });
 
 const formattedDate = computed(() => {

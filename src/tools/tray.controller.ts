@@ -1,5 +1,5 @@
-import { TrayItem } from '@/interfaces/tray';
 import { invoke } from '@tauri-apps/api/core';
+import type { TrayItem } from '@/interfaces/tray';
 
 export async function startSNIWatcher(): Promise<void> {
 	try {

@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { listen } from '@tauri-apps/api/event';
-import type { VolumeInfo } from '@/interfaces/volume';
-import type { UnlistenFn } from '@/interfaces/event';
-import { getVolumeIconName, calculateVolumePercentage } from '@/utils/volume';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { SliderControl } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref, watch } from 'vue';
+import type { UnlistenFn } from '@/interfaces/event';
+import type { VolumeInfo } from '@/interfaces/volume';
 import { logError } from '@/utils/logger';
+import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
 
 const volumeInfo = ref<VolumeInfo>({
 	current: 0,
@@ -29,7 +29,7 @@ async function updateIcon(): Promise<void> {
 	}
 }
 
-const volumePercentage = computed(() => 
+const volumePercentage = computed(() =>
 	calculateVolumePercentage(volumeInfo.value, currentVolume.value)
 );
 

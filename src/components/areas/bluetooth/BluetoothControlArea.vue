@@ -1,22 +1,19 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { listen } from '@tauri-apps/api/event';
 import {
-	getDefaultAdapter,
-	toggleBluetooth,
-	AdapterInfo,
+	type AdapterInfo,
 	connectDevice,
 	disconnectDevice,
-	getConnectedDevices,
 	getAvailableDevices,
+	getConnectedDevices,
+	getDefaultAdapter,
 	scanForDevices,
+	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
-import { listen } from '@tauri-apps/api/event';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
-import {
-	applyBluetoothChange,
-	resolveBluetoothIconName,
-} from '@/tools/bluetooth.controller';
+import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
 
 const connectedDevices: Ref<any[]> = ref([]);
 const availableDevices: Ref<any[]> = ref([]);
@@ -57,12 +54,8 @@ const refreshDevices = async () => {
 	if (!defaultAdapter.value) return;
 	loading.value = true;
 	try {
-		connectedDevices.value = await getConnectedDevices(
-			defaultAdapter.value.path
-		);
-		availableDevices.value = await getAvailableDevices(
-			defaultAdapter.value.path
-		);
+		connectedDevices.value = await getConnectedDevices(defaultAdapter.value.path);
+		availableDevices.value = await getAvailableDevices(defaultAdapter.value.path);
 		connectedDevicesCount.value = connectedDevices.value.length;
 	} catch (e) {
 		console.error('Error refreshing devices:', e);
@@ -90,10 +83,7 @@ onMounted(async () => {
 	syncIcon.value = await getIconSource('emblem-synchronizing');
 	await refreshDevices();
 	await getBluetoothIcon();
-	unlistenBluetooth.value = await listen(
-		'bluetooth-change',
-		handleBluetoothChange
-	);
+	unlistenBluetooth.value = await listen('bluetooth-change', handleBluetoothChange);
 });
 
 onUnmounted(() => {
@@ -103,10 +93,7 @@ onUnmounted(() => {
 const getBluetoothIcon = async () => {
 	try {
 		connectedDevicesCount.value = connectedDevices.value.length;
-		const iconName = resolveBluetoothIconName(
-			isBluetoothOn.value,
-			connectedDevicesCount.value
-		);
+		const iconName = resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
 		bluetoothIcon.value = await getIconSource(iconName);
 	} catch (error) {
 		console.error('Error loading bluetooth icon:', error);

@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { logError } from '@/utils/logger';
-import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import { ActionButton } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref } from 'vue';
+import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
+import { logError } from '@/utils/logger';
 
 interface SystemConfig {
-  border_radius: number;
-  primary_color: string;
-  accent_color: string;
-  dark_mode: boolean;
-  icon_pack: string;
-  cursor_theme: string;
-  gtk_theme: string;
+	border_radius: number;
+	primary_color: string;
+	accent_color: string;
+	dark_mode: boolean;
+	icon_pack: string;
+	cursor_theme: string;
+	gtk_theme: string;
 }
 
 const config = ref<SystemConfig>({
@@ -120,12 +120,12 @@ const resetToDefaults = async () => {
 const isFormValid = computed(() => {
 	return (
 		config.value.border_radius >= 1 &&
-    config.value.border_radius <= 20 &&
-    config.value.primary_color &&
-    config.value.accent_color &&
-    config.value.gtk_theme &&
-    config.value.cursor_theme &&
-    config.value.icon_pack
+		config.value.border_radius <= 20 &&
+		config.value.primary_color &&
+		config.value.accent_color &&
+		config.value.gtk_theme &&
+		config.value.cursor_theme &&
+		config.value.icon_pack
 	);
 });
 </script>

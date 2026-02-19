@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import VolumeControl from '@/components/controls/VolumeControl.vue';
-import BrightnessControl from '@/components/controls/BrightnessControl.vue';
-import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
-import NetworkControl from '@/components/controls/NetworkControl.vue';
-import SearchButtonControl from '@/components/controls/SearchButtonControl.vue';
-import BluetoothControl from '@/components/controls/BluetoothControl.vue';
-import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue';
-import ThemeToggle from '@/components/controls/ThemeToggle.vue';
-import { onMounted, Ref, ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
+import { onMounted, type Ref, ref } from 'vue';
+import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
+import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue';
+import BluetoothControl from '@/components/controls/BluetoothControl.vue';
+import BrightnessControl from '@/components/controls/BrightnessControl.vue';
+import NetworkControl from '@/components/controls/NetworkControl.vue';
+import SearchButtonControl from '@/components/controls/SearchButtonControl.vue';
+import ThemeToggle from '@/components/controls/ThemeToggle.vue';
+import VolumeControl from '@/components/controls/VolumeControl.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import { logError } from '@/utils/logger';
 

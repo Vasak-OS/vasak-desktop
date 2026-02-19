@@ -1,15 +1,12 @@
+
 <script lang="ts" setup>
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { invoke } from '@tauri-apps/api/core';
-import { useBluetoothState } from '@/tools/bluetooth.controller';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
 
-const {
-	bluetoothIcon,
-	isBluetoothOn,
-	connectedDevicesCount,
-} = useBluetoothState({
+const { bluetoothIcon, isBluetoothOn, connectedDevicesCount } = useBluetoothState({
 	getIcon: getSymbolSource,
 });
 

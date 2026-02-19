@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 
 interface TimeData {
-  day: string;
-  month: string;
-  year: string;
-  hour: string;
-  minute: string;
+	day: string;
+	month: string;
+	year: string;
+	hour: string;
+	minute: string;
 }
 
 const timeData = ref<TimeData>({
@@ -14,11 +14,10 @@ const timeData = ref<TimeData>({
 	month: '00',
 	year: '0000',
 	hour: '00',
-	minute: '00'
+	minute: '00',
 });
 
-const formatNumber = (num: number): string => 
-	num.toString().padStart(2, '0');
+const formatNumber = (num: number): string => num.toString().padStart(2, '0');
 
 const updateTime = () => {
 	const date = new Date();
@@ -27,7 +26,7 @@ const updateTime = () => {
 		minute: formatNumber(date.getMinutes()),
 		day: formatNumber(date.getDate()),
 		month: formatNumber(date.getMonth() + 1),
-		year: date.getFullYear().toString()
+		year: date.getFullYear().toString(),
 	};
 };
 

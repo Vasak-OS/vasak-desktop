@@ -16,20 +16,20 @@ const weather = ref({
 		interval: 'seconds',
 		temperature_2m: '°C',
 		is_day: '',
-		weather_code: 'wmo code'
+		weather_code: 'wmo code',
 	},
 	current: {
 		time: '2023-12-12T13:45',
 		interval: 900,
 		temperature_2m: 6.7,
 		is_day: 1,
-		weather_code: 3
+		weather_code: 3,
 	},
 	daily_units: {
 		time: 'iso8601',
 		weather_code: 'wmo code',
 		temperature_2m_max: '°C',
-		temperature_2m_min: '°C'
+		temperature_2m_min: '°C',
 	},
 	daily: {
 		time: [
@@ -39,12 +39,12 @@ const weather = ref({
 			'2023-12-15',
 			'2023-12-16',
 			'2023-12-17',
-			'2023-12-18'
+			'2023-12-18',
 		],
 		weather_code: [80, 63, 61, 3, 61, 61, 3],
 		temperature_2m_max: [7, 4.3, 3.7, 5.1, 7.8, 9.5, 8.2],
-		temperature_2m_min: [3, 1, 1.1, 0.1, 4.8, 8, 6.6]
-	}
+		temperature_2m_min: [3, 1, 1.1, 0.1, 4.8, 8, 6.6],
+	},
 });
 
 const getLocation = async () => {

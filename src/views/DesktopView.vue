@@ -1,20 +1,20 @@
 <script lang="ts" setup>
-import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
-import MusicWidget from '@/components/widgets/MusicWidget.vue';
-import { computed, onMounted, onUnmounted, watch, ref, ComputedRef } from 'vue';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
-import { homeDir } from '@tauri-apps/api/path';
 import { listen } from '@tauri-apps/api/event';
-import type { FileEntry } from '@/interfaces/file';
-import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
+import { homeDir } from '@tauri-apps/api/path';
+import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
-import { Command } from '@tauri-apps/plugin-shell';
+import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
+import MusicWidget from '@/components/widgets/MusicWidget.vue';
+import type { FileEntry } from '@/interfaces/file';
+import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
 
 const configStore = useConfigStore() as Store<
-  'config',
-  { config: VSKConfig; loadConfig: () => Promise<void> }
+	'config',
+	{ config: VSKConfig; loadConfig: () => Promise<void> }
 >;
 const desktopFiles = ref<FileEntry[]>([]);
 
@@ -22,7 +22,10 @@ let unlistenConfigChanged: (() => void) | null = null;
 
 // Computados reactivos que leen directamente de la configuración del store
 const backgroundPath = computed(() => {
-	return (configStore as any).config?.desktop?.wallpaper?.[0] || '/usr/share/backgrounds/cutefishos/wallpaper-9.jpg';
+	return (
+		(configStore as any).config?.desktop?.wallpaper?.[0] ||
+		'/usr/share/backgrounds/cutefishos/wallpaper-9.jpg'
+	);
 });
 
 const background = computed(() => convertFileSrc(backgroundPath.value));
@@ -36,8 +39,12 @@ const backgroundType = computed(() => {
 });
 
 const showFiles = computed(() => (configStore as any).config?.desktop?.showfiles ?? false);
-const showHiddenFiles = computed(() => (configStore as any).config?.desktop?.showhiddenfiles ?? false);
-const iconSize: ComputedRef<number> = computed((): number => (configStore as any).config?.desktop?.iconsize ?? 64);
+const showHiddenFiles = computed(
+	() => (configStore as any).config?.desktop?.showhiddenfiles ?? false
+);
+const iconSize: ComputedRef<number> = computed(
+	(): number => (configStore as any).config?.desktop?.iconsize ?? 64
+);
 
 // Cargar archivos del escritorio
 const loadDesktopFiles = async () => {
@@ -51,7 +58,7 @@ const loadDesktopFiles = async () => {
 		const userDirs = await getUserDirectories(home);
 
 		// Buscar el directorio Desktop en las carpetas XDG
-		const desktopDir = userDirs.find(dir => dir.xdgKey === 'XDG_DESKTOP_DIR');
+		const desktopDir = userDirs.find((dir) => dir.xdgKey === 'XDG_DESKTOP_DIR');
 
 		if (desktopDir) {
 			desktopFiles.value = await loadDirectory(desktopDir.path, showHiddenFiles.value);

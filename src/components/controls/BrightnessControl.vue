@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { SliderControl } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
 interface BrightnessInfo {
-  current: number;
-  min: number;
-  max: number;
+	current: number;
+	min: number;
+	max: number;
 }
 
 const brightnessInfo: Ref<BrightnessInfo> = ref<BrightnessInfo>({

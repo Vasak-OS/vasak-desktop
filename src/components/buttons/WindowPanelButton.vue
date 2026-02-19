@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { logError } from '@/utils/logger';
-import { ref, onMounted, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { onMounted, type Ref, ref } from 'vue';
 import type { WindowPanelButtonProps } from '@/interfaces/window';
+import { logError } from '@/utils/logger';
 
 const props = defineProps<WindowPanelButtonProps>();
 const iconSource: Ref<string> = ref<string>('');

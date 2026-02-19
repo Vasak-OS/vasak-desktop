@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import VolumeControl from '@/components/controls/VolumeControl.vue';
 import AudioDeviceSelector from '@/components/controls/AudioDeviceSelector.vue';
+import VolumeControl from '@/components/controls/VolumeControl.vue';
 </script>
 <template>
   <div class="p-4">

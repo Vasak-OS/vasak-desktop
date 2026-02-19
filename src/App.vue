@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router';
-import { useConfigStore } from '@vasakgroup/plugin-config-manager';
-import { Store } from 'pinia';
 import { listen } from '@tauri-apps/api/event';
+import { useConfigStore } from '@vasakgroup/plugin-config-manager';
+import type { Store } from 'pinia';
 import { onMounted, onUnmounted } from 'vue';
-import { logInfo, logError, logDebug } from '@/utils/logger';
+import { RouterView } from 'vue-router';
+import { logDebug, logError, logInfo } from '@/utils/logger';
 
 let unlistenConfig: (() => void) | null = null;
 
@@ -17,7 +17,7 @@ onMounted(async () => {
 		>;
 		await configStore.loadConfig();
 		logDebug('Configuración cargada correctamente');
-		
+
 		unlistenConfig = await listen('config-changed', async () => {
 			logInfo('Evento config-changed recibido, recargando configuración');
 			document.startViewTransition(() => {

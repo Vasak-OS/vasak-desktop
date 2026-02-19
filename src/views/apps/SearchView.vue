@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onUnmounted, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { nextTick, onMounted, onUnmounted, type Ref, ref, watch } from 'vue';
 import { logError } from '@/utils/logger';
 
 interface SearchResult {
-  id: string;
-  title: string;
-  description: string;
-  icon: string | null;
-  category: 'application' | 'file' | 'action';
-  exec: string | null;
-  path: string | null;
-  score: number;
+	id: string;
+	title: string;
+	description: string;
+	icon: string | null;
+	category: 'application' | 'file' | 'action';
+	exec: string | null;
+	path: string | null;
+	score: number;
 }
 
 const query = ref('');
@@ -60,33 +60,33 @@ watch(query, (newQuery) => {
 // Keyboard navigation
 const handleKeydown = async (event: KeyboardEvent) => {
 	switch (event.key) {
-	case 'Escape':
-		event.preventDefault();
-		await currentWindow.close();
-		break;
+		case 'Escape':
+			event.preventDefault();
+			await currentWindow.close();
+			break;
 
-	case 'ArrowDown':
-		event.preventDefault();
-		if (selectedIndex.value < results.value.length - 1) {
-			selectedIndex.value++;
-			scrollToSelected();
-		}
-		break;
+		case 'ArrowDown':
+			event.preventDefault();
+			if (selectedIndex.value < results.value.length - 1) {
+				selectedIndex.value++;
+				scrollToSelected();
+			}
+			break;
 
-	case 'ArrowUp':
-		event.preventDefault();
-		if (selectedIndex.value > 0) {
-			selectedIndex.value--;
-			scrollToSelected();
-		}
-		break;
+		case 'ArrowUp':
+			event.preventDefault();
+			if (selectedIndex.value > 0) {
+				selectedIndex.value--;
+				scrollToSelected();
+			}
+			break;
 
-	case 'Enter':
-		event.preventDefault();
-		if (results.value[selectedIndex.value]) {
-			await executeResult(results.value[selectedIndex.value]);
-		}
-		break;
+		case 'Enter':
+			event.preventDefault();
+			if (results.value[selectedIndex.value]) {
+				await executeResult(results.value[selectedIndex.value]);
+			}
+			break;
 	}
 };
 
@@ -131,27 +131,27 @@ onUnmounted(() => {
 // Helper functions
 function getCategoryIcon(category: string): string {
 	switch (category) {
-	case 'application':
-		return '📦';
-	case 'file':
-		return '📄';
-	case 'action':
-		return '⚡';
-	default:
-		return '🔹';
+		case 'application':
+			return '📦';
+		case 'file':
+			return '📄';
+		case 'action':
+			return '⚡';
+		default:
+			return '🔹';
 	}
 }
 
 function getCategoryLabel(category: string): string {
 	switch (category) {
-	case 'application':
-		return 'App';
-	case 'file':
-		return 'Archivo';
-	case 'action':
-		return 'Acción';
-	default:
-		return '';
+		case 'application':
+			return 'App';
+		case 'file':
+			return 'Archivo';
+		case 'action':
+			return 'Acción';
+		default:
+			return '';
 	}
 }
 </script>

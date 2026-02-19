@@ -1,12 +1,8 @@
-import { readTextFile, readDir } from '@tauri-apps/plugin-fs';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { join } from '@tauri-apps/api/path';
-import { invoke, convertFileSrc } from '@tauri-apps/api/core';
+import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import type {
-	UserDirectory,
-	FileEntry,
-	FileIconMapping,
-} from '@/interfaces/file';
+import type { FileEntry, FileIconMapping, UserDirectory } from '@/interfaces/file';
 
 const iconMappings: FileIconMapping[] = [
 	// Images
@@ -49,10 +45,9 @@ export function getIconNameForFile(filename: string, isDir: boolean): string {
 	return mapping?.icon || 'text-x-generic';
 }
 
-
 export async function getFileIconSource(
 	filename: string,
-	isDir: boolean,
+	isDir: boolean
 ): Promise<string | undefined> {
 	const iconName = getIconNameForFile(filename, isDir);
 
@@ -77,18 +72,16 @@ export function isVideoFile(filename: string): boolean {
 }
 
 export function getFileMimeType(
-	filename: string,
+	filename: string
 ): 'image' | 'video' | 'audio' | 'text' | 'application' | 'unknown' {
 	const parts = filename.split('.');
 	const ext = parts.length > 1 ? parts.pop()!.toLowerCase() : '';
 
-	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext))
-		return 'image';
+	if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
 	if (['mp4', 'webm', 'mkv', 'avi', 'mov'].includes(ext)) return 'video';
 	if (['mp3', 'wav', 'flac', 'ogg'].includes(ext)) return 'audio';
 	if (['txt', 'md', 'log'].includes(ext)) return 'text';
-	if (['pdf', 'zip', 'tar', 'gz', '7z', 'rar'].includes(ext))
-		return 'application';
+	if (['pdf', 'zip', 'tar', 'gz', '7z', 'rar'].includes(ext)) return 'application';
 
 	return 'unknown';
 }
@@ -101,10 +94,7 @@ export function getFileMimeType(
 async function enrichFileEntry(fileEntry: FileEntry): Promise<FileEntry> {
 	// Load icon
 	try {
-		fileEntry.icon = await getFileIconSource(
-			fileEntry.name,
-			fileEntry.isDirectory,
-		);
+		fileEntry.icon = await getFileIconSource(fileEntry.name, fileEntry.isDirectory);
 	} catch (e) {
 		console.warn(`Failed to load icon for ${fileEntry.name}`, e);
 	}
@@ -125,7 +115,7 @@ async function enrichFileEntry(fileEntry: FileEntry): Promise<FileEntry> {
 
 export async function loadDirectory(
 	dirPath: string,
-	showHidden: boolean = false,
+	showHidden: boolean = false
 ): Promise<FileEntry[]> {
 	try {
 		const entries = await readDir(dirPath);
@@ -143,7 +133,7 @@ export async function loadDirectory(
 					};
 
 					return enrichFileEntry(fileEntry);
-				}),
+				})
 		);
 
 		return processedFiles;
@@ -155,7 +145,7 @@ export async function loadDirectory(
 
 export async function loadDirectoryBackend(
 	dirPath: string,
-	showHidden: boolean = false,
+	showHidden: boolean = false
 ): Promise<FileEntry[]> {
 	try {
 		interface BackendFileEntry {
@@ -181,7 +171,7 @@ export async function loadDirectoryBackend(
 				};
 
 				return enrichFileEntry(fileEntry);
-			}),
+			})
 		);
 
 		return processedFiles;
@@ -197,9 +187,7 @@ export async function loadDirectoryBackend(
  * @param homePath - The user's home directory path
  * @returns Array of user directories with name, icon, and path
  */
-export async function getUserDirectories(
-	homePath: string,
-): Promise<UserDirectory[]> {
+export async function getUserDirectories(homePath: string): Promise<UserDirectory[]> {
 	const directories: UserDirectory[] = [];
 
 	try {
@@ -240,7 +228,7 @@ export async function getUserDirectories(
 			{ name: 'Documents', icon: 'folder-documents', path: `${homePath}/Documents` },
 			{ name: 'Downloads', icon: 'folder-download', path: `${homePath}/Downloads` },
 			{ name: 'Pictures', icon: 'folder-pictures', path: `${homePath}/Pictures` },
-			{ name: 'Music', icon: 'folder-music', path: `${homePath}/Music` },
+			{ name: 'Music', icon: 'folder-music', path: `${homePath}/Music` }
 		);
 	}
 

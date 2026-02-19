@@ -1,20 +1,14 @@
 <script setup lang="ts">
-import { ref, Ref } from 'vue';
+import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import {
-	toggleBluetooth,
-} from '@vasakgroup/plugin-bluetooth-manager';
-import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { ToggleControl } from '@vasakgroup/vue-libvasak';
+import { type Ref, ref } from 'vue';
+import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
 
 const isTogglingBluetooth: Ref<boolean> = ref(false);
 
-const {
-	bluetoothIcon,
-	isBluetoothOn,
-	connectedDevicesCount,
-} = useBluetoothState({
+const { bluetoothIcon, isBluetoothOn, connectedDevicesCount } = useBluetoothState({
 	getIcon: getIconSource,
 });
 

@@ -121,16 +121,16 @@
 </template>
 
 <script setup lang="ts">
-import { logError } from '@/utils/logger';
-import { ref, onMounted, onUnmounted, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import {
-	listWifiNetworks,
-	NetworkInfo,
 	getCurrentNetworkState,
+	listWifiNetworks,
+	type NetworkInfo,
 } from '@vasakgroup/plugin-network-manager';
+import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
+import { logError } from '@/utils/logger';
 
 const wifiEnabled: Ref<boolean> = ref(true);
 const wifiAvailable: Ref<boolean> = ref(true);
@@ -149,15 +149,11 @@ defineProps({
 
 const checkWirelessStatus = async () => {
 	try {
-		const available = await invoke(
-			'plugin:network-manager|is_wireless_available'
-		);
+		const available = await invoke('plugin:network-manager|is_wireless_available');
 		wifiAvailable.value = available as boolean;
 
 		if (available) {
-			const enabled = await invoke(
-				'plugin:network-manager|get_wireless_enabled'
-			);
+			const enabled = await invoke('plugin:network-manager|get_wireless_enabled');
 			wifiEnabled.value = enabled as boolean;
 			wifiStatus.value = enabled ? 'On' : 'Off';
 

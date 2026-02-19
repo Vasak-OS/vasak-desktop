@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import { ref, onMounted, onUnmounted, computed, type Ref } from 'vue';
-import { listen } from '@tauri-apps/api/event';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import {
+	readConfig,
 	useConfigStore,
 	type VSKConfig,
-	readConfig,
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
+import { ActionButton, ConfigSection, FormGroup, SwitchToggle } from '@vasakgroup/vue-libvasak';
+import type { Store } from 'pinia';
+import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
-import { SwitchToggle, ConfigSection, FormGroup, ActionButton } from '@vasakgroup/vue-libvasak';
-import { Store } from 'pinia';
 import { logError } from '@/utils/logger';
 
 const configStore = ref<any>(null);
@@ -30,9 +30,9 @@ onMounted(async () => {
 	try {
 		// Cargar config store
 		configStore.value = useConfigStore() as Store<
-      'config',
-      { config: VSKConfig; loadConfig: () => Promise<void> }
-    >;
+			'config',
+			{ config: VSKConfig; loadConfig: () => Promise<void> }
+		>;
 
 		await configStore.value.loadConfig();
 
@@ -59,14 +59,15 @@ onMounted(async () => {
 		});
 
 		// Escuchar eventos de drag-drop de archivos en Tauri v2
-		unlistenFileDrop = await listen<{ paths: string[]; position: { x: number; y: number } }>('tauri://drag-drop', (event) => {
-			const paths = event.payload.paths;
-			if (paths && paths.length > 0) {
-				handleDropZone(paths[0]);
+		unlistenFileDrop = await listen<{ paths: string[]; position: { x: number; y: number } }>(
+			'tauri://drag-drop',
+			(event) => {
+				const paths = event.payload.paths;
+				if (paths && paths.length > 0) {
+					handleDropZone(paths[0]);
+				}
 			}
-		});
-
-
+		);
 	} catch (err) {
 		error.value = `Error cargando configuración: ${err}`;
 		logError('Error cargando configuración de escritorio:', err);
@@ -123,13 +124,12 @@ const isFormValid = computed(() => {
 
 const handleDropZone = (filePath: string) => {
 	const imageExts = ['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif'];
-	if (imageExts.some(e => filePath.toLowerCase().endsWith(e))) {
+	if (imageExts.some((e) => filePath.toLowerCase().endsWith(e))) {
 		wallpaper.value = filePath;
 	} else {
 		error.value = 'El archivo seleccionado no es una imagen válida';
 	}
 };
-
 
 const wallpaperPreviewUrl = computed(() => {
 	if (!wallpaper.value) return '';

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { logError } from '@/utils/logger';
-import { ref, onMounted, computed, Ref } from 'vue';
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
+import { computed, onMounted, type Ref, ref } from 'vue';
+import { logError } from '@/utils/logger';
 
 const userInfo: Ref<UserInfo | null> = ref<UserInfo | null>(null);
 

@@ -1,22 +1,19 @@
 <script setup lang="ts">
-import { WindowFrame } from '@vasakgroup/vue-libvasak';
-import { ref, onMounted } from 'vue';
-import { join, homeDir } from '@tauri-apps/api/path';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { homeDir, join } from '@tauri-apps/api/path';
 import { Command } from '@tauri-apps/plugin-shell';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { WindowFrame } from '@vasakgroup/vue-libvasak';
+import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { FileEntry } from '@/interfaces/file';
-import {
-	loadDirectoryBackend,
-	getUserDirectories,
-} from '@/tools/file.controller';
+import { getUserDirectories, loadDirectoryBackend } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
 
 interface SidebarItem {
-  name: string;
-  icon: string;
-  path: string;
+	name: string;
+	icon: string;
+	path: string;
 }
 
 // State
@@ -97,13 +94,7 @@ const loadSidebar = async () => {
 	);
 	items.push(...filteredDirectories);
 
-	const trashPath = await join(
-		homePath.value,
-		'.local',
-		'share',
-		'Trash',
-		'files'
-	);
+	const trashPath = await join(homePath.value, '.local', 'share', 'Trash', 'files');
 	items.push({ name: 'Trash', icon: 'user-trash', path: trashPath });
 
 	sidebarItems.value = items;
@@ -111,9 +102,7 @@ const loadSidebar = async () => {
 	for (const item of sidebarItems.value) {
 		try {
 			const source = await getIconSource(item.icon);
-			sidebarIcons.value[item.name] = source.startsWith('/')
-				? convertFileSrc(source)
-				: source;
+			sidebarIcons.value[item.name] = source.startsWith('/') ? convertFileSrc(source) : source;
 		} catch (e) {
 			logError('Error cargando icono de sidebar:', item.icon, e);
 		}
@@ -123,7 +112,7 @@ const loadSidebar = async () => {
 onMounted(async () => {
 	try {
 		homePath.value = await homeDir();
-		const initialPath = route.query.path as string || homePath.value;
+		const initialPath = (route.query.path as string) || homePath.value;
 		currentPath.value = initialPath;
 
 		await loadSidebar();

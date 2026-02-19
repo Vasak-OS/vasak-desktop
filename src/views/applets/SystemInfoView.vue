@@ -439,58 +439,58 @@
 </template>
 
 <script setup lang="ts">
-import { logError } from '@/utils/logger';
-import { ref, onMounted, onUnmounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { onMounted, onUnmounted, ref } from 'vue';
+import { logError } from '@/utils/logger';
 
 interface SystemInfo {
-  cpu: {
-    model: string;
-    cores: number;
-    usage: number;
-    frequency?: number;
-  };
-  memory: {
-    total_gb: number;
-    used_gb: number;
-    available_gb: number;
-    usage_percent: number;
-  };
-  swap?: {
-    total_gb: number;
-    used_gb: number;
-    free_gb: number;
-    usage_percent: number;
-  };
-  gpu?: {
-    model: string;
-    vendor: string;
-  };
-  system: {
-    hostname: string;
-    kernel: string;
-    os_name: string;
-    os_version: string;
-    display_server: string;
-    uptime_seconds: number;
-  };
-  temperature?: {
-    cpu_temp?: number;
-    sensors: Array<{
-      name: string;
-      temp: number;
-      label: string;
-    }>;
-  };
-  disks?: Array<{
-    device: string;
-    mountpoint: string;
-    fstype: string;
-    total_gb: number;
-    used_gb: number;
-    available_gb: number;
-    usage_percent: number;
-  }>;
+	cpu: {
+		model: string;
+		cores: number;
+		usage: number;
+		frequency?: number;
+	};
+	memory: {
+		total_gb: number;
+		used_gb: number;
+		available_gb: number;
+		usage_percent: number;
+	};
+	swap?: {
+		total_gb: number;
+		used_gb: number;
+		free_gb: number;
+		usage_percent: number;
+	};
+	gpu?: {
+		model: string;
+		vendor: string;
+	};
+	system: {
+		hostname: string;
+		kernel: string;
+		os_name: string;
+		os_version: string;
+		display_server: string;
+		uptime_seconds: number;
+	};
+	temperature?: {
+		cpu_temp?: number;
+		sensors: Array<{
+			name: string;
+			temp: number;
+			label: string;
+		}>;
+	};
+	disks?: Array<{
+		device: string;
+		mountpoint: string;
+		fstype: string;
+		total_gb: number;
+		used_gb: number;
+		available_gb: number;
+		usage_percent: number;
+	}>;
 }
 
 const systemInfo = ref<SystemInfo | null>(null);
@@ -553,10 +553,7 @@ const tempClass = (temp: number | undefined): string => {
 onMounted(() => {
 	loadSystemInfo();
 	// Actualizar cada 5 segundos en modo silencioso (sin loading)
-	updateInterval = setInterval(
-		() => loadSystemInfo(true),
-		5000
-	) as unknown as number;
+	updateInterval = setInterval(() => loadSystemInfo(true), 5000) as unknown as number;
 });
 
 onUnmounted(() => {

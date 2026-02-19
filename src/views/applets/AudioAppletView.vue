@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import SystemAudioArea from '@/components/areas/audio/SystemAudioArea.vue';
 import { invoke } from '@tauri-apps/api/core';
 import { onMounted } from 'vue';
+import SystemAudioArea from '@/components/areas/audio/SystemAudioArea.vue';
 import { logError } from '@/utils/logger';
 
 onMounted(async () => {

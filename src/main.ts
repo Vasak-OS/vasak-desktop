@@ -1,8 +1,7 @@
-import { createApp } from 'vue';
-import { router } from './routes/index';
 import { createPinia } from 'pinia';
-
+import { createApp } from 'vue';
 import App from './App.vue';
+import { router } from './routes/index';
 import './style.css';
 
 // Importar el sistema de logging

@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { onMounted, ref, computed, Ref, nextTick, watch } from 'vue';
-import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { computed, nextTick, onMounted, type Ref, ref, watch } from 'vue';
 import type { MusicInfo } from '@/interfaces/music';
 import { processImageUrl } from '@/utils/image';
 import { logError } from '@/utils/logger';
@@ -28,9 +28,7 @@ let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 const dbusStatus = ref('connected');
 const dbusMessage = ref('');
 
-const isPlaying = computed(() => 
-	String(musicInfo.value?.status || '').toLowerCase() === 'playing'
-);
+const isPlaying = computed(() => String(musicInfo.value?.status || '').toLowerCase() === 'playing');
 
 async function sendCommand(cmd: string): Promise<void> {
 	const player = musicInfo.value?.player || '';
@@ -123,10 +121,7 @@ function updateTitleOverflow(): void {
 	if (iw > cw + 2) {
 		titleOverflow.value = true;
 		marqueeDistance.value = iw - cw;
-		marqueeDuration.value = Math.min(
-			20,
-			Math.max(4, marqueeDistance.value / 30)
-		);
+		marqueeDuration.value = Math.min(20, Math.max(4, marqueeDistance.value / 30));
 	} else {
 		titleOverflow.value = false;
 		marqueeDistance.value = 0;

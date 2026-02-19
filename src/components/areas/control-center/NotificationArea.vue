@@ -45,14 +45,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
-import {
-	Notification,
-	NotificationGroupData,
-} from '@/interfaces/notifications';
+import type { Notification, NotificationGroupData } from '@/interfaces/notifications';
 
 const notifications = ref<Notification[]>([]);
 let unlistenNotifications: (() => void) | null = null;
@@ -78,16 +75,11 @@ const groupedNotifications = computed<NotificationGroupData[]>(() => {
 		const group = groups.get(appName)!;
 		group.notifications.push(notification);
 		group.count = group.notifications.length;
-		group.latest_timestamp = Math.max(
-			group.latest_timestamp,
-			notification.timestamp
-		);
+		group.latest_timestamp = Math.max(group.latest_timestamp, notification.timestamp);
 		group.has_unread = group.has_unread || !notification.seen;
 	});
 
-	return Array.from(groups.values()).sort(
-		(a, b) => b.latest_timestamp - a.latest_timestamp
-	);
+	return Array.from(groups.values()).sort((a, b) => b.latest_timestamp - a.latest_timestamp);
 });
 
 async function loadNotifications() {
