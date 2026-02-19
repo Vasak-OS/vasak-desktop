@@ -127,7 +127,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <WindowFrame class="rounded-t-window">
+  <WindowFrame>
     <div class="h-[calc(100vh-32px)] w-screen rounded-b-window background flex flex-col overflow-hidden">
       <div class="h-12 border-b border-vsk-primary flex items-center px-4 background backdrop-blur-sm shrink-0">
         <div class="flex gap-2 mr-4">

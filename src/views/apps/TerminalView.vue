@@ -3,7 +3,7 @@
 import WindowFrame from '@/components/WindowFrame.vue';
 </script>
 <template>
-  <WindowFrame class="rounded-t-window">
+  <WindowFrame>
     <div class="h-[calc(100vh-32px)] rounded-b-window background">
       asdasdasdasdasdasdASDASDASDA
     </div>
