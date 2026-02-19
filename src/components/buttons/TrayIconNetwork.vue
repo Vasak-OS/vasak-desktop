@@ -8,6 +8,7 @@ import {
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 import { toggleNetworkApplet } from '../../tools/network.controller';

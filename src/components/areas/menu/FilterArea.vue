@@ -1,7 +1,8 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-
 import { computed } from 'vue';
+import AppMenuButton from '@/components/buttons/AppMenuButton.vue';
 
 const props = defineProps({
 	apps: {

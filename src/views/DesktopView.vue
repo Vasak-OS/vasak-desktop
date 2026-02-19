@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -7,6 +8,8 @@ import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
+import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import type { FileEntry } from '@/interfaces/file';
 import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';

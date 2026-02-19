@@ -1,8 +1,17 @@
+
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref } from 'vue';
+import FilterArea from '@/components/areas/FilterArea.vue';
+import MenuArea from '@/components/areas/MenuArea.vue';
+import SessionButton from '@/components/buttons/SessionButton.vue';
+import UserMenuCard from '@/components/cards/UserMenuCard.vue';
+import CategoryMenuPill from '@/components/controls/CategoryMenuPill.vue';
+import SearchMenuComponent from '@/components/controls/SearchMenuComponent.vue';
+import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import { logError } from '@/utils/logger';
 
 const menuData: Ref<Array<any>> = ref([]);

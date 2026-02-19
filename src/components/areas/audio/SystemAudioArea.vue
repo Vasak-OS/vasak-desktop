@@ -1,4 +1,8 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
+
+import AudioDeviceSelector from '@/components/controls/AudioDeviceSelector.vue';
+import VolumeControl from '@/components/controls/VolumeControl.vue';
 </script>
 <template>
   <div class="p-4">

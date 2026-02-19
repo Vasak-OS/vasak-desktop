@@ -6,6 +6,9 @@ import { listen } from '@tauri-apps/api/event';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import menuIcon from '@/assets/vectors/icon.svg';
+import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
+import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
+import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import { logError } from '@/utils/logger';
 
 const notifyIcon: Ref<string> = ref('');

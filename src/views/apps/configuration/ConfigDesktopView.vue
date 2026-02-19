@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -10,6 +11,8 @@ import {
 } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import ActionButton from '@/components/buttons/ActionButton.vue';
+import ConfigAppLayout from '@/components/layouts/ConfigAppLayout.vue';
 import { logError } from '@/utils/logger';
 
 const configStore = ref<any>(null);

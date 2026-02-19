@@ -1,6 +1,6 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-
 import { listen } from '@tauri-apps/api/event';
 import {
 	type AdapterInfo,
@@ -13,7 +13,9 @@ import {
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { SwitchToggle } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
 

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref, watch } from 'vue';
 import type { UnlistenFn } from '@/interfaces/event';
 import type { VolumeInfo } from '@/interfaces/volume';

@@ -1,4 +1,7 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
+import AppMenuCard from '@/components/cards/AppMenuCard.vue';
+
 defineProps({
 	apps: {
 		type: Array<any>,

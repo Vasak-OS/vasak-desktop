@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import {
@@ -9,6 +10,7 @@ import {
 } from '@vasakgroup/plugin-network-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import ToggleControl from '@/components/ToggleControl.vue';
 import { logError } from '@/utils/logger';
 
 let ulisten: Ref<(() => void) | null> = ref(null);

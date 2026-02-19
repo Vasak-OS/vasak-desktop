@@ -1,9 +1,15 @@
 <script setup lang="ts">
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
+import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
+import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
+import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
+import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
+import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import type { TrayItem, TrayMenu } from '@/interfaces/tray';
 import { batteryExists } from '@/tools/battery.controller';
 import { getTrayItems, startSNIWatcher } from '@/tools/tray.controller';

@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
+import ConfigSidebarButton from '@/components/buttons/ConfigSidebarButton.vue';
 </script>
 
 <template>

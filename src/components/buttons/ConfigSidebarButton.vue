@@ -1,6 +1,8 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
+import { RouterLink } from 'vue-router';
 
 const props = defineProps<{
 	to: string;

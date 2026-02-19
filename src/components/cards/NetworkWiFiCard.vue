@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import {
 	connectToWifi,
@@ -6,6 +7,7 @@ import {
 	type WiFiConnectionConfig,
 } from '@vasakgroup/plugin-network-manager';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { ActionButton, ListCard } from '@vasakgroup/vue-libvasak';
 import { nextTick, onMounted, type Ref, ref } from 'vue';
 
 const netIcon: Ref<string> = ref('');
