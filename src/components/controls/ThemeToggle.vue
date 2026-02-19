@@ -35,6 +35,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
+import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import type { Store } from 'pinia';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import dark from '@/assets/img/dark.png';

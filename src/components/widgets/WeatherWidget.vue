@@ -2,8 +2,8 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { computed, onMounted, ref } from 'vue';
-import CurrentWeatherCard from '@/components/widgets/CurrentWeatherCard.vue';
-import DailyWeatherCard from '@/components/widgets/DailyWeatherCard.vue';
+import CurrentWeatherCard from '@/components/cards/CurrentWeatherCard.vue';
+import DailyWeatherCard from '@/components/cards/DailyWeatherCard.vue';
 
 const weather = ref({
 	latitude: 52.52,

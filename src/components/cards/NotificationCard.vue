@@ -43,6 +43,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
+import { ActionButton } from '@vasakgroup/vue-libvasak';
 import { logError } from '@/utils/logger';
 
 const props = defineProps<{

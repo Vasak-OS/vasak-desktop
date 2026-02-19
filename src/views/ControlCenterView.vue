@@ -3,7 +3,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { onMounted, type Ref, ref } from 'vue';
-import NotificationArea from '@/components/areas/NotificationArea.vue';
+import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
 import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue';
 import BluetoothControl from '@/components/controls/BluetoothControl.vue';
 import BrightnessControl from '@/components/controls/BrightnessControl.vue';

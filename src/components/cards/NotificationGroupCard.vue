@@ -71,8 +71,8 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
-import ActionButton from '@/components/ActionButton.vue';
-import NotificationCard from '@/components/NotificationCard.vue';
+import { ActionButton } from '@vasakgroup/vue-libvasak';
+import NotificationCard from '@/components/cards/NotificationCard.vue';
 import { logError } from '@/utils/logger';
 
 interface Notification {

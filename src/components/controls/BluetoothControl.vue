@@ -4,7 +4,7 @@
 import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { type Ref, ref } from 'vue';
-import ToggleControl from '@/components/ToggleControl.vue';
+import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
 
