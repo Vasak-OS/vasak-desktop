@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import { onMounted, Ref, ref } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import type { WeatherInfo, CodeDataType } from '@/interfaces/weather';
+import { onMounted, type Ref, ref } from 'vue';
 import weatherCodesData from '@/data/weatherCodes.json';
+import type { CodeDataType, WeatherInfo } from '@/interfaces/weather';
 
 const codeData: CodeDataType = weatherCodesData as CodeDataType;
 
 const iconPath: Ref<string> = ref('');
 const weatherInfo: Ref<WeatherInfo | null> = ref(null);
 const props = defineProps<{
-  code: number;
-  dayOrNight: 'day' | 'night';
+	code: number;
+	dayOrNight: 'day' | 'night';
 }>();
 
 onMounted(async () => {

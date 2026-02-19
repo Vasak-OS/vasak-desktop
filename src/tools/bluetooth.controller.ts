@@ -1,8 +1,12 @@
-import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
-import { getDefaultAdapter, getConnectedDevicesCount } from '@vasakgroup/plugin-bluetooth-manager';
 import { listen } from '@tauri-apps/api/event';
+import { getConnectedDevicesCount, getDefaultAdapter } from '@vasakgroup/plugin-bluetooth-manager';
+import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import type {
+	BluetoothChangePayload,
+	BluetoothComposableOptions,
+	BluetoothStateRefs,
+} from '@/interfaces/bluetooth';
 import type { UnlistenFn } from '@/interfaces/event';
-import type { BluetoothStateRefs, BluetoothChangePayload, BluetoothComposableOptions } from '@/interfaces/bluetooth';
 
 const findDeviceIndex = (devices: any[], path: string) => {
 	return devices.findIndex((d) => d.path === path);
@@ -27,10 +31,7 @@ const moveDevice = (from: Ref<any[]>, to: Ref<any[]>, device: any) => {
 };
 
 const handleAdapterPropertyChanged = (data: any, state: BluetoothStateRefs) => {
-	if (
-		state.defaultAdapter.value &&
-    data.path === state.defaultAdapter.value.path
-	) {
+	if (state.defaultAdapter.value && data.path === state.defaultAdapter.value.path) {
 		state.defaultAdapter.value = data;
 	}
 };
@@ -40,19 +41,11 @@ const handleDeviceAdded = (data: any, state: BluetoothStateRefs) => {
 };
 
 const handleDeviceRemoved = (data: any, state: BluetoothStateRefs) => {
-	state.availableDevices.value = state.availableDevices.value.filter(
-		(d) => d.path !== data.path
-	);
-	state.connectedDevices.value = state.connectedDevices.value.filter(
-		(d) => d.path !== data.path
-	);
+	state.availableDevices.value = state.availableDevices.value.filter((d) => d.path !== data.path);
+	state.connectedDevices.value = state.connectedDevices.value.filter((d) => d.path !== data.path);
 };
 
-const updateDeviceInAvailable = (
-	deviceIndex: number,
-	data: any,
-	state: BluetoothStateRefs
-) => {
+const updateDeviceInAvailable = (deviceIndex: number, data: any, state: BluetoothStateRefs) => {
 	if (data.connected) {
 		moveDevice(state.availableDevices, state.connectedDevices, data);
 	} else {
@@ -60,11 +53,7 @@ const updateDeviceInAvailable = (
 	}
 };
 
-const updateDeviceInConnected = (
-	connectedIndex: number,
-	data: any,
-	state: BluetoothStateRefs
-) => {
+const updateDeviceInConnected = (connectedIndex: number, data: any, state: BluetoothStateRefs) => {
 	if (data.connected) {
 		state.connectedDevices.value[connectedIndex] = data;
 	} else {
@@ -80,10 +69,7 @@ const handleDeviceUpdate = (data: any, state: BluetoothStateRefs) => {
 		return;
 	}
 
-	const connectedIndex = findDeviceIndex(
-		state.connectedDevices.value,
-		data.path
-	);
+	const connectedIndex = findDeviceIndex(state.connectedDevices.value, data.path);
 	if (connectedIndex !== -1) {
 		updateDeviceInConnected(connectedIndex, data, state);
 	}
@@ -99,17 +85,14 @@ export const applyBluetoothChange = (
 ) => {
 	const { change_type, data } = payload;
 
-	const handlers: Record<
-    string,
-    (data: any, state: BluetoothStateRefs) => void
-  > = {
-  	'adapter-property-changed': handleAdapterPropertyChanged,
-  	'device-added': handleDeviceAdded,
-  	'device-removed': handleDeviceRemoved,
-  	'device-connected': handleDeviceUpdate,
-  	'device-property-changed': handleDeviceUpdate,
-  	'device-disconnected': handleDeviceDisconnected,
-  };
+	const handlers: Record<string, (data: any, state: BluetoothStateRefs) => void> = {
+		'adapter-property-changed': handleAdapterPropertyChanged,
+		'device-added': handleDeviceAdded,
+		'device-removed': handleDeviceRemoved,
+		'device-connected': handleDeviceUpdate,
+		'device-property-changed': handleDeviceUpdate,
+		'device-disconnected': handleDeviceDisconnected,
+	};
 
 	const handler = handlers[change_type];
 	if (handler) {
@@ -122,9 +105,7 @@ export const resolveBluetoothIconName = (
 	connectedCount: number
 ) => {
 	if (!powered) return 'bluetooth-disabled-symbolic';
-	return connectedCount > 0
-		? 'bluetooth-active-symbolic'
-		: 'bluetooth-symbolic';
+	return connectedCount > 0 ? 'bluetooth-active-symbolic' : 'bluetooth-symbolic';
 };
 
 /**
@@ -154,10 +135,7 @@ export function useBluetoothState(options: BluetoothComposableOptions) {
 			connectedDevicesCount.value = await getConnectedDevicesCount(
 				defaultAdapter.value?.path as string
 			);
-			const iconName = resolveBluetoothIconName(
-				isBluetoothOn.value,
-				connectedDevicesCount.value
-			);
+			const iconName = resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
 			bluetoothIcon.value = await options.getIcon(iconName);
 		} catch (error) {
 			console.error('Error loading bluetooth icon:', error);
@@ -170,10 +148,7 @@ export function useBluetoothState(options: BluetoothComposableOptions) {
 		connectedDevicesCount.value = await getConnectedDevicesCount(
 			defaultAdapter.value?.path as string
 		);
-		unlistenBluetooth.value = await listen(
-			'bluetooth-change',
-			handleBluetoothChange
-		);
+		unlistenBluetooth.value = await listen('bluetooth-change', handleBluetoothChange);
 	};
 
 	onMounted(initializeBluetoothState);

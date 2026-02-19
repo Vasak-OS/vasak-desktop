@@ -67,40 +67,40 @@
 </template>
 
 <script setup lang="ts">
-import { logError } from '@/utils/logger';
-import { ref, onMounted, computed } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import NotificationCard from '@/components/cards/NotificationCard.vue';
 import { ActionButton } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref } from 'vue';
+import NotificationCard from '@/components/cards/NotificationCard.vue';
+import { logError } from '@/utils/logger';
 
 interface Notification {
-  id: number;
-  app_name: string;
-  app_icon: string;
-  summary: string;
-  body: string;
-  timestamp: number;
-  seen: boolean;
-  urgency?: string;
-  actions?: string[];
-  hints?: { [key: string]: string };
+	id: number;
+	app_name: string;
+	app_icon: string;
+	summary: string;
+	body: string;
+	timestamp: number;
+	seen: boolean;
+	urgency?: string;
+	actions?: string[];
+	hints?: { [key: string]: string };
 }
 
 interface NotificationGroupData {
-  app_name: string;
-  app_icon: string;
-  notifications: Notification[];
-  count: number;
-  latest_timestamp: number;
-  has_unread: boolean;
+	app_name: string;
+	app_icon: string;
+	notifications: Notification[];
+	count: number;
+	latest_timestamp: number;
+	has_unread: boolean;
 }
 
 const props = defineProps<{
-  group: NotificationGroupData;
+	group: NotificationGroupData;
 }>();
 
 const emit = defineEmits<{
-  remove: [id: number];
+	remove: [id: number];
 }>();
 
 const isExpanded = ref(false);
@@ -127,9 +127,7 @@ function formatGroupSummary() {
 function formatTime(timestamp: number) {
 	const date = new Date(timestamp * 1000);
 	const now = new Date();
-	const diffMinutes = Math.floor(
-		(now.getTime() - date.getTime()) / (1000 * 60)
-	);
+	const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
 	if (diffMinutes < 1) return 'ahora';
 	if (diffMinutes < 60) return `${diffMinutes}m`;

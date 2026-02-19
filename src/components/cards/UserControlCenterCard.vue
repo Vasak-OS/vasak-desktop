@@ -68,9 +68,9 @@
 </template>
 
 <script setup lang="ts">
-import { logError } from '@/utils/logger';
-import { ref, onMounted, onUnmounted } from 'vue';
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
+import { onMounted, onUnmounted, ref } from 'vue';
+import { logError } from '@/utils/logger';
 
 const userInfo = ref<UserInfo>({
 	username: '',

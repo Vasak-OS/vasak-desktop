@@ -1,3 +1,1 @@
-export interface UnlistenFn {
-	(): void;
-}
+export type UnlistenFn = () => void;

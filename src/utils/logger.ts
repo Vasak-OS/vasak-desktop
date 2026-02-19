@@ -4,10 +4,10 @@ import { invoke } from '@tauri-apps/api/core';
  * Niveles de log disponibles
  */
 export enum LogLevel {
-  DEBUG = 'DEBUG',
-  INFO = 'INFO',
-  WARNING = 'WARNING',
-  ERROR = 'ERROR',
+	DEBUG = 'DEBUG',
+	INFO = 'INFO',
+	WARNING = 'WARNING',
+	ERROR = 'ERROR',
 }
 
 /**
@@ -22,8 +22,8 @@ class VasakLogger {
 	}
 
 	/**
-   * Inicializa el logger y captura errores globales
-   */
+	 * Inicializa el logger y captura errores globales
+	 */
 	private initializeLogger() {
 		// Capturar errores no manejados
 		window.addEventListener('error', (event) => {
@@ -80,8 +80,8 @@ class VasakLogger {
 	}
 
 	/**
-   * Formatea argumentos de console a string
-   */
+	 * Formatea argumentos de console a string
+	 */
 	private formatArgs(args: any[]): string {
 		return args
 			.map((arg) => {
@@ -98,15 +98,15 @@ class VasakLogger {
 	}
 
 	/**
-   * Envía un log al backend de Rust
-   */
+	 * Envía un log al backend de Rust
+	 */
 	private async sendLog(level: LogLevel, message: string, data?: any) {
-		const normalizedData = data instanceof Error
-			? { name: data.name, message: data.message, stack: data.stack }
-			: data;
-		const fullMessage = normalizedData !== undefined
-			? `${message} | Data: ${JSON.stringify(normalizedData)}`
-			: message;
+		const normalizedData =
+			data instanceof Error ? { name: data.name, message: data.message, stack: data.stack } : data;
+		const fullMessage =
+			normalizedData !== undefined
+				? `${message} | Data: ${JSON.stringify(normalizedData)}`
+				: message;
 
 		try {
 			await invoke('log_from_frontend', {
@@ -122,36 +122,36 @@ class VasakLogger {
 	}
 
 	/**
-   * Log de nivel DEBUG
-   */
+	 * Log de nivel DEBUG
+	 */
 	debug(message: string, data?: any) {
 		this.sendLog(LogLevel.DEBUG, message, data);
 	}
 
 	/**
-   * Log de nivel INFO
-   */
+	 * Log de nivel INFO
+	 */
 	info(message: string, data?: any) {
 		this.sendLog(LogLevel.INFO, message, data);
 	}
 
 	/**
-   * Log de nivel WARNING
-   */
+	 * Log de nivel WARNING
+	 */
 	warning(message: string, data?: any) {
 		this.sendLog(LogLevel.WARNING, message, data);
 	}
 
 	/**
-   * Log de nivel ERROR
-   */
+	 * Log de nivel ERROR
+	 */
 	error(message: string, data?: any) {
 		this.sendLog(LogLevel.ERROR, message, data);
 	}
 
 	/**
-   * Obtiene la ruta del archivo de log actual
-   */
+	 * Obtiene la ruta del archivo de log actual
+	 */
 	async getLogFilePath(): Promise<string> {
 		try {
 			return await invoke<string>('get_log_file_path');
@@ -162,8 +162,8 @@ class VasakLogger {
 	}
 
 	/**
-   * Lee el contenido completo del archivo de log
-   */
+	 * Lee el contenido completo del archivo de log
+	 */
 	async readLogFile(): Promise<string> {
 		try {
 			return await invoke<string>('read_log_file');
@@ -174,8 +174,8 @@ class VasakLogger {
 	}
 
 	/**
-   * Obtiene las últimas N líneas del log
-   */
+	 * Obtiene las últimas N líneas del log
+	 */
 	async getLastLogLines(lines: number = 100): Promise<string[]> {
 		try {
 			return await invoke<string[]>('get_last_log_lines', { lines });

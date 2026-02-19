@@ -1,25 +1,23 @@
 <script lang="ts" setup>
-import { Ref, ref, onMounted, computed } from 'vue';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { DeviceCard } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
 const icon: Ref<string> = ref('');
 const extraInfo: Ref<any> = ref({});
 const props = defineProps<{
-  device: any;
-  actionLabel: string;
-  connected?: boolean;
+	device: any;
+	actionLabel: string;
+	connected?: boolean;
 }>();
 
-const deviceTitle = computed(() => 
-	props.device.alias || props.device.name || props.device.address
-);
+const deviceTitle = computed(() => props.device.alias || props.device.name || props.device.address);
 
 const deviceSubtitle = computed(() => props.device.address);
 
-const deviceMetadata = computed(() => 
+const deviceMetadata = computed(() =>
 	props.device.icon || props.device.type ? props.device.type : ''
 );
 

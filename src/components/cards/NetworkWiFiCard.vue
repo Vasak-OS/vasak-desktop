@@ -1,8 +1,12 @@
 <script lang="ts" setup>
-import { NetworkInfo, connectToWifi, WiFiConnectionConfig } from '@vasakgroup/plugin-network-manager';
+import {
+	connectToWifi,
+	type NetworkInfo,
+	type WiFiConnectionConfig,
+} from '@vasakgroup/plugin-network-manager';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { onMounted, Ref, ref, nextTick } from 'vue';
-import { ListCard, ActionButton } from '@vasakgroup/vue-libvasak';
+import { ActionButton, ListCard } from '@vasakgroup/vue-libvasak';
+import { nextTick, onMounted, type Ref, ref } from 'vue';
 
 const netIcon: Ref<string> = ref('');
 const props = defineProps<NetworkInfo>();

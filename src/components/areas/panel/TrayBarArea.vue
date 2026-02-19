@@ -1,27 +1,27 @@
 <script setup lang="ts">
-import { logError } from '@/utils/logger';
-import { ref, onMounted, onUnmounted, Ref } from 'vue';
-import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
+import { listen } from '@tauri-apps/api/event';
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
+import { onMounted, onUnmounted, type Ref, ref } from 'vue';
+import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
+import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
 import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
 import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
-import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
-import { TrayItem, TrayMenu } from '@/interfaces/tray';
+import type { TrayItem, TrayMenu } from '@/interfaces/tray';
 import { batteryExists } from '@/tools/battery.controller';
 import { getTrayItems, startSNIWatcher } from '@/tools/tray.controller';
+import { logError } from '@/utils/logger';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
 const trayItems = ref<TrayItem[]>([]);
 const contextMenu = ref<{
-  visible: boolean;
-  x: number;
-  y: number;
-  items: TrayMenu[];
-  trayId: string;
+	visible: boolean;
+	x: number;
+	y: number;
+	items: TrayMenu[];
+	trayId: string;
 }>({
 	visible: false,
 	x: 0,
@@ -109,14 +109,14 @@ const getItemPulseClass = (item: TrayItem) => {
 
 const getItemStatusClass = (item: TrayItem) => {
 	switch (item.status) {
-	case 'Active':
-		return 'tray-item-active';
-	case 'Passive':
-		return 'tray-item-passive';
-	case 'NeedsAttention':
-		return 'tray-item-attention';
-	default:
-		return '';
+		case 'Active':
+			return 'tray-item-active';
+		case 'Passive':
+			return 'tray-item-passive';
+		case 'NeedsAttention':
+			return 'tray-item-attention';
+		default:
+			return '';
 	}
 };
 

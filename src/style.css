@@ -26,13 +26,21 @@
 }
 
 @keyframes move-in {
-  from { translate: 0 -100%; }
-  to { translate: 0  0; }
+  from {
+    translate: 0 -100%;
+  }
+  to {
+    translate: 0 0;
+  }
 }
 
 @keyframes circle-in {
-  from { clip-path: circle(0% at 50% 0%); }
-  to { clip-path: circle(120% at 50% 0%); }
+  from {
+    clip-path: circle(0% at 50% 0%);
+  }
+  to {
+    clip-path: circle(120% at 50% 0%);
+  }
 }
 
 body * {
@@ -76,4 +84,3 @@ body * {
   @apply p-8;
   border-radius: calc(var(--radius-vsk) + 32px);
 }
-

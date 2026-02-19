@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { onMounted, ref, computed, Ref, watch } from 'vue';
-import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { computed, onMounted, type Ref, ref, watch } from 'vue';
 import type { MusicInfo } from '@/interfaces/music';
 import { processImageUrl } from '@/utils/image';
 
@@ -38,9 +38,7 @@ const nextIcon: Ref<string> = ref('');
 const playIcon: Ref<string> = ref('');
 const pauseIcon: Ref<string> = ref('');
 
-const isPlaying = computed(() => 
-	String(musicInfo.value?.status || '').toLowerCase() === 'playing'
-);
+const isPlaying = computed(() => String(musicInfo.value?.status || '').toLowerCase() === 'playing');
 
 async function sendCommand(cmd: string): Promise<void> {
 	const player = musicInfo.value?.player || '';

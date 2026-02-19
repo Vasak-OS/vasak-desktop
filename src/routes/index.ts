@@ -43,38 +43,31 @@ const routes = [
 				children: [
 					{
 						path: 'info',
-						component: () =>
-							import('@/views/apps/configuration/ConfigInfoView.vue'),
+						component: () => import('@/views/apps/configuration/ConfigInfoView.vue'),
 					},
 					{
 						path: 'network',
-						component: () =>
-							import('@/views/apps/configuration/ConfigNetworkView.vue'),
+						component: () => import('@/views/apps/configuration/ConfigNetworkView.vue'),
 					},
 					{
 						path: 'bluetooth',
-						component: () =>
-							import('@/views/apps/configuration/ConfigBluetoothView.vue'),
+						component: () => import('@/views/apps/configuration/ConfigBluetoothView.vue'),
 					},
 					{
 						path: 'style',
-						component: () =>
-							import('@/views/apps/configuration/ConfigStyleView.vue'),
+						component: () => import('@/views/apps/configuration/ConfigStyleView.vue'),
 					},
 					{
 						path: 'desktop',
-						component: () =>
-							import('@/views/apps/configuration/ConfigDesktopView.vue'),
+						component: () => import('@/views/apps/configuration/ConfigDesktopView.vue'),
 					},
 					{
 						path: 'audio',
-						component: () =>
-							import('@/views/apps/configuration/ConfigAudioView.vue'),
+						component: () => import('@/views/apps/configuration/ConfigAudioView.vue'),
 					},
 					{
 						path: 'shortcuts',
-						component: () =>
-							import('@/views/apps/configuration/ConfigShortcutView.vue'),
+						component: () => import('@/views/apps/configuration/ConfigShortcutView.vue'),
 					},
 				],
 			},

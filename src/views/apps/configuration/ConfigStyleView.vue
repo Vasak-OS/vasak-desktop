@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import { ref, onMounted, computed, type Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import {
-	useConfigStore,
-	setDarkMode,
-	type VSKConfig,
 	readConfig,
+	setDarkMode,
+	useConfigStore,
+	type VSKConfig,
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
+import { ActionButton, ConfigSection, FormGroup, SwitchToggle } from '@vasakgroup/vue-libvasak';
+import type { Store } from 'pinia';
+import { computed, onMounted, type Ref, ref } from 'vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
-import { SwitchToggle, ConfigSection, FormGroup, ActionButton } from '@vasakgroup/vue-libvasak';
-import { Store } from 'pinia';
 
 const configStore = ref<any>(null);
 const gtkThemes = ref<string[]>([]);
@@ -30,9 +30,9 @@ onMounted(async () => {
 	try {
 		// Cargar config store
 		configStore.value = useConfigStore() as Store<
-      'config',
-      { config: VSKConfig; loadConfig: () => Promise<void> }
-    >;
+			'config',
+			{ config: VSKConfig; loadConfig: () => Promise<void> }
+		>;
 
 		await configStore.value.loadConfig();
 
@@ -42,21 +42,18 @@ onMounted(async () => {
 		// Cargar estado actual real del sistema (GTK, cursor, icons)
 		try {
 			const systemState = await invoke<{
-        gtk_theme: string;
-        cursor_theme: string;
-        icon_pack: string;
-        dark_mode: boolean;
-      }>('get_current_system_state');
+				gtk_theme: string;
+				cursor_theme: string;
+				icon_pack: string;
+				dark_mode: boolean;
+			}>('get_current_system_state');
 
 			selectedGtkTheme.value = systemState.gtk_theme;
 			selectedCursorTheme.value = systemState.cursor_theme;
 			selectedIconPack.value = systemState.icon_pack;
 			// Preferir darkMode del config store ya que es el canonical
 		} catch (err) {
-			console.warn(
-				'No se pudo obtener estado del sistema, usando valores por defecto:',
-				err
-			);
+			console.warn('No se pudo obtener estado del sistema, usando valores por defecto:', err);
 			selectedGtkTheme.value = 'Adwaita';
 			selectedCursorTheme.value = 'Adwaita';
 			selectedIconPack.value = 'Adwaita';
@@ -74,22 +71,13 @@ onMounted(async () => {
 		iconPacks.value = icons;
 
 		// Asegurar que el estado actual esté presente en los desplegables
-		if (
-			selectedGtkTheme.value &&
-      !gtkThemes.value.includes(selectedGtkTheme.value)
-		) {
+		if (selectedGtkTheme.value && !gtkThemes.value.includes(selectedGtkTheme.value)) {
 			gtkThemes.value.unshift(selectedGtkTheme.value);
 		}
-		if (
-			selectedCursorTheme.value &&
-      !cursorThemes.value.includes(selectedCursorTheme.value)
-		) {
+		if (selectedCursorTheme.value && !cursorThemes.value.includes(selectedCursorTheme.value)) {
 			cursorThemes.value.unshift(selectedCursorTheme.value);
 		}
-		if (
-			selectedIconPack.value &&
-      !iconPacks.value.includes(selectedIconPack.value)
-		) {
+		if (selectedIconPack.value && !iconPacks.value.includes(selectedIconPack.value)) {
 			iconPacks.value.unshift(selectedIconPack.value);
 		}
 	} catch (err) {
@@ -109,17 +97,14 @@ const saveConfig = async () => {
 		// Validar border radius
 		if (
 			!vskConfig.value?.style?.radius ||
-      vskConfig.value.style.radius < 1 ||
-      vskConfig.value.style.radius > 20
+			vskConfig.value.style.radius < 1 ||
+			vskConfig.value.style.radius > 20
 		) {
 			throw new Error('Border radius debe estar entre 1 y 20');
 		}
 
 		// Actualizar modo oscuro via plugin
-		if (
-			vskConfig.value?.style?.darkmode !==
-      (configStore.value.config?.style?.darkmode || false)
-		) {
+		if (vskConfig.value?.style?.darkmode !== (configStore.value.config?.style?.darkmode || false)) {
 			await setDarkMode(vskConfig.value?.style?.darkmode || false);
 		}
 
@@ -154,11 +139,7 @@ const applySystemChanges = async () => {
 };
 
 const isFormValid = computed(() => {
-	return (
-		selectedGtkTheme.value &&
-    selectedCursorTheme.value &&
-    selectedIconPack.value
-	);
+	return selectedGtkTheme.value && selectedCursorTheme.value && selectedIconPack.value;
 });
 </script>
 

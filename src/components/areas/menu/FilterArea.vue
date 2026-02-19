@@ -5,18 +5,19 @@ import AppMenuButton from '@/components/buttons/AppMenuButton.vue';
 const props = defineProps({
 	apps: {
 		type: Array,
-		required: true
+		required: true,
 	},
 	filter: {
 		type: String,
-		required: true
-	}
+		required: true,
+	},
 });
 
 const appsFiltred = computed((): Array<any> => {
 	return props.apps.filter(
 		(app: any) =>
-			app.name.toLowerCase().includes(props.filter) || app.description.toLowerCase().includes(props.filter)
+			app.name.toLowerCase().includes(props.filter) ||
+			app.description.toLowerCase().includes(props.filter)
 	);
 });
 </script>

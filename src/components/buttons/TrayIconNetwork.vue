@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted, Ref } from 'vue';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { listen } from '@tauri-apps/api/event';
 import {
 	getCurrentNetworkState,
 	type NetworkInfo,
 	WiFiSecurityType,
 } from '@vasakgroup/plugin-network-manager';
-import { toggleNetworkApplet } from '@/tools/network.controller';
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { toggleNetworkApplet } from '@/tools/network.controller';
 import { logError } from '@/utils/logger';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
@@ -45,13 +45,10 @@ const getCurrentNetwork = async () => {
 
 onMounted(async () => {
 	await getCurrentNetwork();
-	ulisten.value = await listen<NetworkInfo>(
-		'network-changed',
-		async (event) => {
-			networkState.value = event.payload;
-			networkIconSrc.value = await getSymbolSource(event.payload.icon);
-		}
-	);
+	ulisten.value = await listen<NetworkInfo>('network-changed', async (event) => {
+		networkState.value = event.payload;
+		networkIconSrc.value = await getSymbolSource(event.payload.icon);
+	});
 });
 
 onUnmounted(() => {

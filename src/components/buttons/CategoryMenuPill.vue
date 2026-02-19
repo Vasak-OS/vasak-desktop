@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import { ref, onMounted, Ref } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { onMounted, type Ref, ref } from 'vue';
 
 const emit = defineEmits(['update:categorySelected']);
 
 const props = defineProps<{
-  category: any;
-  image: string;
-  description: string;
-  categorySelected: string;
+	category: any;
+	image: string;
+	description: string;
+	categorySelected: string;
 }>();
 
 const appIcon: Ref<string> = ref(props.image);

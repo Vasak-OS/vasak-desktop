@@ -33,39 +33,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, Ref, onMounted } from 'vue';
-import { useConfigStore, setDarkMode } from '@vasakgroup/plugin-config-manager';
+import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { ToggleControl } from '@vasakgroup/vue-libvasak';
+import type { Store } from 'pinia';
+import { computed, onMounted, type Ref, ref } from 'vue';
 import dark from '@/assets/img/dark.png';
 import light from '@/assets/img/light.png';
-import { Store } from 'pinia';
 import { logError } from '@/utils/logger';
 
 const configStore = ref<any>(null);
 const isSwitching: Ref<boolean> = ref(false);
 
 onMounted(() => {
-  configStore.value = useConfigStore() as Store<'config', { config: any; loadConfig: () => Promise<void>; }>;;
+	configStore.value = useConfigStore() as Store<
+		'config',
+		{ config: any; loadConfig: () => Promise<void> }
+	>;
 });
 
 const icon = computed(() => {
-  return configStore.value?.config?.style?.darkmode ? light : dark;
+	return configStore.value?.config?.style?.darkmode ? light : dark;
 });
 
 const toggleTheme = async () => {
-  if (isSwitching.value || !configStore.value) return;
+	if (isSwitching.value || !configStore.value) return;
 
-  isSwitching.value = true;
-  try {
-    const currentDark = !!configStore.value?.config?.style?.darkmode;
-    await setDarkMode(!currentDark);
-  } catch (error) {
-    logError('Error toggling system theme:', error);
-  } finally {
-    setTimeout(() => {
-      isSwitching.value = false;
-    }, 800);
-  }
+	isSwitching.value = true;
+	try {
+		const currentDark = !!configStore.value?.config?.style?.darkmode;
+		await setDarkMode(!currentDark);
+	} catch (error) {
+		logError('Error toggling system theme:', error);
+	} finally {
+		setTimeout(() => {
+			isSwitching.value = false;
+		}, 800);
+	}
 };
 </script>
 

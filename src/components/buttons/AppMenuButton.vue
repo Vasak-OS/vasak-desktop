@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { ref, onMounted, Ref } from 'vue';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { onMounted, type Ref, ref } from 'vue';
 
 const props = defineProps({
 	app: {

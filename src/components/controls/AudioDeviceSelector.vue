@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import { onMounted, ref, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { onMounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
 interface AudioDevice {
-  id: string;
-  name: string;
-  description: string;
-  is_default: boolean;
-  volume: number;
+	id: string;
+	name: string;
+	description: string;
+	is_default: boolean;
+	volume: number;
 }
 
 const devices: Ref<AudioDevice[]> = ref([]);

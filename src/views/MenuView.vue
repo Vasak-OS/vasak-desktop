@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-
-import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
-import MenuArea from '@/components/areas/menu/MenuArea.vue';
-import FilterArea from '@/components/areas/menu/FilterArea.vue';
-import UserMenuCard from '@/components/cards/UserMenuCard.vue';
-import SessionButton from '@/components/buttons/SessionButton.vue';
-import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
-import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { computed, onMounted, type Ref, ref } from 'vue';
+import FilterArea from '@/components/areas/menu/FilterArea.vue';
+import MenuArea from '@/components/areas/menu/MenuArea.vue';
+import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
+import SessionButton from '@/components/buttons/SessionButton.vue';
+import UserMenuCard from '@/components/cards/UserMenuCard.vue';
+import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
+import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import { logError } from '@/utils/logger';
 
 const menuData: Ref<Array<any>> = ref([]);
@@ -86,9 +85,7 @@ const apps = computed(() => {
 	return allApps;
 });
 
-const appsOfCategory = computed(
-	() => (menuData.value as any)[categorySelected.value]?.apps
-);
+const appsOfCategory = computed(() => (menuData.value as any)[categorySelected.value]?.apps);
 
 const setImages = async () => {
 	try {

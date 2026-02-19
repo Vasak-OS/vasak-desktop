@@ -1,23 +1,23 @@
 <script lang="ts" setup>
-import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
-import { ref, onMounted, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import ActionButton from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref } from 'vue';
+import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 
 interface Shortcut {
-  id: string
-  name: string
-  description: string
-  keys: string
-  category: 'system' | 'vasak' | 'custom'
-  editable: boolean
+	id: string;
+	name: string;
+	description: string;
+	keys: string;
+	category: 'system' | 'vasak' | 'custom';
+	editable: boolean;
 }
 
 interface ConflictInfo {
-  has_conflict: boolean
-  conflict_with?: string
-  message: string
+	has_conflict: boolean;
+	conflict_with?: string;
+	message: string;
 }
 
 const shortcuts = ref<Shortcut[]>([]);
@@ -83,7 +83,7 @@ const checkConflicts = async () => {
 	try {
 		const conflict = await invoke<ConflictInfo>('check_shortcut_conflicts', {
 			keys: editingKeys.value,
-			exclude_id: editingId.value
+			exclude_id: editingId.value,
 		});
 		currentConflict.value = conflict;
 	} catch (err) {
@@ -113,10 +113,10 @@ const saveShortcut = async () => {
 	try {
 		await invoke('update_shortcut', {
 			id: editingId.value,
-			keys: editingKeys.value
+			keys: editingKeys.value,
 		});
 
-		const shortcut = shortcuts.value.find(s => s.id === editingId.value);
+		const shortcut = shortcuts.value.find((s) => s.id === editingId.value);
 		if (shortcut) {
 			shortcut.keys = editingKeys.value;
 		}
@@ -125,7 +125,9 @@ const saveShortcut = async () => {
 		editingKeys.value = '';
 		error.value = '';
 		successMessage.value = '✅ Atajo guardado exitosamente';
-		setTimeout(() => { successMessage.value = ''; }, 3000);
+		setTimeout(() => {
+			successMessage.value = '';
+		}, 3000);
 	} catch (err) {
 		error.value = `Error al guardar: ${err}`;
 	}
@@ -136,10 +138,14 @@ const testShortcut = async (shortcutId: string) => {
 	try {
 		await invoke('execute_shortcut', { shortcutId });
 		successMessage.value = '✅ Atajo ejecutado';
-		setTimeout(() => { successMessage.value = ''; }, 2000);
+		setTimeout(() => {
+			successMessage.value = '';
+		}, 2000);
 	} catch (err) {
 		error.value = `Error al ejecutar: ${err}`;
-		setTimeout(() => { error.value = ''; }, 3000);
+		setTimeout(() => {
+			error.value = '';
+		}, 3000);
 	} finally {
 		testingId.value = null;
 	}
@@ -150,9 +156,11 @@ const deleteShortcut = async (id: string) => {
 
 	try {
 		await invoke('delete_shortcut', { id });
-		shortcuts.value = shortcuts.value.filter(s => s.id !== id);
+		shortcuts.value = shortcuts.value.filter((s) => s.id !== id);
 		successMessage.value = '✅ Atajo eliminado';
-		setTimeout(() => { successMessage.value = ''; }, 2000);
+		setTimeout(() => {
+			successMessage.value = '';
+		}, 2000);
 	} catch (err) {
 		error.value = `Error al eliminar: ${err}`;
 	}
@@ -174,11 +182,13 @@ const addCustomShortcut = async () => {
 			name,
 			description: description || '',
 			keys,
-			command
+			command,
 		});
 		shortcuts.value.push(newShortcut);
 		successMessage.value = '✅ Atajo personalizado creado';
-		setTimeout(() => { successMessage.value = ''; }, 2000);
+		setTimeout(() => {
+			successMessage.value = '';
+		}, 2000);
 	} catch (err) {
 		error.value = `Error al crear atajo: ${err}`;
 	}
@@ -188,7 +198,7 @@ const getCategoryLabel = (category: string): string => {
 	const labels: Record<string, string> = {
 		system: 'Sistema',
 		vasak: 'VasakOS',
-		custom: 'Personalizado'
+		custom: 'Personalizado',
 	};
 	return labels[category] || category;
 };
@@ -197,7 +207,7 @@ const getCategoryColor = (category: string): string => {
 	const colors: Record<string, string> = {
 		system: 'bg-blue-500/10 text-blue-600',
 		vasak: 'bg-purple-500/10 text-purple-600',
-		custom: 'bg-green-500/10 text-green-600'
+		custom: 'bg-green-500/10 text-green-600',
 	};
 	return colors[category] || 'bg-gray-500/10 text-gray-600';
 };

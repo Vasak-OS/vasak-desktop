@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { onMounted, Ref, ref } from 'vue';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { onMounted, type Ref, ref } from 'vue';
 
 const props = defineProps<{
-  to: string;
-  icon: string;
+	to: string;
+	icon: string;
 }>();
 const iconSrc: Ref<string> = ref('');
 

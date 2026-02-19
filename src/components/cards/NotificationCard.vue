@@ -39,29 +39,29 @@
 </template>
 
 <script setup lang="ts">
-import { logError } from '@/utils/logger';
-import { ref, onMounted, computed } from 'vue';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { invoke } from '@tauri-apps/api/core';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { ActionButton } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref } from 'vue';
+import { logError } from '@/utils/logger';
 
 const props = defineProps<{
-  notification: {
-    id: number;
-    app_name: string;
-    app_icon: string;
-    summary: string;
-    body: string;
-    timestamp: number;
-    seen: boolean;
-    urgency?: string;
-    actions?: string[];
-    hints?: { [key: string]: string };
-  };
+	notification: {
+		id: number;
+		app_name: string;
+		app_icon: string;
+		summary: string;
+		body: string;
+		timestamp: number;
+		seen: boolean;
+		urgency?: string;
+		actions?: string[];
+		hints?: { [key: string]: string };
+	};
 }>();
 
 defineEmits<{
-  seen: [id: number];
+	seen: [id: number];
 }>();
 
 const iconSrc = ref('');
