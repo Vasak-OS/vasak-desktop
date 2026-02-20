@@ -1,6 +1,6 @@
 <template>
   <div class="p-8 max-w-[1200px] mx-auto">
-    <h2 class="text-3xl font-bold mb-8 text-vsk-primary">
+    <h2 class="text-3xl font-bold mb-8 text-primary">
       Información del Sistema
     </h2>
 
@@ -19,7 +19,7 @@
       <p>{{ error }}</p>
       <button
         @click="() => loadSystemInfo()"
-        class="mt-3 py-3 px-6 bg-vsk-primary border-0 rounded-vsk font-semibold cursor-pointer transition-all hover:bg-[var(--accent-hover)] hover:scale-105 active:scale-95"
+        class="mt-3 py-3 px-6 bg-primary border-0 rounded-corner font-semibold cursor-pointer transition-all hover:bg-[var(--accent-hover)] hover:scale-105 active:scale-95"
       >
         Reintentar
       </button>
@@ -31,7 +31,7 @@
     >
       <!-- Sistema -->
       <div
-        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
       >
         <div class="flex items-center gap-3 py-4 px-5">
           <span class="text-2xl">💻</span>
@@ -39,31 +39,31 @@
         </div>
         <div class="p-5">
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">Nombre:</span>
+            <span class="font-medium text-primary text-sm">Nombre:</span>
             <span class="font-semibold text-right max-w-[60%]">{{
               systemInfo?.system.os_name
             }}</span>
           </div>
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">Versión:</span>
+            <span class="font-medium text-primary text-sm">Versión:</span>
             <span class="font-semibold text-right max-w-[60%]">{{
               systemInfo?.system.os_version
             }}</span>
           </div>
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">Kernel:</span>
+            <span class="font-medium text-primary text-sm">Kernel:</span>
             <span class="font-semibold text-right max-w-[60%]">{{
               systemInfo?.system.kernel
             }}</span>
           </div>
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">Hostname:</span>
+            <span class="font-medium text-primary text-sm">Hostname:</span>
             <span class="font-semibold text-right max-w-[60%]">{{
               systemInfo?.system.hostname
             }}</span>
           </div>
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm"
+            <span class="font-medium text-primary text-sm"
               >Display Server:</span
             >
             <span class="font-semibold text-right max-w-[60%]">{{
@@ -71,7 +71,7 @@
             }}</span>
           </div>
           <div class="flex justify-between items-center py-2 border-b-0">
-            <span class="font-medium text-vsk-primary text-sm">Uptime:</span>
+            <span class="font-medium text-primary text-sm">Uptime:</span>
             <span class="font-semibold text-right max-w-[60%]">{{
               formatUptime(systemInfo?.system.uptime_seconds)
             }}</span>
@@ -81,7 +81,7 @@
 
       <!-- CPU -->
       <div
-        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
       >
         <div class="flex items-center gap-3 py-4 px-5">
           <span class="text-2xl">⚙️</span>
@@ -89,14 +89,14 @@
         </div>
         <div class="p-5">
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">Modelo:</span>
+            <span class="font-medium text-primary text-sm">Modelo:</span>
             <span
               class="font-semibold text-right max-w-[60%] text-[0.85rem] leading-tight"
               >{{ systemInfo?.cpu.model }}</span
             >
           </div>
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">Núcleos:</span>
+            <span class="font-medium text-primary text-sm">Núcleos:</span>
             <span class="font-semibold text-right max-w-[60%]">{{
               systemInfo?.cpu.cores
             }}</span>
@@ -105,7 +105,7 @@
             class="flex justify-between items-center py-2"
             v-if="systemInfo?.cpu.frequency"
           >
-            <span class="font-medium text-vsk-primary text-sm"
+            <span class="font-medium text-primary text-sm"
               >Frecuencia:</span
             >
             <span class="font-semibold text-right max-w-[60%]"
@@ -114,7 +114,7 @@
           </div>
           <div class="mt-4 pt-4 border-t border-[var(--border)]">
             <div class="flex justify-between mb-2">
-              <span class="font-medium text-vsk-primary text-sm"
+              <span class="font-medium text-primary text-sm"
                 >Uso actual:</span
               >
               <span
@@ -150,7 +150,7 @@
 
       <!-- Memoria -->
       <div
-        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
       >
         <div class="flex items-center gap-3 py-4 px-5">
           <span class="text-2xl">🧠</span>
@@ -158,19 +158,19 @@
         </div>
         <div class="p-5">
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">Total:</span>
+            <span class="font-medium text-primary text-sm">Total:</span>
             <span class="font-semibold text-right max-w-[60%]"
               >{{ systemInfo?.memory.total_gb?.toFixed(2) }} GB</span
             >
           </div>
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">En uso:</span>
+            <span class="font-medium text-primary text-sm">En uso:</span>
             <span class="font-semibold text-right max-w-[60%]"
               >{{ systemInfo?.memory.used_gb?.toFixed(2) }} GB</span
             >
           </div>
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm"
+            <span class="font-medium text-primary text-sm"
               >Disponible:</span
             >
             <span class="font-semibold text-right max-w-[60%]"
@@ -179,7 +179,7 @@
           </div>
           <div class="mt-4 pt-4 border-t border-[var(--border)]">
             <div class="flex justify-between mb-2">
-              <span class="font-medium text-vsk-primary text-sm">Uso:</span>
+              <span class="font-medium text-primary text-sm">Uso:</span>
               <span
                 class="font-bold text-lg"
                 :class="{
@@ -214,7 +214,7 @@
 
       <!-- Swap -->
       <div
-        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
         v-if="systemInfo?.swap"
       >
         <div class="flex items-center gap-3 py-4 px-5">
@@ -223,26 +223,26 @@
         </div>
         <div class="p-5">
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">Total:</span>
+            <span class="font-medium text-primary text-sm">Total:</span>
             <span class="font-semibold text-right max-w-[60%]"
               >{{ systemInfo?.swap?.total_gb?.toFixed(2) }} GB</span
             >
           </div>
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">En uso:</span>
+            <span class="font-medium text-primary text-sm">En uso:</span>
             <span class="font-semibold text-right max-w-[60%]"
               >{{ systemInfo?.swap?.used_gb?.toFixed(2) }} GB</span
             >
           </div>
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm">Libre:</span>
+            <span class="font-medium text-primary text-sm">Libre:</span>
             <span class="font-semibold text-right max-w-[60%]"
               >{{ systemInfo?.swap?.free_gb?.toFixed(2) }} GB</span
             >
           </div>
           <div class="mt-4 pt-4 border-t border-[var(--border)]">
             <div class="flex justify-between mb-2">
-              <span class="font-medium text-vsk-primary text-sm">Uso:</span>
+              <span class="font-medium text-primary text-sm">Uso:</span>
               <span
                 class="font-bold text-lg"
                 :class="{
@@ -277,7 +277,7 @@
 
       <!-- GPU -->
       <div
-        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
         v-if="systemInfo?.gpu"
       >
         <div class="flex items-center gap-3 py-4 px-5">
@@ -286,7 +286,7 @@
         </div>
         <div class="p-5">
           <div class="flex justify-between items-center py-2">
-            <span class="font-medium text-vsk-primary text-sm"
+            <span class="font-medium text-primary text-sm"
               >Fabricante:</span
             >
             <span class="font-semibold text-right max-w-[60%]">{{
@@ -294,7 +294,7 @@
             }}</span>
           </div>
           <div class="flex justify-between items-center py-2 border-b-0">
-            <span class="font-medium text-vsk-primary text-sm">Modelo:</span>
+            <span class="font-medium text-primary text-sm">Modelo:</span>
             <span
               class="font-semibold text-right max-w-[60%] text-[0.85rem] leading-tight"
               >{{ systemInfo?.gpu.model }}</span
@@ -305,7 +305,7 @@
 
       <!-- Temperatura -->
       <div
-        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
         v-if="systemInfo?.temperature"
       >
         <div class="flex items-center gap-3 py-4 px-5">
@@ -317,7 +317,7 @@
             class="flex justify-between items-center py-2"
             v-if="systemInfo?.temperature.cpu_temp"
           >
-            <span class="font-medium text-vsk-primary text-sm">CPU:</span>
+            <span class="font-medium text-primary text-sm">CPU:</span>
             <span
               class="font-bold text-right max-w-[60%]"
               :class="{
@@ -341,7 +341,7 @@
               v-for="sensor in systemInfo.temperature.sensors.slice(0, 3)"
               :key="sensor.name"
             >
-              <span class="text-vsk-primary">{{ sensor.label }}:</span>
+              <span class="text-primary">{{ sensor.label }}:</span>
               <span
                 class="font-semibold"
                 :class="{
@@ -358,7 +358,7 @@
 
       <!-- Discos -->
       <div
-        class="background rounded-vsk overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
         v-if="systemInfo?.disks?.length"
       >
         <div class="flex items-center gap-3 py-4 px-5">
@@ -372,7 +372,7 @@
             :key="disk.device + disk.mountpoint"
           >
             <div
-              class="flex flex-wrap gap-2 items-center mb-2 text-vsk-primary"
+              class="flex flex-wrap gap-2 items-center mb-2 text-primary"
             >
               <span class="font-semibold">{{ disk.device }}</span>
               <span class="text-sm">→ {{ disk.mountpoint }}</span>
@@ -413,12 +413,12 @@
     </div>
 
     <div
-      class="text-center p-6 background rounded-vsk"
+      class="text-center p-6 background rounded-corner"
       v-if="!loading && !error"
     >
       <button
         @click="() => loadSystemInfo()"
-        class="py-3 px-6 bg-vsk-primary text-white border-0 rounded-vsk font-semibold cursor-pointer transition-all inline-flex items-center gap-2 hover:bg-[var(--accent-hover)] hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+        class="py-3 px-6 bg-primary text-white border-0 rounded-corner font-semibold cursor-pointer transition-all inline-flex items-center gap-2 hover:bg-[var(--accent-hover)] hover:scale-105 active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
         :disabled="isUpdating"
       >
         <span
@@ -429,7 +429,7 @@
         {{ isUpdating ? "Actualizando..." : "Actualizar" }}
       </button>
       <p class="mt-3 text-[0.85rem] text-[var(--text-tertiary)]">
-        <span v-if="isUpdating" class="text-vsk-primary animate-pulse"
+        <span v-if="isUpdating" class="text-primary animate-pulse"
           >● Actualizando...</span
         >
         <span v-else>Última actualización: {{ lastUpdate }}</span>

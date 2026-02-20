@@ -238,7 +238,7 @@ onUnmounted(() => {
 }
 
 .tray-item {
-  @apply relative flex items-center justify-center w-7 h-7 rounded-vsk cursor-pointer;
+  @apply relative flex items-center justify-center w-7 h-7 rounded-corner cursor-pointer;
   @apply transform transition-all duration-300 ease-out;
   @apply hover:bg-white/15 hover:scale-110 hover:rotate-3;
   @apply active:scale-95 active:rotate-0;
@@ -278,7 +278,7 @@ onUnmounted(() => {
 
 .context-menu {
   @apply fixed z-50 bg-white/95 dark:bg-black/95 backdrop-blur-md;
-  @apply border border-gray-200/50 dark:border-gray-700/50 rounded-vsk shadow-2xl;
+  @apply border border-gray-200/50 dark:border-gray-700/50 rounded-corner shadow-2xl;
   @apply py-2 min-w-48 max-w-64;
 }
 

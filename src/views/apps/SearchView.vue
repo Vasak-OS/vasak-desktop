@@ -168,7 +168,7 @@ function getCategoryLabel(category: string): string {
       ></div>
       <!-- Header -->
       <div
-        class="flex items-center gap-4 px-6 py-5 border-b border-vsk-primary/10 relative z-10"
+        class="flex items-center gap-4 px-6 py-5 border-b border-primary/10 relative z-10"
       >
         <img :src="searchIconSrc" alt="Search" class="w-7 h-7 shrink-0" />
         <input
@@ -189,17 +189,17 @@ function getCategoryLabel(category: string): string {
         <div
           v-for="(result, index) in results"
           :key="result.id"
-          class="search-result flex items-center gap-4 p-4 rounded-vsk cursor-pointer transition-all duration-200 mb-2 ring-1 ring-vsk-primary/20"
+          class="search-result flex items-center gap-4 p-4 rounded-corner cursor-pointer transition-all duration-200 mb-2 ring-1 ring-primary/20"
           :class="
             index === selectedIndex
-              ? 'selected bg-gradient-to-r from-vsk-primary/20 to-vsk-primary/10 translate-x-2 shadow-md shadow-vsk-primary/15 ring-2 ring-vsk-primary/40 scale-[1.01]'
-              : 'hover:bg-gradient-to-r hover:from-vsk-primary/20 hover:to-vsk-primary/10 hover:translate-x-2 hover:shadow-md hover:shadow-vsk-primary/15 hover:ring-vsk-primary/30'
+              ? 'selected bg-gradient-to-r from-primary/20 to-primary/10 translate-x-2 shadow-md shadow-primary/15 ring-2 ring-primary/40 scale-[1.01]'
+              : 'hover:bg-gradient-to-r hover:from-primary/20 hover:to-primary/10 hover:translate-x-2 hover:shadow-md hover:shadow-primary/15 hover:ring-primary/30'
           "
           @click="executeResult(result)"
           @mouseenter="selectedIndex = index"
         >
           <div
-            class="w-14 h-14 shrink-0 flex items-center justify-center text-3xl rounded-vsk bg-vsk-primary/10 border border-vsk-primary/20"
+            class="w-14 h-14 shrink-0 flex items-center justify-center text-3xl rounded-corner bg-primary/10 border border-primary/20"
           >
             {{ getCategoryIcon(result.category) }}
           </div>
@@ -215,10 +215,10 @@ function getCategoryLabel(category: string): string {
             </div>
           </div>
           <div
-            class="px-3 py-1 rounded-full bg-vsk-primary/25 border border-vsk-primary/30"
+            class="px-3 py-1 rounded-full bg-primary/25 border border-primary/30"
           >
             <span
-              class="text-xs font-bold text-vsk-primary uppercase tracking-wider"
+              class="text-xs font-bold text-primary uppercase tracking-wider"
             >
               {{ getCategoryLabel(result.category) }}
             </span>
@@ -247,28 +247,28 @@ function getCategoryLabel(category: string): string {
 
       <!-- Footer -->
       <div
-        class="flex justify-center px-6 py-4 border-t border-vsk-primary/10 bg-black/10 relative z-10"
+        class="flex justify-center px-6 py-4 border-t border-primary/10 bg-black/10 relative z-10"
       >
         <div
           class="flex gap-5 items-center text-xs text-vsk-text/50 font-medium"
         >
           <span class="flex items-center gap-1">
             <kbd
-              class="bg-vsk-primary/15 px-2 py-1 rounded border border-vsk-primary/20 text-vsk-primary font-semibold"
+              class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
               >↑↓</kbd
             >
             Navegar
           </span>
           <span class="flex items-center gap-1">
             <kbd
-              class="bg-vsk-primary/15 px-2 py-1 rounded border border-vsk-primary/20 text-vsk-primary font-semibold"
+              class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
               >Enter</kbd
             >
             Ejecutar
           </span>
           <span class="flex items-center gap-1">
             <kbd
-              class="bg-vsk-primary/15 px-2 py-1 rounded border border-vsk-primary/20 text-vsk-primary font-semibold"
+              class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
               >Esc</kbd
             >
             Cerrar

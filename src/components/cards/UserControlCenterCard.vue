@@ -1,6 +1,6 @@
 <template>
   <div
-    class="background rounded-vsk p-4 flex items-center gap-4 w-full transition-all duration-300 hover:bg-white/60 dark:hover:bg-black/60 hover:shadow-lg hover:scale-[1.02] group"
+    class="background rounded-corner p-4 flex items-center gap-4 w-full transition-all duration-300 hover:bg-white/60 dark:hover:bg-black/60 hover:shadow-lg hover:scale-[1.02] group"
     :class="{
       'opacity-0 translate-y-4': !isLoaded,
       'opacity-100 translate-y-0': isLoaded,

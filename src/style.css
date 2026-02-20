@@ -1,20 +1,120 @@
 @import "tailwindcss";
 
 :root {
-  --primary-color: #f5a97f;
-  --border-radius: 10px;
-  --dark-bg-color: #24273a;
-  --light-bg-color: #eff1f5;
+  /* general */
+  --corner-radius: 10px;
+
+  /* Colores de Marca */
+  --primary: #f5a97f;
+  --secondary: #f5c9a9;
+  --primary-dark: #d4885c;
+  --secondary-dark: #d4a17c;
+
+  /* Colores de Interfaz (UI) */
+  --ui-background: #ffffff;
+  --ui-surface: #f0f0f0;
+  --ui-border: #e0e0e0;
+  --ui-background-dark: #1e1e1e;
+  --ui-surface-dark: #2c2c2c;
+  --ui-border-dark: #3a3a3a;
+
+  /* Colores de Texto */
+  --text-main: #333333;
+  --text-muted: #666666;
+  --text-on-primary: #ffffff;
+  --text-main-dark: #dddddd;
+  --text-muted-dark: #aaaaaa;
+  --text-on-primary-dark: #000000;
+
+  /* Status */
+  --status-error: #e74c3c;
+  --status-success: #2ecc71;
+  --status-warning: #f39c12;
+  --status-error-dark: #c0392b;
+  --status-success-dark: #27ae60;
+  --status-warning-dark: #d35400;
+
+  /* Terminal Colors */
+  --terminal-foreground: #cccccc;
+  --terminal-background: #1e1e1e;
+  --terminal-cursor: #f5a97f;
+  --terminal-foreground-dark: #dddddd;
+  --terminal-background-dark: #1a1a1a;
+  --terminal-cursor-dark: #d4885c;
+
+  --terminal-ansi-black: #000000;
+  --terminal-ansi-red: #e74c3c;
+  --terminal-ansi-green: #2ecc71;
+  --terminal-ansi-yellow: #f39c12;
+  --terminal-ansi-blue: #3498db;
+  --terminal-ansi-magenta: #9b59b6;
+  --terminal-ansi-cyan: #1abc9c;
+  --terminal-ansi-white: #ecf0f1;
+
+  --terminal-ansi-bright-black: #7f8c8d;
+  --terminal-ansi-bright-red: #c0392b;
+  --terminal-ansi-bright-green: #27ae60;
+  --terminal-ansi-bright-yellow: #d35400;
+  --terminal-ansi-bright-blue: #2980b9;
+  --terminal-ansi-bright-magenta: #8e44ad;
+  --terminal-ansi-bright-cyan: #16a085;
+  --terminal-ansi-bright-white: #bdc3c7;
+
+  --terminal-ansi-black-dark: #000000;
+  --terminal-ansi-red-dark: #c0392b;
+  --terminal-ansi-green-dark: #27ae60;
+  --terminal-ansi-yellow-dark: #d35400;
+  --terminal-ansi-blue-dark: #2980b9;
+  --terminal-ansi-magenta-dark: #8e44ad;
+  --terminal-ansi-cyan-dark: #16a085;
+  --terminal-ansi-white-dark: #bdc3c7;
+
+  --terminal-ansi-bright-black-dark: #7f8c8d;
+  --terminal-ansi-bright-red-dark: #c0392b;
+  --terminal-ansi-bright-green-dark: #27ae60;
+  --terminal-ansi-bright-yellow-dark: #d35400;
+  --terminal-ansi-bright-blue-dark: #2980b9;
+  --terminal-ansi-bright-magenta-dark: #8e44ad;
+  --terminal-ansi-bright-cyan-dark: #16a085;
+  --terminal-ansi-bright-white-dark: #bdc3c7;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --radius-vsk: var(--border-radius);
-  --radius-window: calc(var(--border-radius) + 16px);
-  --color-vsk-primary: var(--primary-color);
-  --color-dark: var(--dark-bg-color);
-  --color-light: var(--light-bg-color);
+   /* radius */
+  --radius-corner: var(--corner-radius);
+  --radius-corner-window: calc(var(--corner-radius) + 16px);
+
+  /* Colores de Marca */
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-primary-dark: var(--primary-dark);
+  --color-secondary-dark: var(--secondary-dark);
+
+  /* Colores de Interfaz (UI) */
+  --color-ui-bg: var(--ui-background);
+  --color-ui-surface: var(--ui-surface);
+  --color-ui-border: var(--ui-border);
+  --color-ui-bg-dark: var(--ui-background-dark);
+  --color-ui-surface-dark: var(--ui-surface-dark);
+  --color-ui-border-dark: var(--ui-border-dark);
+
+  /* Colores de Texto */
+  --color-tx-main: var(--text-main);
+  --color-tx-muted: var(--text-muted);
+  --color-tx-on-primary: var(--text-on-primary);
+  --color-tx-main-dark: var(--text-main-dark);
+  --color-tx-muted-dark: var(--text-muted-dark);
+  --color-tx-on-primary-dark: var(--text-on-primary-dark);
+
+  /* Status */
+  --color-status-error: var(--status-error);
+  --color-status-success: var(--status-success);
+  --color-status-warning: var(--status-warning);
+  --color-status-error-dark: var(--status-error-dark);
+  --color-status-success-dark: var(--status-success-dark);
+  --color-status-warning-dark: var(--status-warning-dark);
 }
 
 ::view-transition-old(root) {
@@ -44,11 +144,11 @@
 }
 
 body * {
-  @apply text-gray-900 dark:text-gray-100 transition-colors duration-300;
+  @apply text-tx-main dark:text-tx-main-dark transition-colors duration-300;
 }
 
 .background {
-  @apply bg-light/80 dark:bg-dark/80;
+  @apply bg-ui-bg/80 dark:bg-ui-bg-dark/80;
 }
 
 @layer base {
@@ -82,5 +182,5 @@ body * {
 /* Applet Styles */
 .applet {
   @apply p-8;
-  border-radius: calc(var(--radius-vsk) + 32px);
+  border-radius: calc(var(--corner-radius) + 32px);
 }

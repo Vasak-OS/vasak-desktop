@@ -32,7 +32,7 @@ const tooltipClass = computed(() => ({
 		batteryInfo.value.percentage < 50 &&
 		batteryInfo.value.percentage >= 20 &&
 		!batteryInfo.value.is_charging,
-	'text-vsk-primary': batteryInfo.value.percentage >= 50 && !batteryInfo.value.is_charging,
+	'text-primary': batteryInfo.value.percentage >= 50 && !batteryInfo.value.is_charging,
 }));
 
 async function updateIcon() {

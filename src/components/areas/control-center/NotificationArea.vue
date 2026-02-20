@@ -18,7 +18,7 @@
       </span>
       <button
         @click="clearAllNotifications"
-        class="text-xs px-4 py-2 bg-vsk-primary rounded-vsk hover:bg-vsk-primary/80 transition-colors"
+        class="text-xs px-4 py-2 bg-primary rounded-corner hover:bg-primary/80 transition-colors"
       >
         Limpiar todo
       </button>

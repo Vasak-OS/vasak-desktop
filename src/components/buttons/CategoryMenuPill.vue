@@ -29,10 +29,10 @@ onMounted(() => {
 
 <template>
   <button
-    class="p-2 rounded-vsk hover:scale-120"
+    class="p-2 rounded-corner hover:scale-120"
     @click="setCategory(category)"
     :class="{
-      'bg-vsk-primary/50 selected-category': category === categorySelected,
+      'bg-primary/50 selected-category': category === categorySelected,
       'bg-transparent': category !== categorySelected,
     }"
   >

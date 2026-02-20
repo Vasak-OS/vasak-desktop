@@ -79,13 +79,13 @@ onMounted(async () => {
 
   <!-- Modal para pedir contraseña -->
   <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center">
-    <div class="background rounded-vsk shadow-lg p-6 w-80 flex flex-col gap-4">
+    <div class="background rounded-corner shadow-lg p-6 w-80 flex flex-col gap-4">
       <h3 class="text-lg font-semibold text-vsk-text">Conectar a {{ props.ssid }}</h3>
       <input
         v-model="password"
         type="password"
         placeholder="Contraseña WiFi"
-        class="border border-vsk-border rounded-vsk p-2 text-vsk-text outline-none"
+        class="border border-vsk-border rounded-corner p-2 text-vsk-text outline-none"
         :disabled="connecting"
       />
       <div v-if="errorMsg" class="text-red-500 text-sm">{{ errorMsg }}</div>

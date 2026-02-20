@@ -128,22 +128,22 @@ onMounted(async () => {
 
 <template>
   <AppWindowFrame container-class="w-screen rounded-t-window flex flex-col overflow-hidden">
-      <div class="h-12 border-b border-vsk-primary flex items-center px-4 background backdrop-blur-sm shrink-0">
+      <div class="h-12 border-b border-primary flex items-center px-4 background backdrop-blur-sm shrink-0">
         <div class="flex gap-2 mr-4">
-          <button @click="navigateUp" aria-label="up" class="hover:text-vsk-primary transition-colors text-lg">
+          <button @click="navigateUp" aria-label="up" class="hover:text-primary transition-colors text-lg">
             ↑
           </button>
         </div>
-        <div class="flex-1 background rounded-vsk px-3 py-1 text-sm font-medium opacity-80 backdrop-blur-md truncate">
+        <div class="flex-1 background rounded-corner px-3 py-1 text-sm font-medium opacity-80 backdrop-blur-md truncate">
           {{ currentPath }}
         </div>
         <div class="ml-4 flex gap-2 items-center">
           <label class="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
             <input type="checkbox" :checked="showHidden" @change="toggleHiddenFiles"
-              class="rounded-vsk background focus:ring-vsk-primary text-vsk-primary" />
+              class="rounded-corner background focus:ring-primary text-primary" />
             Show Hidden
           </label>
-          <button aria-label="Search" class="p-1 hover:bg-vsk-primary rounded-vsk">
+          <button aria-label="Search" class="p-1 hover:bg-primary rounded-corner">
             🔍
           </button>
         </div>
@@ -151,9 +151,9 @@ onMounted(async () => {
 
       <div class="flex-1 flex min-h-0">
         <!-- Sidebar -->
-        <div class="w-48 p-2 border-r dark:border-vsk-primary flex flex-col gap-1 background">
+        <div class="w-48 p-2 border-r dark:border-primary flex flex-col gap-1 background">
           <button v-for="item in sidebarItems" :key="item.name" @click="handleSidebarClick(item)"
-            class="flex items-center gap-3 px-3 py-2 rounded-vsk hover:bg-white/40 dark:hover:bg-white/10 transition-colors text-sm font-medium text-left">
+            class="flex items-center gap-3 px-3 py-2 rounded-corner hover:bg-white/40 dark:hover:bg-white/10 transition-colors text-sm font-medium text-left">
             <img v-if="sidebarIcons[item.name]" :src="sidebarIcons[item.name]" alt="Icon" class="w-5 h-5" />
             <span v-else>📁</span>
             <span>{{ item.name }}</span>
@@ -170,9 +170,9 @@ onMounted(async () => {
           </div>
           <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-4">
             <div v-for="file in files" :key="file.name" @dblclick="handleItemClick(file)"
-              class="group flex flex-col items-center gap-2 p-3 rounded-vsk hover:bg-vsk-primary/80 hover:ring-1 hover:ring-vsk-primary cursor-pointer transition-all">
+              class="group flex flex-col items-center gap-2 p-3 rounded-corner hover:bg-primary/80 hover:ring-1 hover:ring-primary cursor-pointer transition-all">
               <div
-                class="w-16 h-16 flex items-center justify-center overflow-hidden rounded-vsk background group-hover:scale-105 transition-transform duration-200">
+                class="w-16 h-16 flex items-center justify-center overflow-hidden rounded-corner background group-hover:scale-105 transition-transform duration-200">
                 <!-- Image Preview -->
                 <img v-if="
                   file.mimeType === 'image' &&
@@ -195,7 +195,7 @@ onMounted(async () => {
               </div>
 
               <span
-                class="text-xs text-center truncate w-full px-1 select-none font-medium text-gray-700 dark:text-gray-300 group-hover:text-vsk-primary"
+                class="text-xs text-center truncate w-full px-1 select-none font-medium text-gray-700 dark:text-gray-300 group-hover:text-primary"
                 :title="file.name">
                 {{ file.name }}
               </span>
