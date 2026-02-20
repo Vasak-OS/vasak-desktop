@@ -29,8 +29,8 @@ onMounted(loadUserInfo);
       class="w-10 h-10 rounded-full object-cover"
     />
     <div class="flex flex-col">
-      <span class="text-sm font-bold">{{ userInfo.full_name }}</span>
-      <span class="text-xs text-white/70">@{{ userInfo.username }}</span>
+      <span class="text-sm font-bold text-primary dark:text-primary-dark">{{ userInfo.full_name }}</span>
+      <span class="text-xs text-tx-muted dark:text-tx-muted-dark">@{{ userInfo.username }}</span>
     </div>
   </div>
 </template>

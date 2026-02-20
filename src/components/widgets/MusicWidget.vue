@@ -164,7 +164,7 @@ async function onImgError(): Promise<void> {
 
 <template>
   <div
-    class="p-4 rounded-corner background flex mb-4 ring-2 ring-primary/50 items-center"
+    class="p-4 rounded-corner background flex mb-4 ring-2 ring-primary dark:ring-primary-dark items-center"
   >
     <img
       :src="imgSrc"
@@ -242,7 +242,7 @@ async function onImgError(): Promise<void> {
       <transition name="error-fade">
         <div
           v-if="showError"
-          class="mt-2 text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2 py-1 rounded"
+          class="mt-2 text-xs bg-status-error dark:bg-status-error-dark px-2 py-1 rounded-corner"
         >
           {{ commandError }}
         </div>

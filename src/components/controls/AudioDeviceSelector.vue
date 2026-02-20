@@ -79,12 +79,12 @@ function getDeviceName(device: AudioDevice): string {
       <div v-for="device in devices" :key="device.id"
         class="flex items-center gap-2 p-2 rounded-corner cursor-pointer transition-colors" :class="[
           selectedDeviceId === device.id
-            ? 'bg-primary/30 ring-1 ring-primary'
-            : 'bg-background hover:bg-primary/10',
+            ? 'bg-primary dark:bg-primary-dark ring-1 ring-secondary dark:ring-secondary-dark'
+            : 'bg-background hover:bg-primary hover:dark:bg-primary-dark',
         ]" @click="onDeviceChange(device.id)">
 
         <div
-          class="w-4 h-4 rounded-full border-2 border-primary/50 flex items-center justify-center transition-colors"
+          class="w-4 h-4 rounded-full border-2 border-primary dark:border-primary-dark flex items-center justify-center transition-colors"
           :class="[
             selectedDeviceId === device.id
               ? 'bg-primary border-primary'
@@ -104,7 +104,7 @@ function getDeviceName(device: AudioDevice): string {
         </div>
 
         <div v-if="device.is_default"
-          class="px-2 py-0.5 bg-primary/20 rounded text-xs font-medium text-primary">
+          class="px-2 py-0.5 bg-primary dark:bg-primary-dark rounded text-xs font-medium text-primary">
           Default
         </div>
       </div>
@@ -114,7 +114,7 @@ function getDeviceName(device: AudioDevice): string {
       Cargando dispositivos...
     </div>
 
-    <div v-else class="text-xs text-muted/50">
+    <div v-else class="text-xs text-tx-muted">
       No hay dispositivos disponibles
     </div>
   </div>

@@ -41,7 +41,7 @@ const toggleBT = async (): Promise<void> => {
     <!-- Badge de dispositivos conectados -->
     <div
       v-if="connectedDevicesCount > 0"
-      class="absolute bottom-1 right-1 bg-primary text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"
+      class="absolute bottom-1 right-1 bg-primary text-tx-main dark:text-tx-main-dark text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"
     >
       {{ connectedDevicesCount }}
     </div>

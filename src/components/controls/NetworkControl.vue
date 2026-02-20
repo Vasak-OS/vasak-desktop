@@ -77,7 +77,7 @@ onUnmounted(() => {
 		<!-- Indicador de estado -->
 		<div
 			class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-300"
-			:class="networkState.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'"
+			:class="networkState.is_connected ? 'bg-status-success dark:bg-status-success-dark animate-pulse' : 'bg-status-error dark:bg-status-error-dark'"
 		></div>
 
 		<!-- Indicador de intensidad de señal -->
@@ -85,7 +85,7 @@ onUnmounted(() => {
 			<div
 				v-for="i in 4"
 				:key="i"
-				class="w-1 bg-primary rounded-full transition-all duration-300"
+				class="w-1 bg-primary dark:bg-primary-dark rounded-full transition-all duration-300"
 				:class="{
 					'opacity-100': i <= Math.ceil(networkState.signal_strength / 25),
 					'opacity-30': i > Math.ceil(networkState.signal_strength / 25),
@@ -101,8 +101,8 @@ onUnmounted(() => {
 			:is-active="networkState.is_connected"
 			:is-loading="isLoading"
 			:custom-class="{
-				'ring-2 ring-green-400/50': networkState.is_connected,
-				'ring-2 ring-red-400/50': !networkState.is_connected,
+				'ring-2 ring-status-success dark:ring-status-success-dark': networkState.is_connected,
+				'ring-2 ring-status-error dark:ring-status-error-dark': !networkState.is_connected,
 			}"
 			@click="toggleCurrentNetwork"
 		/>
