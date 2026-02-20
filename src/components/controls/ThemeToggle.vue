@@ -24,7 +24,7 @@
           : 'Toggle dark theme'
         " :is-active="true" :is-loading="isSwitching" :custom-class="{
         'h-[70px] w-[70px] p-2': true,
-        'ring-2 ring-primary/50': true,
+        'ring-2 ring-primary dark:ring-primary-dark': true,
       }" :icon-class="{
         'w-[50px] h-[50px]': true,
         'filter brightness-110': !(configStore?.config as any)?.style?.darkmode,

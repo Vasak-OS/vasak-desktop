@@ -26,7 +26,7 @@
 
     <div
       v-if="groupedNotifications.length === 0"
-      class="text-center text-gray-500 dark:text-gray-400 py-8"
+      class="text-center text-tx-muted dark:text-tx-muted-dark py-8"
     >
       <div class="opacity-60">🔔</div>
       <p class="mt-2">No hay notificaciones</p>

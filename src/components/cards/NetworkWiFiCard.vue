@@ -50,8 +50,8 @@ onMounted(async () => {
       <img :src="netIcon" :alt="props.ssid" class="w-8 h-8" />
 
       <div>
-        <div class="font-medium text-vsk-text">{{ props.ssid }}</div>
-        <div class="text-xs text-vsk-text/60">
+        <div class="font-medium text-primary dark:text-primary-dark">{{ props.ssid }}</div>
+        <div class="text-xs text-secondary dark:text-secondary-dark">
           {{ props.security_type }}
           {{ props.is_connected ? "• Connected" : "" }}
         </div>
@@ -62,7 +62,7 @@ onMounted(async () => {
     <div class="flex items-center gap-2">
       <div
         v-if="props.is_connected"
-        class="w-2 h-2 rounded-full bg-green-500"
+        class="w-2 h-2 rounded-full bg-status-success dark:bg-status-success-dark"
       />
       <svg
         v-if="props.security_type"
