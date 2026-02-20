@@ -95,34 +95,34 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <nav class="vpanel background">
+  <nav class="flex justify-between items-center mx-1 h-9 mt-0.5 p-1 rounded-corner background">
     <div class="flex items-center gap-1">
-      <img :src="menuIcon" alt="Menu" @click="openMenu" class="app-icon" />
+      <img :src="menuIcon" alt="Menu" @click="openMenu" class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary/80 dark:hover:bg-primary-dark/80 transform hover:scale-110 active:scale-95 ease-in-out" />
       <img
         :src="configIcon"
         alt="Config"
         @click="openConfig"
-        class="app-icon"
+        class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary/80 dark:hover:bg-primary-dark/80 transform hover:scale-110 active:scale-95 ease-in-out"
       />
       <img
         :src="fileManagerIcon"
         alt="Files"
         @click="openFileManager"
-        class="app-icon"
+        class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary/80 dark:hover:bg-primary-dark/80 transform hover:scale-110 active:scale-95 ease-in-out"
       />
     </div>
     <WindowsArea />
     <div class="flex content-center items-center">
       <TrayBarArea />
       <PanelClockwidget />
-      <div class="notification-icon-wrapper" @click="openNotificationCenter">
+      <div class="relative cursor-pointer" @click="openNotificationCenter">
         <img
           :src="notifyIcon"
           alt="Notifications"
-          class="app-icon"
+          class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary/80 dark:hover:bg-primary-dark/80 transform hover:scale-110 active:scale-95 ease-in-out"
           :class="{ 'bell-shake': hasNewNotifications }"
         />
-        <div v-if="notifications.length > 0" class="notification-badge">
+        <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary dark:bg-primary-dark text-tx-on-primary dark:text-tx-on-primary-dark rounded-full min-w-3 h-3 flex items-center justify-center notification-badge">
           {{ notifications.length > 99 ? "99+" : notifications.length }}
         </div>
       </div>
@@ -131,32 +131,11 @@ onUnmounted(() => {
 </template>
 
 <style>
-@reference "../style.css";
-
-.vpanel {
-  @apply flex justify-between items-center mx-1;
-  height: 34px;
-  padding: 4px;
-  border-radius: calc(var(--border-radius) + 2px);
-  margin-top: 4px;
-}
-
-.vpanel .app-icon {
-  @apply h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary/30 transform hover:scale-110 active:scale-95 ease-in-out;
-}
-
-.notification-icon-wrapper {
-  @apply relative cursor-pointer;
-}
-
 .notification-badge {
-  @apply absolute -top-0.5 -right-0.5 bg-primary text-white rounded-full min-w-3 h-3 flex items-center justify-center;
   font-size: 8px;
   font-weight: 600;
   line-height: 1;
   padding: 0 2px;
-  box-shadow: 0 0 0 1px white, 0 1px 2px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 @keyframes bell-shake {
