@@ -8,7 +8,7 @@
 
     <!-- Background gradient effect -->
     <div
-      class="absolute inset-0 rounded-vsk transition-all duration-500 pointer-events-none opacity-0 group-hover:opacity-100"
+      class="absolute inset-0 rounded-corner transition-all duration-500 pointer-events-none opacity-0 group-hover:opacity-100"
       :class="{
         'bg-lineal-to-br from-orange-400/20 to-yellow-400/20':
           !(configStore?.config as any)?.style?.darkmode,
@@ -24,7 +24,7 @@
           : 'Toggle dark theme'
         " :is-active="true" :is-loading="isSwitching" :custom-class="{
         'h-[70px] w-[70px] p-2': true,
-        'ring-2 ring-vsk-primary/50': true,
+        'ring-2 ring-primary/50': true,
       }" :icon-class="{
         'w-[50px] h-[50px]': true,
         'filter brightness-110': !(configStore?.config as any)?.style?.darkmode,
@@ -103,11 +103,11 @@ const toggleTheme = async () => {
 }
 
 /* Efecto de hover en el fondo */
-.theme-toggle-wrapper :deep(button:hover)~.absolute.inset-0.rounded-vsk {
+.theme-toggle-wrapper :deep(button:hover)~.absolute.inset-0.rounded-corner {
   opacity: 1 !important;
 }
 
-.theme-toggle-wrapper:hover .absolute.inset-0.rounded-vsk {
+.theme-toggle-wrapper:hover .absolute.inset-0.rounded-corner {
   opacity: 1 !important;
 }
 

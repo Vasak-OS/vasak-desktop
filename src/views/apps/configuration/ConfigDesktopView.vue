@@ -142,23 +142,23 @@ const wallpaperPreviewUrl = computed(() => {
 <template>
   <ConfigAppLayout>
     <div class="p-6 max-w-7xl mx-auto">
-      <h2 class="text-2xl font-semibold mb-6 text-vsk-primary">
+      <h2 class="text-2xl font-semibold mb-6 text-primary">
         Configuración del Escritorio
       </h2>
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-15 px-5 gap-4">
-        <div class="w-10 h-10 border-4 border-t-vsk-primary rounded-full animate-spin">
+        <div class="w-10 h-10 border-4 border-t-primary rounded-full animate-spin">
         </div>
         <p>Cargando configuración...</p>
       </div>
 
       <div v-else>
         <!-- Mensajes de error/éxito -->
-        <div v-if="error" class="p-3 px-4 rounded-vsk mb-4 text-sm bg-red-500/10 border border-red-500/30 text-red-400">
+        <div v-if="error" class="p-3 px-4 rounded-corner mb-4 text-sm bg-red-500/10 border border-red-500/30 text-red-400">
           {{ error }}
         </div>
         <div v-if="successMessage"
-          class="p-3 px-4 rounded-vsk mb-4 text-sm bg-green-500/10 border border-green-500/30 text-green-400">
+          class="p-3 px-4 rounded-corner mb-4 text-sm bg-green-500/10 border border-green-500/30 text-green-400">
           {{ successMessage }}
         </div>
 
@@ -168,7 +168,7 @@ const wallpaperPreviewUrl = computed(() => {
           <ConfigSection icon="🖼️" title="Fondo de Pantalla" custom-class="lg:col-span-2">
             <!-- Preview y drag-drop area -->
             <div
-              class="flex items-center justify-center w-full h-40 rounded-vsk border-2 border-dashed border-vsk-primary/30 background hover:border-vsk-primary/50 hover:bg-vsk-primary/5 transition-colors relative overflow-hidden">
+              class="flex items-center justify-center w-full h-40 rounded-corner border-2 border-dashed border-primary/30 background hover:border-primary/50 hover:bg-primary/5 transition-colors relative overflow-hidden">
 
               <!-- Background image si existe -->
               <img v-if="wallpaper" :src="wallpaperPreviewUrl" alt="Wallpaper preview"
@@ -192,7 +192,7 @@ const wallpaperPreviewUrl = computed(() => {
 
             <!-- Mostrar Archivos -->
             <div class="flex flex-row items-center justify-between gap-2">
-              <label class="text-sm font-medium text-vsk-primary">Mostrar Archivos</label>
+              <label class="text-sm font-medium text-primary">Mostrar Archivos</label>
               <div class="flex items-center gap-3">
                 <SwitchToggle
                   :is-on="showFiles"
@@ -206,7 +206,7 @@ const wallpaperPreviewUrl = computed(() => {
 
             <!-- Mostrar Archivos Ocultos -->
             <div class="flex flex-row items-center justify-between gap-2">
-              <label class="text-sm font-medium text-vsk-primary">Mostrar Archivos Ocultos</label>
+              <label class="text-sm font-medium text-primary">Mostrar Archivos Ocultos</label>
               <div class="flex items-center gap-3">
                 <SwitchToggle
                   :is-on="showHiddenFiles"
@@ -229,7 +229,7 @@ const wallpaperPreviewUrl = computed(() => {
                 <span class="font-normal">{{ iconSize }}px</span>
               </div>
               <input id="icon-size" v-model.number="iconSize" type="range" min="24" max="128"
-                class="w-full h-1.5 rounded-vsk background outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4.5 [&::-webkit-slider-thumb]:h-4.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-vsk-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:duration-200 [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-webkit-slider-thumb]:scale-110 [&::-moz-range-thumb]:w-4.5 [&::-moz-range-thumb]:h-4.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-vsk-primary [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:duration-200 [&::-moz-range-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-moz-range-thumb]:scale-110" />
+                class="w-full h-1.5 rounded-corner background outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4.5 [&::-webkit-slider-thumb]:h-4.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:duration-200 [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-webkit-slider-thumb]:scale-110 [&::-moz-range-thumb]:w-4.5 [&::-moz-range-thumb]:h-4.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:duration-200 [&::-moz-range-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-moz-range-thumb]:scale-110" />
               <div class="flex justify-between text-xs ">
                 <span>24px (Pequeño)</span>
                 <span>128px (Grande)</span>

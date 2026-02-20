@@ -231,12 +231,12 @@ const showConflictWarning = computed(() => {
       </div>
 
       <!-- Success Message -->
-      <div v-if="successMessage" class="mb-4 p-3 rounded-vsk bg-green-500/10 border border-green-500/30 text-green-600 text-sm animate-pulse">
+      <div v-if="successMessage" class="mb-4 p-3 rounded-corner bg-green-500/10 border border-green-500/30 text-green-600 text-sm animate-pulse">
         {{ successMessage }}
       </div>
 
       <!-- Error Message -->
-      <div v-if="error" class="mb-4 p-3 rounded-vsk bg-red-500/10 border border-red-500/30 text-red-600 text-sm">
+      <div v-if="error" class="mb-4 p-3 rounded-corner bg-red-500/10 border border-red-500/30 text-red-600 text-sm">
         {{ error }}
       </div>
 
@@ -250,7 +250,7 @@ const showConflictWarning = computed(() => {
         <!-- Add Custom Button -->
         <button
           @click="addCustomShortcut"
-          class="self-start px-4 py-2 rounded-vsk bg-vsk-primary/20 border border-vsk-primary/50 text-vsk-primary font-semibold hover:bg-vsk-primary/30 transition-colors"
+          class="self-start px-4 py-2 rounded-corner bg-primary/20 border border-primary/50 text-primary font-semibold hover:bg-primary/30 transition-colors"
         >
           + Agregar Atajo Personalizado
         </button>
@@ -260,7 +260,7 @@ const showConflictWarning = computed(() => {
           <div
             v-for="shortcut in shortcuts"
             :key="shortcut.id"
-            class="p-4 rounded-vsk background border border-vsk-primary/10 hover:border-vsk-primary/20 transition-all"
+            class="p-4 rounded-corner background border border-primary/10 hover:border-primary/20 transition-all"
             :class="{ 'border-red-500/50 bg-red-500/5': showConflictWarning && shortcut.id === editingId }"
           >
             <!-- Header -->
@@ -282,14 +282,14 @@ const showConflictWarning = computed(() => {
             </div>
 
             <!-- Conflict Warning -->
-            <div v-if="showConflictWarning && shortcut.id === editingId && currentConflict?.has_conflict" class="mt-3 p-2 rounded-vsk bg-red-500/20 border border-red-500/30 text-red-600 text-xs">
+            <div v-if="showConflictWarning && shortcut.id === editingId && currentConflict?.has_conflict" class="mt-3 p-2 rounded-corner bg-red-500/20 border border-red-500/30 text-red-600 text-xs">
               ⚠️ {{ currentConflict.message }}
             </div>
 
             <!-- Keys Row -->
             <div class="mt-4 flex items-center gap-3">
               <div v-if="editingId !== shortcut.id" class="flex items-center gap-3 flex-1">
-                <div class="px-3 py-2 rounded-vsk bg-vsk-primary/15 border border-vsk-primary/30 font-mono text-vsk-primary">
+                <div class="px-3 py-2 rounded-corner bg-primary/15 border border-primary/30 font-mono text-primary">
                   {{ shortcut.keys }}
                 </div>
               </div>
@@ -301,7 +301,7 @@ const showConflictWarning = computed(() => {
                   @input="checkConflicts"
                   type="text"
                   placeholder="Ej: Ctrl+K"
-                  class="flex-1 px-3 py-2 rounded-vsk bg-vsk-primary/5 border border-vsk-primary/30 text-vsk-text placeholder:text-vsk-text/30 focus:outline-none focus:border-vsk-primary/60 font-mono"
+                  class="flex-1 px-3 py-2 rounded-corner bg-primary/5 border border-primary/30 text-vsk-text placeholder:text-vsk-text/30 focus:outline-none focus:border-primary/60 font-mono"
                   :class="{ 'border-red-500/50 bg-red-500/5': hasConflict }"
                 />
               </div>
@@ -346,7 +346,7 @@ const showConflictWarning = computed(() => {
                 <button
                   v-if="editingId !== shortcut.id && shortcut.editable"
                   @click="startEdit(shortcut)"
-                  class="px-3 py-2 rounded-vsk bg-vsk-primary/20 text-vsk-primary text-xs font-semibold hover:bg-vsk-primary/30 transition-colors"
+                  class="px-3 py-2 rounded-corner bg-primary/20 text-primary text-xs font-semibold hover:bg-primary/30 transition-colors"
                 >
                   Editar
                 </button>
@@ -368,7 +368,7 @@ const showConflictWarning = computed(() => {
       </div>
 
       <!-- Help Text -->
-      <div class="mt-6 p-3 rounded-vsk bg-vsk-primary/5 border border-vsk-primary/20 text-vsk-text/60 text-xs">
+      <div class="mt-6 p-3 rounded-corner bg-primary/5 border border-primary/20 text-vsk-text/60 text-xs">
         <p class="font-semibold mb-2">Formato de atajos:</p>
         <ul class="space-y-1 ml-2">
           <li>• <code class="font-mono">Ctrl+K</code> - Control + una tecla</li>

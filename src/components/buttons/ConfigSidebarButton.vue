@@ -18,9 +18,9 @@ onMounted(async () => {
   <li class="w-14 h-14 my-4">
   <RouterLink
     :to="to"
-    class="relative block w-14 h-14 p-2 rounded-vsk transition-all duration-200 hover:shadow-lg hover:bg-vsk-primary/20"
-    active-class="bg-vsk-primary/20 shadow-lg scale-105"
-    exact-active-class="bg-vsk-primary/30 shadow-xl scale-110 ring-2 ring-vsk-primary/50"
+    class="relative block w-14 h-14 p-2 rounded-corner transition-all duration-200 hover:shadow-lg hover:bg-primary/20"
+    active-class="bg-primary/20 shadow-lg scale-105"
+    exact-active-class="bg-primary/30 shadow-xl scale-110 ring-2 ring-primary/50"
   >
 
     <!-- Icono con efecto de escala -->

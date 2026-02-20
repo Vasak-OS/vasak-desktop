@@ -4,7 +4,7 @@ import ConfigSidebarButton from '@/components/buttons/ConfigSidebarButton.vue';
 </script>
 
 <template>
-  <div class="w-20 background h-full rounded-vsk flex flex-col items-center p-2 gap-2">
+  <div class="w-20 background h-full rounded-corner flex flex-col items-center p-2 gap-2">
     <ul>
       <ConfigSidebarButton icon="userinfo" to="/apps/configuration/info" title="Information" />
       <ConfigSidebarButton icon="computer" to="/apps/configuration/desktop" title="Desktop Settings" />

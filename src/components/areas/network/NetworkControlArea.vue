@@ -6,7 +6,7 @@
       <button
         v-if="!hideX"
         @click="closeApplet"
-        class="p-2 rounded-vsk hover:bg-vsk-primary/10 transition-colors"
+        class="p-2 rounded-corner hover:bg-primary/10 transition-colors"
       >
         <svg
           class="w-5 h-5"
@@ -27,12 +27,12 @@
     <!-- WiFi Toggle -->
     <div
       v-if="wifiAvailable"
-      class="flex items-center justify-between mb-4 p-3 rounded-vsk border border-vsk-primary/70 background"
+      class="flex items-center justify-between mb-4 p-3 rounded-corner border border-primary/70 background"
     >
       <div class="flex items-center gap-3">
-        <div class="p-2 rounded-full bg-vsk-primary/10">
+        <div class="p-2 rounded-full bg-primary/10">
           <svg
-            class="w-5 h-5 text-vsk-primary"
+            class="w-5 h-5 text-primary"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -58,7 +58,7 @@
 
     <div
       v-else
-      class="mb-4 p-3 rounded-vsk border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-center"
+      class="mb-4 p-3 rounded-corner border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-center"
     >
       <span class="text-sm text-gray-500"
         >Wireless hardware not cached or unavailable</span
@@ -72,7 +72,7 @@
 
       <div v-if="loading" class="flex items-center justify-center py-8">
         <div
-          class="animate-spin rounded-full h-8 w-8 border-b-2 border-vsk-primary"
+          class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"
         ></div>
       </div>
 
@@ -86,19 +86,19 @@
 
       <button
         @click="refreshNetworks"
-        class="w-full mt-4 p-2 rounded-vsk border border-vsk-primary/70 hover:bg-vsk-primary/5 transition-colors text-sm text-vsk-text"
+        class="w-full mt-4 p-2 rounded-corner border border-primary/70 hover:bg-primary/5 transition-colors text-sm text-vsk-text"
       >
         Refresh Networks
       </button>
     </div>
 
-    <div class="mt-6 pt-4 border-t border-vsk-primary/70">
+    <div class="mt-6 pt-4 border-t border-primary/70">
       <div
-        class="flex items-center gap-3 p-3 background rounded-vsk border border-vsk-primary/70"
+        class="flex items-center gap-3 p-3 background rounded-corner border border-primary/70"
       >
-        <div class="p-2 rounded-full bg-vsk-primary/10">
+        <div class="p-2 rounded-full bg-primary/10">
           <svg
-            class="w-5 h-5 text-vsk-primary"
+            class="w-5 h-5 text-primary"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

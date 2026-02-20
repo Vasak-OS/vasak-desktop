@@ -40,7 +40,7 @@ const formattedDate = computed(() => {
 const dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');
 </script>
 <template>
-  <div class="flex flex-col items-center gap-1 p-2 rounded-vsk bg-vsk-primary/50 daily-weather-card-layout">
+  <div class="flex flex-col items-center gap-1 p-2 rounded-corner bg-primary/50 daily-weather-card-layout">
     <div class="date-display">{{ formattedDate }}</div>
 	<WeatherIcon :code="weatherCode" :dayOrNight="dayOrNightType" class="weather-icon" />
     <div class="temperatures">

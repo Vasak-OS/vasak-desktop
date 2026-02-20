@@ -1,6 +1,6 @@
 <template>
   <div
-    class="notification-container flex items-start gap-3 p-3 background rounded-vsk shadow-sm transition-all duration-200 hover:shadow-lg"
+    class="notification-container flex items-start gap-3 p-3 background rounded-corner shadow-sm transition-all duration-200 hover:shadow-lg"
     :class="{
       'opacity-75 scale-95': notification.seen,
       'notification-new': !notification.seen,

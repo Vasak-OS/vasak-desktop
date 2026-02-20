@@ -4,7 +4,7 @@
     <div
       class="group-header flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-t-vsk border-l-4 border-blue-500 cursor-pointer transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-100/50 hover:to-purple-100/50 dark:hover:from-blue-800/30 dark:hover:to-purple-800/30"
       @click="toggleExpanded" :class="{
-        'rounded-vsk': !isExpanded,
+        'rounded-corner': !isExpanded,
         'shadow-sm': group.has_unread,
       }">
       <img :src="iconSrc" :alt="group.app_name" class="w-8 h-8 object-contain transition-transform duration-200"

@@ -77,17 +77,17 @@ function getDeviceName(device: AudioDevice): string {
 
     <div v-if="!isLoading && devices.length > 0" class="space-y-1">
       <div v-for="device in devices" :key="device.id"
-        class="flex items-center gap-2 p-2 rounded-vsk cursor-pointer transition-colors" :class="[
+        class="flex items-center gap-2 p-2 rounded-corner cursor-pointer transition-colors" :class="[
           selectedDeviceId === device.id
-            ? 'bg-vsk-primary/30 ring-1 ring-vsk-primary'
-            : 'bg-background hover:bg-vsk-primary/10',
+            ? 'bg-primary/30 ring-1 ring-primary'
+            : 'bg-background hover:bg-primary/10',
         ]" @click="onDeviceChange(device.id)">
 
         <div
-          class="w-4 h-4 rounded-full border-2 border-vsk-primary/50 flex items-center justify-center transition-colors"
+          class="w-4 h-4 rounded-full border-2 border-primary/50 flex items-center justify-center transition-colors"
           :class="[
             selectedDeviceId === device.id
-              ? 'bg-vsk-primary border-vsk-primary'
+              ? 'bg-primary border-primary'
               : '',
           ]">
           <div v-if="selectedDeviceId === device.id" class="w-2 h-2 bg-white rounded-full" />
@@ -104,7 +104,7 @@ function getDeviceName(device: AudioDevice): string {
         </div>
 
         <div v-if="device.is_default"
-          class="px-2 py-0.5 bg-vsk-primary/20 rounded text-xs font-medium text-vsk-primary">
+          class="px-2 py-0.5 bg-primary/20 rounded text-xs font-medium text-primary">
           Default
         </div>
       </div>

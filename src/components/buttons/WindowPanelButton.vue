@@ -37,7 +37,7 @@ onMounted(async () => {
       :title="title"
       class="w-6 h-6 transition-all duration-300 group-hover:rotate-3 group-hover:brightness-110"
     />
-    <div v-else class="w-6 h-6 bg-gray-500/50 rounded-vsk animate-pulse" />
+    <div v-else class="w-6 h-6 bg-gray-500/50 rounded-corner animate-pulse" />
   </div>
 </template>
 
@@ -45,7 +45,7 @@ onMounted(async () => {
 @reference "../../style.css";
 
 .window-button {
-  @apply flex items-center justify-center w-7 h-7 cursor-pointer transform rounded-vsk hover:bg-vsk-primary/30 hover:scale-110 active:scale-95 relative;
+  @apply flex items-center justify-center w-7 h-7 cursor-pointer transform rounded-corner hover:bg-primary/30 hover:scale-110 active:scale-95 relative;
 }
 
 .window-minimized {

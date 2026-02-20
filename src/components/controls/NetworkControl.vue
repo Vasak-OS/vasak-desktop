@@ -85,7 +85,7 @@ onUnmounted(() => {
 			<div
 				v-for="i in 4"
 				:key="i"
-				class="w-1 bg-vsk-primary rounded-full transition-all duration-300"
+				class="w-1 bg-primary rounded-full transition-all duration-300"
 				:class="{
 					'opacity-100': i <= Math.ceil(networkState.signal_strength / 25),
 					'opacity-30': i > Math.ceil(networkState.signal_strength / 25),

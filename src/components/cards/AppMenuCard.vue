@@ -38,7 +38,7 @@ onMounted(() => {
 
 <template>
   <button
-    class="flex flex-row w-full p-2 rounded-vsk items-center transform hover:translate-x-1 hover:scale-110 hover:bg-vsk-primary/50 transition-transform"
+    class="flex flex-row w-full p-2 rounded-corner items-center transform hover:translate-x-1 hover:scale-110 hover:bg-primary/50 transition-transform"
     @click="openApp(app.path)"
     :title="app.description"
   >

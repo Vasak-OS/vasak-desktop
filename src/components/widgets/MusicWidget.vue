@@ -164,7 +164,7 @@ async function onImgError(): Promise<void> {
 
 <template>
   <div
-    class="p-4 rounded-vsk background flex mb-4 ring-2 ring-vsk-primary/50 items-center"
+    class="p-4 rounded-corner background flex mb-4 ring-2 ring-primary/50 items-center"
   >
     <img
       :src="imgSrc"
@@ -212,7 +212,7 @@ async function onImgError(): Promise<void> {
       >
         <button
           @click.prevent="onPrev"
-          class="w-12 h-12 flex items-center justify-center rounded-vsk background text-xs"
+          class="w-12 h-12 flex items-center justify-center rounded-corner background text-xs"
           title="Anterior"
         >
           <img :src="prevIcon" alt="Anterior" class="w-4 h-4" />
@@ -220,7 +220,7 @@ async function onImgError(): Promise<void> {
 
         <button
           @click.prevent="onPlayPause"
-          class="w-12 h-12 flex items-center justify-center rounded-vsk background text-xs"
+          class="w-12 h-12 flex items-center justify-center rounded-corner background text-xs"
           :title="isPlaying ? 'Pausa' : 'Reproducir'"
         >
           <img 
@@ -232,7 +232,7 @@ async function onImgError(): Promise<void> {
 
         <button
           @click.prevent="onNext"
-          class="w-12 h-12 flex items-center justify-center rounded-vsk background text-xs"
+          class="w-12 h-12 flex items-center justify-center rounded-corner background text-xs"
           title="Siguiente"
         >
           <img :src="nextIcon" alt="Siguiente" class="w-4 h-4" />

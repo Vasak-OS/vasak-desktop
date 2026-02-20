@@ -143,7 +143,7 @@ onMounted(async () => {
           :title="action.title"
           :img="action.img"
           @click="action.handler"
-          class="w-10 h-10 hover:bg-vsk-primary/30 rounded-vsk p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3"
+          class="w-10 h-10 hover:bg-primary/30 rounded-corner p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3"
         />
       </div>
     </div>
@@ -158,13 +158,13 @@ onMounted(async () => {
         class="grid grid-cols-3 gap-4 animate-slideUpPlus h-[calc(100vh-88px)]"
       >
         <div
-          class="background rounded-vsk p-4 h-full overflow-y-auto apps-container"
+          class="background rounded-corner p-4 h-full overflow-y-auto apps-container"
         >
           <MenuArea v-model:apps="appsOfCategory" />
         </div>
 
         <div
-          class="rounded-vsk background p-4 space-y-4 h-full overflow-y-auto weather-container"
+          class="rounded-corner background p-4 space-y-4 h-full overflow-y-auto weather-container"
         >
           <WeatherWidget />
         </div>
@@ -205,7 +205,7 @@ onMounted(async () => {
 }
 
 .search-component {
-  @apply w-2/5 border-b-2 border-vsk-primary;
+  @apply w-2/5 border-b-2 border-primary;
 }
 
 @keyframes fadeIn {

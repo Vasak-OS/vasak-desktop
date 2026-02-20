@@ -142,7 +142,7 @@ onUnmounted(() => {
 }
 
 .vpanel .app-icon {
-  @apply h-6 w-6 cursor-pointer p-0.5 rounded-vsk hover:bg-vsk-primary/30 transform hover:scale-110 active:scale-95 ease-in-out;
+  @apply h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary/30 transform hover:scale-110 active:scale-95 ease-in-out;
 }
 
 .notification-icon-wrapper {
@@ -150,7 +150,7 @@ onUnmounted(() => {
 }
 
 .notification-badge {
-  @apply absolute -top-0.5 -right-0.5 bg-vsk-primary text-white rounded-full min-w-3 h-3 flex items-center justify-center;
+  @apply absolute -top-0.5 -right-0.5 bg-primary text-white rounded-full min-w-3 h-3 flex items-center justify-center;
   font-size: 8px;
   font-weight: 600;
   line-height: 1;

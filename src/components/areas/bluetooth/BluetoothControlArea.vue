@@ -122,15 +122,15 @@ const disconnect = async (device: any) => {
         :is-on="isBluetoothOn"
         :disabled="isTogglingBluetooth"
         size="medium"
-        active-class="bg-vsk-primary"
+        active-class="bg-primary"
         inactive-class="bg-gray-400"
-        custom-class="mr-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-vsk-primary"
+        custom-class="mr-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
         @toggle="toggleBT"
       />
       <img :src="bluetoothIcon" alt="Bluetooth" class="h-8 w-auto mr-3" />
       <span class="font-bold text-2xl flex-1">Bluetooth</span>
       <button
-        class="bg-vsk-primary text-white rounded-vsk px-1 py-0.5 active:bg-vsk-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
+        class="bg-primary text-white rounded-corner px-1 py-0.5 active:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
         @click="scanDevices"
         :disabled="!isBluetoothOn || isScanning"
       >

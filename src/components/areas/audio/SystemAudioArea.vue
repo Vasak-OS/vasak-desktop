@@ -12,7 +12,7 @@ import VolumeControl from '@/components/controls/VolumeControl.vue';
       <VolumeControl />
     </div>
     <h2 class="text-xl font-semibold mb-2">Audio Device Selector</h2>
-    <div class="background rounded-vsk p-4">
+    <div class="background rounded-corner p-4">
       <AudioDeviceSelector />
     </div>
   </div>
