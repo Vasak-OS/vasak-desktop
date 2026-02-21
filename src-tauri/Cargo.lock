@@ -4894,7 +4894,7 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-config-manager"
-version = "2.1.1"
+version = "2.2.1"
 dependencies = [
  "dirs-next",
  "notify",

@@ -130,9 +130,9 @@ import {
 	listWifiNetworks,
 	type NetworkInfo,
 } from '@vasakgroup/plugin-network-manager';
-import { SwitchToggle } from '@vasakgroup/vue-libvasak';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
+import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import { logError } from '@/utils/logger';
 
 const wifiEnabled: Ref<boolean> = ref(true);

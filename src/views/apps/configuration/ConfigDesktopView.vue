@@ -9,9 +9,9 @@ import {
 	type VSKConfig,
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
-import { ActionButton } from '@vasakgroup/vue-libvasak';
 import type { Store } from 'pinia';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import ActionButton from '@/components/buttons/ActionButton.vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import { logError } from '@/utils/logger';
 

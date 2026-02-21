@@ -19,19 +19,19 @@
     "@tauri-apps/plugin-opener": "^2.5.3",
     "@tauri-apps/plugin-shell": "~2.3.5",
     "@vasakgroup/plugin-bluetooth-manager": "^2.0.0",
-    "@vasakgroup/plugin-config-manager": "^2.1.0",
+    "@vasakgroup/plugin-config-manager": "^2.2.1",
     "@vasakgroup/plugin-network-manager": "^2.0.3",
     "@vasakgroup/plugin-user-data": "^2.0.0",
     "@vasakgroup/plugin-vicons": "^2.0.0",
-    "@vasakgroup/vue-libvasak": "~0.2.0",
+    "@vasakgroup/vue-libvasak": "~0.2.3",
     "path": "^0.12.7",
     "pinia": "^3.0.4",
     "url": "^0.11.4",
     "vue": "^3.5.28",
-    "vue-router": "^5.0.2"
+    "vue-router": "^5.0.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.2",
+    "@biomejs/biome": "^2.4.4",
     "@tailwindcss/postcss": "^4.2.0",
     "@tauri-apps/cli": "^2.10.0",
     "@types/node": "^25.3.0",

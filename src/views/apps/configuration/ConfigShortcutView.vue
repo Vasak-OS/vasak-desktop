@@ -3,8 +3,8 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { ActionButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
+import ActionButton from '@/components/buttons/ActionButton.vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import { logError } from '@/utils/logger';
 

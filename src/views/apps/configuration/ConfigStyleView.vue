@@ -9,10 +9,11 @@ import {
 	type VSKConfig,
 	writeConfig,
 } from '@vasakgroup/plugin-config-manager';
-import { ConfigSection, FormGroup } from '@vasakgroup/vue-libvasak';
 import type { Store } from 'pinia';
 import { computed, onMounted, type Ref, ref } from 'vue';
+import FormGroup from '@/components/forms/FormGroup.vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
+import ConfigSection from '@/layouts/ConfigSection.vue';
 
 const configStore = ref<any>(null);
 const gtkThemes = ref<string[]>([]);
