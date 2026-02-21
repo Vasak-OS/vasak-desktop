@@ -3,10 +3,10 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import { type Ref, ref } from 'vue';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
+import ToggleControl from '../forms/ToggleControl.vue';
 
 const isTogglingBluetooth: Ref<boolean> = ref(false);
 

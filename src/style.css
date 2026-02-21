@@ -82,7 +82,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-   /* radius */
+  /* radius */
   --radius-corner: var(--corner-radius);
   --radius-corner-window: calc(var(--corner-radius) + 16px);
 
@@ -115,7 +115,6 @@
   --color-status-error-dark: var(--status-error-dark);
   --color-status-success-dark: var(--status-success-dark);
   --color-status-warning-dark: var(--status-warning-dark);
-
 }
 
 ::view-transition-old(root) {

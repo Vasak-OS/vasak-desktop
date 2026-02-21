@@ -36,12 +36,12 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
-import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import type { Store } from 'pinia';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import dark from '@/assets/img/dark.png';
 import light from '@/assets/img/light.png';
 import { logError } from '@/utils/logger';
+import ToggleControl from '../forms/ToggleControl.vue';
 
 const configStore = ref<any>(null);
 const isSwitching: Ref<boolean> = ref(false);

@@ -43,9 +43,9 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { ActionButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import { logError } from '@/utils/logger';
+import ActionButton from '../buttons/ActionButton.vue';
 
 const props = defineProps<{
 	notification: {

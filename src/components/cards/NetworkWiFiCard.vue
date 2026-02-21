@@ -7,8 +7,9 @@ import {
 	type WiFiConnectionConfig,
 } from '@vasakgroup/plugin-network-manager';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { ActionButton, ListCard } from '@vasakgroup/vue-libvasak';
 import { nextTick, onMounted, type Ref, ref } from 'vue';
+import ActionButton from '../buttons/ActionButton.vue';
+import ListCard from './ListCard.vue';
 
 const netIcon: Ref<string> = ref('');
 const props = defineProps<NetworkInfo>();
