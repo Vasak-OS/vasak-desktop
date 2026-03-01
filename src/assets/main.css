@@ -89,32 +89,184 @@
   /* Colores de Marca */
   --color-primary: var(--primary);
   --color-secondary: var(--secondary);
-  --color-primary-dark: var(--primary-dark);
-  --color-secondary-dark: var(--secondary-dark);
 
   /* Colores de Interfaz (UI) */
   --color-ui-bg: var(--ui-background);
   --color-ui-surface: var(--ui-surface);
   --color-ui-border: var(--ui-border);
-  --color-ui-bg-dark: var(--ui-background-dark);
-  --color-ui-surface-dark: var(--ui-surface-dark);
-  --color-ui-border-dark: var(--ui-border-dark);
 
   /* Colores de Texto */
   --color-tx-main: var(--text-main);
   --color-tx-muted: var(--text-muted);
   --color-tx-on-primary: var(--text-on-primary);
-  --color-tx-main-dark: var(--text-main-dark);
-  --color-tx-muted-dark: var(--text-muted-dark);
-  --color-tx-on-primary-dark: var(--text-on-primary-dark);
 
   /* Status */
   --color-status-error: var(--status-error);
   --color-status-success: var(--status-success);
   --color-status-warning: var(--status-warning);
-  --color-status-error-dark: var(--status-error-dark);
-  --color-status-success-dark: var(--status-success-dark);
-  --color-status-warning-dark: var(--status-warning-dark);
+
+  /* Custom Animations */
+  --animate-fade-in: fadeIn 0.4s ease-out;
+  --animate-slide-up-plus: slideUpPlus 0.5s ease-out forwards;
+  --animate-bell-shake: bell-shake 0.8s ease-in-out;
+  --animate-pulse-notification: pulse-notification 0.6s ease-in-out;
+  --animate-critical-pulse: critical-pulse 1.5s ease-in-out infinite;
+  --animate-gentle-pulse: gentle-pulse 2s ease-in-out infinite;
+  --animate-slide-in-up: slideInUp 0.6s ease-out;
+  --animate-controls-in: controlsIn 180ms ease-out forwards;
+  --animate-controls-out: controlsOut 160ms ease-in forwards;
+  --animate-marquee: marquee var(--marquee-duration, 6s) linear infinite alternate;
+  --animate-theme-transition: themeTransition 0.8s ease-in-out;
+  --animate-shine: shine 3s infinite linear;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes slideUpPlus {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes bell-shake {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      transform: rotate(-10deg);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+      transform: rotate(10deg);
+    }
+  }
+  @keyframes pulse-notification {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.02);
+    }
+  }
+  @keyframes critical-pulse {
+    0%,
+    100% {
+      border-left-color: #ef4444;
+    }
+    50% {
+      border-left-color: #fca5a5;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    }
+  }
+  @keyframes gentle-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.01);
+    }
+  }
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes controlsIn {
+    from {
+      opacity: 0;
+      transform: translateX(6px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+  @keyframes controlsOut {
+    from {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(6px) scale(0.95);
+    }
+  }
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(var(--marquee-distance, 0px) * -1));
+    }
+  }
+  @keyframes themeTransition {
+    0% {
+      transform: scale(1) rotate(0deg);
+    }
+    25% {
+      transform: scale(1.1) rotate(90deg);
+    }
+    50% {
+      transform: scale(1.15) rotate(180deg);
+    }
+    75% {
+      transform: scale(1.1) rotate(270deg);
+    }
+    100% {
+      transform: scale(1) rotate(360deg);
+    }
+  }
+  @keyframes shine {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+}
+
+/* Override colors in dark mode */
+@layer theme {
+  :root,
+  :host {
+    @variant dark {
+      --color-primary: var(--primary-dark);
+      --color-secondary: var(--secondary-dark);
+      --color-ui-bg: var(--ui-background-dark);
+      --color-ui-surface: var(--ui-surface-dark);
+      --color-ui-border: var(--ui-border-dark);
+      --color-tx-main: var(--text-main-dark);
+      --color-tx-muted: var(--text-muted-dark);
+      --color-tx-on-primary: var(--text-on-primary-dark);
+      --color-status-error: var(--status-error-dark);
+      --color-status-success: var(--status-success-dark);
+      --color-status-warning: var(--status-warning-dark);
+    }
+  }
 }
 
 ::view-transition-old(root) {
