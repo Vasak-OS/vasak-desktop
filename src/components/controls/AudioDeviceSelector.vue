@@ -1,9 +1,11 @@
+import { getAudioDevices, setAudioDevice } from '@/services/core.service';
+
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
+import { getAudioDevices, setAudioDevice } from '@/services/audio.service';
 import { logError } from '@/utils/logger';
 
 interface AudioDevice {
@@ -22,10 +24,10 @@ const isLoading = ref(false);
 async function loadDevices() {
 	isLoading.value = true;
 	try {
-		const deviceList = await invoke<AudioDevice[]>('get_audio_devices');
+		const deviceList = await getAudioDevices();
 		devices.value = deviceList;
 
-		const defaultDevice = deviceList.find((d) => d.is_default);
+		const defaultDevice = deviceList.find((d: any) => d.is_default);
 		if (defaultDevice) {
 			selectedDeviceId.value = defaultDevice.id;
 		}
@@ -39,7 +41,7 @@ async function loadDevices() {
 async function onDeviceChange(deviceId: string) {
 	selectedDeviceId.value = deviceId;
 	try {
-		await invoke('set_audio_device', { deviceId });
+		await setAudioDevice({ deviceId });
 		await loadDevices();
 	} catch (e) {
 		logError('[audio] Failed to set device:', e);

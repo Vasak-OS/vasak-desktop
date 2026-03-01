@@ -22,7 +22,3 @@ withDefaults(defineProps<Props>(), {
     <slot />
   </div>
 </template>
-
-<style scoped>
-/* Ningún estilo adicional requerido */
-</style>

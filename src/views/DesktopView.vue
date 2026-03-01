@@ -1,7 +1,8 @@
+
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { homeDir } from '@tauri-apps/api/path';
 import { Command } from '@tauri-apps/plugin-shell';
@@ -11,6 +12,7 @@ import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from '
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import type { FileEntry } from '@/interfaces/file';
+import { openFileManagerWindow } from '@/services/window.service';
 import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
 
@@ -80,7 +82,7 @@ const handleFileClick = async (file: FileEntry) => {
 	if (file.isDirectory) {
 		// Abrir el file manager en la carpeta seleccionada
 		try {
-			await invoke('open_file_manager_window', { path: file.path });
+			await openFileManagerWindow({ path: file.path } as any);
 		} catch (error) {
 			logError('Error al abrir file manager:', error);
 		}

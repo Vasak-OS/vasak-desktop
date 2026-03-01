@@ -1,13 +1,14 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref, watch } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { UnlistenFn } from '@/interfaces/event';
 import type { VolumeInfo } from '@/interfaces/volume';
+import { getAudioVolume } from '@/services/audio.service';
+import { toggleAudioApplet } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
 
@@ -41,7 +42,7 @@ watch([() => volumeInfo.value.is_muted, volumePercentage], updateIcon, {
 
 async function getVolumeInfo(): Promise<void> {
 	try {
-		const info = (await invoke('get_audio_volume')) as VolumeInfo;
+		const info = (await getAudioVolume()) as VolumeInfo;
 		volumeInfo.value = info;
 		currentVolume.value = info.current;
 		await updateIcon();
@@ -52,7 +53,7 @@ async function getVolumeInfo(): Promise<void> {
 
 async function toggleApplet(): Promise<void> {
 	try {
-		await invoke('toggle_audio_applet');
+		await toggleAudioApplet();
 	} catch (error) {
 		logError('Error toggling audio applet:', error);
 	}

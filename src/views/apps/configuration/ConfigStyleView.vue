@@ -1,7 +1,4 @@
 <script lang="ts" setup>
-/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import {
 	readConfig,
 	setDarkMode,
@@ -14,6 +11,13 @@ import { computed, onMounted, type Ref, ref } from 'vue';
 import FormGroup from '@/components/forms/FormGroup.vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
 import ConfigSection from '@/layouts/ConfigSection.vue';
+import {
+	getCurrentSystemState,
+	getCursorThemes,
+	getGtkThemes,
+	getIconPacks,
+} from '@/services/core.service';
+import { setSystemConfig } from '@/services/system.service';
 
 const configStore = ref<any>(null);
 const gtkThemes = ref<string[]>([]);
@@ -44,12 +48,7 @@ onMounted(async () => {
 
 		// Cargar estado actual real del sistema (GTK, cursor, icons)
 		try {
-			const systemState = await invoke<{
-				gtk_theme: string;
-				cursor_theme: string;
-				icon_pack: string;
-				dark_mode: boolean;
-			}>('get_current_system_state');
+			const systemState = await getCurrentSystemState();
 
 			selectedGtkTheme.value = systemState.gtk_theme;
 			selectedCursorTheme.value = systemState.cursor_theme;
@@ -64,9 +63,9 @@ onMounted(async () => {
 
 		// Cargar opciones disponibles
 		const [themes, cursors, icons] = await Promise.all([
-			invoke<string[]>('get_gtk_themes'),
-			invoke<string[]>('get_cursor_themes'),
-			invoke<string[]>('get_icon_packs'),
+			getGtkThemes(),
+			getCursorThemes(),
+			getIconPacks(),
 		]);
 
 		gtkThemes.value = themes;
@@ -135,7 +134,7 @@ const applySystemChanges = async () => {
 			gtk_theme: selectedGtkTheme.value,
 		};
 
-		await invoke('set_system_config', { config });
+		await setSystemConfig({ config });
 	} catch (err) {
 		console.error('Error aplicando cambios del sistema:', err);
 	}
@@ -194,11 +193,11 @@ const isFormValid = computed(() => {
             <!-- Primary Color -->
             <FormGroup label="Color Primario" html-for="primary-color">
               <div class="flex gap-3 items-center">
-                <input v-if="vskConfig" id="primary-color" :value="vskConfig.style.primarycolor"
-                  @input="e => (vskConfig!.style.primarycolor = (e.target as HTMLInputElement).value)" type="color"
+                <input v-if="vskConfig" id="primary-color" :value="(vskConfig.style as any)['primarycolor']"
+                  @input="e => ((vskConfig!.style as any)['primarycolor'] = (e.target as HTMLInputElement).value)" type="color"
                   class="w-[50px] h-10 border-2 border-[var(--surface-3,rgba(255,255,255,0.1))] rounded-corner cursor-pointer transition-colors duration-200 hover:border-[var(--primary-color,#0084ff)]" />
-                <input v-if="vskConfig" :value="vskConfig.style.primarycolor"
-                  @input="e => (vskConfig!.style.primarycolor = (e.target as HTMLInputElement).value)" type="text"
+                <input v-if="vskConfig" :value="(vskConfig.style as any)['primarycolor']"
+                  @input="e => ((vskConfig!.style as any)['primarycolor'] = (e.target as HTMLInputElement).value)" type="text"
                   placeholder="#0084FF"
                   class="flex-1 py-2 px-3 background rounded-corner text-primary text-sm font-mono transition-all duration-200 focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))]" />
               </div>

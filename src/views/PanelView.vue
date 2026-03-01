@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
@@ -9,6 +8,13 @@ import menuIcon from '@/assets/vectors/icon.svg';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
+import { getAllNotifications } from '@/services/notification.service';
+import {
+	openFileManagerWindow,
+	toggleConfigApp,
+	toggleControlCenter,
+	toggleMenu,
+} from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const notifyIcon: Ref<string> = ref('');
@@ -31,7 +37,7 @@ const setIcons = async () => {
 
 const openMenu = async () => {
 	try {
-		await invoke('toggle_menu');
+		await toggleMenu();
 	} catch (error) {
 		logError('Error al abrir el menu:', error);
 	}
@@ -39,7 +45,7 @@ const openMenu = async () => {
 
 const openConfig = async () => {
 	try {
-		await invoke('toggle_config_app');
+		await toggleConfigApp();
 	} catch (error) {
 		logError('Error al abrir config:', error);
 	}
@@ -47,7 +53,7 @@ const openConfig = async () => {
 
 const openFileManager = async () => {
 	try {
-		await invoke('open_file_manager_window');
+		await openFileManagerWindow({} as any);
 	} catch (error) {
 		logError('Error al abrir file manager:', error);
 	}
@@ -55,7 +61,7 @@ const openFileManager = async () => {
 
 const openNotificationCenter = async () => {
 	try {
-		await invoke('toggle_control_center');
+		await toggleControlCenter();
 	} catch (error) {
 		logError('Error al abrir el centro de control:', error);
 	}
@@ -63,7 +69,7 @@ const openNotificationCenter = async () => {
 
 async function loadNotifications() {
 	try {
-		notifications.value = await invoke('get_all_notifications');
+		notifications.value = await getAllNotifications();
 	} catch (error) {
 		logError('Error loading notifications:', error);
 	}
@@ -120,9 +126,9 @@ onUnmounted(() => {
           :src="notifyIcon"
           alt="Notifications"
           class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary/80 dark:hover:bg-primary-dark/80 transform hover:scale-110 active:scale-95 ease-in-out"
-          :class="{ 'bell-shake': hasNewNotifications }"
+          :class="{ 'animate-bell-shake': hasNewNotifications }"
         />
-        <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary dark:bg-primary-dark text-tx-on-primary dark:text-tx-on-primary-dark rounded-full min-w-3 h-3 flex items-center justify-center notification-badge">
+        <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary dark:bg-primary-dark text-tx-on-primary dark:text-tx-on-primary-dark rounded-full min-w-3 h-3 flex items-center justify-center text-[8px] font-semibold leading-none px-[2px]">
           {{ notifications.length > 99 ? "99+" : notifications.length }}
         </div>
       </div>
@@ -130,35 +136,3 @@ onUnmounted(() => {
   </nav>
 </template>
 
-<style>
-.notification-badge {
-  font-size: 8px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 0 2px;
-}
-
-@keyframes bell-shake {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  10%,
-  30%,
-  50%,
-  70%,
-  90% {
-    transform: rotate(-10deg);
-  }
-  20%,
-  40%,
-  60%,
-  80% {
-    transform: rotate(10deg);
-  }
-}
-
-.bell-shake {
-  animation: bell-shake 0.8s ease-in-out;
-}
-</style>

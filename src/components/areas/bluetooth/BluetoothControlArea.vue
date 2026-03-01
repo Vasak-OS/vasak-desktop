@@ -119,7 +119,7 @@ const disconnect = async (device: any) => {
   <div class="flex flex-col h-full">
     <div class="flex items-center mb-4">
       <SwitchToggle
-        :is-on="isBluetoothOn"
+        :is-on="isBluetoothOn || false"
         :disabled="isTogglingBluetooth"
         size="medium"
         active-class="bg-primary"

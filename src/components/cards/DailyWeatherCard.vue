@@ -40,52 +40,13 @@ const formattedDate = computed(() => {
 const dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');
 </script>
 <template>
-  <div class="flex flex-col items-center gap-1 p-2 rounded-corner bg-primary/80 dark:bg-primary-dark/80 daily-weather-card-layout">
-    <div class="date-display">{{ formattedDate }}</div>
-	<WeatherIcon :code="weatherCode" :dayOrNight="dayOrNightType" class="weather-icon" />
-    <div class="temperatures">
-      <span class="temp-max">{{ max }}°</span>
-      <span class="temp-min">{{ min }}°</span>
+  <div class="flex flex-col items-center gap-1 p-2 rounded-corner bg-primary/80 dark:bg-primary-dark/80 group transition-all duration-200 ease-out hover:-translate-y-1 hover:scale-[1.02] hover:shadow-[0_3px_10px_rgba(0,0,0,0.15)]">
+    <div class="text-sm font-medium">{{ formattedDate }}</div>
+	<WeatherIcon :code="weatherCode" :dayOrNight="dayOrNightType" class="weather-icon my-[0.1rem] transition-transform duration-200 ease-in-out group-hover:scale-110" />
+    <div class="flex gap-2 text-sm">
+      <span class="font-semibold">{{ max }}°</span>
+      <span class="font-normal">{{ min }}°</span>
     </div>
   </div>
 </template>
 
-<style scoped>
-.daily-weather-card-layout {
-  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
-}
-
-.daily-weather-card-layout:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-}
-
-.date-display {
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.weather-icon {
-  margin-top: 0.1rem;
-  margin-bottom: 0.1rem;
-  transition: transform 0.2s ease-in-out;
-}
-
-.daily-weather-card-layout:hover .weather-icon {
-  transform: scale(1.1);
-}
-
-.temperatures {
-  display: flex;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.temp-max {
-  font-weight: 600;
-}
-
-.temp-min {
-  font-weight: 400;
-}
-</style>

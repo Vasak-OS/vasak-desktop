@@ -440,8 +440,8 @@
 
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { onMounted, onUnmounted, ref } from 'vue';
+import { getSystemInfo } from '@/services/core.service';
 
 interface SystemInfo {
 	cpu: {
@@ -509,7 +509,7 @@ const loadSystemInfo = async (silent = false) => {
 			loading.value = true;
 		}
 		error.value = '';
-		systemInfo.value = await invoke<SystemInfo>('get_system_info');
+		systemInfo.value = await getSystemInfo();
 		lastUpdate.value = new Date().toLocaleTimeString();
 		isInitialLoad.value = false;
 	} catch (e) {

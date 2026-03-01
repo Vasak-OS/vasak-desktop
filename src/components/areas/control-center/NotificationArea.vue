@@ -26,13 +26,13 @@
 
     <div
       v-if="groupedNotifications.length === 0"
-      class="text-center text-tx-muted dark:text-tx-muted-dark py-8"
+      class="text-center transition-opacity duration-300 ease-in-out text-tx-muted dark:text-tx-muted-dark py-8"
     >
       <div class="opacity-60">🔔</div>
       <p class="mt-2">No hay notificaciones</p>
     </div>
 
-    <TransitionGroup name="notification" tag="div" class="flex flex-col gap-3">
+    <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-active-class="transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)] [&>.notification-item]:animate-pulse-notification" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-from-class="opacity-0 translate-x-full scale-90" leave-to-class="opacity-0 translate-x-[-30%] scale-95" tag="div" class="flex flex-col gap-3">
       <NotificationGroupCard
         v-for="group in groupedNotifications"
         :key="group.app_name"
@@ -47,11 +47,15 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
 import type { Notification, NotificationGroupData } from '@/interfaces/notifications';
+import {
+	clearNotifications,
+	deleteNotification,
+	getAllNotifications,
+} from '@/services/notification.service';
 
 const notifications = ref<Notification[]>([]);
 let unlistenNotifications: (() => void) | null = null;
@@ -87,7 +91,7 @@ const groupedNotifications = computed<NotificationGroupData[]>(() => {
 
 async function loadNotifications() {
 	try {
-		notifications.value = await invoke('get_all_notifications');
+		notifications.value = await getAllNotifications();
 	} catch (error) {
 		console.error('Error loading notifications:', error);
 	}
@@ -95,7 +99,7 @@ async function loadNotifications() {
 
 async function removeNotification(id: number) {
 	try {
-		await invoke('delete_notification', { id });
+		await deleteNotification({ id });
 		// No necesitamos actualizar la lista local aquí porque el evento lo hará
 	} catch (error) {
 		console.error('Error removing notification:', error);
@@ -104,7 +108,7 @@ async function removeNotification(id: number) {
 
 async function clearAllNotifications() {
 	try {
-		await invoke('clear_notifications');
+		await clearNotifications();
 	} catch (error) {
 		console.error('Error clearing all notifications:', error);
 	}
@@ -125,57 +129,3 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>
-/* Animaciones para entrada y salida de notificaciones */
-.notification-enter-active {
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.notification-leave-active {
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.notification-enter-from {
-  opacity: 0;
-  transform: translateX(100%) scale(0.9);
-}
-
-.notification-leave-to {
-  opacity: 0;
-  transform: translateX(-30%) scale(0.95);
-}
-
-.notification-move {
-  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-/* Animación de entrada para el elemento */
-.notification-item {
-  transition: all 0.2s ease-in-out;
-}
-
-.notification-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* Animación de pulsación para nuevas notificaciones */
-@keyframes pulse-notification {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.02);
-  }
-}
-
-.notification-enter-active .notification-item {
-  animation: pulse-notification 0.6s ease-in-out;
-}
-
-/* Mejora del estado vacío */
-.text-center {
-  transition: opacity 0.3s ease-in-out;
-}
-</style>

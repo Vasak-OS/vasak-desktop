@@ -1,8 +1,8 @@
 <template>
-  <div class="notification-group-container">
+  <div class="transition-all duration-200 ease-in-out">
     <!-- Header del grupo -->
     <div
-      class="group-header flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-t-vsk border-l-4 border-blue-500 cursor-pointer transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-100/50 hover:to-purple-100/50 dark:hover:from-blue-800/30 dark:hover:to-purple-800/30"
+      class="group-header relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-[linear-gradient(45deg,transparent_49%,rgba(255,255,255,0.1)_50%,transparent_51%)] before:-translate-x-full before:transition-transform before:duration-600 before:ease-in-out hover:before:translate-x-full  flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-t-vsk border-l-4 border-blue-500 cursor-pointer transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-100/50 hover:to-purple-100/50 dark:hover:from-blue-800/30 dark:hover:to-purple-800/30"
       @click="toggleExpanded" :class="{
         'rounded-corner': !isExpanded,
         'shadow-sm': group.has_unread,
@@ -53,10 +53,15 @@
       </div>
     </div>
 
-    <Transition name="expand" @enter="onEnter" @leave="onLeave">
+    <Transition enter-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden"
+      leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden"
+      enter-from-class="h-0 opacity-0" leave-to-class="h-0 opacity-0" @enter="onEnter" @leave="onLeave">
       <div v-show="isExpanded"
         class="notifications-list bg-white/30 dark:bg-black/30 rounded-b-vsk border-l-4 border-blue-500/30">
-        <TransitionGroup name="notification-item" tag="div">
+        <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          enter-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          leave-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          enter-from-class="opacity-0 translate-x-5" leave-to-class="opacity-0 -translate-x-5" tag="div">
           <NotificationCard v-for="notification in group.notifications" :key="notification.id"
             :notification="notification" @seen="(id: number) => $emit('remove', id)"
             class="border-b border-gray-200/50 dark:border-gray-700/50 last:border-b-0" />
@@ -180,66 +185,3 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
-.notification-group-container {
-  transition: all 0.2s ease;
-}
-
-.group-header {
-  position: relative;
-  overflow: hidden;
-}
-
-.group-header::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(45deg,
-      transparent 49%,
-      rgba(255, 255, 255, 0.1) 50%,
-      transparent 51%);
-  transform: translateX(-100%);
-  transition: transform 0.6s ease;
-}
-
-.group-header:hover::before {
-  transform: translateX(100%);
-}
-
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-.expand-enter-from,
-.expand-leave-to {
-  height: 0;
-  opacity: 0;
-}
-
-.notification-item-enter-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.notification-item-leave-active {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.notification-item-enter-from {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
-.notification-item-leave-to {
-  opacity: 0;
-  transform: translateX(-20px);
-}
-
-.notification-item-move {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-</style>

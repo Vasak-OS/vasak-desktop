@@ -82,7 +82,3 @@ const handleClick = (event: Event) => {
     </template>
   </button>
 </template>
-
-<style scoped>
-/* Ningún estilo adicional requerido */
-</style>

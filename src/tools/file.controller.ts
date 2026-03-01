@@ -1,8 +1,9 @@
-import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { join } from '@tauri-apps/api/path';
 import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import type { FileEntry, FileIconMapping, UserDirectory } from '@/interfaces/file';
+import { readDirectory } from '@/services/core.service';
 
 const iconMappings: FileIconMapping[] = [
 	// Images
@@ -148,20 +149,13 @@ export async function loadDirectoryBackend(
 	showHidden: boolean = false
 ): Promise<FileEntry[]> {
 	try {
-		interface BackendFileEntry {
-			name: string;
-			is_dir: boolean;
-			size: string;
-			path: string;
-		}
-
-		const entries = await invoke<BackendFileEntry[]>('read_directory', {
+		const entries = await readDirectory({
 			path: dirPath,
 			showHidden,
 		});
 
 		const processedFiles = await Promise.all(
-			entries.map(async (entry) => {
+			entries.map(async (entry: any) => {
 				const fileEntry: FileEntry = {
 					name: entry.name,
 					path: entry.path,

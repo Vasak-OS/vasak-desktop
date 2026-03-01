@@ -24,7 +24,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <transition name="icon-fade" mode="out-in">
+  <transition enter-active-class="transition-opacity duration-300 ease-in-out" leave-active-class="transition-opacity duration-300 ease-in-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
 	<img
 	  v-if="iconPath"
 	  :src="iconPath"
@@ -35,19 +35,3 @@ onMounted(async () => {
   </transition>
 </template>
 
-<style scoped>
-.weather-icon-img {
-  transition: transform 0.3s ease;
-}
-
-/* Transición para cambio de iconos del clima */
-.icon-fade-enter-active,
-.icon-fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.icon-fade-enter-from,
-.icon-fade-leave-to {
-  opacity: 0;
-}
-</style>

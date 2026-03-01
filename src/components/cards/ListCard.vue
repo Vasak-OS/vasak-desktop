@@ -34,7 +34,3 @@ const handleClick = () => {
     <slot />
   </div>
 </template>
-
-<style scoped>
-/* Ningún estilo adicional requerido */
-</style>

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { onMounted, type Ref, ref } from 'vue';
 import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
@@ -12,6 +11,7 @@ import SearchButtonControl from '@/components/controls/SearchButtonControl.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
+import { toggleControlCenter } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
@@ -21,7 +21,7 @@ onMounted(async () => {
 	document.addEventListener('keydown', (event) => {
 		if (event.key === 'Escape') {
 			try {
-				invoke('toggle_control_center');
+				toggleControlCenter();
 			} catch (error) {
 				logError('Error al cerrar:', error);
 			}

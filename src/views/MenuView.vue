@@ -2,7 +2,6 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
@@ -12,6 +11,15 @@ import SessionButton from '@/components/buttons/SessionButton.vue';
 import UserMenuCard from '@/components/cards/UserMenuCard.vue';
 import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
+import { getMenuItems } from '@/services/app.service';
+import {
+	detectDisplayServer as sysDetectDisplayServer,
+	logout as sysLogout,
+	reboot as sysReboot,
+	shutdown as sysShutdown,
+	suspend as sysSuspend,
+} from '@/services/system.service';
+import { openConfigurationWindow, toggleMenu } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const menuData: Ref<Array<any>> = ref([]);
@@ -25,7 +33,7 @@ const settingsImg: Ref<string> = ref('');
 
 const setMenu = async () => {
 	try {
-		menuData.value = await invoke('get_menu_items');
+		menuData.value = await getMenuItems();
 	} catch (error) {
 		logError('Error al cargar el menú:', error);
 	}
@@ -33,7 +41,7 @@ const setMenu = async () => {
 
 const detectDisplayServer = async () => {
 	try {
-		const result = await invoke('detect_display_server');
+		const result = await sysDetectDisplayServer();
 		return result;
 	} catch (error) {
 		logError('Error detectando servidor de display:', error);
@@ -44,7 +52,7 @@ const detectDisplayServer = async () => {
 const logout = async () => {
 	try {
 		const displayServer = await detectDisplayServer();
-		await invoke('logout', { displayServer });
+		await sysLogout({ displayServer });
 	} catch (error) {
 		logError('Error al hacer logout:', error);
 	}
@@ -52,7 +60,7 @@ const logout = async () => {
 
 const shutdown = async () => {
 	try {
-		await invoke('shutdown');
+		await sysShutdown();
 	} catch (error) {
 		logError('Error al apagar:', error);
 	}
@@ -60,7 +68,7 @@ const shutdown = async () => {
 
 const reboot = async () => {
 	try {
-		await invoke('reboot');
+		await sysReboot();
 	} catch (error) {
 		logError('Error al reiniciar:', error);
 	}
@@ -69,7 +77,7 @@ const reboot = async () => {
 const suspend = async () => {
 	try {
 		const displayServer = await detectDisplayServer();
-		await invoke('suspend', { displayServer });
+		await sysSuspend({ displayServer });
 	} catch (error) {
 		logError('Error al suspender:', error);
 	}
@@ -77,7 +85,7 @@ const suspend = async () => {
 
 const openConfiguration = async () => {
 	try {
-		await invoke('open_configuration_window');
+		await openConfigurationWindow();
 	} catch (error) {
 		logError('Error al abrir configuración:', error);
 	}
@@ -108,7 +116,7 @@ onMounted(async () => {
 	document.addEventListener('keydown', (event) => {
 		if (event.key === 'Escape') {
 			try {
-				invoke('toggle_menu');
+				toggleMenu();
 			} catch (error) {
 				logError('Error al cerrar menú:', error);
 			}
@@ -118,9 +126,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="vmenu background">
+  <div class="h-screen p-4 rounded-[calc(var(--border-radius)+16px)] background">
     <div
-      class="flex items-center justify-between animate-fadeIn mb-4 header-section"
+      class="flex items-center justify-between animate-fade-in mb-4 header-section"
     >
       <UserMenuCard />
 
@@ -148,33 +156,33 @@ onMounted(async () => {
       </div>
     </div>
 
-    <transition name="fade" mode="out-in">
-      <div v-if="filter !== ''" key="filter-view" class="animate-fadeIn">
+    <transition enter-active-class="transition-opacity duration-300 ease-out" leave-active-class="transition-opacity duration-300 ease-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
+      <div v-if="filter !== ''" key="filter-view" class="animate-fade-in">
         <FilterArea v-model:apps="apps" v-model:filter="filter" />
       </div>
       <div
         v-else
         key="main-view"
-        class="grid grid-cols-3 gap-4 animate-slideUpPlus h-[calc(100vh-88px)]"
+        class="grid grid-cols-3 gap-4 animate-slide-up-plus h-[calc(100vh-88px)]"
       >
         <div
-          class="background rounded-corner p-4 h-full overflow-y-auto apps-container"
+          class="background rounded-corner p-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
         >
           <MenuArea v-model:apps="appsOfCategory" />
         </div>
 
         <div
-          class="rounded-corner background p-4 space-y-4 h-full overflow-y-auto weather-container"
+          class="rounded-corner background p-4 space-y-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
         >
           <WeatherWidget />
         </div>
 
-        <div class="categories-container">
+        <div class="animate-[fade-in_0.5s_ease-out_0.2s_backwards]">
           <transition-group
             tag="div"
-            name="list-stagger"
+            move-class="transition-transform duration-400 ease-out" enter-active-class="transition-all duration-400 ease-out" leave-active-class="transition-all duration-400 ease-out" enter-from-class="opacity-0 translate-y-[20px] scale-90" leave-to-class="opacity-0 translate-y-[20px] scale-90"
             appear
-            class="flex flex-wrap flex-row justify-center category-pills-wrapper"
+            class="flex flex-wrap flex-row justify-center gap-3"
           >
             <CategoryMenuPill
               v-for="(value, key) in menuData"
@@ -183,7 +191,7 @@ onMounted(async () => {
               :image="value.icon"
               :description="value.description"
               v-model:categorySelected="categorySelected"
-              class="category-pill"
+              class="transition-all duration-200 ease-out hover:-translate-y-1 hover:scale-[1.03] hover:shadow-[0_4px_15px_rgba(0,0,0,0.1)]"
             />
           </transition-group>
         </div>
@@ -192,89 +200,3 @@ onMounted(async () => {
   </div>
 </template>
 
-<style>
-@reference "../style.css";
-
-.vmenu {
-  @apply h-screen p-4;
-  border-radius: calc(var(--border-radius) + 16px);
-}
-
-.header-section {
-  animation-duration: 0.5s;
-}
-
-.search-component {
-  @apply w-2/5 border-b-2 border-primary;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUpPlus {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.4s ease-out;
-}
-
-.animate-slideUpPlus {
-  animation: slideUpPlus 0.5s ease-out forwards;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-
-.list-stagger-enter-active,
-.list-stagger-leave-active {
-  transition: all 0.4s ease;
-}
-.list-stagger-enter-from,
-.list-stagger-leave-to {
-  opacity: 0;
-  transform: translateY(20px) scale(0.9);
-}
-.list-stagger-move {
-  transition: transform 0.4s ease;
-}
-
-.category-pills-wrapper {
-  gap: 0.75rem;
-}
-
-.category-pill {
-  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
-}
-
-.category-pill:hover {
-  transform: translateY(-4px) scale(1.03);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.apps-container,
-.weather-container,
-.categories-container {
-  animation: fadeIn 0.5s ease-out 0.2s backwards;
-}
-</style>

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import {
+	getBrightnessInfo as fetchBrightnessInfo,
+	setBrightnessInfo,
+} from '@/services/core.service';
 import { logError } from '@/utils/logger';
 import SliderControl from '../forms/SliderControl.vue';
 
@@ -52,7 +55,7 @@ const brightnessPercentage = computed(() => {
 
 async function getBrightnessInfo() {
 	try {
-		const info = await invoke<BrightnessInfo>('get_brightness_info');
+		const info = await fetchBrightnessInfo();
 		brightnessInfo.value = info;
 		currentBrightness.value = info.current;
 		await updateIcon();
@@ -68,7 +71,7 @@ async function updateBrightness() {
 		}
 
 		setDebitTimeout = setTimeout(async () => {
-			await invoke('set_brightness_info', {
+			await setBrightnessInfo({
 				brightness: Number(currentBrightness.value),
 			});
 			await updateIcon();

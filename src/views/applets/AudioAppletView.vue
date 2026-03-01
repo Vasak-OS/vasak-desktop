@@ -1,15 +1,16 @@
+
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { onMounted } from 'vue';
 import SystemAudioArea from '@/components/areas/audio/SystemAudioArea.vue';
+import { toggleAudioApplet } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 onMounted(async () => {
 	document.addEventListener('keydown', (event) => {
 		if (event.key === 'Escape') {
 			try {
-				invoke('toggle_audio_applet');
+				toggleAudioApplet();
 			} catch (error) {
 				logError('Error al cerrar applet de audio:', error);
 			}
