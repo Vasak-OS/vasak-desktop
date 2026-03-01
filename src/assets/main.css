@@ -296,11 +296,11 @@
 }
 
 body * {
-  @apply text-tx-main dark:text-tx-main-dark transition-colors duration-300;
+  @apply text-tx-main transition-colors duration-300;
 }
 
 .background {
-  @apply bg-ui-bg/80 dark:bg-ui-bg-dark/80;
+  @apply bg-ui-bg/80;
 }
 
 @layer base {
