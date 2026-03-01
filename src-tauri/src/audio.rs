@@ -28,8 +28,7 @@ fn get_default_sink_id() -> Result<String> {
                 if let Some(asterisk_pos) = line.find("*") {
                     let after_asterisk = &line[asterisk_pos + 1..];
                     after_asterisk.split_whitespace().find_map(|part| {
-                        if part.ends_with('.') {
-                            let num_part = &part[..part.len() - 1];
+                        if let Some(num_part) = part.strip_suffix('.') {
                             if num_part.chars().all(|c| c.is_ascii_digit()) {
                                 Some(num_part.to_string())
                             } else {
@@ -64,7 +63,7 @@ pub fn get_volume() -> Result<VolumeInfo> {
     let volume_output = CommandExecutor::run(CMD_WPCTL, &["get-volume", &default_sink_id])?;
 
     // Parsear la salida: "Volume: 0.50 [MUTED]" o "Volume: 0.50"
-    let parts: Vec<&str> = volume_output.trim().split_whitespace().collect();
+    let parts: Vec<&str> = volume_output.split_whitespace().collect();
     if parts.len() < 2 {
         return Err(VasakError::Parse("Formato de volumen inválido".to_string()));
     }
@@ -157,7 +156,7 @@ pub fn list_audio_devices() -> Result<Vec<AudioDevice>> {
                     // Extract volume if available
                     let volume = if let Some(vol_start) = after_dot.find("vol: ") {
                         let vol_str = &after_dot[vol_start + 5..];
-                        vol_str.split(|c| c == ']' || c == ' ')
+                        vol_str.split([']', ' '])
                             .next()
                             .and_then(|s| s.parse::<f64>().ok())
                             .unwrap_or(0.5)

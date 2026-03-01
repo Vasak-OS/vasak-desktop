@@ -45,6 +45,7 @@ pub enum NotificationUrgency {
     Critical,
 }
 
+#[allow(dead_code)]
 #[derive(Default)]
 pub struct NotificationData {
     pub app_name: String,
@@ -156,6 +157,7 @@ pub struct TrayMenu {
 pub type TrayManager = Arc<RwLock<HashMap<String, TrayItem>>>;
 
 /// Información sobre el reproductor de medios actual
+#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MediaInfo {
     /// Título de la pista actual

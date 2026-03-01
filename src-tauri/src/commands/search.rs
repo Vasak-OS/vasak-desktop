@@ -44,7 +44,7 @@ pub async fn execute_search_result(id: String, category: String, exec: Option<St
                     log_info("Acción de búsqueda: Apagar sistema");
                     tokio::spawn(async {
                         let _ = tokio::process::Command::new("systemctl")
-                            .args(&["poweroff"])
+                            .args(["poweroff"])
                             .spawn();
                     });
                     Ok("Shutting down...".to_string())
@@ -53,7 +53,7 @@ pub async fn execute_search_result(id: String, category: String, exec: Option<St
                     log_info("Acción de búsqueda: Reiniciar sistema");
                     tokio::spawn(async {
                         let _ = tokio::process::Command::new("systemctl")
-                            .args(&["reboot"])
+                            .args(["reboot"])
                             .spawn();
                     });
                     Ok("Rebooting...".to_string())
@@ -62,7 +62,7 @@ pub async fn execute_search_result(id: String, category: String, exec: Option<St
                     log_info("Acción de búsqueda: Suspender sistema");
                     tokio::spawn(async {
                         let _ = tokio::process::Command::new("systemctl")
-                            .args(&["suspend"])
+                            .args(["suspend"])
                             .spawn();
                     });
                     Ok("Suspending...".to_string())
@@ -71,7 +71,7 @@ pub async fn execute_search_result(id: String, category: String, exec: Option<St
                     log_info("Acción de búsqueda: Bloquear sesión");
                     tokio::spawn(async {
                         let _ = tokio::process::Command::new("loginctl")
-                            .args(&["lock-session"])
+                            .args(["lock-session"])
                             .spawn();
                     });
                     Ok("Locking screen...".to_string())
@@ -80,7 +80,7 @@ pub async fn execute_search_result(id: String, category: String, exec: Option<St
                     log_info("Acción de búsqueda: Cerrar sesión");
                     tokio::spawn(async {
                         let _ = tokio::process::Command::new("loginctl")
-                            .args(&["terminate-user", &std::env::var("USER").unwrap_or_default()])
+                            .args(["terminate-user", &std::env::var("USER").unwrap_or_default()])
                             .spawn();
                     });
                     Ok("Logging out...".to_string())

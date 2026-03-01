@@ -43,6 +43,7 @@ pub async fn get_tray_items(
     Ok(items)
 }
 
+#[allow(dead_code)]
 async fn get_sni_proxy<'a>(conn: &'a Connection, service_name: &'a str) -> Result<SniItemProxy<'a>, String> {
     let (bus_name, object_path) = if service_name.contains('/') {
         let parts: Vec<&str> = service_name.splitn(2, '/').collect();
@@ -59,6 +60,7 @@ async fn get_sni_proxy<'a>(conn: &'a Connection, service_name: &'a str) -> Resul
         .map_err(|e| e.to_string())
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 pub async fn tray_item_activate(service_name: String, x: i32, y: i32) -> Result<(), String> {
     log_info(&format!("Activando item de bandeja: {} en ({}, {})", service_name, x, y));
@@ -76,6 +78,7 @@ pub async fn tray_item_activate(service_name: String, x: i32, y: i32) -> Result<
     Ok(())
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 pub async fn tray_item_secondary_activate(
     service_name: String,
@@ -94,6 +97,7 @@ pub async fn tray_item_secondary_activate(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn get_string(v: &Value) -> String {
     match v {
         Value::Str(s) => s.as_str().to_string(),
@@ -101,6 +105,7 @@ fn get_string(v: &Value) -> String {
     }
 }
 
+#[allow(dead_code)]
 fn get_bool(v: &Value) -> bool {
     match v {
         Value::Bool(b) => *b,
@@ -108,6 +113,7 @@ fn get_bool(v: &Value) -> bool {
     }
 }
 
+#[allow(dead_code)]
 fn get_i32(v: &Value) -> Option<i32> {
     match v {
         Value::I32(i) => Some(*i),
@@ -117,6 +123,7 @@ fn get_i32(v: &Value) -> Option<i32> {
 
 // Helper to extract properties from zvariant::Dict
 // Helper to extract properties from zvariant::Dict
+#[allow(dead_code)]
 fn extract_props_from_dict(dict: &zbus::zvariant::Dict) -> (String, bool, bool, String, Option<String>, Option<bool>) {
     let mut label = String::new();
     let mut enabled = true;
@@ -150,6 +157,7 @@ fn extract_props_from_dict(dict: &zbus::zvariant::Dict) -> (String, bool, bool, 
     (label, enabled, visible, menu_type, icon_name, checked)
 }
 
+#[allow(dead_code)]
 fn parse_dbus_menu_value(v: &Value) -> Option<TrayMenu> {
     let s = match v {
         Value::Structure(s) => s,
@@ -187,26 +195,23 @@ fn parse_dbus_menu_value(v: &Value) -> Option<TrayMenu> {
     })
 }
 
+#[allow(dead_code)]
 fn parse_dbus_menu_layout(layout: DbusMenuLayout) -> TrayMenu {
     let DbusMenuLayout(id, props, children_variants) = layout;
 
-    let label = props.get("label").map(|v| get_string(&**v)).unwrap_or_default();
-    let enabled = props.get("enabled").map(|v| get_bool(&**v)).unwrap_or(true);
-    let visible = props.get("visible").map(|v| get_bool(&**v)).unwrap_or(true);
-    let menu_type = props.get("type").map(|v| get_string(&**v)).unwrap_or_else(|| "standard".to_string());
-    let icon_name = props.get("icon-name").map(|v| get_string(&**v));
+    let label = props.get("label").map(|v| get_string(v)).unwrap_or_default();
+    let enabled = props.get("enabled").map(|v| get_bool(v)).unwrap_or(true);
+    let visible = props.get("visible").map(|v| get_bool(v)).unwrap_or(true);
+    let menu_type = props.get("type").map(|v| get_string(v)).unwrap_or_else(|| "standard".to_string());
+    let icon_name = props.get("icon-name").map(|v| get_string(v));
     
-    let checked = if let Some(toggle_state) = props.get("toggle-state").and_then(|v| get_i32(&**v)) {
-        Some(toggle_state == 1) 
-    } else {
-        None
-    };
+    let checked = props.get("toggle-state").and_then(|v| get_i32(v)).map(|toggle_state| toggle_state == 1);
 
     let mut children: Vec<TrayMenu> = Vec::new();
 
     for child_variant in children_variants {
         // child_variant is OwnedValue -> &Value
-        if let Some(child_menu) = parse_dbus_menu_value(&*child_variant) {
+        if let Some(child_menu) = parse_dbus_menu_value(&child_variant) {
              children.push(child_menu);
         }
     }
@@ -223,6 +228,7 @@ fn parse_dbus_menu_layout(layout: DbusMenuLayout) -> TrayMenu {
     }
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 pub async fn get_tray_menu(
     service_name: String,
@@ -240,7 +246,7 @@ pub async fn get_tray_menu(
     // The menu service usually resides on the same bus name as the item
     // but the object path is specific (menu_path)
     let bus_name = if service_name.contains('/') {
-        service_name.splitn(2, '/').next().unwrap()
+        service_name.split('/').next().ok_or("Invalid service name format")?
     } else {
         &service_name
     };
@@ -263,6 +269,7 @@ pub async fn get_tray_menu(
 }
 
 
+#[allow(dead_code)]
 #[tauri::command]
 pub async fn tray_menu_item_click(
     service_name: String, 
@@ -278,7 +285,7 @@ pub async fn tray_menu_item_click(
     let conn = Connection::session().await.map_err(|e| e.to_string())?;
 
     let bus_name = if service_name.contains('/') {
-        service_name.splitn(2, '/').next().unwrap()
+        service_name.split('/').next().ok_or("Invalid service name format")?
     } else {
         &service_name
     };

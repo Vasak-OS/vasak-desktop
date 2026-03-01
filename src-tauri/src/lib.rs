@@ -27,10 +27,6 @@ use eventloops::{
 };
 use std::sync::{Arc, Mutex};
 use structs::WMState;
-use tauri_plugin_bluetooth_manager;
-use tauri_plugin_config_manager;
-use tauri_plugin_network_manager;
-use tauri_plugin_user_data;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
 use windows_apps::*;

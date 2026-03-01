@@ -370,11 +370,7 @@ impl WindowManagerBackend for X11Manager {
             let class_name = self.get_window_class(win).unwrap_or_default();
 
             let demands_attention =
-                if let Some(da_atom) = self.atoms.get("_NET_WM_STATE_DEMANDS_ATTENTION") {
-                    Some(state.contains(da_atom))
-                } else {
-                    None
-                };
+                self.atoms.get("_NET_WM_STATE_DEMANDS_ATTENTION").map(|da_atom| state.contains(da_atom));
 
             window_list.push(WindowInfo {
                 id: win.to_string(),

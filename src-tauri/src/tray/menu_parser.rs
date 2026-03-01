@@ -1,8 +1,10 @@
 use crate::structs::TrayMenu;
 use zbus::{Connection, Proxy, zvariant::Value};
 
+#[allow(dead_code)]
 pub struct MenuParser;
 
+#[allow(dead_code)]
 impl MenuParser {
     pub async fn get_menu_items(
         connection: &Connection,

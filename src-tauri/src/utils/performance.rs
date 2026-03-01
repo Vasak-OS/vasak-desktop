@@ -5,11 +5,13 @@ use std::hash::Hash;
 
 /// A debouncer that prevents rapid-fire events from overwhelming the system.
 /// Only emits the latest value after a specified delay with no new updates.
+#[allow(dead_code)]
 pub struct Debouncer<K: Eq + Hash, V> {
     delay: Duration,
     pending: Arc<Mutex<HashMap<K, (V, Instant)>>>,
 }
 
+#[allow(dead_code)]
 impl<K: Eq + Hash + Clone, V: Clone> Debouncer<K, V> {
     /// Creates a new debouncer with the specified delay
     pub fn new(delay_ms: u64) -> Self {
@@ -66,6 +68,7 @@ pub struct TtlCache<K: Eq + Hash, V> {
     cache: Arc<Mutex<HashMap<K, (V, Instant)>>>,
 }
 
+#[allow(dead_code)]
 impl<K: Eq + Hash + Clone, V: Clone> TtlCache<K, V> {
     /// Creates a new cache with the specified TTL in seconds
     pub fn new(ttl_seconds: u64) -> Self {

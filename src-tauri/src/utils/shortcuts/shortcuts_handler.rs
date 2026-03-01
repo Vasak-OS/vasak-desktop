@@ -48,6 +48,7 @@ impl GlobalShortcutsHandler {
     }
 
     /// Registra un atajo individual en el sistema
+    #[allow(dead_code)]
     fn register_shortcut(&self, shortcut: &Shortcut) -> Result<(), String> {
         // Convertir las teclas a un formato que entienda xdotool
         let xdotool_keys = self.convert_to_xdotool_format(&shortcut.keys)?;
@@ -61,12 +62,14 @@ impl GlobalShortcutsHandler {
     }
 
     /// Convierte el formato "Ctrl+K" a "ctrl+k" (xdotool)
+    #[allow(dead_code)]
     fn convert_to_xdotool_format(&self, keys: &str) -> Result<String, String> {
         // Ejemplo: "Ctrl+K" -> "ctrl+k"
         Ok(keys.to_lowercase())
     }
 
     /// Configura el binding del atajo
+    #[allow(dead_code)]
     fn setup_shortcut_binding(&self, xdotool_keys: &str, shortcut_id: &str) -> Result<(), String> {
         // Crear un comando que se ejecuta cuando se presiona el atajo
         let action = self.get_action_for_shortcut(shortcut_id);

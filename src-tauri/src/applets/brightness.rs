@@ -88,7 +88,7 @@ fn find_backlight_device() -> Option<std::path::PathBuf> {
     }
     
     if let Ok(entries) = std::fs::read_dir(base) {
-        for entry in entries.flatten() {
+        if let Some(entry) = entries.flatten().next() {
             // Prefer intel_backlight or just return the first one
             return Some(entry.path());
         }

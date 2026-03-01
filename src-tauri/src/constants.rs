@@ -18,8 +18,8 @@ pub const CMD_BRIGHTNESSCTL: &str = "brightnessctl";
 pub const CMD_XRANDR: &str = "xrandr";
 
 // Atoms de X11
-pub const X11_ATOM_NET_WM_STATE_STICKY: &str = "_NET_WM_STATE_STICKY";
-pub const X11_ATOM_NET_WM_STATE_SKIP_TASKBAR: &str = "_NET_WM_STATE_SKIP_TASKBAR";
-pub const X11_ATOM_NET_WM_STATE_SKIP_PAGER: &str = "_NET_WM_STATE_SKIP_PAGER";
-pub const X11_ATOM_NET_WM_STATE_ABOVE: &str = "_NET_WM_STATE_ABOVE";
-pub const X11_ATOM_TYPE: &str = "ATOM";
+#[allow(dead_code)] pub const X11_ATOM_NET_WM_STATE_STICKY: &str = "_NET_WM_STATE_STICKY";
+#[allow(dead_code)] pub const X11_ATOM_NET_WM_STATE_SKIP_TASKBAR: &str = "_NET_WM_STATE_SKIP_TASKBAR";
+#[allow(dead_code)] pub const X11_ATOM_NET_WM_STATE_SKIP_PAGER: &str = "_NET_WM_STATE_SKIP_PAGER";
+#[allow(dead_code)] pub const X11_ATOM_NET_WM_STATE_ABOVE: &str = "_NET_WM_STATE_ABOVE";
+#[allow(dead_code)] pub const X11_ATOM_TYPE: &str = "ATOM";

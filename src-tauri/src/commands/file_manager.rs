@@ -10,6 +10,7 @@ pub struct FileEntry {
     path: String,
 }
 
+#[allow(clippy::manual_flatten)]
 #[tauri::command]
 pub fn read_directory(path: String, show_hidden: bool) -> Result<Vec<FileEntry>, String> {
     // Handle home directory expansion if needed, but for now strict paths.

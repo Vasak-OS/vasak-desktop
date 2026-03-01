@@ -5,6 +5,7 @@ use tokio::sync::Mutex;
 use zbus::Connection;
 
 pub struct X11ShortcutsManager {
+    #[allow(dead_code)]
     shortcuts: Arc<Mutex<HashMap<String, String>>>,
 }
 
@@ -16,6 +17,7 @@ impl X11ShortcutsManager {
     }
 
     /// Registra un atajo usando xbindkeys
+    #[allow(dead_code)]
     pub async fn register_xbindkeys(&self, keys: &str, action: &str) -> Result<(), String> {
         // Crear configuración de xbindkeys
         let config = self.generate_xbindkeys_config(keys, action);
@@ -117,6 +119,7 @@ impl X11ShortcutsManager {
     }
 
     /// Intenta registrar el atajo de forma automática basándose en el display server
+    #[allow(dead_code)]
     pub async fn register_auto(&self, keys: &str, action: &str) -> Result<(), String> {
         let display_server = Self::get_display_server();
 

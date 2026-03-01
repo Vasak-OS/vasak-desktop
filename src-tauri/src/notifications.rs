@@ -162,6 +162,7 @@ impl NotificationServer {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn notify(
         &self,
         app_name: String,
@@ -308,6 +309,7 @@ pub async fn start_notification_server() -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn start_notification_monitor() -> Result<(), String> {
     tokio::spawn(async {
         if let Err(e) = start_notification_server().await {
