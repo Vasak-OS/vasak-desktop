@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::process::Command;
-use crate::logger::{log_info, log_debug, log_error};
+use crate::logger::{log_info, log_debug};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SystemInfo {
@@ -384,7 +384,7 @@ fn get_temperature_info() -> Option<TemperatureInfo> {
                         }
 
                         sensors.push(SensorReading {
-                            name: path.file_name().unwrap().to_string_lossy().to_string(),
+                            name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "Unknown".to_string()),
                             temp,
                             label: type_name,
                         });

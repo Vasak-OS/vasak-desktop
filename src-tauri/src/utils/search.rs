@@ -4,7 +4,6 @@ use std::fs;
 use std::path::PathBuf;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
-use crate::logger::{log_debug, log_error};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -246,14 +245,12 @@ pub fn search_applications(query: &str, limit: usize) -> Vec<SearchResult> {
 
 /// Get system actions (power, settings, etc)
 pub fn get_system_actions(query: &str) -> Vec<SearchResult> {
-    let actions = vec![
-        ("shutdown", "Apagar", "Apagar el sistema", "system-shutdown"),
+    let actions = [("shutdown", "Apagar", "Apagar el sistema", "system-shutdown"),
         ("reboot", "Reiniciar", "Reiniciar el sistema", "system-reboot"),
         ("suspend", "Suspender", "Suspender el sistema", "system-suspend"),
         ("lock", "Bloquear", "Bloquear la pantalla", "system-lock-screen"),
         ("logout", "Cerrar sesión", "Cerrar la sesión actual", "system-log-out"),
-        ("settings", "Configuración", "Abrir configuración del sistema", "preferences-system"),
-    ];
+        ("settings", "Configuración", "Abrir configuración del sistema", "preferences-system")];
 
     actions
         .iter()

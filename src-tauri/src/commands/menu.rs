@@ -6,8 +6,8 @@ use tauri::{async_runtime::spawn, AppHandle, Manager};
 
 #[tauri::command]
 pub fn get_menu_items() -> HashMap<String, CategoryInfo> {
-    let menu_items = get_menu();
-    menu_items
+    
+    get_menu()
 }
 
 #[tauri::command]

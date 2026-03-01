@@ -75,7 +75,7 @@ pub async fn get_current_system_state() -> Result<SystemConfig, String> {
 
 async fn get_current_gtk_theme() -> Result<String, String> {
     let output = Command::new("gsettings")
-        .args(&["get", "org.gnome.desktop.interface", "gtk-theme"])
+        .args(["get", "org.gnome.desktop.interface", "gtk-theme"])
         .output()
         .map_err(|e| format!("Error obteniendo tema GTK: {}", e))?;
 
@@ -89,7 +89,7 @@ async fn get_current_gtk_theme() -> Result<String, String> {
 
 async fn get_current_cursor_theme() -> Result<String, String> {
     let output = Command::new("gsettings")
-        .args(&["get", "org.gnome.desktop.interface", "cursor-theme"])
+        .args(["get", "org.gnome.desktop.interface", "cursor-theme"])
         .output()
         .map_err(|e| format!("Error obteniendo cursor: {}", e))?;
 
@@ -104,7 +104,7 @@ async fn get_current_cursor_theme() -> Result<String, String> {
 /// Obtiene el pack de iconos actual desde gsettings
 async fn get_current_icon_pack() -> Result<String, String> {
     let output = Command::new("gsettings")
-        .args(&["get", "org.gnome.desktop.interface", "icon-theme"])
+        .args(["get", "org.gnome.desktop.interface", "icon-theme"])
         .output()
         .map_err(|e| format!("Error obteniendo pack de iconos: {}", e))?;
 
@@ -119,7 +119,7 @@ async fn get_current_icon_pack() -> Result<String, String> {
 /// Obtiene el estado de dark mode actual desde gsettings
 async fn get_current_dark_mode() -> Result<bool, String> {
     let output = Command::new("gsettings")
-        .args(&["get", "org.gnome.desktop.interface", "color-scheme"])
+        .args(["get", "org.gnome.desktop.interface", "color-scheme"])
         .output()
         .map_err(|e| format!("Error obteniendo color scheme: {}", e))?;
 
@@ -181,11 +181,11 @@ async fn apply_system_config(config: &SystemConfig) -> Result<(), String> {
 pub async fn set_gtk_theme(theme: &str, _dark_mode: bool) -> Result<(), String> {
     log_debug(&format!("Estableciendo tema GTK: {}", theme));
     let output = Command::new("gsettings")
-        .args(&[
+        .args([
             "set",
             "org.gnome.desktop.interface",
             "gtk-theme",
-            &theme.to_string(),
+            theme,
         ])
         .output()
         .map_err(|e| {
@@ -206,7 +206,7 @@ pub async fn set_gtk_theme(theme: &str, _dark_mode: bool) -> Result<(), String> 
 pub async fn set_cursor_theme(cursor: &str) -> Result<(), String> {
     log_debug(&format!("Estableciendo tema de cursor: {}", cursor));
     let output = Command::new("gsettings")
-        .args(&["set", "org.gnome.desktop.interface", "cursor-theme", cursor])
+        .args(["set", "org.gnome.desktop.interface", "cursor-theme", cursor])
         .output()
         .map_err(|e| {
             log_error(&format!("Error ejecutando gsettings para cursor: {}", e));
@@ -236,7 +236,7 @@ pub async fn set_icon_pack(icon_pack: &str) -> Result<(), String> {
     }
 
     let output = Command::new("gsettings")
-        .args(&[
+        .args([
             "set",
             "org.gnome.desktop.interface",
             "icon-theme",
@@ -276,7 +276,7 @@ pub async fn set_dark_mode(dark_mode: bool) -> Result<(), String> {
     log_debug(&format!("Estableciendo modo oscuro: {} (scheme: {})", dark_mode, scheme));
 
     let output = Command::new("gsettings")
-        .args(&["set", "org.gnome.desktop.interface", "color-scheme", scheme])
+        .args(["set", "org.gnome.desktop.interface", "color-scheme", scheme])
         .output()
         .map_err(|e| {
             log_error(&format!("Error ejecutando gsettings para color scheme: {}", e));
@@ -304,13 +304,11 @@ pub async fn get_gtk_themes() -> Result<Vec<String>, String> {
         std::fs::read_dir(&themes_path).map_err(|e| format!("Error reading themes: {}", e))?;
 
     let mut themes = Vec::new();
-    for entry in entries {
-        if let Ok(entry) = entry {
-            if let Ok(metadata) = entry.metadata() {
-                if metadata.is_dir() {
-                    if let Ok(file_name) = entry.file_name().into_string() {
-                        themes.push(file_name);
-                    }
+    for entry in entries.flatten() {
+        if let Ok(metadata) = entry.metadata() {
+            if metadata.is_dir() {
+                if let Ok(file_name) = entry.file_name().into_string() {
+                    themes.push(file_name);
                 }
             }
         }
@@ -332,13 +330,11 @@ pub async fn get_cursor_themes() -> Result<Vec<String>, String> {
 
     for path in cursor_paths {
         if let Ok(entries) = std::fs::read_dir(&path) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let cursors_dir = entry.path().join("cursors");
-                    if cursors_dir.exists() && cursors_dir.is_dir() {
-                        if let Ok(file_name) = entry.file_name().into_string() {
-                            cursors.insert(file_name);
-                        }
+            for entry in entries.flatten() {
+                let cursors_dir = entry.path().join("cursors");
+                if cursors_dir.exists() && cursors_dir.is_dir() {
+                    if let Ok(file_name) = entry.file_name().into_string() {
+                        cursors.insert(file_name);
                     }
                 }
             }
@@ -362,16 +358,14 @@ pub async fn get_icon_packs() -> Result<Vec<String>, String> {
 
     for path in icon_paths {
         if let Ok(entries) = std::fs::read_dir(&path) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let entry_path = entry.path();
-                    let index_theme = entry_path.join("index.theme");
-                    let cursors_dir = entry_path.join("cursors");
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+                let index_theme = entry_path.join("index.theme");
+                let cursors_dir = entry_path.join("cursors");
 
-                    if index_theme.exists() && !cursors_dir.exists() {
-                        if let Ok(file_name) = entry.file_name().into_string() {
-                            icons.insert(file_name);
-                        }
+                if index_theme.exists() && !cursors_dir.exists() {
+                    if let Ok(file_name) = entry.file_name().into_string() {
+                        icons.insert(file_name);
                     }
                 }
             }

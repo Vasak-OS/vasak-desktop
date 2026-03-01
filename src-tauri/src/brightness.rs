@@ -73,10 +73,10 @@ fn find_backlight_device() -> Result<PathBuf> {
     }
 
     let entries = fs::read_dir(BACKLIGHT_PATH)
-        .map_err(|e| VasakError::Io(e))?;
+        .map_err(VasakError::Io)?;
 
     for entry in entries {
-        let entry = entry.map_err(|e| VasakError::Io(e))?;
+        let entry = entry.map_err(VasakError::Io)?;
         let device_path = entry.path();
 
         let brightness_file = device_path.join("brightness");
@@ -123,13 +123,13 @@ fn get_brightness_sysfs(device_path: &Path) -> Result<BrightnessInfo> {
     let max_brightness_file = device_path.join("max_brightness");
 
     let current: u32 = fs::read_to_string(&brightness_file)
-        .map_err(|e| VasakError::Io(e))?
+        .map_err(VasakError::Io)?
         .trim()
         .parse()
         .map_err(|e| VasakError::Parse(format!("Failed to parse brightness: {}", e)))?;
 
     let max: u32 = fs::read_to_string(&max_brightness_file)
-        .map_err(|e| VasakError::Io(e))?
+        .map_err(VasakError::Io)?
         .trim()
         .parse()
         .map_err(|e| VasakError::Parse(format!("Failed to parse max brightness: {}", e)))?;
@@ -198,7 +198,7 @@ fn set_brightness_sysfs(device_path: &Path, brightness: u32) -> Result<()> {
     let max_brightness_file = device_path.join("max_brightness");
 
     let max: u32 = fs::read_to_string(&max_brightness_file)
-        .map_err(|e| VasakError::Io(e))?
+        .map_err(VasakError::Io)?
         .trim()
         .parse()
         .map_err(|e| VasakError::Parse(format!("Failed to parse max brightness: {}", e)))?;

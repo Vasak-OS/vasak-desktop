@@ -1,3 +1,5 @@
+#![allow(clippy::if_same_then_else)]
+#![allow(clippy::derivable_impls)]
 use super::Applet;
 use crate::structs::MediaInfo;
 use async_trait::async_trait;
@@ -103,7 +105,7 @@ async fn monitor_with_reconnect(app: &AppHandle, attempt: u32) -> Result<(), Str
 
     // Initialize state
     if let Ok(init_info) = fetch_best_player(&conn).await {
-         update_ui(&app, &init_info);
+         update_ui(app, &init_info);
     }
 
     loop {
@@ -114,18 +116,18 @@ async fn monitor_with_reconnect(app: &AppHandle, attempt: u32) -> Result<(), Str
                  if let Some(player) = current {
                       // Verify current player is still alive
                       if let Ok(info) = fetch_player_info(&conn, &player).await {
-                           update_ui(&app, &info);
+                           update_ui(app, &info);
                       } else {
                            // Player died, reset
                            set_active_player(None);
                            if let Ok(fallback) = fetch_best_player(&conn).await {
-                                update_ui(&app, &fallback);
+                                update_ui(app, &fallback);
                            }
                       }
                  } else {
                       // No active player, try to find one
                       if let Ok(fallback) = fetch_best_player(&conn).await {
-                           update_ui(&app, &fallback);
+                           update_ui(app, &fallback);
                       }
                  }
             }
@@ -156,7 +158,7 @@ async fn monitor_with_reconnect(app: &AppHandle, attempt: u32) -> Result<(), Str
             // 3. DEBOUNCE DEADLINE
             _ = async { match deadline { Some(d) => tokio::time::sleep_until(d).await, None => std::future::pending().await } }, if deadline.is_some() => {
                  if let Some(sender) = pending_sender.take() {
-                      handle_player_event(&app, &conn, sender).await;
+                      handle_player_event(app, &conn, sender).await;
                  }
                  deadline = None;
             }
@@ -552,8 +554,7 @@ pub fn mpris_playpause(player: String) -> Result<String, String> {
         .map_err(|e| e.to_string())
         .and_then(|conn| {
             BlockingProxy::new(&conn, target.as_str(), "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
-                .map_err(|e| e.to_string())
-                .and_then(|proxy| Ok(proxy.get_property::<String>("PlaybackStatus").ok().unwrap_or("Unknown".to_string())))
+                .map_err(|e| e.to_string()).map(|proxy| proxy.get_property::<String>("PlaybackStatus").ok().unwrap_or("Unknown".to_string()))
         }).unwrap_or_else(|_| "Unknown".to_string());
     let method = if status == "Paused" { "Play" } else if status == "Playing" { "Pause" } else { "PlayPause" };
     exec_command(&target, method)?;

@@ -68,7 +68,7 @@ mod tests {
     fn test_run_simple_command() {
         let result = CommandExecutor::run("echo", &["hello"]);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap().trim(), "hello");
+        assert_eq!(result.unwrap_or_default().trim(), "hello");
     }
 
     #[test]

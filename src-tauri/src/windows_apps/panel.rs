@@ -103,26 +103,33 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
                 );
 
                 // Estados necesarios para XFWM4
-                let states = [
-                    ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_STICKY").unwrap().as_ptr(), 0),
-                    ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_SKIP_TASKBAR").unwrap().as_ptr(), 0),
-                    ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_SKIP_PAGER").unwrap().as_ptr(), 0),
-                    ffi::gdk_atom_intern(CString::new("_NET_WM_STATE_ABOVE").unwrap().as_ptr(), 0),
-                ];
-
-                if let (Ok(state_name), Ok(atom_type)) = (
-                    CString::new("_NET_WM_STATE"),
-                    CString::new("ATOM")
+                if let (Ok(sticky), Ok(skip_taskbar), Ok(skip_pager), Ok(above)) = (
+                    CString::new("_NET_WM_STATE_STICKY"),
+                    CString::new("_NET_WM_STATE_SKIP_TASKBAR"),
+                    CString::new("_NET_WM_STATE_SKIP_PAGER"),
+                    CString::new("_NET_WM_STATE_ABOVE")
                 ) {
-                    ffi::gdk_property_change(
-                        window_ptr,
-                        ffi::gdk_atom_intern(state_name.as_ptr(), 0),
-                        ffi::gdk_atom_intern(atom_type.as_ptr(), 0),
-                        32,
-                        ffi::GDK_PROP_MODE_REPLACE,
-                        states.as_ptr() as *const u8,
-                        states.len() as i32,
-                    );
+                    let states = [
+                        ffi::gdk_atom_intern(sticky.as_ptr(), 0),
+                        ffi::gdk_atom_intern(skip_taskbar.as_ptr(), 0),
+                        ffi::gdk_atom_intern(skip_pager.as_ptr(), 0),
+                        ffi::gdk_atom_intern(above.as_ptr(), 0),
+                    ];
+
+                    if let (Ok(state_name), Ok(atom_type)) = (
+                        CString::new("_NET_WM_STATE"),
+                        CString::new("ATOM")
+                    ) {
+                        ffi::gdk_property_change(
+                            window_ptr,
+                            ffi::gdk_atom_intern(state_name.as_ptr(), 0),
+                            ffi::gdk_atom_intern(atom_type.as_ptr(), 0),
+                            32,
+                            ffi::GDK_PROP_MODE_REPLACE,
+                            states.as_ptr() as *const u8,
+                            states.len() as i32,
+                        );
+                    }
                 }
 
                 // Desktop sticky
@@ -162,17 +169,19 @@ unsafe fn set_wm_atom_property(window_ptr: *mut gdk::ffi::GdkWindow, property: &
     if let (Ok(prop_name), Ok(val_name)) = (CString::new(property), CString::new(value)) {
         let prop_atom = ffi::gdk_atom_intern(prop_name.as_ptr(), 0);
         let val_atom = ffi::gdk_atom_intern(val_name.as_ptr(), 0);
-        let atom_type = ffi::gdk_atom_intern(CString::new("ATOM").unwrap().as_ptr(), 0);
+        if let Ok(atom_name) = CString::new("ATOM") {
+            let atom_type = ffi::gdk_atom_intern(atom_name.as_ptr(), 0);
 
-        ffi::gdk_property_change(
-            window_ptr,
-            prop_atom,
-            atom_type,
-            32,
-            ffi::GDK_PROP_MODE_REPLACE,
-            &val_atom as *const _ as *const u8,
-            1,
-        );
+            ffi::gdk_property_change(
+                window_ptr,
+                prop_atom,
+                atom_type,
+                32,
+                ffi::GDK_PROP_MODE_REPLACE,
+                &val_atom as *const _ as *const u8,
+                1,
+            );
+        }
     }
 }
 
