@@ -1,4 +1,9 @@
-import { invoke } from '@tauri-apps/api/core';
+import {
+	getLastLogLines,
+	getLogFilePath,
+	logFromFrontend,
+	readLogFile,
+} from '@/services/core.service';
 
 /**
  * Niveles de log disponibles
@@ -109,7 +114,7 @@ class VasakLogger {
 				: message;
 
 		try {
-			await invoke('log_from_frontend', {
+			await logFromFrontend({
 				level: level.toString(),
 				message: fullMessage,
 			});
@@ -154,7 +159,7 @@ class VasakLogger {
 	 */
 	async getLogFilePath(): Promise<string> {
 		try {
-			return await invoke<string>('get_log_file_path');
+			return await getLogFilePath();
 		} catch (error) {
 			console.error('Error al obtener la ruta del log:', error);
 			return '';
@@ -166,7 +171,7 @@ class VasakLogger {
 	 */
 	async readLogFile(): Promise<string> {
 		try {
-			return await invoke<string>('read_log_file');
+			return await readLogFile();
 		} catch (error) {
 			console.error('Error al leer el archivo de log:', error);
 			return '';
@@ -178,7 +183,7 @@ class VasakLogger {
 	 */
 	async getLastLogLines(lines: number = 100): Promise<string[]> {
 		try {
-			return await invoke<string[]>('get_last_log_lines', { lines });
+			return await getLastLogLines({ lines });
 		} catch (error) {
 			console.error('Error al obtener las últimas líneas del log:', error);
 			return [];
