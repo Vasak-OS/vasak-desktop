@@ -65,9 +65,9 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
     let other_desktop_window = WebviewWindowBuilder::new(
         &app_handle,
         &label,
-        WebviewUrl::App(format!("index.html#/desktop?monitor={}", label).into()).into(),
+        WebviewUrl::App(format!("index.html#/desktop?monitor={}", label).into()),
     )
-    .title(&format!("Vasak Desktop {}", index))
+    .title(format!("Vasak Desktop {}", index))
     .decorations(false)
     .transparent(false)
     .inner_size(monitor_size.width as f64, monitor_size.height as f64)
@@ -81,7 +81,7 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
 
     if let Ok(other_desktop_window) = other_desktop_window {
  
-    let complete_url = format!("{}{}", get_app_url(), format!("index.html#/desktop?monitor={}", label));
+    let complete_url = format!("{}index.html#/desktop?monitor={}", get_app_url(), label);
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
     let _ = other_desktop_window.navigate(url);
 
