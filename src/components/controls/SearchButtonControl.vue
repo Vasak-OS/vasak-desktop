@@ -1,15 +1,15 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
+import { toggleSearch } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const iconSrc: Ref<string> = ref('');
 
 const openSearch = async () => {
 	try {
-		await invoke('toggle_search');
+		await toggleSearch();
 	} catch (error) {
 		logError('Error opening search:', error);
 	}

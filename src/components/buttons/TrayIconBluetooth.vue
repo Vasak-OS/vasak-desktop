@@ -1,9 +1,10 @@
+
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
+import { toggleBluetoothApplet } from '@/services/window.service';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
 
@@ -13,7 +14,7 @@ const { bluetoothIcon, isBluetoothOn, connectedDevicesCount } = useBluetoothStat
 
 const toggleBluetooth = async (): Promise<void> => {
 	try {
-		await invoke('toggle_bluetooth_applet');
+		await toggleBluetoothApplet();
 	} catch (error) {
 		logError('Error toggling bluetooth applet:', error);
 	}

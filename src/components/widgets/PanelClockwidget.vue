@@ -47,10 +47,3 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
-.clock {
-  padding: 0 8px;
-  font-family: monospace;
-  font-size: 14px;
-}
-</style>

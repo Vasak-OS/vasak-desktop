@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { nextTick, onMounted, onUnmounted, type Ref, ref, watch } from 'vue';
+import { globalSearch } from '@/services/core.service';
+import { executeSearchResult } from '@/services/search.service';
 import { logError } from '@/utils/logger';
 
 interface SearchResult {
@@ -43,7 +44,7 @@ watch(query, (newQuery) => {
 	loading.value = true;
 	debounceTimer = setTimeout(async () => {
 		try {
-			const searchResults = await invoke<SearchResult[]>('global_search', {
+			const searchResults = await globalSearch({
 				query: newQuery,
 				limit: 50,
 			});
@@ -94,7 +95,7 @@ const handleKeydown = async (event: KeyboardEvent) => {
 // Execute selected result
 const executeResult = async (result: SearchResult) => {
 	try {
-		await invoke('execute_search_result', {
+		await executeSearchResult({
 			id: result.id,
 			category: result.category,
 			exec: result.exec,

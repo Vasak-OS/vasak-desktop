@@ -1,10 +1,11 @@
+
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
-import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
+import { openApp as sysOpenApp } from '@/services/app.service';
 import { logError } from '@/utils/logger';
 
 const props = defineProps({
@@ -19,7 +20,7 @@ const appWindow = getCurrentWindow();
 
 const openApp = async () => {
 	try {
-		await invoke('open_app', { path: props.app.path });
+		await sysOpenApp({ path: props.app.path } as any);
 	} catch (error) {
 		logError('Error al abrir aplicación:', error);
 	} finally {

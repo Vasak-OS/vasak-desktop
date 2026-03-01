@@ -6,7 +6,7 @@ import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref, watch } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { BatteryInfo } from '@/interfaces/battery';
-import { fetchBatteryInfo } from '@/tools/battery.controller';
+import { getBatteryInfo } from '@/services/core.service';
 import { logError } from '@/utils/logger';
 
 const batteryInfo: Ref<BatteryInfo> = ref({
@@ -84,9 +84,9 @@ watch(
 	{ immediate: true }
 );
 
-async function getBatteryInfo() {
+async function getBatteryInfoComp() {
 	try {
-		const info: BatteryInfo | null = await fetchBatteryInfo();
+		const info: BatteryInfo | null = await getBatteryInfo();
 		if (info) {
 			batteryInfo.value = info;
 		} else {
@@ -115,7 +115,7 @@ onMounted(async () => {
 		batteryInfo.value = event.payload as BatteryInfo;
 		updateIcon();
 	});
-	await getBatteryInfo();
+	await getBatteryInfoComp();
 });
 
 onUnmounted(() => {

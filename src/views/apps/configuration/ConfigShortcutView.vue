@@ -1,11 +1,21 @@
+import { getShortcuts, checkShortcutConflicts, addCustomShortcut } from '@/services/core.service';
+import { updateShortcut, executeShortcut, deleteShortcut } from '@/services/shortcut.service';
+
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
 import ActionButton from '@/components/buttons/ActionButton.vue';
 import ConfigAppLayout from '@/layouts/ConfigAppLayout.vue';
+import {
+	checkShortcutConflicts,
+	executeShortcut,
+	getShortcuts,
+	addCustomShortcut as sysAddCustomShortcut,
+	deleteShortcut as sysDeleteShortcut,
+	updateShortcut,
+} from '@/services/shortcut.service';
 import { logError } from '@/utils/logger';
 
 interface Shortcut {
@@ -51,7 +61,7 @@ onMounted(async () => {
 
 	// Cargar atajos
 	try {
-		const data = await invoke<Shortcut[]>('get_shortcuts');
+		const data = await getShortcuts();
 		shortcuts.value = data;
 	} catch (err) {
 		logError('Error loading shortcuts:', err);
@@ -84,7 +94,7 @@ const checkConflicts = async () => {
 	}
 
 	try {
-		const conflict = await invoke<ConflictInfo>('check_shortcut_conflicts', {
+		const conflict = await checkShortcutConflicts({
 			keys: editingKeys.value,
 			exclude_id: editingId.value,
 		});
@@ -114,7 +124,7 @@ const saveShortcut = async () => {
 	}
 
 	try {
-		await invoke('update_shortcut', {
+		await updateShortcut({
 			id: editingId.value,
 			keys: editingKeys.value,
 		});
@@ -139,7 +149,7 @@ const saveShortcut = async () => {
 const testShortcut = async (shortcutId: string) => {
 	testingId.value = shortcutId;
 	try {
-		await invoke('execute_shortcut', { shortcutId });
+		await executeShortcut({ shortcutId });
 		successMessage.value = '✅ Atajo ejecutado';
 		setTimeout(() => {
 			successMessage.value = '';
@@ -158,7 +168,7 @@ const deleteShortcut = async (id: string) => {
 	if (!confirm('¿Estás seguro de que deseas eliminar este atajo personalizado?')) return;
 
 	try {
-		await invoke('delete_shortcut', { id });
+		await sysDeleteShortcut({ id } as any);
 		shortcuts.value = shortcuts.value.filter((s) => s.id !== id);
 		successMessage.value = '✅ Atajo eliminado';
 		setTimeout(() => {
@@ -181,7 +191,7 @@ const addCustomShortcut = async () => {
 	if (!command) return;
 
 	try {
-		const newShortcut = await invoke<Shortcut>('add_custom_shortcut', {
+		const newShortcut = await sysAddCustomShortcut({
 			name,
 			description: description || '',
 			keys,
@@ -371,10 +381,10 @@ const showConflictWarning = computed(() => {
       <div class="mt-6 p-3 rounded-corner bg-primary/5 border border-primary/20 text-vsk-text/60 text-xs">
         <p class="font-semibold mb-2">Formato de atajos:</p>
         <ul class="space-y-1 ml-2">
-          <li>• <code class="font-mono">Ctrl+K</code> - Control + una tecla</li>
-          <li>• <code class="font-mono">Alt+Space</code> - Alt + una tecla</li>
-          <li>• <code class="font-mono">Super+S</code> - Tecla Windows/Super + una tecla</li>
-          <li>• <code class="font-mono">Shift+O</code> - Shift + una tecla</li>
+          <li>• <code class="font-mono bg-[rgba(var(--primary-color),0.1)] px-1 py-0.5 rounded">Ctrl+K</code> - Control + una tecla</li>
+          <li>• <code class="font-mono bg-[rgba(var(--primary-color),0.1)] px-1 py-0.5 rounded">Alt+Space</code> - Alt + una tecla</li>
+          <li>• <code class="font-mono bg-[rgba(var(--primary-color),0.1)] px-1 py-0.5 rounded">Super+S</code> - Tecla Windows/Super + una tecla</li>
+          <li>• <code class="font-mono bg-[rgba(var(--primary-color),0.1)] px-1 py-0.5 rounded">Shift+O</code> - Shift + una tecla</li>
         </ul>
         <p class="font-semibold mt-3 mb-2">Consejos:</p>
         <ul class="space-y-1 ml-2">
@@ -387,23 +397,3 @@ const showConflictWarning = computed(() => {
   </ConfigAppLayout>
 </template>
 
-<style scoped>
-code {
-  background-color: rgba(var(--primary-color), 0.1);
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-</style>

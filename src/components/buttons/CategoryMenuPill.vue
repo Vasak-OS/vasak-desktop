@@ -31,79 +31,13 @@ onMounted(() => {
   <button
     class="p-2 rounded-corner hover:scale-120"
     @click="setCategory(category)"
-    :class="{
-      'bg-primary/50 selected-category': category === categorySelected,
-      'bg-transparent': category !== categorySelected,
-    }"
+:class="[
+    category === categorySelected
+      ? 'bg-primary/50 animate-[pulse_2s_infinite_ease-in-out] border border-[rgba(127,127,127,0.1)] relative after:content-[\'\'] after:absolute after:-inset-[1px] auto-after-inherit after:rounded-[inherit] after:bg-[linear-gradient(45deg,rgba(127,127,127,0)_0%,rgba(127,127,127,0.1)_50%,rgba(127,127,127,0)_100%)] after:animate-shine'
+      : 'bg-transparent'
+  ]"
   >
     <img :src="appIcon" :title="description" :alt="category" class="h-12" />
   </button>
 </template>
 
-<style scoped>
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
-  }
-
-  50% {
-    transform: scale(1.02);
-    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
-  }
-
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
-  }
-}
-
-@keyframes glow {
-  0% {
-    border-color: rgba(127, 127, 127, 0.1);
-  }
-  50% {
-    border-color: rgba(127, 127, 127, 0.3);
-  }
-  100% {
-    border-color: rgba(127, 127, 127, 0.1);
-  }
-}
-
-.selected-category {
-  animation: pulse 2s infinite ease-in-out;
-  border: 1px solid rgba(127, 127, 127, 0.1);
-  position: relative;
-}
-
-.selected-category::after {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: linear-gradient(
-    45deg,
-    rgba(127, 127, 127, 0) 0%,
-    rgba(127, 127, 127, 0.1) 50%,
-    rgba(127, 127, 127, 0) 100%
-  );
-  animation: shine 3s infinite linear;
-}
-
-@keyframes shine {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.category-pill {
-  backdrop-filter: blur(8px);
-}
-
-.category-pill:hover {
-  transform: translateX(4px);
-}
-</style>

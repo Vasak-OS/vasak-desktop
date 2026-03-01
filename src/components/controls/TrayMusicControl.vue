@@ -1,3 +1,4 @@
+
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
@@ -5,6 +6,7 @@ import { listen } from '@tauri-apps/api/event';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref, watch } from 'vue';
 import type { MusicInfo } from '@/interfaces/music';
+import { musicNowPlaying } from '@/services/audio.service';
 import { processImageUrl } from '@/utils/image';
 import { logError } from '@/utils/logger';
 
@@ -98,7 +100,7 @@ onMounted(async () => {
 	nextIcon.value = await getSymbolSource('media-skip-forward');
 	playIcon.value = await getSymbolSource('media-playback-start');
 	pauseIcon.value = await getSymbolSource('media-playback-pause');
-	musicInfo.value = await invoke<MusicInfo>('music_now_playing');
+	musicInfo.value = await musicNowPlaying();
 	listen('music-playing-update', (event) => {
 		const payload = (event.payload || {}) as Partial<MusicInfo>;
 		Object.assign(musicInfo.value, payload);
@@ -167,34 +169,3 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
-/* Animaciones de entrada/salida: fade + slight scale/translate */
-@keyframes controlsIn {
-  from {
-    opacity: 0;
-    transform: translateX(6px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-@keyframes controlsOut {
-  from {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-  to {
-    opacity: 0;
-    transform: translateX(6px) scale(0.95);
-  }
-}
-
-.controls-anim-in {
-  animation: controlsIn 180ms ease-out forwards;
-}
-
-.controls-anim-out {
-  animation: controlsOut 160ms ease-in forwards;
-}
-</style>

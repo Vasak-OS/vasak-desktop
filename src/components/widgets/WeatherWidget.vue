@@ -76,7 +76,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="weather-widget-container">
+  <div class="flex flex-col gap-4">
     <template v-if="weather">
       <CurrentWeatherCard
         :current="weather.current"
@@ -85,9 +85,9 @@ onMounted(async () => {
       />
       <transition-group
         tag="div"
-        name="list-stagger-weather"
+        move-class="transition-transform duration-300 ease-out" enter-active-class="transition-all duration-300 ease-out" leave-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0 scale-80 translate-y-[15px]" leave-to-class="opacity-0 scale-80 translate-y-[15px]"
         appear
-        class="vmenu-widget-weather-forecast"
+        class="flex flex-wrap gap-2 justify-around [&>div]:basis-[90px] [&>div]:grow [&>div]:text-center [&_.weather-icon]:w-[38px] [&_.weather-icon]:h-[38px] [&_.weather-icon]:drop-shadow-[0px_1px_2px_rgba(0,0,0,0.3)] [&_.temp-max]:text-base [&_.temp-max]:font-semibold [&_.temp-min]:text-base [&_.temp-min]:font-semibold"
       >
         <DailyWeatherCard
           v-for="(_value, key) in weather.daily.time"
@@ -105,49 +105,3 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
-.weather-widget-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.vmenu-widget-weather-forecast {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem; /* Reducido para mejor ajuste con hover */
-  justify-content: space-around;
-}
-
-.vmenu-widget-weather-forecast :deep(.weather-icon) {
-  width: 38px; /* Ligeramente más pequeño para el efecto hover */
-  height: 38px;
-  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
-}
-
-.vmenu-widget-weather-forecast :deep(.temp-max),
-.vmenu-widget-weather-forecast :deep(.temp-min) {
-  font-size: 1rem; /* Ligeramente más pequeño */
-  font-weight: 600;
-}
-
-.vmenu-widget-weather-forecast :deep(> *) {
-  flex-basis: 90px; /* Ajustado */
-  flex-grow: 1;
-  text-align: center;
-}
-
-/* Animación de lista escalonada para tarjetas de clima */
-.list-stagger-weather-enter-active,
-.list-stagger-weather-leave-active {
-  transition: all 0.3s ease-out;
-}
-.list-stagger-weather-enter-from,
-.list-stagger-weather-leave-to {
-  opacity: 0;
-  transform: scale(0.8) translateY(15px);
-}
-.list-stagger-weather-move {
-  transition: transform 0.3s ease-out;
-}
-</style>

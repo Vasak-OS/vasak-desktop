@@ -8,7 +8,7 @@
 
     <!-- Background gradient effect -->
     <div
-      class="absolute inset-0 rounded-corner transition-all duration-500 pointer-events-none opacity-0 group-hover:opacity-100"
+      class="absolute inset-0 rounded-corner transition-all duration-500 pointer-events-none opacity-0 group-hover:opacity-100 group-hover:opacity-100 transition-opacity !opacity-100"
       :class="{
         'bg-lineal-to-br from-orange-400/20 to-yellow-400/20':
           !(configStore?.config as any)?.style?.darkmode,
@@ -74,45 +74,3 @@ const toggleTheme = async () => {
 };
 </script>
 
-<style scoped>
-/* Efecto especial para el cambio de tema - aplicado al wrapper */
-.theme-toggle-wrapper.theme-switching :deep(button) {
-  animation: themeTransition 0.8s ease-in-out;
-}
-
-@keyframes themeTransition {
-  0% {
-    transform: scale(1) rotate(0deg);
-  }
-
-  25% {
-    transform: scale(1.1) rotate(90deg);
-  }
-
-  50% {
-    transform: scale(1.15) rotate(180deg);
-  }
-
-  75% {
-    transform: scale(1.1) rotate(270deg);
-  }
-
-  100% {
-    transform: scale(1) rotate(360deg);
-  }
-}
-
-/* Efecto de hover en el fondo */
-.theme-toggle-wrapper :deep(button:hover)~.absolute.inset-0.rounded-corner {
-  opacity: 1 !important;
-}
-
-.theme-toggle-wrapper:hover .absolute.inset-0.rounded-corner {
-  opacity: 1 !important;
-}
-
-/* Efecto de hover en la imagen */
-.theme-toggle-wrapper :deep(button:hover img) {
-  filter: brightness(1.2) drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
-}
-</style>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
 import type { WindowPanelButtonProps } from '@/interfaces/window';
+import { toggleWindow as sysToggleWindow } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const props = defineProps<WindowPanelButtonProps>();
@@ -11,7 +11,7 @@ const iconSource: Ref<string> = ref<string>('');
 
 const toggleWindow = async (): Promise<void> => {
 	try {
-		await invoke('toggle_window', { windowId: props.id });
+		await sysToggleWindow({ windowId: props.id });
 	} catch (error) {
 		logError('[Window] Error alternando ventana:', error);
 	}
@@ -26,7 +26,7 @@ onMounted(async () => {
 
 <template>
   <div
-    class="window-button"
+    class="flex items-center justify-center w-7 h-7 cursor-pointer transform rounded-corner hover:bg-primary/30 hover:scale-110 active:scale-95 relative"
     :class="{ 'opacity-50 hover:opacity-90': is_minimized }"
     @click="toggleWindow"
   >
@@ -41,26 +41,3 @@ onMounted(async () => {
   </div>
 </template>
 
-<style>
-@reference "../../style.css";
-
-.window-button {
-  @apply flex items-center justify-center w-7 h-7 cursor-pointer transform rounded-corner hover:bg-primary/30 hover:scale-110 active:scale-95 relative;
-}
-
-.window-minimized {
-  opacity: 0.5;
-}
-
-.window-icon {
-  width: 24px;
-  height: 24px;
-}
-
-.icon-placeholder {
-  width: 24px;
-  height: 24px;
-  background-color: rgba(128, 128, 128, 0.5);
-  border-radius: 6px;
-}
-</style>

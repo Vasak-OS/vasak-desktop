@@ -123,7 +123,6 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import {
 	getCurrentNetworkState,
@@ -133,6 +132,12 @@ import {
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
+import {
+	getWirelessEnabled,
+	isWirelessAvailable,
+	setWirelessEnabled,
+} from '@/services/network.service';
+import { toggleNetworkApplet } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const wifiEnabled: Ref<boolean> = ref(true);
@@ -152,11 +157,11 @@ defineProps({
 
 const checkWirelessStatus = async () => {
 	try {
-		const available = await invoke('plugin:network-manager|is_wireless_available');
+		const available = await isWirelessAvailable();
 		wifiAvailable.value = available as boolean;
 
 		if (available) {
-			const enabled = await invoke('plugin:network-manager|get_wireless_enabled');
+			const enabled = await getWirelessEnabled();
 			wifiEnabled.value = enabled as boolean;
 			wifiStatus.value = enabled ? 'On' : 'Off';
 
@@ -177,7 +182,7 @@ const toggleWifi = async () => {
 
 	try {
 		const newState = !wifiEnabled.value;
-		await invoke('plugin:network-manager|set_wireless_enabled', {
+		await setWirelessEnabled({
 			enabled: newState,
 		});
 
@@ -238,7 +243,7 @@ const refreshNetworks = async () => {
 
 const closeApplet = async () => {
 	try {
-		await invoke('toggle_network_applet');
+		await toggleNetworkApplet();
 	} catch (error) {
 		logError('Error closing applet:', error);
 	}

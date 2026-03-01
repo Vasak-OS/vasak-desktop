@@ -12,7 +12,7 @@
       <img
         :src="userInfo.avatar_data"
         :alt="userInfo.full_name"
-        class="w-full h-full rounded-full object-cover transition-all duration-300 group-hover:shadow-xl avatar-dynamic-ring"
+        class="w-full h-full rounded-full object-cover transition-all duration-300 group-hover:shadow-xl hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),_0_10px_10px_-5px_rgba(0,0,0,0.04),_0_0_0_4px_rgba(var(--ring-color),_0.3)]"
         :class="{
           'opacity-0 scale-90': !isLoaded,
           'opacity-100 scale-100': isLoaded,
@@ -147,42 +147,3 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>
-.avatar-dynamic-ring:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-    0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 4px rgba(var(--ring-color), 0.3);
-}
-
-@keyframes gentle-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.01);
-  }
-}
-
-.group:hover {
-  animation: gentle-pulse 2s ease-in-out infinite;
-}
-
-.tabular-nums:hover {
-  text-shadow: 0 0 8px currentColor;
-}
-
-.group {
-  animation: slideInUp 0.6s ease-out;
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

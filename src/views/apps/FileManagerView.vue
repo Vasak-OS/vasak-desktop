@@ -127,7 +127,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <AppWindowFrame container-class="w-screen rounded-t-window flex flex-col overflow-hidden">
+  <AppWindowFrame container-class="w-screen rounded-t-[var(--radius-window)] flex flex-col overflow-hidden">
       <div class="h-12 border-b border-primary flex items-center px-4 background backdrop-blur-sm shrink-0">
         <div class="flex gap-2 mr-4">
           <button @click="navigateUp" aria-label="up" class="hover:text-primary transition-colors text-lg">
@@ -206,15 +206,3 @@ onMounted(async () => {
   </AppWindowFrame>
 </template>
 
-<style scoped>
-/* Ensure custom properties are available if needed, though Tailwind handles most */
-.rounded-t-window {
-  border-top-left-radius: var(--radius-window);
-  border-top-right-radius: var(--radius-window);
-}
-
-.rounded-b-window {
-  border-bottom-left-radius: var(--radius-window);
-  border-bottom-right-radius: var(--radius-window);
-}
-</style>

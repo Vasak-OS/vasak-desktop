@@ -11,7 +11,7 @@ import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import { logError } from '@/utils/logger';
-import { toggleNetworkApplet } from '../../tools/network.controller';
+import { toggleNetworkApplet } from '@/services/network.service';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
