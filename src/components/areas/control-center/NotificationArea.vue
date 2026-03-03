@@ -6,7 +6,7 @@
       class="flex items-center justify-between mb-2"
       v-if="groupedNotifications.length > 0"
     >
-      <span class="text-sm text-gray-600 dark:text-gray-300">
+      <span class="text-sm text-tx-main font-medium">
         {{ notifications.length }} Notification{{
           notifications.length !== 1 ? "s" : ""
         }}
@@ -26,7 +26,7 @@
 
     <div
       v-if="groupedNotifications.length === 0"
-      class="text-center transition-opacity duration-300 ease-in-out text-tx-muted dark:text-tx-muted-dark py-8"
+      class="text-center transition-opacity duration-300 ease-in-out text-tx-muted py-8"
     >
       <div class="opacity-60">🔔</div>
       <p class="mt-2">No hay notificaciones</p>

@@ -111,7 +111,7 @@ onMounted(async () => {
 <template>
   <!-- contenedor con handlers para controlar la visibilidad -->
   <div
-    class="p-1 rounded-corner hover:bg-primary hover:dark:bg-primary-dark flex"
+    class="p-1 rounded-corner hover:bg-primary flex"
     @mouseenter="onEnter"
     @mouseleave="onLeave"
   >

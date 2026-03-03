@@ -77,6 +77,34 @@
   --terminal-ansi-bright-magenta-dark: #eba0ac;
   --terminal-ansi-bright-cyan-dark: #89dceb;
   --terminal-ansi-bright-white-dark: #cdd6f4;
+
+  /* Logic Assignments */
+  --use-primary: var(--primary);
+  --use-secondary: var(--secondary);
+  --use-ui-background: var(--ui-background);
+  --use-ui-surface: var(--ui-surface);
+  --use-ui-border: var(--ui-border);
+  --use-text-main: var(--text-main);
+  --use-text-muted: var(--text-muted);
+  --use-text-on-primary: var(--text-on-primary);
+  --use-status-error: var(--status-error);
+  --use-status-success: var(--status-success);
+  --use-status-warning: var(--status-warning);
+}
+
+.dark {
+  /* Override logic assignments in dark mode */
+  --use-primary: var(--primary-dark);
+  --use-secondary: var(--secondary-dark);
+  --use-ui-background: var(--ui-background-dark);
+  --use-ui-surface: var(--ui-surface-dark);
+  --use-ui-border: var(--ui-border-dark);
+  --use-text-main: var(--text-main-dark);
+  --use-text-muted: var(--text-muted-dark);
+  --use-text-on-primary: var(--text-on-primary-dark);
+  --use-status-error: var(--status-error-dark);
+  --use-status-success: var(--status-success-dark);
+  --use-status-warning: var(--status-warning-dark);
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -86,188 +114,26 @@
   --radius-corner: var(--corner-radius);
   --radius-corner-window: calc(var(--corner-radius) + 2px);
 
-  /* Colores de Marca */
-  --color-primary: var(--primary);
-  --color-secondary: var(--secondary);
+  /* Colores de Marca - responsive a dark mode */
+  --color-primary: var(--use-primary);
+  --color-secondary: var(--use-secondary);
 
-  /* Colores de Interfaz (UI) */
-  --color-ui-bg: var(--ui-background);
-  --color-ui-surface: var(--ui-surface);
-  --color-ui-border: var(--ui-border);
+  /* Colores de Interfaz (UI) - responsive a dark mode */
+  --color-ui-bg: var(--use-ui-background);
+  --color-ui-surface: var(--use-ui-surface);
+  --color-ui-border: var(--use-ui-border);
 
-  /* Colores de Texto */
-  --color-tx-main: var(--text-main);
-  --color-tx-muted: var(--text-muted);
-  --color-tx-on-primary: var(--text-on-primary);
+  /* Colores de Texto - responsive a dark mode */
+  --color-tx-main: var(--use-text-main);
+  --color-tx-muted: var(--use-text-muted);
+  --color-tx-on-primary: var(--use-text-on-primary);
 
-  /* Status */
-  --color-status-error: var(--status-error);
-  --color-status-success: var(--status-success);
-  --color-status-warning: var(--status-warning);
-
-  /* Custom Animations */
-  --animate-fade-in: fadeIn 0.4s ease-out;
-  --animate-slide-up-plus: slideUpPlus 0.5s ease-out forwards;
-  --animate-bell-shake: bell-shake 0.8s ease-in-out;
-  --animate-pulse-notification: pulse-notification 0.6s ease-in-out;
-  --animate-critical-pulse: critical-pulse 1.5s ease-in-out infinite;
-  --animate-gentle-pulse: gentle-pulse 2s ease-in-out infinite;
-  --animate-slide-in-up: slideInUp 0.6s ease-out;
-  --animate-controls-in: controlsIn 180ms ease-out forwards;
-  --animate-controls-out: controlsOut 160ms ease-in forwards;
-  --animate-marquee: marquee var(--marquee-duration, 6s) linear infinite alternate;
-  --animate-theme-transition: themeTransition 0.8s ease-in-out;
-  --animate-shine: shine 3s infinite linear;
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @keyframes slideUpPlus {
-    from {
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  @keyframes bell-shake {
-    0%,
-    100% {
-      transform: rotate(0deg);
-    }
-    10%,
-    30%,
-    50%,
-    70%,
-    90% {
-      transform: rotate(-10deg);
-    }
-    20%,
-    40%,
-    60%,
-    80% {
-      transform: rotate(10deg);
-    }
-  }
-  @keyframes pulse-notification {
-    0%,
-    100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.02);
-    }
-  }
-  @keyframes critical-pulse {
-    0%,
-    100% {
-      border-left-color: #ef4444;
-    }
-    50% {
-      border-left-color: #fca5a5;
-      box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
-    }
-  }
-  @keyframes gentle-pulse {
-    0%,
-    100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.01);
-    }
-  }
-  @keyframes slideInUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  @keyframes controlsIn {
-    from {
-      opacity: 0;
-      transform: translateX(6px) scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0) scale(1);
-    }
-  }
-  @keyframes controlsOut {
-    from {
-      opacity: 1;
-      transform: translateX(0) scale(1);
-    }
-    to {
-      opacity: 0;
-      transform: translateX(6px) scale(0.95);
-    }
-  }
-  @keyframes marquee {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(calc(var(--marquee-distance, 0px) * -1));
-    }
-  }
-  @keyframes themeTransition {
-    0% {
-      transform: scale(1) rotate(0deg);
-    }
-    25% {
-      transform: scale(1.1) rotate(90deg);
-    }
-    50% {
-      transform: scale(1.15) rotate(180deg);
-    }
-    75% {
-      transform: scale(1.1) rotate(270deg);
-    }
-    100% {
-      transform: scale(1) rotate(360deg);
-    }
-  }
-  @keyframes shine {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
+  /* Status - responsive a dark mode */
+  --color-status-error: var(--use-status-error);
+  --color-status-success: var(--use-status-success);
+  --color-status-warning: var(--use-status-warning);
 }
 
-/* Override colors in dark mode */
-@layer theme {
-  :root,
-  :host {
-    @variant dark {
-      --color-primary: var(--primary-dark);
-      --color-secondary: var(--secondary-dark);
-      --color-ui-bg: var(--ui-background-dark);
-      --color-ui-surface: var(--ui-surface-dark);
-      --color-ui-border: var(--ui-border-dark);
-      --color-tx-main: var(--text-main-dark);
-      --color-tx-muted: var(--text-muted-dark);
-      --color-tx-on-primary: var(--text-on-primary-dark);
-      --color-status-error: var(--status-error-dark);
-      --color-status-success: var(--status-success-dark);
-      --color-status-warning: var(--status-warning-dark);
-    }
-  }
-}
 
 ::view-transition-old(root) {
   animation-delay: 500ms;

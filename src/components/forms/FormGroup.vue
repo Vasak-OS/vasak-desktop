@@ -15,7 +15,7 @@ withDefaults(defineProps<Props>(), {
 
 <template>
   <div class="flex flex-col gap-2" :class="customClass">
-    <label v-if="label" :for="htmlFor" class="text-sm font-medium text-primary dark:text-primary-dark" :class="labelClass">
+    <label v-if="label" :for="htmlFor" class="text-sm font-medium text-primary" :class="labelClass">
       {{ label }}
     </label>
     <slot />

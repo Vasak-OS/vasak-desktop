@@ -36,11 +36,11 @@ const emit = defineEmits<{
 
 const variantClasses: Record<string, string> = {
 	primary:
-		'bg-primary dark:bg-primary-dark text-tx-on-primary dark:text-tx-on-primary-dark hover:bg-primary/90 dark:hover:bg-primary-dark/90',
+		'bg-primary text-tx-on-primary hover:bg-primary/90',
 	secondary:
-		'bg-secondary dark:bg-secondary-dark text-tx-on-primary dark:text-tx-on-primary-dark hover:bg-secondary/80 dark:hover:bg-secondary-dark/80',
+		'bg-secondary text-tx-on-primary hover:bg-secondary/80',
 	danger:
-		'bg-status-error dark:bg-status-error-dark text-tx-on-primary dark:text-tx-on-primary-dark hover:bg-status-error/90 dark:hover:bg-status-error-dark/90',
+		'bg-status-error text-tx-on-primary hover:bg-status-error/90',
 };
 
 const sizeClasses: Record<'sm' | 'md' | 'lg', string> = {

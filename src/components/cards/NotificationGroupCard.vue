@@ -2,7 +2,7 @@
   <div class="transition-all duration-200 ease-in-out">
     <!-- Header del grupo -->
     <div
-      class="group-header relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-[linear-gradient(45deg,transparent_49%,rgba(255,255,255,0.1)_50%,transparent_51%)] before:-translate-x-full before:transition-transform before:duration-600 before:ease-in-out hover:before:translate-x-full  flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-t-vsk border-l-4 border-blue-500 cursor-pointer transition-all duration-200 hover:bg-gradient-to-r hover:from-blue-100/50 hover:to-purple-100/50 dark:hover:from-blue-800/30 dark:hover:to-purple-800/30"
+      class="group-header relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-[linear-gradient(45deg,transparent_49%,rgba(255,255,255,0.1)_50%,transparent_51%)] before:-translate-x-full before:transition-transform before:duration-600 before:ease-in-out hover:before:translate-x-full  flex items-center gap-3 p-3 bg-linear-to-r from-primary/50 to-secondary/50 rounded-t-corner border-l-4 border-primary cursor-pointer transition-all duration-200 hover:bg-linear-to-r hover:from-blue-100/50 hover:to-purple-100/50 dark:hover:from-blue-800/30 dark:hover:to-purple-800/30"
       @click="toggleExpanded" :class="{
         'rounded-corner': !isExpanded,
         'shadow-sm': group.has_unread,
@@ -12,26 +12,26 @@
 
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <h3 class="font-medium text-gray-900 dark:text-gray-100">
+          <h3 class="font-medium text-ui-main truncate">
             {{ group.app_name }}
           </h3>
           <span
             class="inline-flex items-center justify-center w-5 h-5 text-xs font-medium rounded-full transition-all duration-200"
             :class="{
               'bg-blue-500 text-white': group.has_unread,
-              'bg-gray-300 text-gray-600 dark:bg-gray-600 dark:text-gray-300':
+              'background text-ui-muted':
                 !group.has_unread,
             }">
             {{ group.count }}
           </span>
         </div>
-        <p class="text-sm text-gray-600 dark:text-gray-400">
+        <p class="text-sm text-tx-muted truncate">
           {{ formatGroupSummary() }}
         </p>
       </div>
 
       <div class="flex items-center gap-2">
-        <span class="text-xs text-gray-500 dark:text-gray-400">
+        <span class="text-xs text-tx-muted">
           {{ formatTime(group.latest_timestamp) }}
         </span>
         <ActionButton
@@ -57,14 +57,14 @@
       leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden"
       enter-from-class="h-0 opacity-0" leave-to-class="h-0 opacity-0" @enter="onEnter" @leave="onLeave">
       <div v-show="isExpanded"
-        class="notifications-list bg-white/30 dark:bg-black/30 rounded-b-vsk border-l-4 border-blue-500/30">
+        class="notifications-list background rounded-b-vsk border-l-4 border-blue-500/30">
         <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           enter-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           leave-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
           enter-from-class="opacity-0 translate-x-5" leave-to-class="opacity-0 -translate-x-5" tag="div">
           <NotificationCard v-for="notification in group.notifications" :key="notification.id"
             :notification="notification" @seen="(id: number) => $emit('remove', id)"
-            class="border-b border-gray-200/50 dark:border-gray-700/50 last:border-b-0" />
+            class="border-b border-ui-border last:border-b-0" />
         </TransitionGroup>
       </div>
     </Transition>
@@ -72,8 +72,6 @@
 </template>
 
 <script setup lang="ts">
-/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
