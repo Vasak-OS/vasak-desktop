@@ -14,10 +14,10 @@
           <img :src="closeIconSrc" alt="Cerrar" class="w-3 h-3 transition-transform duration-200" />
         </button>
       </div>
-      <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+      <p class="text-sm text-tx-main line-clamp-2">
         {{ notification.body }}
       </p>
-      <div class="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+      <div class="flex items-center gap-2 mt-1 text-xs text-tx-muted">
         <span>{{ notification.app_name }}</span>
         <span>•</span>
         <span>{{ formatTime(notification.timestamp) }}</span>

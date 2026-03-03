@@ -4,7 +4,7 @@
     class="p-2 rounded-corner background hover:opacity-50 transition-all duration-300 h-17.5 w-17.5 group relative overflow-hidden hover:scale-105 hover:shadow-lg active:scale-95"
     :class="{
       'animate-pulse': isLoading,
-      'ring-2 ring-primary dark:ring-primary-dark': isActive,
+      'ring-2 ring-primary': isActive,
       'opacity-60': !isActive,
       ...customClass
     }"

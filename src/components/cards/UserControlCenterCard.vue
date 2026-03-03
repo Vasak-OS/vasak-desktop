@@ -1,6 +1,6 @@
 <template>
   <div
-    class="background rounded-corner p-4 flex items-center gap-4 w-full transition-all duration-300 hover:bg-secondary/60 dark:hover:bg-secondary-dark/60 hover:scale-[1.02] group"
+    class="background rounded-corner p-4 flex items-center gap-4 w-full transition-all duration-300 hover:bg-secondary/60 hover:scale-[1.02] group"
     :class="{
       'opacity-0 translate-y-4': !isLoaded,
       'opacity-100 translate-y-0': isLoaded,
@@ -27,7 +27,7 @@
     </div>
     <div class="flex flex-col flex-1 space-y-1">
       <h2
-        class="text-lg font-semibold transition-all duration-300 group-hover:text-secondary dark:group-hover:text-secondary-dark"
+        class="text-lg font-semibold transition-all duration-300 group-hover:text-secondary"
         :class="{
           'opacity-0 translate-x-4': !isLoaded,
           'opacity-100 translate-x-0': isLoaded,
@@ -53,7 +53,7 @@
       }"
     >
       <div
-        class="text-2xl font-medium transition-all duration-300 tabular-nums group-hover:text-status-success dark:group-hover:text-status-success-dark"
+        class="text-2xl font-medium transition-all duration-300 tabular-nums group-hover:text-status-success"
         :class="{ 'animate-pulse': isTimeUpdating }"
       >
         {{ currentTime }}

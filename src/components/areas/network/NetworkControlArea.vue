@@ -58,9 +58,9 @@
 
     <div
       v-else
-      class="mb-4 p-3 rounded-corner border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex items-center justify-center"
+      class="mb-4 p-3 rounded-corner border border-ui-border background flex items-center justify-center"
     >
-      <span class="text-sm text-gray-500"
+      <span class="text-sm text-tx-muted"
         >Wireless hardware not cached or unavailable</span
       >
     </div>

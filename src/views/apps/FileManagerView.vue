@@ -151,9 +151,9 @@ onMounted(async () => {
 
       <div class="flex-1 flex min-h-0">
         <!-- Sidebar -->
-        <div class="w-48 p-2 border-r dark:border-primary flex flex-col gap-1 background">
+        <div class="w-48 p-2 border-r border-primary flex flex-col gap-1 background">
           <button v-for="item in sidebarItems" :key="item.name" @click="handleSidebarClick(item)"
-            class="flex items-center gap-3 px-3 py-2 rounded-corner hover:bg-white/40 dark:hover:bg-white/10 transition-colors text-sm font-medium text-left">
+            class="flex items-center gap-3 px-3 py-2 rounded-corner hover:background transition-colors text-sm font-medium text-left">
             <img v-if="sidebarIcons[item.name]" :src="sidebarIcons[item.name]" alt="Icon" class="w-5 h-5" />
             <span v-else>📁</span>
             <span>{{ item.name }}</span>
@@ -195,7 +195,7 @@ onMounted(async () => {
               </div>
 
               <span
-                class="text-xs text-center truncate w-full px-1 select-none font-medium text-gray-700 dark:text-gray-300 group-hover:text-primary"
+                class="text-xs text-center truncate w-full px-1 select-none font-medium text-tx-muted group-hover:text-primary"
                 :title="file.name">
                 {{ file.name }}
               </span>
