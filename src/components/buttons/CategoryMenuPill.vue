@@ -33,7 +33,7 @@ onMounted(() => {
     @click="setCategory(category)"
 :class="[
     category === categorySelected
-      ? 'bg-primary/50 animate-[pulse_2s_infinite_ease-in-out] border border-[rgba(127,127,127,0.1)] relative after:content-[\'\'] after:absolute after:-inset-[1px] auto-after-inherit after:rounded-[inherit] after:bg-[linear-gradient(45deg,rgba(127,127,127,0)_0%,rgba(127,127,127,0.1)_50%,rgba(127,127,127,0)_100%)] after:animate-shine'
+      ? 'bg-primary border border-secondary relative'
       : 'bg-transparent'
   ]"
   >

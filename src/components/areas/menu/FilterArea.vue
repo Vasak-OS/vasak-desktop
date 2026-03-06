@@ -35,7 +35,7 @@ const appsFiltred = computed((): Array<any> => {
       v-for="app in appsFiltred" 
       :key="app.name" 
       :app="app" 
-      class="transition-all duration-300 ease-out hover:-translate-y-[2px] hover:scale-[1.02] hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+      class="transition-all rounded-corner hover:border hover:border-secondary duration-300 ease-out hover:scale-[1.02] hover:bg-primary"
     />
   </transition-group>
 </template>
