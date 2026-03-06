@@ -168,7 +168,7 @@ const wallpaperPreviewUrl = computed(() => {
           <ConfigSection icon="🖼️" title="Fondo de Pantalla" custom-class="lg:col-span-2">
             <!-- Preview y drag-drop area -->
             <div
-              class="flex items-center justify-center w-full h-40 rounded-corner border-2 border-dashed border-primary/30 background hover:border-primary/50 hover:bg-primary/5 transition-colors relative overflow-hidden">
+              class="flex items-center justify-center w-full h-40 rounded-corner border-2 border-dashed border-primary/30 bg-ui-bg/80 hover:border-primary/50 hover:bg-primary/5 transition-colors relative overflow-hidden">
 
               <!-- Background image si existe -->
               <img v-if="wallpaper" :src="wallpaperPreviewUrl" alt="Wallpaper preview"
@@ -229,7 +229,7 @@ const wallpaperPreviewUrl = computed(() => {
                 <span class="font-normal">{{ iconSize }}px</span>
               </div>
               <input id="icon-size" v-model.number="iconSize" type="range" min="24" max="128"
-                class="w-full h-1.5 rounded-corner background outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4.5 [&::-webkit-slider-thumb]:h-4.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:duration-200 [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-webkit-slider-thumb]:scale-110 [&::-moz-range-thumb]:w-4.5 [&::-moz-range-thumb]:h-4.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:duration-200 [&::-moz-range-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-moz-range-thumb]:scale-110" />
+                class="w-full h-1.5 rounded-corner bg-ui-bg/80 outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4.5 [&::-webkit-slider-thumb]:h-4.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:duration-200 [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-webkit-slider-thumb]:scale-110 [&::-moz-range-thumb]:w-4.5 [&::-moz-range-thumb]:h-4.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:duration-200 [&::-moz-range-thumb]:shadow-[0_2px_8px_rgba(0,132,255,0.3)] hover:[&::-moz-range-thumb]:scale-110" />
               <div class="flex justify-between text-xs ">
                 <span>24px (Pequeño)</span>
                 <span>128px (Grande)</span>

@@ -36,7 +36,7 @@ const props = withDefaults(defineProps<Props>(), {
 	disabled: false,
 	size: 'small',
 	activeClass: 'bg-primary',
-	inactiveClass: 'background',
+	inactiveClass: 'bg-ui-bg/80',
 	customClass: '',
 });
 

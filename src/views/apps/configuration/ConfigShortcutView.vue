@@ -270,7 +270,7 @@ const showConflictWarning = computed(() => {
           <div
             v-for="shortcut in shortcuts"
             :key="shortcut.id"
-            class="p-4 rounded-corner background border border-primary/10 hover:border-primary/20 transition-all"
+            class="p-4 rounded-corner bg-ui-bg/80 border border-primary/10 hover:border-primary/20 transition-all"
             :class="{ 'border-red-500/50 bg-red-500/5': showConflictWarning && shortcut.id === editingId }"
           >
             <!-- Header -->

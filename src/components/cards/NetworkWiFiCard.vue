@@ -80,7 +80,7 @@ onMounted(async () => {
 
   <!-- Modal para pedir contraseña -->
   <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center">
-    <div class="background rounded-corner shadow-lg p-6 w-80 flex flex-col gap-4">
+    <div class="bg-ui-bg/80 rounded-corner shadow-lg p-6 w-80 flex flex-col gap-4">
       <h3 class="text-lg font-semibold text-vsk-text">Conectar a {{ props.ssid }}</h3>
       <input
         v-model="password"

@@ -140,7 +140,7 @@ onMounted(async () => {
     >
       <button
         @click.prevent="onPrev"
-        class="w-6 h-6 flex items-center justify-center rounded-corner background text-xs"
+        class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
         title="Anterior"
       >
         <img :src="prevIcon" alt="Anterior" class="w-4 h-4" />
@@ -148,7 +148,7 @@ onMounted(async () => {
 
       <button
         @click.prevent="onPlayPause"
-        class="w-6 h-6 flex items-center justify-center rounded-corner background text-xs"
+        class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
         :title="isPlaying ? 'Pausa' : 'Reproducir'"
       >
         <img 
@@ -160,7 +160,7 @@ onMounted(async () => {
 
       <button
         @click.prevent="onNext"
-        class="w-6 h-6 flex items-center justify-center rounded-corner background text-xs"
+        class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
         title="Siguiente"
       >
         <img :src="nextIcon" alt="Siguiente" class="w-4 h-4" />

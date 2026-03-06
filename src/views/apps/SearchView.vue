@@ -161,7 +161,7 @@ function getCategoryLabel(category: string): string {
 <template>
   <div class="h-screen w-screen flex items-center justify-center">
     <div
-      class="background rounded-window flex flex-col w-[700px] max-h-[80vh] overflow-hidden group relative hover:shadow-lg transition-all duration-300"
+      class="bg-ui-bg/80 rounded-window flex flex-col w-[700px] max-h-[80vh] overflow-hidden group relative hover:shadow-lg transition-all duration-300"
     >
       <!-- Decorative overlay like ThemeToggle -->
       <div

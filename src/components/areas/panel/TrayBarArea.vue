@@ -210,7 +210,7 @@ onUnmounted(() => {
       <Transition enter-active-class="transition-all duration-200 ease-[cubic-bezier(0.25,0.8,0.25,1)]" leave-active-class="transition-all duration-150 ease-[cubic-bezier(0.55,0,0.45,1)]" enter-from-class="opacity-0 -translate-y-full scale-95" leave-to-class="opacity-0 -translate-y-full scale-95">
         <div
           v-if="contextMenu.visible"
-          class="fixed z-50 background backdrop-blur-md border border-ui-border rounded-corner shadow-2xl py-2 min-w-48 max-w-64"
+          class="fixed z-50 bg-ui-bg/80 backdrop-blur-md border border-ui-border rounded-corner shadow-2xl py-2 min-w-48 max-w-64"
           :style="{
             left: `${contextMenu.x}px`,
             top: `${contextMenu.y - 10}px`,
@@ -222,7 +222,7 @@ onUnmounted(() => {
             v-for="(menuItem) in contextMenu.items"
             :key="menuItem.id"
             :class="[
-              'flex items-center justify-between px-4 py-2 text-sm cursor-pointer transition-colors duration-200 hover:background',
+              'flex items-center justify-between px-4 py-2 text-sm cursor-pointer transition-colors duration-200 hover:bg-ui-bg/80',
               {
                 disabled: !menuItem.enabled,
                 separator: menuItem.type === 'separator',

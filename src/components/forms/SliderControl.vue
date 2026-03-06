@@ -1,6 +1,6 @@
 <template>
   <div
-    class="background rounded-corner flex flex-row items-center gap-2 justify-between w-full h-auto p-4 transition-all duration-200 hover:bg-ui-surface/80"
+    class="bg-ui-bg/80 rounded-corner flex flex-row items-center gap-2 justify-between w-full h-auto p-4 transition-all duration-200 hover:bg-ui-surface/80"
   >
     <button
       v-if="showButton"
