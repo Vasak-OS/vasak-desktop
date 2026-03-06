@@ -32,7 +32,7 @@ onMounted(async () => {
 
 <template>
   <main
-    class="bg-ui-bg/80 h-screen w-screen rounded-corner-window flex flex-row flex-wrap justify-between p-2"
+    class="bg-ui-bg/80 h-screen w-screen rounded-corner flex flex-row flex-wrap justify-between p-1 border border-ui-border"
   >
     <div class="flex flex-col w-full gap-2 p-2">
       <UserControlCenterCard />
@@ -40,7 +40,7 @@ onMounted(async () => {
     </div>
     <div class="flex flex-wrap w-full justify-around items-end self-end p-2">
       <MusicWidget class="w-full" />
-      <div class="flex gap-2 w-full">
+      <div class="flex justify-between gap-2 w-full">
         <SearchButtonControl />
         <NetworkControl />
         <BluetoothControl v-if="bluetoothInitialized" />

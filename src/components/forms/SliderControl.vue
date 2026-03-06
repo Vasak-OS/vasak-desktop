@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-ui-bg/80 rounded-corner flex flex-row items-center gap-2 justify-between w-full h-auto p-4 transition-all duration-200 hover:bg-ui-surface/80"
+    class="bg-ui-bg/80 rounded-corner flex border border-ui-border flex-row items-center gap-2 justify-between w-full h-auto p-4 transition-all duration-200 hover:bg-ui-surface/80"
   >
     <button
       v-if="showButton"
@@ -33,7 +33,7 @@
       :max="max"
       :value="modelValue"
       @input="handleInput"
-      class="flex-1 transition-all duration-200 hover:scale-105"
+      class="flex-1 transition-all duration-200 hover:scale-105 accent-primary hover:accent-secondary"
     />
     
     <span
