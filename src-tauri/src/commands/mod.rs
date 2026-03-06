@@ -4,7 +4,6 @@ mod battery;
 mod bluetooth;
 mod brightness;
 mod control_center;
-mod file_manager;
 mod logger;
 mod menu;
 mod music;
@@ -20,7 +19,7 @@ mod system_info;
 mod tray;
 mod window_manager;
 
-pub use applications::{toggle_config_app, open_configuration_window, open_file_manager_window};
+pub use applications::{toggle_config_app, open_configuration_window};
 pub use audio::{
     get_audio_devices, get_audio_volume, set_audio_device, set_audio_volume, toggle_audio_applet,
     toggle_audio_mute,
@@ -29,7 +28,6 @@ pub use battery::{battery_exists, battery_fetch_info};
 pub use bluetooth::toggle_bluetooth_applet;
 pub use brightness::{get_brightness_info, set_brightness_info};
 pub use control_center::toggle_control_center;
-pub use file_manager::read_directory;
 pub use logger::{log_from_frontend, get_log_file_path, read_log_file, get_last_log_lines};
 pub use menu::{get_menu_items, toggle_menu};
 pub use music::{music_next_track, music_now_playing, music_play_pause, music_previous_track};
