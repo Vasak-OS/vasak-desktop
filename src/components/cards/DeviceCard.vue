@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex items-center justify-between background rounded-vsk px-6 py-3 mb-4"
+    class="flex items-center justify-between bg-ui-bg/80 rounded-vsk px-6 py-3 mb-4"
     :class="[{ 'border-l-4 border-green-500': isConnected }, customClass]"
     @click="handleClick"
   >

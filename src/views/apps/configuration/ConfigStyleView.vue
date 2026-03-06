@@ -199,7 +199,7 @@ const isFormValid = computed(() => {
                 <input v-if="vskConfig" :value="(vskConfig.style as any)['primarycolor']"
                   @input="e => ((vskConfig!.style as any)['primarycolor'] = (e.target as HTMLInputElement).value)" type="text"
                   placeholder="#0084FF"
-                  class="flex-1 py-2 px-3 background rounded-corner text-primary text-sm font-mono transition-all duration-200 focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))]" />
+                  class="flex-1 py-2 px-3 bg-ui-bg/80 rounded-corner text-primary text-sm font-mono transition-all duration-200 focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))]" />
               </div>
             </FormGroup>
 
@@ -220,9 +220,9 @@ const isFormValid = computed(() => {
           <ConfigSection icon="🖥️" title="Tema GTK">
             <FormGroup label="Tema GTK" html-for="gtk-theme">
               <select v-model="selectedGtkTheme" id="gtk-theme"
-                class="py-2.5 px-3 background rounded-corner text-primary text-sm cursor-pointer transition-all duration-200 appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_24_24%27_fill=%27none%27_stroke=%27white%27_stroke-width=%272%27_stroke-linecap=%27round%27_stroke-linejoin=%27round%27%3e%3cpolyline_points=%276_9_12_15_18_9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[right_8px_center] bg-[length:20px] hover:border-[var(--primary-color,#0084ff)] hover:bg-[var(--surface-2,rgba(255,255,255,0.08))] focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))] focus:shadow-[0_0_0_3px_rgba(0,132,255,0.1)]">
+                class="py-2.5 px-3 bg-ui-bg/80 rounded-corner text-primary text-sm cursor-pointer transition-all duration-200 appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_24_24%27_fill=%27none%27_stroke=%27white%27_stroke-width=%272%27_stroke-linecap=%27round%27_stroke-linejoin=%27round%27%3e%3cpolyline_points=%276_9_12_15_18_9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[right_8px_center] bg-[length:20px] hover:border-[var(--primary-color,#0084ff)] hover:bg-[var(--surface-2,rgba(255,255,255,0.08))] focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))] focus:shadow-[0_0_0_3px_rgba(0,132,255,0.1)]">
                 <option v-for="theme in gtkThemes" :key="theme" :value="theme"
-                  class="background text-primary py-2 my-1">
+                  class="bg-ui-bg/80 text-primary py-2 my-1">
                   {{ theme }}
                 </option>
               </select>
@@ -233,9 +233,9 @@ const isFormValid = computed(() => {
           <ConfigSection icon="🖱️" title="Cursor">
             <FormGroup label="Tema de Cursor" html-for="cursor-theme">
               <select v-model="selectedCursorTheme" id="cursor-theme"
-                class="py-2.5 px-3 background rounded-corner text-primary text-sm cursor-pointer transition-all duration-200 appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_24_24%27_fill=%27none%27_stroke=%27white%27_stroke-width=%272%27_stroke-linecap=%27round%27_stroke-linejoin=%27round%27%3e%3cpolyline_points=%276_9_12_15_18_9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[right_8px_center] bg-[length:20px] hover:border-[var(--primary-color,#0084ff)] hover:bg-[var(--surface-2,rgba(255,255,255,0.08))] focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))] focus:shadow-[0_0_0_3px_rgba(0,132,255,0.1)]">
+                class="py-2.5 px-3 bg-ui-bg/80 rounded-corner text-primary text-sm cursor-pointer transition-all duration-200 appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_24_24%27_fill=%27none%27_stroke=%27white%27_stroke-width=%272%27_stroke-linecap=%27round%27_stroke-linejoin=%27round%27%3e%3cpolyline_points=%276_9_12_15_18_9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[right_8px_center] bg-[length:20px] hover:border-[var(--primary-color,#0084ff)] hover:bg-[var(--surface-2,rgba(255,255,255,0.08))] focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))] focus:shadow-[0_0_0_3px_rgba(0,132,255,0.1)]">
                 <option v-for="cursor in cursorThemes" :key="cursor" :value="cursor"
-                  class="background text-primary py-2 my-1">
+                  class="bg-ui-bg/80 text-primary py-2 my-1">
                   {{ cursor }}
                 </option>
               </select>
@@ -246,9 +246,9 @@ const isFormValid = computed(() => {
           <ConfigSection icon="🎯" title="Iconos">
             <FormGroup label="Pack de Iconos" html-for="icon-pack">
               <select v-model="selectedIconPack" id="icon-pack"
-                class="py-2.5 px-3 background rounded-corner text-primary text-sm cursor-pointer transition-all duration-200 appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_24_24%27_fill=%27none%27_stroke=%27white%27_stroke-width=%272%27_stroke-linecap=%27round%27_stroke-linejoin=%27round%27%3e%3cpolyline_points=%276_9_12_15_18_9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[right_8px_center] bg-[length:20px] hover:border-[var(--primary-color,#0084ff)] hover:bg-[var(--surface-2,rgba(255,255,255,0.08))] focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))] focus:shadow-[0_0_0_3px_rgba(0,132,255,0.1)]">
+                class="py-2.5 px-3 bg-ui-bg/80 rounded-corner text-primary text-sm cursor-pointer transition-all duration-200 appearance-none pr-9 bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg_xmlns=%27http://www.w3.org/2000/svg%27_viewBox=%270_0_24_24%27_fill=%27none%27_stroke=%27white%27_stroke-width=%272%27_stroke-linecap=%27round%27_stroke-linejoin=%27round%27%3e%3cpolyline_points=%276_9_12_15_18_9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[right_8px_center] bg-[length:20px] hover:border-[var(--primary-color,#0084ff)] hover:bg-[var(--surface-2,rgba(255,255,255,0.08))] focus:outline-none focus:border-[var(--primary-color,#0084ff)] focus:bg-[var(--surface-2,rgba(255,255,255,0.1))] focus:shadow-[0_0_0_3px_rgba(0,132,255,0.1)]">
                 <option v-for="pack in iconPacks" :key="pack" :value="pack"
-                  class="background text-primary py-2 my-1">
+                  class="bg-ui-bg/80 text-primary py-2 my-1">
                   {{ pack }}
                 </option>
               </select>

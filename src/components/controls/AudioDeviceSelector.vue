@@ -82,7 +82,7 @@ function getDeviceName(device: AudioDevice): string {
         class="flex items-center gap-2 p-2 rounded-corner cursor-pointer transition-colors" :class="[
           selectedDeviceId === device.id
             ? 'bg-primary text-tx-on-primary ring-1 ring-secondary'
-            : 'bg-background hover:bg-primary ',
+            : 'bg-bg-ui-bg/80 hover:bg-primary ',
         ]" @click="onDeviceChange(device.id)">
 
         <div

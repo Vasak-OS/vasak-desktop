@@ -27,7 +27,7 @@
     <!-- WiFi Toggle -->
     <div
       v-if="wifiAvailable"
-      class="flex items-center justify-between mb-4 p-3 rounded-corner border border-primary/70 background"
+      class="flex items-center justify-between mb-4 p-3 rounded-corner border border-primary/70 bg-ui-bg/80"
     >
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-full bg-primary/10">
@@ -58,7 +58,7 @@
 
     <div
       v-else
-      class="mb-4 p-3 rounded-corner border border-ui-border background flex items-center justify-center"
+      class="mb-4 p-3 rounded-corner border border-ui-border bg-ui-bg/80 flex items-center justify-center"
     >
       <span class="text-sm text-tx-muted"
         >Wireless hardware not cached or unavailable</span
@@ -94,7 +94,7 @@
 
     <div class="mt-6 pt-4 border-t border-primary/70">
       <div
-        class="flex items-center gap-3 p-3 background rounded-corner border border-primary/70"
+        class="flex items-center gap-3 p-3 bg-ui-bg/80 rounded-corner border border-primary/70"
       >
         <div class="p-2 rounded-full bg-primary/10">
           <svg

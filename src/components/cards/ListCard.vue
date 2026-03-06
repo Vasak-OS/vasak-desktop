@@ -23,7 +23,7 @@ const handleClick = () => {
 <template>
   <div
     :class="[
-      'flex items-center justify-between background p-3 rounded-vsk border border-vsk-primary/70 transition-colors duration-200',
+      'flex items-center justify-between bg-ui-bg/80 p-3 rounded-vsk border border-vsk-primary/70 transition-colors duration-200',
       {
         'hover:bg-vsk-primary/5 cursor-pointer': props.clickable,
       },

@@ -23,7 +23,7 @@ onMounted(async () => {
 <template>
   <button
     @click="openSearch"
-    class="p-2 rounded-corner background transition-all duration-500 h-17 w-17 group relative overflow-hidden hover:scale-105 active:scale-95 ring-2 ring-primary"
+    class="p-2 rounded-corner bg-ui-bg/80 transition-all duration-500 h-17 w-17 group relative overflow-hidden hover:scale-105 active:scale-95 ring-2 ring-primary"
     title="Open Global Search"
   >
     <!-- Overlay decorativo como ThemeToggle -->

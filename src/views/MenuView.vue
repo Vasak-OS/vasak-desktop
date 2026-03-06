@@ -126,7 +126,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-screen p-4 rounded-[calc(var(--border-radius)+16px)] background">
+  <div class="h-screen p-4 rounded-[calc(var(--border-radius)+16px)] bg-ui-bg/80">
     <div
       class="flex items-center justify-between animate-fade-in mb-4 header-section"
     >
@@ -166,13 +166,13 @@ onMounted(async () => {
         class="grid grid-cols-3 gap-4 animate-slide-up-plus h-[calc(100vh-88px)]"
       >
         <div
-          class="background rounded-corner p-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
+          class="bg-ui-bg/80 rounded-corner p-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
         >
           <MenuArea v-model:apps="appsOfCategory" />
         </div>
 
         <div
-          class="rounded-corner background p-4 space-y-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
+          class="rounded-corner bg-ui-bg/80 p-4 space-y-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
         >
           <WeatherWidget />
         </div>

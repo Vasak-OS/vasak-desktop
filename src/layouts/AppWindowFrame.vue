@@ -10,7 +10,7 @@ defineProps<{
 <template>
   <WindowFrame>
     <div
-      class="h-[calc(100vh-32px)] rounded-b-window background"
+      class="h-[calc(100vh-32px)] rounded-b-window bg-ui-bg/80"
       :class="containerClass"
     >
       <slot />

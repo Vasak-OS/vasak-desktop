@@ -13,7 +13,7 @@ withDefaults(defineProps<Props>(), {
 
 <template>
   <div
-    class="flex flex-col gap-4 p-4 background rounded-corner"
+    class="flex flex-col gap-4 p-4 bg-ui-bg/80 rounded-corner"
     :class="customClass"
   >
     <h3 class="text-base font-semibold m-0 text-primary">

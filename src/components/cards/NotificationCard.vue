@@ -1,6 +1,6 @@
 <template>
   <div
-    class="border border-transparent bg-[linear-gradient(135deg,rgba(255,255,255,0.5),rgba(255,255,255,0.3))] dark:bg-[linear-gradient(135deg,rgba(0,0,0,0.5),rgba(0,0,0,0.3))] backdrop-blur-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-[2px] hover:border-blue-500/30 group/nc flex items-start gap-3 p-3 background rounded-corner shadow-sm transition-all duration-200 hover:shadow-lg"
+    class="border border-transparent bg-[linear-gradient(135deg,rgba(255,255,255,0.5),rgba(255,255,255,0.3))] dark:bg-[linear-gradient(135deg,rgba(0,0,0,0.5),rgba(0,0,0,0.3))] backdrop-blur-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-[2px] hover:border-blue-500/30 group/nc flex items-start gap-3 p-3 bg-ui-bg/80 rounded-corner shadow-sm transition-all duration-200 hover:shadow-lg"
     :class="{
       'opacity-75 scale-95': notification.seen,
       'border-l-4 border-l-primary animate-notification-glow': !notification.seen,

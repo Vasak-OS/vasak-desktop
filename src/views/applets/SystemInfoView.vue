@@ -31,7 +31,7 @@
     >
       <!-- Sistema -->
       <div
-        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="bg-ui-bg/80 rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
       >
         <div class="flex items-center gap-3 py-4 px-5">
           <span class="text-2xl">💻</span>
@@ -81,7 +81,7 @@
 
       <!-- CPU -->
       <div
-        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="bg-ui-bg/80 rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
       >
         <div class="flex items-center gap-3 py-4 px-5">
           <span class="text-2xl">⚙️</span>
@@ -150,7 +150,7 @@
 
       <!-- Memoria -->
       <div
-        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="bg-ui-bg/80 rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
       >
         <div class="flex items-center gap-3 py-4 px-5">
           <span class="text-2xl">🧠</span>
@@ -214,7 +214,7 @@
 
       <!-- Swap -->
       <div
-        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="bg-ui-bg/80 rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
         v-if="systemInfo?.swap"
       >
         <div class="flex items-center gap-3 py-4 px-5">
@@ -277,7 +277,7 @@
 
       <!-- GPU -->
       <div
-        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="bg-ui-bg/80 rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
         v-if="systemInfo?.gpu"
       >
         <div class="flex items-center gap-3 py-4 px-5">
@@ -305,7 +305,7 @@
 
       <!-- Temperatura -->
       <div
-        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="bg-ui-bg/80 rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
         v-if="systemInfo?.temperature"
       >
         <div class="flex items-center gap-3 py-4 px-5">
@@ -358,7 +358,7 @@
 
       <!-- Discos -->
       <div
-        class="background rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+        class="bg-ui-bg/80 rounded-corner overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
         v-if="systemInfo?.disks?.length"
       >
         <div class="flex items-center gap-3 py-4 px-5">
@@ -413,7 +413,7 @@
     </div>
 
     <div
-      class="text-center p-6 background rounded-corner"
+      class="text-center p-6 bg-ui-bg/80 rounded-corner"
       v-if="!loading && !error"
     >
       <button

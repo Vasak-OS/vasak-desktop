@@ -19,7 +19,7 @@
             class="inline-flex items-center justify-center w-5 h-5 text-xs font-medium rounded-full transition-all duration-200"
             :class="{
               'bg-blue-500 text-white': group.has_unread,
-              'background text-ui-muted':
+              'bg-ui-bg/80 text-ui-muted':
                 !group.has_unread,
             }">
             {{ group.count }}
@@ -57,7 +57,7 @@
       leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden"
       enter-from-class="h-0 opacity-0" leave-to-class="h-0 opacity-0" @enter="onEnter" @leave="onLeave">
       <div v-show="isExpanded"
-        class="notifications-list background rounded-b-vsk border-l-4 border-blue-500/30">
+        class="notifications-list bg-ui-bg/80 rounded-b-vsk border-l-4 border-blue-500/30">
         <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           enter-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           leave-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"

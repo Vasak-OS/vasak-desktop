@@ -25,7 +25,7 @@
     <!-- Tooltip personalizado -->
     <div 
       v-if="showCustomTooltip && customTooltipText"
-      class="absolute top-1 left-1/2 transform -translate-x-1/2 text-xs font-semibold p-1 rounded-corner transition-all duration-300 pointer-events-none background"
+      class="absolute top-1 left-1/2 transform -translate-x-1/2 text-xs font-semibold p-1 rounded-corner transition-all duration-300 pointer-events-none bg-ui-bg/80"
       :class="[
         tooltipClass,
         {
