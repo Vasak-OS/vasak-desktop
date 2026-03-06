@@ -1,65 +1,48 @@
 <template>
   <div
-    class="bg-ui-bg/80 rounded-corner p-4 flex items-center gap-4 w-full transition-all duration-300 hover:bg-secondary/60 hover:scale-[1.02] group"
+    class="bg-ui-bg/80 rounded-corner border border-ui-border p-4 flex items-center gap-4 w-full transition-all duration-300 hover:bg-secondary hover:scale-[1.02] group"
     :class="{
       'opacity-0 translate-y-4': !isLoaded,
       'opacity-100 translate-y-0': isLoaded,
     }"
   >
     <div
-      class="relative w-16 h-16 transition-all duration-300 group-hover:scale-110"
+      class="relative w-16 h-16 rounded-full transition-all duration-300 group-hover:scale-110 "
     >
       <img
         :src="userInfo.avatar_data"
         :alt="userInfo.full_name"
-        class="w-full h-full rounded-full object-cover transition-all duration-300 group-hover:shadow-xl hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.1),_0_10px_10px_-5px_rgba(0,0,0,0.04),_0_0_0_4px_rgba(var(--ring-color),_0.3)]"
+        class="h-full w-full aspect-square object-cover transition-all duration-300 "
         :class="{
           'opacity-0 scale-90': !isLoaded,
           'opacity-100 scale-100': isLoaded,
         }"
-        :style="{
-          '--ring-color': getCurrentRingColor(),
-        }"
       />
-      <div
-        class="absolute inset-0 rounded-full bg-lineal-to-tr from-transparent to-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-      ></div>
+
     </div>
     <div class="flex flex-col flex-1 space-y-1">
       <h2
-        class="text-lg font-semibold transition-all duration-300 group-hover:text-secondary"
-        :class="{
-          'opacity-0 translate-x-4': !isLoaded,
-          'opacity-100 translate-x-0': isLoaded,
-        }"
+        class="text-lg font-semibold transition-all duration-300 group-hover:text-primary"
       >
         {{ userInfo.full_name }}
       </h2>
       <p
-        class="text-sm opacity-75 transition-all duration-500 group-hover:opacity-90"
-        :class="{
-          'opacity-0 translate-x-4': !isLoaded,
-          'opacity-75 translate-x-0': isLoaded,
-        }"
+        class="text-sm text-tx-muted transition-all duration-500 group-hover:opacity-90"
       >
         {{ userInfo.username }}
       </p>
     </div>
     <div
       class="text-right space-y-1 transition-all duration-700"
-      :class="{
-        'opacity-0 translate-x-4': !isLoaded,
-        'opacity-100 translate-x-0': isLoaded,
-      }"
     >
       <div
-        class="text-2xl font-medium transition-all duration-300 tabular-nums group-hover:text-status-success"
+        class="text-2xl font-medium transition-all duration-300 tabular-nums text-primary"
         :class="{ 'animate-pulse': isTimeUpdating }"
       >
         {{ currentTime }}
       </div>
       <div
-        class="text-sm opacity-75 transition-all duration-300 group-hover:opacity-90 capitalize"
+        class="text-sm text-tx-muted transition-all duration-300 capitalize"
       >
         {{ currentDate }}
       </div>
@@ -68,7 +51,6 @@
 </template>
 
 <script setup lang="ts">
-/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { logError } from '@/utils/logger';
