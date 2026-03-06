@@ -30,7 +30,7 @@ onMounted(async () => {
 	  :src="iconPath"
 	  :alt="weatherInfo ? weatherInfo[dayOrNight].description : 'Unknown weather condition'"
 	  :title="weatherInfo ? weatherInfo[dayOrNight].description : 'Unknown weather condition'"
-	  class="img-fluid weather-icon-img h-24"
+	  class="img-fluid h-16 w-16"
 	/>
   </transition>
 </template>

@@ -26,7 +26,7 @@ onMounted(loadUserInfo);
     <img
       :src="avatarSrc"
       :alt="userInfo.username"
-      class="w-10 h-10 rounded-full object-cover"
+      class="w-10 h-10 rounded-full object-cover border border-primary"
     />
     <div class="flex flex-col">
       <span class="text-sm font-bold text-primary">{{ userInfo.full_name }}</span>

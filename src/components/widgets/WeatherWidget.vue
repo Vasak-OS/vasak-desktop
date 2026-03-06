@@ -76,7 +76,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
+  <div class="flex flex-col gap-2">
     <template v-if="weather">
       <CurrentWeatherCard
         :current="weather.current"
@@ -87,7 +87,7 @@ onMounted(async () => {
         tag="div"
         move-class="transition-transform duration-300 ease-out" enter-active-class="transition-all duration-300 ease-out" leave-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0 scale-80 translate-y-[15px]" leave-to-class="opacity-0 scale-80 translate-y-[15px]"
         appear
-        class="flex flex-wrap gap-2 justify-around [&>div]:basis-[90px] [&>div]:grow [&>div]:text-center [&_.weather-icon]:w-[38px] [&_.weather-icon]:h-[38px] [&_.weather-icon]:drop-shadow-[0px_1px_2px_rgba(0,0,0,0.3)] [&_.temp-max]:text-base [&_.temp-max]:font-semibold [&_.temp-min]:text-base [&_.temp-min]:font-semibold"
+        class="flex flex-wrap gap-2 justify-around [&>div]:grow [&>div]:text-center [&_.weather-icon]:drop-shadow-[0px_1px_2px_rgba(0,0,0,0.3)] [&_.temp-max]:text-base [&_.temp-max]:font-semibold [&_.temp-min]:text-base [&_.temp-min]:font-semibold"
       >
         <DailyWeatherCard
           v-for="(_value, key) in weather.daily.time"

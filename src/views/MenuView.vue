@@ -126,15 +126,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-screen p-4 rounded-[calc(var(--border-radius)+16px)] bg-ui-bg/80">
+  <div class="h-screen p-4 rounded-corner bg-ui-bg/80 border border-ui-border">
     <div
-      class="flex items-center justify-between animate-fade-in mb-4 header-section"
+      class="flex items-center justify-between gap-4 animate-fade-in mb-4 header-section"
     >
       <UserMenuCard />
 
       <SearchMenuComponent v-model:filter="filter" class="search-component" />
 
-      <div class="flex items-center space-x-2">
+      <div class="flex items-center gap-2">
         <SessionButton
           v-for="(action, index) in [
             {
@@ -151,7 +151,7 @@ onMounted(async () => {
           :title="action.title"
           :img="action.img"
           @click="action.handler"
-          class="w-10 h-10 hover:bg-primary/30 rounded-corner p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3"
+          class="w-10 h-10 hover:bg-primary rounded-corner p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3"
         />
       </div>
     </div>
@@ -166,18 +166,18 @@ onMounted(async () => {
         class="grid grid-cols-3 gap-4 animate-slide-up-plus h-[calc(100vh-88px)]"
       >
         <div
-          class="bg-ui-bg/80 rounded-corner p-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
+          class="bg-ui-bg/80 border border-ui-border rounded-corner p-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
         >
           <MenuArea v-model:apps="appsOfCategory" />
         </div>
 
         <div
-          class="rounded-corner bg-ui-bg/80 p-4 space-y-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
+          class="rounded-corner bg-ui-bg/80 border border-ui-border p-4 space-y-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
         >
           <WeatherWidget />
         </div>
 
-        <div class="animate-[fade-in_0.5s_ease-out_0.2s_backwards]">
+        <div class="animate-[fade-in_0.5s_ease-out_0.2s_backwards] rounded-corner bg-ui-bg/80 border border-ui-border p-4">
           <transition-group
             tag="div"
             move-class="transition-transform duration-400 ease-out" enter-active-class="transition-all duration-400 ease-out" leave-active-class="transition-all duration-400 ease-out" enter-from-class="opacity-0 translate-y-[20px] scale-90" leave-to-class="opacity-0 translate-y-[20px] scale-90"
@@ -191,7 +191,7 @@ onMounted(async () => {
               :image="value.icon"
               :description="value.description"
               v-model:categorySelected="categorySelected"
-              class="transition-all duration-200 ease-out hover:-translate-y-1 hover:scale-[1.03] hover:shadow-[0_4px_15px_rgba(0,0,0,0.1)]"
+              class="transition-all duration-200 ease-out hover:-translate-y-1 hover:scale-[1.03] hover:bg-secondary"
             />
           </transition-group>
         </div>

@@ -39,7 +39,7 @@ onMounted(() => {
 
 <template>
   <button
-    class="flex flex-row w-full p-2 rounded-corner items-center transform hover:translate-x-1 hover:scale-110 hover:bg-primary/50 transition-transform"
+    class="flex flex-row w-full p-2 rounded-corner items-center transform hover:translate-x-1 hover:scale-110 hover:bg-primary hover:border hover:border-secondary transition-transform"
     @click="openApp(app.path)"
     :title="app.description"
   >
@@ -49,7 +49,7 @@ onMounted(() => {
       :title="app.name"
       class="img-fluid h-10"
     />
-    <div class="col-10 app-card-info ps-2">
+    <div class="col-10 app-card-info ps-2 text-left">
       {{ app.name }}
       <span class="text-muted" style="display: none">{{
         app.description
