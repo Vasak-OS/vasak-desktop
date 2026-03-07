@@ -12,7 +12,7 @@ import {
 	scanForDevices,
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
@@ -84,7 +84,7 @@ const scanDevices = async () => {
 // Lifecycle hooks
 onMounted(async () => {
 	defaultAdapter.value = await getDefaultAdapter();
-	syncIcon.value = await getIconSource('emblem-synchronizing');
+	syncIcon.value = await getSymbolSource('refreshstructure');
 	await refreshDevices();
 	await getBluetoothIcon();
 	unlistenBluetooth.value = await listen('bluetooth-change', handleBluetoothChange);
@@ -149,7 +149,7 @@ const disconnect = async (device: any) => {
         <div class="flex-1 overflow-y-auto">
           <div
             v-if="availableDevices.length === 0"
-            class="text-gray-500 text-sm px-1.5 text-center"
+            class="text-tx-muted text-sm px-1.5 text-center"
           >
             No hay dispositivos disponibles
           </div>
@@ -169,7 +169,7 @@ const disconnect = async (device: any) => {
         <div class="flex-1 overflow-y-auto">
           <div
             v-if="connectedDevices.length === 0"
-            class="text-gray-500 text-sm px-1.5 text-center"
+            class="text-tx-muted text-sm px-1.5 text-center"
           >
             Ningún dispositivo conectado
           </div>
