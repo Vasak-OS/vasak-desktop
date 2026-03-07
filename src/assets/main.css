@@ -196,9 +196,3 @@ body * {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
-
-/* Applet Styles */
-.applet {
-  @apply p-8;
-  border-radius: calc(var(--corner-radius) + 32px);
-}

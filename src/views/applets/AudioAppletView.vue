@@ -20,7 +20,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="applet bg-ui-bg/80 h-screen w-screen">
+  <div class="bg-ui-bg/80 h-screen w-screen border border-ui-border rounded-corner-window p-4">
     <SystemAudioArea />
   </div>
 </template>
