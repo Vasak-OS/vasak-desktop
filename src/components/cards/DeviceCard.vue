@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex items-center justify-between bg-ui-bg/80 rounded-vsk px-6 py-3 mb-4"
+    class="flex items-center justify-between bg-ui-bg/80 rounded-corner border border-ui-border px-6 py-3 mb-4"
     :class="[{ 'border-l-4 border-green-500': isConnected }, customClass]"
     @click="handleClick"
   >
@@ -10,13 +10,13 @@
         <div class="font-semibold truncate">
           {{ title }}
         </div>
-        <div v-if="subtitle" class="text-xs text-gray-400 truncate">
+        <div v-if="subtitle" class="text-xs text-tx-muted truncate">
           {{ subtitle }}
         </div>
-        <div v-if="metadata" class="text-xs text-gray-400 truncate">
+        <div v-if="metadata" class="text-xs text-tx-muted truncate">
           {{ metadata }}
         </div>
-        <div v-if="extraInfo && extraInfo.length > 0" class="text-xs text-gray-400 flex gap-2 mt-1">
+        <div v-if="extraInfo && extraInfo.length > 0" class="text-xs text-tx-muted flex gap-2 mt-1">
           <span v-for="(info, index) in extraInfo" :key="index">
             {{ info }}
           </span>
@@ -35,7 +35,7 @@
     <!-- Status indicator for connected state -->
     <div
       v-if="showStatusIndicator && isConnected"
-      class="w-2 h-2 rounded-full bg-green-500"
+      class="w-2 h-2 rounded-full bg-status-success"
     />
   </div>
 </template>
