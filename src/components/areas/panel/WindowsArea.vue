@@ -31,7 +31,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex items-center justify-center px-3 overflow-x-auto overflow-y-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border">
+  <div class="flex items-center justify-center px-3 overflow-x-auto overflow-y-hidden">
     <TransitionGroup 
       move-class="transition-transform duration-300 ease-in-out" enter-active-class="transition-all duration-300 ease-in-out" leave-active-class="transition-all duration-300 ease-in-out" enter-from-class="opacity-0 translate-y-[30px]" leave-to-class="opacity-0 translate-y-[30px]"
       tag="div"
