@@ -101,8 +101,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <nav class="flex justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden">
-    <div class="flex items-center gap-1 p-1 rounded-corner bg-ui-bg/80 border border-ui-border px-3">
+  <nav class="flex justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border px-3">
+    <div class="flex items-center gap-1">
       <img :src="menuIcon" alt="Menu" @click="openMenu" class="h-7 w-7 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out" />
 			<div class="w-1 h-7 bg-ui-bg/80"></div>
       <img
@@ -119,7 +119,7 @@ onUnmounted(() => {
       />
     </div>
     <WindowsArea />
-    <div class="flex content-center items-center p-1 rounded-corner bg-ui-bg/80 border border-ui-border px-3">
+    <div class="flex content-center items-center">
       <TrayBarArea />
       <PanelClockwidget />
       <div class="relative cursor-pointer" @click="openNotificationCenter">
@@ -129,7 +129,7 @@ onUnmounted(() => {
           class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
           :class="{ 'animate-bell-shake': hasNewNotifications }"
         />
-        <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary text-tx-on-primary rounded-full min-w-3 h-3 flex items-center justify-center text-[8px] font-semibold leading-none px-[2px]">
+        <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary text-tx-on-primary rounded-full min-w-3 h-3 flex items-center justify-center text-[8px] font-semibold leading-none px-0.5">
           {{ notifications.length > 99 ? "99+" : notifications.length }}
         </div>
       </div>
