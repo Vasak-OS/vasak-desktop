@@ -1,7 +1,5 @@
 
 <script lang="ts" setup>
-/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
