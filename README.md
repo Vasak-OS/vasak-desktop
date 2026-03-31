@@ -31,6 +31,29 @@ The vasak-desktop application requires both Node.js/JavaScript and Rust toolchai
   * X11 development libraries (for X11 support)
   * Wayland development libraries (for Wayland support)
 
+### Installation & Development
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/vasak-os/vasak-desktop.git
+   cd vasak-desktop
+   ```
+
+2. **Install dependencies**
+   ```bash
+   bun install
+   ```
+
+3. **Run in development mode**
+   ```bash
+   bun tauri dev
+   ```
+
+4. **Build for production**
+   ```bash
+   bun tauri build
+   ```
+
 ### Recommended IDE Setup
 
 - [VS Code](https://code.visualstudio.com/) 
@@ -61,6 +84,7 @@ Vasak Desktop follows a hybrid web-native architecture where Vue.js handles the 
 | Display Server | X11 + Wayland | Multi-protocol display server support |
 | GUI Toolkit | GTK 0.18 + GDK 0.18 | Native Linux widget integration |
 | IPC/DBus | zbus 4.x | D-Bus communication for system services |
-| Image Processing | image 0.25 | Icon and image handling |
-| Desktop Entries | freedesktop_entry_parser 1.3 | .desktop file parsing |
-| Async Runtime | Tokio 1.x | Asynchronous task execution |
+| Image Processing | image 0.25 | 
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
