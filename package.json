@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bunx --bun vite",
-    "build": "bunx --bun vue-tsc --noEmit && bunx --bun vite build",
+    "build": "vue-tsc --noEmit && bunx --bun vite build",
     "preview": "bunx --bun vite preview",
     "tauri": "tauri",
     "lint": "bunx --bun biome check .",
