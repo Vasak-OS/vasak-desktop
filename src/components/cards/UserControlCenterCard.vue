@@ -66,14 +66,6 @@ const currentDate = ref('');
 const isTimeUpdating = ref(false);
 const isLoaded = ref(false);
 
-const getCurrentRingColor = () => {
-	const hour = new Date().getHours();
-	if (hour >= 6 && hour < 12) return '250, 204, 21';
-	if (hour >= 12 && hour < 18) return '251, 146, 60';
-	if (hour >= 18 && hour < 22) return '168, 85, 247';
-	return '96, 165, 250';
-};
-
 const updateDateTime = () => {
 	isTimeUpdating.value = true;
 
