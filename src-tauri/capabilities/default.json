@@ -23,8 +23,12 @@
         {
           "name": "open",
           "cmd": "/usr/bin/xdg-open",
-          "args": true,
-          "sidecar": false
+          "args": true
+        },
+        {
+          "name": "vasak-file-manager",
+          "cmd": "/usr/bin/vasak-file-manager",
+          "args": true
         }
       ]
     },
