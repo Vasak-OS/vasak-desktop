@@ -2,6 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
+import { Command } from '@tauri-apps/plugin-shell';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import menuIcon from '@/assets/vectors/icon.svg';
@@ -10,7 +11,6 @@ import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import { getAllNotifications } from '@/services/notification.service';
 import {
-	openFileManagerWindow,
 	toggleConfigApp,
 	toggleControlCenter,
 	toggleMenu,
@@ -53,7 +53,8 @@ const openConfig = async () => {
 
 const openFileManager = async () => {
 	try {
-		await openFileManagerWindow({} as any);
+		const cmd = Command.create('vasak-file-manager', []);
+		await cmd.spawn();
 	} catch (error) {
 		logError('Error al abrir file manager:', error);
 	}
