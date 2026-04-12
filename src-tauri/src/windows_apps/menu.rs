@@ -1,13 +1,12 @@
 use gtk::prelude::*;
-use std::sync::Arc;
-use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
 pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
 
-    let menu_window = Arc::new(
+    let menu_window =
         WebviewWindowBuilder::new(&app, "menu", WebviewUrl::App("index.html#/menu".into()))
             .title("Vasak Menu")
             .decorations(false)
@@ -18,8 +17,14 @@ pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error
             .visible(true)
             .skip_taskbar(true)
             .always_on_top(true)
-            .build()?,
-    );
+            .build()?;
+
+    let menu_window_for_blur = menu_window.clone();
+    menu_window.on_window_event(move |event| {
+        if matches!(event, WindowEvent::Focused(false)) {
+            let _ = menu_window_for_blur.close();
+        }
+    });
 
     let complete_url = format!("{}/index.html#/menu", get_app_url());
     let url = Url::parse(&complete_url).expect("Failed to parse URL");

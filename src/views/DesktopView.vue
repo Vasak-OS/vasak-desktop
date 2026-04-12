@@ -12,7 +12,6 @@ import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from '
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import type { FileEntry } from '@/interfaces/file';
-import { openFileManagerWindow } from '@/services/window.service';
 import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
 
@@ -80,9 +79,10 @@ const loadDesktopFiles = async () => {
 // Manejar clicks en archivos y carpetas
 const handleFileClick = async (file: FileEntry) => {
 	if (file.isDirectory) {
-		// Abrir el file manager en la carpeta seleccionada
+		// Abrir el file manager externo en la carpeta seleccionada
 		try {
-			await openFileManagerWindow({ path: file.path } as any);
+			const cmd = Command.create('vasak-file-manager', [file.path]);
+			await cmd.spawn();
 		} catch (error) {
 			logError('Error al abrir file manager:', error);
 		}

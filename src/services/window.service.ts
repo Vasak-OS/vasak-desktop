@@ -28,10 +28,6 @@ export const toggleControlCenter = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('toggle_control_center', args);
 };
 
-export const openFileManagerWindow = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('open_file_manager_window', args);
-};
-
 export const openConfigurationWindow = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('open_configuration_window', args);
 };
