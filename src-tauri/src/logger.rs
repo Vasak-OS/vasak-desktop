@@ -128,6 +128,11 @@ impl VasakLogger {
     
     /// Registra un mensaje
     pub fn log(&mut self, level: LogLevel, source: LogSource, message: &str) {
+        // En producción se omiten solo los Debug.
+        if !self.is_dev_mode && matches!(level, LogLevel::Debug) {
+            return;
+        }
+
         let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
         let formatted_message = format!(
             "[{}] [{:>8}] [{:>4}] {}\n",

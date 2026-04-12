@@ -1,4 +1,5 @@
 use super::{emit_tray_update, TrayManager};
+use crate::logger::{log_error, log_info};
 use crate::structs::{TrayCategory, TrayItem, TrayStatus};
 use crate::tray::sni_item::SniItemProxy;
 use base64::{engine::general_purpose, Engine as _};
@@ -64,7 +65,7 @@ impl SniWatcher {
                             if let Ok(message) = msg {
                                 if let Ok(service_name) = message.body().deserialize::<&str>() {
                                     if let Err(e) = Self::register_item(&connection, &tray_manager, &app_handle, service_name).await {
-                                        eprintln!("[SNI] Error registrando item {}: {}", service_name, e);
+                                        log_error(&format!("[SNI] Error registrando item {}: {}", service_name, e));
                                     }
                                 }
                             }
@@ -95,7 +96,7 @@ impl SniWatcher {
         app_handle: &AppHandle,
         service_name: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        println!("[SNI] Registrando item: {}", service_name);
+        log_info(&format!("[SNI] Registrando item: {}", service_name));
 
         let (bus_name, object_path) = if service_name.contains('/') {
             let parts: Vec<&str> = service_name.splitn(2, '/').collect();
@@ -126,7 +127,7 @@ impl SniWatcher {
         app_handle: &AppHandle,
         service_name: &str,
     ) {
-        println!("[SNI] Desregistrando item: {}", service_name);
+        log_info(&format!("[SNI] Desregistrando item: {}", service_name));
 
         {
             let mut manager = tray_manager.write().await;
@@ -277,7 +278,7 @@ impl SniWatcher {
                 )
                 .await
                 {
-                    eprintln!("[SNI] Error registrando item existente {}: {}", name, e);
+                    log_error(&format!("[SNI] Error registrando item existente {}: {}", name, e));
                 }
             }
         }
