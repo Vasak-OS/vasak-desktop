@@ -128,8 +128,8 @@ impl VasakLogger {
     
     /// Registra un mensaje
     pub fn log(&mut self, level: LogLevel, source: LogSource, message: &str) {
-        // En producción solo se persisten warnings y errores.
-        if !self.is_dev_mode && matches!(level, LogLevel::Debug | LogLevel::Info) {
+        // En producción se omiten solo los Debug.
+        if !self.is_dev_mode && matches!(level, LogLevel::Debug) {
             return;
         }
 
