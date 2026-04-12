@@ -1,5 +1,5 @@
 use crate::structs::{Notification, NotificationUrgency};
-use crate::logger::{log_info, log_error, log_debug};
+use crate::logger::{log_debug, log_error, log_info, log_warning};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -64,7 +64,6 @@ async fn perform_emit_notifications() {
         log_debug(&format!("Emitiendo actualización de notificaciones ({} total)", notifications.len()));
         if let Err(e) = app_handle.emit("notifications-updated", &*notifications) {
             log_error(&format!("Error al emitir evento notifications-updated: {}", e));
-            eprintln!("Error emitting notifications-updated event: {}", e);
         }
     }
 }
@@ -281,16 +280,16 @@ pub async fn start_notification_server() -> Result<(), Box<dyn std::error::Error
     
     match reply {
         RequestNameReply::PrimaryOwner => {
-            println!("Acquired org.freedesktop.Notifications successfully.");
+            log_info("Acquired org.freedesktop.Notifications successfully.");
         },
         RequestNameReply::InQueue => {
-             println!("Queued for org.freedesktop.Notifications (another service is holding it).");
+             log_warning("Queued for org.freedesktop.Notifications (another service is holding it).");
         },
         RequestNameReply::Exists => {
-             println!("Failed to acquire org.freedesktop.Notifications: Name exists and replacement failed.");
+             log_error("Failed to acquire org.freedesktop.Notifications: Name exists and replacement failed.");
         },
         RequestNameReply::AlreadyOwner => {
-             println!("Already owner of org.freedesktop.Notifications.");
+             log_info("Already owner of org.freedesktop.Notifications.");
         },
     }
 
@@ -302,7 +301,7 @@ pub async fn start_notification_server() -> Result<(), Box<dyn std::error::Error
         *guard = Some(connection.clone());
     }
     
-    println!("Notification Server started");
+    log_info("Notification Server started");
     
     std::future::pending::<()>().await;
     
@@ -313,7 +312,7 @@ pub async fn start_notification_server() -> Result<(), Box<dyn std::error::Error
 pub async fn start_notification_monitor() -> Result<(), String> {
     tokio::spawn(async {
         if let Err(e) = start_notification_server().await {
-             eprintln!("Error starting Notification Server: {}", e);
+            log_error(&format!("Error starting Notification Server: {}", e));
         }
     });
     Ok(())
