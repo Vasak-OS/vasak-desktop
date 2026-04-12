@@ -53,6 +53,7 @@
         "files": {}
       },
       "deb": {
+        "desktopTemplate": "./vasak-desktop-shell.desktop.hbs",
         "depends": [
           "vasak-desktop-settings",
           "libcairo2",
