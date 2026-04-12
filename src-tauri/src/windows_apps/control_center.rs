@@ -1,6 +1,7 @@
 use gtk::prelude::*;
-use std::sync::Arc;
-use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+};
 
 use crate::app_url::get_app_url;
 use crate::monitor_manager::get_primary_monitor;
@@ -25,12 +26,11 @@ pub async fn create_control_center_window(
     let primary_monitor_size = primary_monitor.size();
     let app_height = (primary_monitor_size.height - 100).into();
 
-    let control_center_window = Arc::new(
-        WebviewWindowBuilder::new(
-            &app,
-            "control_center",
-            WebviewUrl::App("index.html#/control_center".into()),
-        )
+    let control_center_window = WebviewWindowBuilder::new(
+        &app,
+        "control_center",
+        WebviewUrl::App("index.html#/control_center".into()),
+    )
         .title("Vasak Control Center")
         .decorations(false)
         .transparent(true)
@@ -40,8 +40,14 @@ pub async fn create_control_center_window(
         .visible(true)
         .skip_taskbar(true)
         .always_on_top(true)
-        .build()?,
-    );
+        .build()?;
+
+    let control_center_window_for_blur = control_center_window.clone();
+    control_center_window.on_window_event(move |event| {
+        if matches!(event, WindowEvent::Focused(false)) {
+            let _ = control_center_window_for_blur.close();
+        }
+    });
 
     let complete_url = format!("{}/index.html#/control_center", get_app_url());
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
