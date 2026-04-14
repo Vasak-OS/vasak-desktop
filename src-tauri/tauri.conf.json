@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "vasak-desktop",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "identifier": "ar.net.vasak.vasak-desktop",
   "build": {
     "beforeDevCommand": "bun run dev",
