@@ -46,10 +46,6 @@ const routes = [
 						component: () => import('@/views/apps/configuration/ConfigBluetoothView.vue'),
 					},
 					{
-						path: 'style',
-						component: () => import('@/views/apps/configuration/ConfigStyleView.vue'),
-					},
-					{
 						path: 'desktop',
 						component: () => import('@/views/apps/configuration/ConfigDesktopView.vue'),
 					},
