@@ -14,7 +14,6 @@ mod search;
 mod search_window;
 mod session;
 mod shortcuts;
-mod system_config;
 mod tray;
 mod window_manager;
 
@@ -40,7 +39,6 @@ pub use search::{execute_search_result, global_search};
 pub use search_window::toggle_search;
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};
 pub use shortcuts::{add_custom_shortcut, check_shortcut_conflicts, delete_shortcut, execute_shortcut, get_shortcuts, update_shortcut, ShortcutsState};
-pub use system_config::{get_system_config, set_system_config, get_current_system_state, get_gtk_themes, get_cursor_themes, get_icon_packs};
 pub use tray::{get_tray_items, init_sni_watcher};
 pub use window_manager::{get_windows, toggle_window};
 
