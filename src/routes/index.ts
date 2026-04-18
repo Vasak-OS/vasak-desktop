@@ -35,12 +35,8 @@ const routes = [
 			{ path: 'search', component: () => import('@/views/apps/SearchView.vue') },
 			{
 				path: 'configuration',
-				redirect: '/apps/configuration/network',
+				redirect: '/apps/configuration/shortcuts',
 				children: [
-					{
-						path: 'network',
-						component: () => import('@/views/apps/configuration/ConfigNetworkView.vue'),
-					},
 					{
 						path: 'shortcuts',
 						component: () => import('@/views/apps/configuration/ConfigShortcutView.vue'),
