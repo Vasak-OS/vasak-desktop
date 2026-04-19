@@ -14,6 +14,14 @@ import {
 } from '@/services/network.service';
 import { logError } from '@/utils/logger';
 
+interface Props {
+	showProfileName?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	showProfileName: true,
+});
+
 let unlistenNetwork: Ref<(() => void) | null> = ref(null);
 let unlistenVpn: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
@@ -37,6 +45,11 @@ const vpnLabel = computed(() => {
 	return vpnStatus.value?.active_profile_name
 		? `VPN: ${vpnStatus.value.active_profile_name}`
 		: 'VPN conectada';
+});
+
+const activeVpnProfileName = computed(() => {
+	if (!vpnConnected.value) return '';
+	return vpnStatus.value?.active_profile_name || 'Perfil VPN activo';
 });
 
 const networkAlt = computed(() => {
@@ -86,25 +99,35 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <TrayIconButton
-    :icon="networkIconSrc"
-    :alt="networkAlt"
-    :tooltip="networkAlt"
-    :custom-class="{ 'relative': true }"
+  <div class="flex items-center gap-1">
+	<TrayIconButton
+	  :icon="networkIconSrc"
+	  :alt="networkAlt"
+	  :tooltip="networkAlt"
+	  :custom-class="{ 'relative': true }"
 		:icon-class="{ 'filter brightness-90': !networkState.is_connected, 'drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]': vpnConnected }"
-    @click="toggleNetworkApplet"
-  >
-    <div
+	  @click="toggleNetworkApplet"
+	>
+	  <div
 			class="absolute top-3 right-0.5 w-2.5 h-2.5 rounded-full transition-all duration-300 ring-1 ring-ui-bg"
 			:class="networkState.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-danger'"
-    ></div>
+	  ></div>
 
-	<div
-		v-if="vpnConnected"
-		class="absolute -top-0.5 -left-0.5 rounded-full bg-primary text-tx-on-primary text-[8px] leading-none px-1 py-0.5 font-bold border border-ui-bg"
-		title="VPN activa"
+		<div
+			v-if="vpnConnected"
+			class="absolute -top-0.5 -left-0.5 rounded-full bg-primary text-tx-on-primary text-[8px] leading-none px-1 py-0.5 font-bold border border-ui-bg"
+			title="VPN activa"
+		>
+			VPN
+		</div>
+	</TrayIconButton>
+
+	<span
+		v-if="props.showProfileName && activeVpnProfileName"
+		class="hidden lg:inline-block max-w-40 truncate text-xs font-medium text-tx-muted"
+		:title="`Perfil VPN activo: ${activeVpnProfileName}`"
 	>
-		VPN
-	</div>
-  </TrayIconButton>
+		{{ activeVpnProfileName }}
+	</span>
+  </div>
 </template>
