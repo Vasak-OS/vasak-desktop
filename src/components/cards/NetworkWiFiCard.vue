@@ -5,7 +5,7 @@ import {
 	connectToWifi,
 	type NetworkInfo,
 	type WiFiConnectionConfig,
-} from '@vasakgroup/plugin-network-manager';
+} from '@/services/network.service';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { nextTick, onMounted, type Ref, ref } from 'vue';
 import ActionButton from '../buttons/ActionButton.vue';

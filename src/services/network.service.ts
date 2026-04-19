@@ -38,6 +38,15 @@ export interface VpnStatus {
 	since_unix_ms?: number;
 }
 
+export interface NetworkStats {
+	download_speed: number;
+	upload_speed: number;
+	total_downloaded: number;
+	total_uploaded: number;
+	connection_duration: number;
+	interface: string;
+}
+
 export interface WiFiConnectionConfig {
 	ssid: string;
 	password?: string;
@@ -77,6 +86,10 @@ export const setWirelessEnabled = (enabled: boolean): Promise<boolean> => {
 
 export const getVpnStatus = (): Promise<VpnStatus> => {
 	return invoke<VpnStatus>('plugin:network-manager|get_vpn_status');
+};
+
+export const getNetworkStats = (): Promise<NetworkStats> => {
+	return invoke<NetworkStats>('plugin:network-manager|get_network_stats');
 };
 
 export const toggleNetworkApplet = async () => {
