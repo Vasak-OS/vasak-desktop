@@ -19,11 +19,3 @@ export const reboot = <T = any>(args?: any): Promise<T> => {
 export const suspend = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('suspend', args);
 };
-
-export const getSystemConfig = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_system_config', args);
-};
-
-export const setSystemConfig = <T = any>(args: any): Promise<T> => {
-	return invoke<T>('set_system_config', args);
-};

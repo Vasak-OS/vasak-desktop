@@ -11,7 +11,6 @@ import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import { getAllNotifications } from '@/services/notification.service';
 import {
-	toggleConfigApp,
 	toggleControlCenter,
 	toggleMenu,
 } from '@/services/window.service';
@@ -45,7 +44,8 @@ const openMenu = async () => {
 
 const openConfig = async () => {
 	try {
-		await toggleConfigApp();
+		const cmd = Command.create('vasak-settings', []);
+		await cmd.spawn();
 	} catch (error) {
 		logError('Error al abrir config:', error);
 	}

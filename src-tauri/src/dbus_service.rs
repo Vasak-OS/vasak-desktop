@@ -1,4 +1,4 @@
-use crate::commands::{toggle_config_app, toggle_control_center, toggle_menu, toggle_search};
+use crate::commands::{toggle_control_center, toggle_menu, toggle_search};
 use crate::constants::DBUS_SERVICE_NAME;
 use crate::logger::{log_info, log_error, log_warning, log_debug};
 use futures_util::TryStreamExt;
@@ -25,10 +25,6 @@ impl DesktopService {
             "OpenMenu" => {
                 log_info("D-Bus: Abriendo menú");
                 let _ = toggle_menu(self.app_handle.clone());
-            }
-            "OpenConfigApp" => {
-                log_info("D-Bus: Abriendo aplicación de configuración");
-                let _ = toggle_config_app(self.app_handle.clone());
             }
             "OpenControlCenter" => {
                 log_info("D-Bus: Abriendo centro de control");
