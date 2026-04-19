@@ -2,18 +2,20 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
-import {
-	getCurrentNetworkState,
-	type NetworkInfo,
-	toggleNetwork,
-	WiFiSecurityType,
-} from '@vasakgroup/plugin-network-manager';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import {
+	getCurrentNetworkState,
+	getVpnStatus,
+	type NetworkInfo,
+	type VpnStatus,
+} from '@/services/network.service';
 import { logError } from '@/utils/logger';
 import ToggleControl from '../forms/ToggleControl.vue';
+import { toggleNetworkApplet } from '@/services/window.service';
 
 let ulisten: Ref<(() => void) | null> = ref(null);
+let unlistenVpn: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 	name: 'Unknown',
 	ssid: 'Unknown',
@@ -22,28 +24,23 @@ const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 	ip_address: '0.0.0.0',
 	mac_address: '00:00:00:00:00:00',
 	signal_strength: 0,
-	security_type: WiFiSecurityType.NONE,
+	security_type: 'none',
 	is_connected: false,
 });
+const vpnStatus: Ref<VpnStatus | null> = ref(null);
 const networkIconSrc: Ref<string> = ref('');
-const isLoading: Ref<boolean> = ref(false);
+
+const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 
 const networkAlt = computed(() => {
-	return networkState.value.is_connected
+	const net = networkState.value.is_connected
 		? `Conectado a ${networkState.value.connection_type} ${networkState.value.ssid}`
 		: 'Desconectado';
+	const vpn = vpnConnected.value
+		? `VPN: ${vpnStatus.value?.active_profile_name || 'activa'}`
+		: 'VPN inactiva';
+	return `${net} · ${vpn}`;
 });
-
-const toggleCurrentNetwork = async (): Promise<void> => {
-	isLoading.value = true;
-	try {
-		await toggleNetwork(!networkState.value.is_connected);
-	} catch (error) {
-		logError('Error toggling network:', error);
-	} finally {
-		isLoading.value = false;
-	}
-};
 
 const getCurrentNetwork = async () => {
 	try {
@@ -57,17 +54,31 @@ const getCurrentNetwork = async () => {
 	}
 };
 
+const refreshVpnStatus = async () => {
+	try {
+		vpnStatus.value = await getVpnStatus();
+	} catch (error) {
+		vpnStatus.value = null;
+		logError('Error getting VPN status:', error);
+	}
+};
+
 onMounted(async () => {
 	await getCurrentNetwork();
+	await refreshVpnStatus();
 	ulisten.value = await listen<NetworkInfo>('network-changed', async (event) => {
 		networkState.value = event.payload;
 		networkIconSrc.value = await getIconSource(event.payload.icon);
 	});
+	unlistenVpn.value = await listen('vpn-changed', refreshVpnStatus);
 });
 
 onUnmounted(() => {
 	if (ulisten.value !== null) {
 		ulisten.value();
+	}
+	if (unlistenVpn.value !== null) {
+		unlistenVpn.value();
 	}
 });
 </script>
@@ -99,12 +110,12 @@ onUnmounted(() => {
 			:alt="networkAlt"
 			:tooltip="networkAlt"
 			:is-active="networkState.is_connected"
-			:is-loading="isLoading"
 			:custom-class="{
-				'ring-2 ring-status-success': networkState.is_connected,
+				'ring-2 ring-status-success': networkState.is_connected && !vpnConnected,
+				'ring-2 ring-primary': vpnConnected,
 				'ring-2 ring-status-error': !networkState.is_connected,
 			}"
-			@click="toggleCurrentNetwork"
+			@click="toggleNetworkApplet"
 		/>
 	</div>
 </template>

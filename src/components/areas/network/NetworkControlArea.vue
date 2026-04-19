@@ -2,11 +2,11 @@
   <div class="flex flex-col h-full p-2">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold text-vsk-text">Network Settings</h2>
+      <h2 class="text-xl font-semibold text-vsk-text">Redes</h2>
       <button
         v-if="!hideX"
         @click="closeApplet"
-        class="p-2 rounded-corner hover:bg-primary/10 transition-colors"
+        class="p-2 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors"
       >
         <svg
           class="w-5 h-5"
@@ -27,7 +27,7 @@
     <!-- WiFi Toggle -->
     <div
       v-if="wifiAvailable"
-      class="flex items-center justify-between mb-4 p-3 rounded-corner border border-primary/70 bg-ui-bg/80"
+      class="flex items-center justify-between mb-4 p-3 rounded-corner border border-ui-border bg-ui-surface/45"
     >
       <div class="flex items-center gap-3">
         <div class="p-2 rounded-full bg-primary/10">
@@ -46,7 +46,7 @@
           </svg>
         </div>
         <div>
-          <h3 class="font-medium text-vsk-text">WiFi</h3>
+          <h3 class="font-medium text-vsk-text">Wi-Fi</h3>
           <p class="text-sm text-vsk-text/70">{{ wifiStatus }}</p>
         </div>
       </div>
@@ -58,16 +58,16 @@
 
     <div
       v-else
-      class="mb-4 p-3 rounded-corner border border-ui-border bg-ui-bg/80 flex items-center justify-center"
+      class="mb-4 p-3 rounded-corner border border-ui-border bg-ui-surface/45 flex items-center justify-center"
     >
       <span class="text-sm text-tx-muted"
-        >Wireless hardware not cached or unavailable</span
+        >Wi-Fi no disponible en este dispositivo</span
       >
     </div>
 
     <div v-if="wifiAvailable && wifiEnabled" class="flex-1 overflow-hidden">
       <h3 class="text-sm font-medium text-vsk-text/80 mb-3">
-        Available Networks
+        Redes disponibles
       </h3>
 
       <div v-if="loading" class="flex items-center justify-center py-8">
@@ -86,15 +86,28 @@
 
       <button
         @click="refreshNetworks"
-        class="w-full mt-4 p-2 rounded-corner border border-primary/70 hover:bg-primary/5 transition-colors text-sm text-vsk-text"
+        class="w-full mt-4 p-2 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors text-sm text-vsk-text"
       >
-        Refresh Networks
+        Actualizar redes
       </button>
     </div>
 
+	<div class="mt-4">
+		<div class="flex items-center gap-3 p-3 rounded-corner border border-ui-border bg-ui-surface/45">
+			<div
+				class="w-2.5 h-2.5 rounded-full"
+				:class="vpnConnected ? 'bg-status-success animate-pulse' : 'bg-status-danger'"
+			></div>
+			<div class="flex-1 min-w-0">
+				<h3 class="font-medium text-vsk-text">VPN</h3>
+				<p class="text-sm text-vsk-text/70 truncate">{{ vpnLabel }}</p>
+			</div>
+		</div>
+	</div>
+
     <div class="mt-6 pt-4 border-t border-primary/70">
       <div
-        class="flex items-center gap-3 p-3 bg-ui-bg/80 rounded-corner border border-primary/70"
+        class="flex items-center gap-3 p-3 bg-ui-surface/45 rounded-corner border border-ui-border"
       >
         <div class="p-2 rounded-full bg-primary/10">
           <svg
@@ -121,21 +134,19 @@
 </template>
 
 <script setup lang="ts">
-/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
-import {
-	getCurrentNetworkState,
-	listWifiNetworks,
-	type NetworkInfo,
-} from '@vasakgroup/plugin-network-manager';
-import { onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import {
+  getCurrentNetworkState,
+  getVpnStatus,
+  listWifiNetworks,
 	getWirelessEnabled,
 	isWirelessAvailable,
 	setWirelessEnabled,
+  type NetworkInfo,
+  type VpnStatus,
 } from '@/services/network.service';
 import { toggleNetworkApplet } from '@/services/window.service';
 import { logError } from '@/utils/logger';
@@ -144,9 +155,19 @@ const wifiEnabled: Ref<boolean> = ref(true);
 const wifiAvailable: Ref<boolean> = ref(true);
 const loading: Ref<boolean> = ref(false);
 const availableNetworks: Ref<NetworkInfo[]> = ref([]);
+const vpnStatus: Ref<VpnStatus | null> = ref(null);
 const wifiStatus: Ref<string> = ref('Checking...');
 const ethernetStatus: Ref<string> = ref('Checking...');
 let unlisten: (() => void) | null = null;
+let unlistenVpn: (() => void) | null = null;
+
+const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
+const vpnLabel = computed(() => {
+  if (!vpnConnected.value) return 'Sin conexión VPN activa';
+  return vpnStatus.value?.active_profile_name
+    ? `Conectada: ${vpnStatus.value.active_profile_name}`
+    : 'Conexión VPN activa';
+});
 
 defineProps({
 	hideX: {
@@ -158,18 +179,18 @@ defineProps({
 const checkWirelessStatus = async () => {
 	try {
 		const available = await isWirelessAvailable();
-		wifiAvailable.value = available as boolean;
+    wifiAvailable.value = available;
 
 		if (available) {
 			const enabled = await getWirelessEnabled();
-			wifiEnabled.value = enabled as boolean;
-			wifiStatus.value = enabled ? 'On' : 'Off';
+      wifiEnabled.value = enabled;
+      wifiStatus.value = enabled ? 'Activado' : 'Desactivado';
 
 			if (enabled) {
 				await refreshNetworks();
 			}
 		} else {
-			wifiStatus.value = 'Hardware unavailable';
+      wifiStatus.value = 'No disponible';
 			wifiEnabled.value = false;
 		}
 	} catch (e) {
@@ -182,12 +203,10 @@ const toggleWifi = async () => {
 
 	try {
 		const newState = !wifiEnabled.value;
-		await setWirelessEnabled({
-			enabled: newState,
-		});
+    await setWirelessEnabled(newState);
 
 		wifiEnabled.value = newState;
-		wifiStatus.value = newState ? 'On' : 'Off';
+    wifiStatus.value = newState ? 'Activado' : 'Desactivado';
 
 		if (wifiEnabled.value) {
 			await refreshNetworks();
@@ -199,24 +218,33 @@ const toggleWifi = async () => {
 	}
 };
 
+const refreshVpnStatus = async () => {
+  try {
+    vpnStatus.value = await getVpnStatus();
+  } catch (error) {
+    vpnStatus.value = null;
+    logError('Error fetching VPN status:', error);
+  }
+};
+
 const updateEthernetStatus = (state: NetworkInfo | null) => {
 	if (!state) {
-		ethernetStatus.value = 'Unknown';
+    ethernetStatus.value = 'Desconocido';
 		return;
 	}
 
 	const isEthernet = state.connection_type?.toLowerCase() === 'ethernet';
 	if (isEthernet && state.is_connected) {
-		ethernetStatus.value = 'Connected';
+    ethernetStatus.value = 'Conectado';
 		return;
 	}
 
 	if (isEthernet && !state.is_connected) {
-		ethernetStatus.value = 'Disconnected';
+    ethernetStatus.value = 'Desconectado';
 		return;
 	}
 
-	ethernetStatus.value = 'Not connected';
+  ethernetStatus.value = 'Sin enlace';
 };
 
 const refreshEthernetStatus = async () => {
@@ -225,7 +253,7 @@ const refreshEthernetStatus = async () => {
 		updateEthernetStatus(state);
 	} catch (error) {
 		logError('Error fetching ethernet status:', error);
-		ethernetStatus.value = 'Unknown';
+    ethernetStatus.value = 'Desconocido';
 	}
 };
 
@@ -252,13 +280,16 @@ const closeApplet = async () => {
 onMounted(async () => {
 	await checkWirelessStatus();
 	await refreshEthernetStatus();
+  await refreshVpnStatus();
 	unlisten = await listen<any>('network-changed', async () => {
 		await checkWirelessStatus();
 		await refreshEthernetStatus();
 	});
+  unlistenVpn = await listen('vpn-changed', refreshVpnStatus);
 });
 
 onUnmounted(() => {
 	if (unlisten) unlisten();
+  if (unlistenVpn) unlistenVpn();
 });
 </script>

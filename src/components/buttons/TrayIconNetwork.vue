@@ -2,18 +2,20 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
-import {
-	getCurrentNetworkState,
-	type NetworkInfo,
-	WiFiSecurityType,
-} from '@vasakgroup/plugin-network-manager';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
-import { toggleNetworkApplet } from '@/services/network.service';
+import {
+	getCurrentNetworkState,
+	getVpnStatus,
+	toggleNetworkApplet,
+	type NetworkInfo,
+	type VpnStatus,
+} from '@/services/network.service';
 import { logError } from '@/utils/logger';
 
-let ulisten: Ref<(() => void) | null> = ref(null);
+let unlistenNetwork: Ref<(() => void) | null> = ref(null);
+let unlistenVpn: Ref<(() => void) | null> = ref(null);
 const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 	name: 'Unknown',
 	ssid: 'Unknown',
@@ -22,15 +24,26 @@ const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 	ip_address: '0.0.0.0',
 	mac_address: '00:00:00:00:00:00',
 	signal_strength: 0,
-	security_type: WiFiSecurityType.NONE,
+	security_type: 'none',
 	is_connected: false,
 });
+const vpnStatus: Ref<VpnStatus | null> = ref(null);
 const networkIconSrc: Ref<string> = ref('');
 
+const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
+
+const vpnLabel = computed(() => {
+	if (!vpnConnected.value) return 'VPN desconectada';
+	return vpnStatus.value?.active_profile_name
+		? `VPN: ${vpnStatus.value.active_profile_name}`
+		: 'VPN conectada';
+});
+
 const networkAlt = computed(() => {
-	return networkState.value.is_connected
-		? `Conectado a ${networkState.value.connection_type} ${networkState.value.ssid}`
-		: 'Conectado a red desconocida';
+	const networkLabel = networkState.value.is_connected
+		? `Conectado: ${networkState.value.connection_type} ${networkState.value.ssid}`
+		: 'Red desconectada';
+	return `${networkLabel} · ${vpnLabel.value}`;
 });
 
 const getCurrentNetwork = async () => {
@@ -45,18 +58,30 @@ const getCurrentNetwork = async () => {
 	}
 };
 
+const refreshVpnStatus = async () => {
+	try {
+		vpnStatus.value = await getVpnStatus();
+	} catch (error) {
+		vpnStatus.value = null;
+		logError('Error getting VPN status:', error);
+	}
+};
+
 onMounted(async () => {
 	await getCurrentNetwork();
-	ulisten.value = await listen<NetworkInfo>('network-changed', async (event) => {
+	await refreshVpnStatus();
+
+	unlistenNetwork.value = await listen<NetworkInfo>('network-changed', async (event) => {
 		networkState.value = event.payload;
 		networkIconSrc.value = await getSymbolSource(event.payload.icon);
 	});
+
+	unlistenVpn.value = await listen('vpn-changed', refreshVpnStatus);
 });
 
 onUnmounted(() => {
-	if (ulisten.value !== null) {
-		ulisten.value();
-	}
+	unlistenNetwork.value?.();
+	unlistenVpn.value?.();
 });
 </script>
 
@@ -66,12 +91,20 @@ onUnmounted(() => {
     :alt="networkAlt"
     :tooltip="networkAlt"
     :custom-class="{ 'relative': true }"
-    :icon-class="{ 'filter brightness-75': !networkState.is_connected }"
+		:icon-class="{ 'filter brightness-90': !networkState.is_connected, 'drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]': vpnConnected }"
     @click="toggleNetworkApplet"
   >
     <div
-      class="absolute top-3 right-0.5 w-3 h-3 rounded-full transition-all duration-300"
-      :class="networkState.is_connected ? 'bg-green-400 animate-pulse' : 'bg-red-400'"
+			class="absolute top-3 right-0.5 w-2.5 h-2.5 rounded-full transition-all duration-300 ring-1 ring-ui-bg"
+			:class="networkState.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-danger'"
     ></div>
+
+	<div
+		v-if="vpnConnected"
+		class="absolute -top-0.5 -left-0.5 rounded-full bg-primary text-tx-on-primary text-[8px] leading-none px-1 py-0.5 font-bold border border-ui-bg"
+		title="VPN activa"
+	>
+		VPN
+	</div>
   </TrayIconButton>
 </template>
