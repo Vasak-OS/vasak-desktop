@@ -10,10 +10,7 @@ import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import { getAllNotifications } from '@/services/notification.service';
-import {
-	toggleControlCenter,
-	toggleMenu,
-} from '@/services/window.service';
+import { toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const notifyIcon: Ref<string> = ref('');

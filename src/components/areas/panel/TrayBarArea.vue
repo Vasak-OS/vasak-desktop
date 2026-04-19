@@ -10,14 +10,15 @@ import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
 import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import type { TrayItem, TrayMenu } from '@/interfaces/tray';
+import { batteryExists } from '@/services/core.service';
 import {
+	getTrayItems,
 	getTrayMenu,
+	initSniWatcher,
 	trayItemActivate,
 	trayItemSecondaryActivate,
 	trayMenuItemClick,
 } from '@/services/tray.service';
-import { batteryExists } from '@/services/core.service';
-import { getTrayItems, initSniWatcher } from '@/services/tray.service';
 import { logError, logWarning } from '@/utils/logger';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
@@ -148,10 +149,10 @@ onMounted(async () => {
 			existBattery.value = payload.has_battery;
 		}
 	});
-	try{
-		await initSniWatcher
-	} catch (error){
-		logError('[TryPanel] Init SNI Watcher', error)
+	try {
+		await initSniWatcher;
+	} catch (error) {
+		logError('[TryPanel] Init SNI Watcher', error);
 	}
 
 	document.addEventListener('click', hideContextMenu);
