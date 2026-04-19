@@ -18,6 +18,8 @@ const musicInfo: Ref<MusicInfo> = ref({
 	status: '',
 });
 
+const imgSrc: Ref<string> = ref('');
+
 // Watch for artUrl changes to update imgSrc
 watch(
 	() => musicInfo.value?.artUrl,
@@ -35,8 +37,6 @@ watch(
 async function onImgError(): Promise<void> {
 	imgSrc.value = await getIconSource('applications-multimedia');
 }
-
-const imgSrc: Ref<string> = ref('');
 const prevIcon: Ref<string> = ref('');
 const nextIcon: Ref<string> = ref('');
 const playIcon: Ref<string> = ref('');

@@ -52,22 +52,6 @@ export const getLastLogLines = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('get_last_log_lines', args);
 };
 
-export const getSystemInfo = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_system_info', args);
-};
-
 export const globalSearch = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('global_search', args);
-};
-
-export const getShortcuts = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_shortcuts', args);
-};
-
-export const checkShortcutConflicts = <T = any>(args: any): Promise<T> => {
-	return invoke<T>('check_shortcut_conflicts', args);
-};
-
-export const addCustomShortcut = <T = any>(args: any): Promise<T> => {
-	return invoke<T>('add_custom_shortcut', args);
 };
