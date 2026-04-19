@@ -52,38 +52,6 @@ export const getLastLogLines = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('get_last_log_lines', args);
 };
 
-export const getSystemInfo = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_system_info', args);
-};
-
 export const globalSearch = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('global_search', args);
-};
-
-export const getGtkThemes = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_gtk_themes', args);
-};
-
-export const getCursorThemes = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_cursor_themes', args);
-};
-
-export const getIconPacks = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_icon_packs', args);
-};
-
-export const getShortcuts = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_shortcuts', args);
-};
-
-export const checkShortcutConflicts = <T = any>(args: any): Promise<T> => {
-	return invoke<T>('check_shortcut_conflicts', args);
-};
-
-export const addCustomShortcut = <T = any>(args: any): Promise<T> => {
-	return invoke<T>('add_custom_shortcut', args);
-};
-
-export const getCurrentSystemState = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_current_system_state', args);
 };

@@ -33,36 +33,6 @@ const routes = [
 				component: () => import('@/views/apps/TerminalView.vue'),
 			},
 			{ path: 'search', component: () => import('@/views/apps/SearchView.vue') },
-			{
-				path: 'configuration',
-				redirect: '/apps/configuration/network',
-				children: [
-					{
-						path: 'network',
-						component: () => import('@/views/apps/configuration/ConfigNetworkView.vue'),
-					},
-					{
-						path: 'bluetooth',
-						component: () => import('@/views/apps/configuration/ConfigBluetoothView.vue'),
-					},
-					{
-						path: 'style',
-						component: () => import('@/views/apps/configuration/ConfigStyleView.vue'),
-					},
-					{
-						path: 'desktop',
-						component: () => import('@/views/apps/configuration/ConfigDesktopView.vue'),
-					},
-					{
-						path: 'audio',
-						component: () => import('@/views/apps/configuration/ConfigAudioView.vue'),
-					},
-					{
-						path: 'shortcuts',
-						component: () => import('@/views/apps/configuration/ConfigShortcutView.vue'),
-					},
-				],
-			},
 		],
 	},
 ];
