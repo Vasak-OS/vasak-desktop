@@ -61,10 +61,7 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
 <template>
   <ListCard
     :clickable="true"
-    :custom-class="[
-      'bg-ui-surface/45 border-ui-border rounded-corner px-3 py-2.5 hover:bg-ui-surface/65 transition-colors',
-      props.is_connected ? 'ring-1 ring-status-success/40' : ''
-    ]"
+    :custom-class="`bg-ui-surface/45 border-ui-border rounded-corner px-3 py-2.5 hover:bg-ui-surface/65 transition-colors ${props.is_connected ? 'ring-1 ring-status-success/40' : ''}`"
     @click="connectToNetwork()"
   >
     <div class="flex items-center gap-3 flex-1 min-w-0">
