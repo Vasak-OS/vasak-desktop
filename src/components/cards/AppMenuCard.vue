@@ -4,8 +4,8 @@ import { openApp } from '@/services/app.service';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
-import { logError } from '@/utils/logger';
 import { openApp as sysOpenApp } from '@/services/app.service';
+import { logError } from '@/utils/logger';
 
 const props = defineProps({
 	app: {
@@ -19,7 +19,7 @@ const appWindow = getCurrentWindow();
 
 const openApp = async (path: string) => {
 	try {
-		  await sysOpenApp({ path } as any);
+		await sysOpenApp({ path } as any);
 	} catch (error) {
 		logError('Error al abrir aplicación:', error);
 	} finally {

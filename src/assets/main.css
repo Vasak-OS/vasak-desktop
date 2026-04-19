@@ -134,7 +134,6 @@
   --color-status-warning: var(--use-status-warning);
 }
 
-
 ::view-transition-old(root) {
   animation-delay: 500ms;
 }

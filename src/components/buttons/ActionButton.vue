@@ -35,12 +35,9 @@ const emit = defineEmits<{
 }>();
 
 const variantClasses: Record<string, string> = {
-	primary:
-		'bg-primary text-tx-on-primary hover:bg-primary/90',
-	secondary:
-		'bg-secondary text-tx-on-primary hover:bg-secondary/80',
-	danger:
-		'bg-status-error text-tx-on-primary hover:bg-status-error/90',
+	primary: 'bg-primary text-tx-on-primary hover:bg-primary/90',
+	secondary: 'bg-secondary text-tx-on-primary hover:bg-secondary/80',
+	danger: 'bg-status-error text-tx-on-primary hover:bg-status-error/90',
 };
 
 const sizeClasses: Record<'sm' | 'md' | 'lg', string> = {
