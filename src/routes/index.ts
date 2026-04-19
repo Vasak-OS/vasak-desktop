@@ -33,16 +33,6 @@ const routes = [
 				component: () => import('@/views/apps/TerminalView.vue'),
 			},
 			{ path: 'search', component: () => import('@/views/apps/SearchView.vue') },
-			{
-				path: 'configuration',
-				redirect: '/apps/configuration/shortcuts',
-				children: [
-					{
-						path: 'shortcuts',
-						component: () => import('@/views/apps/configuration/ConfigShortcutView.vue'),
-					},
-				],
-			},
 		],
 	},
 ];
