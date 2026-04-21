@@ -28,6 +28,11 @@
           "name": "vasak-file-manager",
           "cmd": "/usr/bin/vasak-file-manager",
           "args": true
+        },
+        {
+          "name": "vasak-settings",
+          "cmd": "/usr/bin/vasak-settings",
+          "args": true
         }
       ]
     },
