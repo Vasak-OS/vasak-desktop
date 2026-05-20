@@ -105,6 +105,7 @@ pub fn run() {
             music_now_playing,
             battery_exists,
             battery_fetch_info,
+            get_battery_info,
             global_search,
             execute_search_result,
             toggle_search,

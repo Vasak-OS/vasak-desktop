@@ -25,7 +25,7 @@ export const toggleAudioMute = <T = any>(args?: any): Promise<T> => {
 };
 
 export const getBatteryInfo = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_battery_info', args);
+	return invoke<T>('battery_fetch_info', args);
 };
 
 export const batteryExists = <T = any>(args?: any): Promise<T> => {
