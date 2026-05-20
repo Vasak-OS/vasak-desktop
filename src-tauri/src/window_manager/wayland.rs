@@ -1,454 +1,208 @@
 use super::{WindowInfo, WindowManagerBackend};
-use std::collections::HashMap;
+use serde_json::Value;
+use std::env;
+use std::io::{self, BufRead, BufReader};
+use std::os::unix::net::UnixStream;
+use std::path::Path;
+use std::path::PathBuf;
+use std::process::Command;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
-use wayland_client::protocol::{wl_output, wl_registry, wl_seat};
-use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle};
-
-// Import wlr protocols
-use wayland_protocols_wlr::foreign_toplevel::v1::client::{
-    zwlr_foreign_toplevel_handle_v1::{self, ZwlrForeignToplevelHandleV1},
-    zwlr_foreign_toplevel_manager_v1::{self, ZwlrForeignToplevelManagerV1},
-};
-
-#[derive(Debug, Clone)]
-struct ToplevelInfo {
-    handle: ZwlrForeignToplevelHandleV1,
-    title: String,
-    app_id: String,
-    is_maximized: bool,
-    is_minimized: bool,
-    is_activated: bool,
-    is_fullscreen: bool,
-}
-
-impl ToplevelInfo {
-    fn new(handle: ZwlrForeignToplevelHandleV1) -> Self {
-        Self {
-            handle,
-            title: String::new(),
-            app_id: String::new(),
-            is_maximized: false,
-            is_minimized: false,
-            is_activated: false,
-            is_fullscreen: false,
-        }
-    }
-
-    fn to_window_info(&self, id: &str) -> WindowInfo {
-        WindowInfo {
-            id: id.to_string(),
-            title: self.title.clone(),
-            is_minimized: self.is_minimized,
-            icon: self.app_id.clone(),
-            demands_attention: None, // Wayland doesn't have direct equivalent in this protocol
-        }
-    }
-
-    fn should_show(&self) -> bool {
-        let skip_apps = [
-            "vpanel",
-            "tauri", 
-            "vasak-control-center",
-            "plank",
-            "docky",
-            "cairo-dock",
-            "polybar",
-            "waybar",
-            "tint2",
-            "plasmashell",
-            "krunner",
-            "systemsettings",
-            "kwin",
-            "plasma-desktop"
-        ];
-        
-        // Also skip empty app_ids if title is also empty (ghost windows)
-        if self.app_id.is_empty() && self.title.is_empty() {
-             return false;
-        }
-
-        let app_id_lower = self.app_id.to_lowercase();
-        !skip_apps.iter().any(|app| app_id_lower.contains(app))
-    }
-}
-
-struct AppState {
-    toplevels: HashMap<u32, ToplevelInfo>,
-    manager: Option<ZwlrForeignToplevelManagerV1>,
-    seat: Option<wl_seat::WlSeat>,
-    event_sender: Option<Sender<()>>,
-}
-
-impl AppState {
-    fn new() -> Self {
-        Self {
-            toplevels: HashMap::new(),
-            manager: None,
-            seat: None,
-            event_sender: None,
-        }
-    }
-}
+use std::thread;
 
 pub struct WaylandManager {
-    conn: Connection,
-    event_queue: EventQueue<AppState>,
-    state: Arc<Mutex<AppState>>,
+    instance_signature: String,
+    runtime_dir: PathBuf,
 }
 
 impl WaylandManager {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let conn = Connection::connect_to_env()
-            .map_err(|e| format!("Failed to connect to Wayland: {}", e))?;
-        
-        let event_queue = conn.new_event_queue::<AppState>();
-        let qh = event_queue.handle();
-        
-        let _registry = conn.display().get_registry(&qh, ());
-        
-        let state = Arc::new(Mutex::new(AppState::new()));
+        let runtime_dir = env::var_os("XDG_RUNTIME_DIR")
+            .map(PathBuf::from)
+            .ok_or_else(|| io::Error::other("XDG_RUNTIME_DIR is not set"))?;
 
-        Ok(WaylandManager {
-            conn,
-            event_queue,
-            state,
+        let instance_signature = env::var("HYPRLAND_INSTANCE_SIGNATURE")
+            .ok()
+            .filter(|v| !v.is_empty())
+            .or_else(|| Self::discover_instance_signature(&runtime_dir).ok())
+            .ok_or_else(|| io::Error::other("No se encontró una instancia de Hyprland activa"))?;
+
+        Ok(Self {
+            instance_signature,
+            runtime_dir,
         })
     }
 
-    pub fn setup_protocol_bindings(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // Dispatch pending events to set up protocol bindings
-        log::info!("Dispatching events to discover available protocols...");
-        
-        let mut guard = match self.state.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner()
-        };
+    fn discover_instance_signature(runtime_dir: &Path) -> io::Result<String> {
+        let hypr_dir = runtime_dir.join("hypr");
+        let entries = std::fs::read_dir(&hypr_dir)?;
 
-        self.event_queue.blocking_dispatch(&mut *guard)
-            .map_err(|e| format!("Failed to dispatch events: {}", e))?;
-        
-        // Check if manager is available
-        let state_guard = match self.state.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner()
-        };
-        if state_guard.manager.is_some() {
-            log::info!("Using wlr-foreign-toplevel-management protocol");
-            return Ok(());
+        for entry in entries {
+            let entry = entry?;
+            if !entry.file_type()?.is_dir() {
+                continue;
+            }
+
+            let instance_path = entry.path();
+            let has_socket = instance_path.join(".socket.sock").exists()
+                || instance_path.join(".socket2.sock").exists();
+
+            if has_socket {
+                if let Some(name) = instance_path.file_name().and_then(|n| n.to_str()) {
+                    return Ok(name.to_string());
+                }
+            }
         }
-        
-        drop(state_guard);
-        Err("wlr-foreign-toplevel-management protocol not available.".into())
+
+        Err(io::Error::other("No Hyprland socket found in XDG_RUNTIME_DIR/hypr"))
+    }
+
+    fn socket2_path(&self) -> PathBuf {
+        self.runtime_dir
+            .join("hypr")
+            .join(&self.instance_signature)
+            .join(".socket2.sock")
+    }
+
+    fn run_hyprctl(&self, args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
+        let output = Command::new("hyprctl")
+            .env("HYPRLAND_INSTANCE_SIGNATURE", &self.instance_signature)
+            .env("XDG_RUNTIME_DIR", &self.runtime_dir)
+            .args(args)
+            .output()
+            .map_err(|e| io::Error::other(format!("Failed to execute hyprctl {:?}: {}", args, e)))?;
+
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+        } else {
+            Err(format!(
+                "hyprctl {:?} failed: {}",
+                args,
+                String::from_utf8_lossy(&output.stderr)
+            )
+            .into())
+        }
+    }
+
+    fn normalized_window_selector(&self, win_id: &str) -> String {
+        if win_id.starts_with("address:") {
+            win_id.to_string()
+        } else {
+            format!("address:{}", win_id)
+        }
+    }
+
+    fn parse_clients(&self, payload: &str) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
+        let value: Value = serde_json::from_str(payload)?;
+        let clients = value
+            .as_array()
+            .ok_or_else(|| io::Error::other("Hyprland clients response was not an array"))?;
+
+        let mut windows = Vec::new();
+
+        for client in clients {
+            let address = client
+                .get("address")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+
+            if address.is_empty() {
+                continue;
+            }
+
+            let title = client
+                .get("title")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+
+            let class_name = client
+                .get("class")
+                .or_else(|| client.get("initialClass"))
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+
+            let hidden = client
+                .get("hidden")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+
+            let urgent = client
+                .get("urgent")
+                .and_then(Value::as_bool)
+                .or_else(|| client.get("attention").and_then(Value::as_bool));
+
+            windows.push(WindowInfo {
+                id: address,
+                title,
+                is_minimized: hidden,
+                icon: class_name,
+                demands_attention: urgent,
+            });
+        }
+
+        windows.sort_by(|left, right| left.id.cmp(&right.id));
+        Ok(windows)
     }
 }
 
 impl WindowManagerBackend for WaylandManager {
     fn get_window_list(&mut self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
-        // Safe lock for dispatch
-        {
-            let mut guard = match self.state.lock() {
-                Ok(g) => g,
-                Err(p) => {
-                    log::warn!("Mutex poisoned in get_window_list dispatch, recovering");
-                    p.into_inner()
-                }
-            };
-            
-            if let Err(e) = self.event_queue.blocking_dispatch(&mut *guard) {
-                 log::warn!("Failed to dispatch events during get_window_list: {}", e);
-            }
-        }
-
-        let state = match self.state.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner()
-        };
-        
-        let mut windows: Vec<WindowInfo> = Vec::new();
-        
-        for (id, toplevel) in &state.toplevels {
-            if toplevel.should_show() {
-                windows.push(toplevel.to_window_info(&id.to_string()));
-            }
-        }
-        
-        windows.sort_by(|a, b| a.id.cmp(&b.id));
-
-        Ok(windows)
+        let clients = self.run_hyprctl(&["-j", "clients"])?;
+        self.parse_clients(&clients)
     }
 
     fn setup_event_monitoring(&mut self, tx: Sender<()>) -> Result<(), Box<dyn std::error::Error>> {
-        match self.setup_protocol_bindings() {
-            Ok(_) => {
-                log::info!("Wayland window management initialized successfully");
+        let socket_path = self.socket2_path();
+
+        match UnixStream::connect(&socket_path) {
+            Ok(stream) => {
+                let _ = tx.send(());
+
+                thread::spawn(move || {
+                    let mut reader = BufReader::new(stream);
+                    let mut line = String::new();
+
+                    loop {
+                        line.clear();
+
+                        match reader.read_line(&mut line) {
+                            Ok(0) => break,
+                            Ok(_) => {
+                                if !line.trim().is_empty() {
+                                    let _ = tx.send(());
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!("Hyprland event socket closed: {}", e);
+                                break;
+                            }
+                        }
+                    }
+                });
             }
             Err(e) => {
-                log::error!("Failed to initialize Wayland protocols: {}", e);
-                return Err(e);
+                log::warn!(
+                    "Unable to connect to Hyprland event socket {}: {}",
+                    socket_path.display(),
+                    e
+                );
             }
         }
-        
-        {
-            let mut state = match self.state.lock() {
-                Ok(g) => g,
-                Err(p) => p.into_inner()
-            };
-            state.event_sender = Some(tx);
-        }
-
-        let state_clone = Arc::clone(&self.state);
-        
-        let conn_clone = self.conn.clone();
-        
-        std::thread::spawn(move || {
-            let event_queue = conn_clone.new_event_queue::<AppState>();
-            let qh = event_queue.handle();
-            let _registry = conn_clone.display().get_registry(&qh, ());
-            let mut event_queue = event_queue;
-
-            loop {
-                // Ensure we don't hold the lock longer than needed, and handle poison
-                {
-                    let _guard = match state_clone.lock() {
-                        Ok(g) => g,
-                        Err(p) => {
-                             log::warn!("Background thread mutex poisoned, recovering");
-                             p.into_inner()
-                        }
-                    };
-                } // drop guard immediately
-                
-                let mut guard = match state_clone.lock() {
-                    Ok(g) => g,
-                    Err(p) => p.into_inner()
-                };
-
-                match event_queue.dispatch_pending(&mut *guard) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        log::error!("Error dispatching pending: {}", e);
-                        break;
-                    }
-                }
-
-                let _ = conn_clone.flush();
-
-                match event_queue.prepare_read() {
-                    Some(guard) => {
-                        if let Err(e) = guard.read() {
-                                 log::error!("Error reading events: {}", e);
-                                 break;
-                        }
-                    },
-                    None => {
-                        continue;
-                    }
-                }
-            }
-        });
 
         Ok(())
     }
 
     fn toggle_window(&self, win_id: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let id: u32 = win_id.parse()
-            .map_err(|_| "Invalid window ID format")?;
-
-        let state = match self.state.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                log::warn!("Mutex poisoned during toggle_window, recovering state");
-                poisoned.into_inner()
-            }
-        };
-        
-        if let Some(toplevel) = state.toplevels.get(&id) {
-            if let Some(seat) = &state.seat {
-                log::debug!("Toggling window {}: active={}, minimized={}", id, toplevel.is_activated, toplevel.is_minimized);
-                if toplevel.is_minimized {
-                    toplevel.handle.unset_minimized();
-                    toplevel.handle.activate(seat);
-                } else if toplevel.is_activated {
-                    toplevel.handle.set_minimized();
-                } else {
-                    toplevel.handle.activate(seat);
-                }
-            } else {
-                if toplevel.is_minimized {
-                     toplevel.handle.unset_minimized();
-                } else {
-                     toplevel.handle.set_minimized();
-                }
-                log::warn!("No seat found, window activation might fail for window {}", id);
-            }
-            // Flush commands
-            let _ = self.conn.flush();
-            return Ok(());
-        }
-        
-        log::warn!("Window {} not found in known toplevels", id);
-        Err("Window not found".into())
+        let selector = self.normalized_window_selector(win_id);
+        self.run_hyprctl(&["dispatch", "focuswindow", &selector])?;
+        Ok(())
     }
 }
 
-// Implement Dispatch for the registry logic
-impl Dispatch<wl_registry::WlRegistry, ()> for AppState {
-    fn event(
-        state: &mut Self,
-        registry: &wl_registry::WlRegistry,
-        event: wl_registry::Event,
-        _: &(),
-        _: &Connection,
-        qh: &QueueHandle<AppState>,
-    ) {
-        if let wl_registry::Event::Global { name, interface, version } = event {
-            match interface.as_str() {
-                "zwlr_foreign_toplevel_manager_v1" => {
-                    if version >= 1 {
-                        let manager = registry.bind::<ZwlrForeignToplevelManagerV1, _, _>(
-                            name, 
-                            1.min(version), 
-                            qh, 
-                            ()
-                        );
-                        state.manager = Some(manager);
-                        log::info!("Found wlr-foreign-toplevel-management protocol");
-                    }
-                }
-                "wl_seat" => {
-                    if version >= 1 {
-                        let seat = registry.bind::<wl_seat::WlSeat, _, _>(
-                            name,
-                            1.min(version),
-                            qh,
-                            ()
-                        );
-                        state.seat = Some(seat);
-                    }
-                }
-                _ => {}
-            }
-        }
+impl Default for WaylandManager {
+    fn default() -> Self {
+        Self::new().expect("Failed to initialize WaylandManager")
     }
-}
-
-// Implement Dispatch for manager
-impl Dispatch<ZwlrForeignToplevelManagerV1, ()> for AppState {
-    fn event(
-        state: &mut Self,
-        _: &ZwlrForeignToplevelManagerV1,
-        event: zwlr_foreign_toplevel_manager_v1::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<AppState>,
-    ) {
-        match event {
-            zwlr_foreign_toplevel_manager_v1::Event::Toplevel { toplevel } => {
-                let id = toplevel.id().protocol_id();
-                let info = ToplevelInfo::new(toplevel);
-                state.toplevels.insert(id, info);
-            }
-            zwlr_foreign_toplevel_manager_v1::Event::Finished => {
-                log::info!("Foreign toplevel manager finished");
-            }
-            _ => {}
-        }
-    }
-}
-
-// Implement Dispatch for handles
-impl Dispatch<ZwlrForeignToplevelHandleV1, ()> for AppState {
-    fn event(
-        state: &mut Self,
-        handle: &ZwlrForeignToplevelHandleV1,
-        event: zwlr_foreign_toplevel_handle_v1::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<AppState>,
-    ) {
-        let id = handle.id().protocol_id();
-        let mut changed = false;
-        
-        if let Some(toplevel_info) = state.toplevels.get_mut(&id) {
-            match event {
-                zwlr_foreign_toplevel_handle_v1::Event::Title { title } => {
-                    toplevel_info.title = title;
-                    changed = true;
-                }
-                zwlr_foreign_toplevel_handle_v1::Event::AppId { app_id } => {
-                    toplevel_info.app_id = app_id;
-                    changed = true;
-                }
-                zwlr_foreign_toplevel_handle_v1::Event::State { state: window_state } => {
-                    // Parse the state array
-                    let states: Vec<u32> = window_state
-                        .chunks_exact(4)
-                        .map(|chunk| u32::from_ne_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
-                        .collect();
-
-                    // Old states
-                    let old_act = toplevel_info.is_activated;
-                    let old_min = toplevel_info.is_minimized;
-
-                    // Reset
-                    toplevel_info.is_maximized = false;
-                    toplevel_info.is_minimized = false;
-                    toplevel_info.is_activated = false;
-                    toplevel_info.is_fullscreen = false;
-
-                    // Set new
-                    for state_value in states {
-                        match state_value {
-                            0 => toplevel_info.is_maximized = true,
-                            1 => toplevel_info.is_minimized = true,
-                            2 => toplevel_info.is_activated = true,
-                            3 => toplevel_info.is_fullscreen = true,
-                            _ => {}
-                        }
-                    }
-                    
-                    if old_act != toplevel_info.is_activated || old_min != toplevel_info.is_minimized {
-                         changed = true;
-                    }
-                }
-                zwlr_foreign_toplevel_handle_v1::Event::Closed => {
-                    state.toplevels.remove(&id);
-                    changed = true;
-                }
-                zwlr_foreign_toplevel_handle_v1::Event::Done => {
-                }
-                _ => {}
-            }
-        }
-        
-        if changed {
-             if let Some(sender) = &state.event_sender {
-                 let _ = sender.send(());
-             }
-        }
-    }
-}
-
-// Seat stubs
-impl Dispatch<wl_seat::WlSeat, ()> for AppState {
-    fn event(
-        _: &mut Self,
-        _: &wl_seat::WlSeat,
-        _: wl_seat::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<AppState>,
-    ) {}
-}
-
-impl Dispatch<wl_output::WlOutput, ()> for AppState {
-    fn event(
-        _: &mut Self,
-        _: &wl_output::WlOutput,
-        _: wl_output::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<AppState>,
-    ) {}
 }
