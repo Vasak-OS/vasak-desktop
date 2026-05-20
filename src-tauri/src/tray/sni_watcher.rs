@@ -64,7 +64,18 @@ impl SniWatcher {
                         Some(msg) = stream.next() => {
                             if let Ok(message) = msg {
                                 if let Ok(service_name) = message.body().deserialize::<&str>() {
-                                    if let Err(e) = Self::register_item(&connection, &tray_manager, &app_handle, service_name).await {
+                                    let sender_bus = message
+                                        .header()
+                                        .sender()
+                                        .map(|s| s.as_str().to_string());
+
+                                    if let Err(e) = Self::register_item(
+                                        &connection,
+                                        &tray_manager,
+                                        &app_handle,
+                                        service_name,
+                                        sender_bus.as_deref(),
+                                    ).await {
                                         log_error(&format!("[SNI] Error registrando item {}: {}", service_name, e));
                                     }
                                 }
@@ -95,10 +106,14 @@ impl SniWatcher {
         tray_manager: &TrayManager,
         app_handle: &AppHandle,
         service_name: &str,
+        sender_bus: Option<&str>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         log_info(&format!("[SNI] Registrando item: {}", service_name));
 
-        let (bus_name, object_path) = if service_name.contains('/') {
+        let (bus_name, object_path) = if service_name.starts_with('/') {
+            let sender = sender_bus.ok_or("Registro SNI sin sender para object path")?;
+            (sender, service_name.to_string())
+        } else if service_name.contains('/') {
             let parts: Vec<&str> = service_name.splitn(2, '/').collect();
             (parts[0], format!("/{}", parts[1]))
         } else {
@@ -275,6 +290,7 @@ impl SniWatcher {
                     &self.tray_manager,
                     &self.app_handle,
                     &name,
+                    None,
                 )
                 .await
                 {
