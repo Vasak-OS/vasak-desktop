@@ -19,7 +19,7 @@ pub use audio::{
     get_audio_devices, get_audio_volume, set_audio_device, set_audio_volume, toggle_audio_applet,
     toggle_audio_mute,
 };
-pub use battery::{battery_exists, battery_fetch_info};
+pub use battery::{battery_exists, battery_fetch_info, get_battery_info};
 pub use bluetooth::toggle_bluetooth_applet;
 pub use brightness::{get_brightness_info, set_brightness_info};
 pub use control_center::toggle_control_center;
