@@ -81,6 +81,7 @@ pub fn run() {
             detect_display_server,
             get_menu_items,
             toggle_menu,
+            show_panel,
             get_audio_volume,
             set_audio_volume,
             toggle_audio_mute,

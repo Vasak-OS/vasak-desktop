@@ -1,4 +1,5 @@
 use gtk::prelude::*;
+use gtk_layer_shell::{Edge, Layer, LayerShell};
 use tauri::{App, Manager, PhysicalPosition, PhysicalSize, Position, Size, WebviewWindow};
 #[cfg(feature = "x11")]
 use x11rb::connection::Connection;
@@ -8,8 +9,89 @@ use x11rb::protocol::xproto::ConnectionExt;
 use x11rb::protocol::xproto::PropMode;
 #[cfg(feature = "x11")]
 use x11rb::wrapper::ConnectionExt as _;
-
+#[cfg(feature = "wayland")]
+use crate::window_manager::wayfire_ipc::get_wayfire_client;
+use crate::logger::log_info;
 use crate::monitor_manager::get_primary_monitor;
+
+fn is_wayfire() -> bool {
+    let desktop = std::env::var_os("XDG_CURRENT_DESKTOP")
+        .or_else(|| std::env::var_os("XDG_SESSION_DESKTOP"))
+        .unwrap_or_default();
+    desktop.to_string_lossy().to_lowercase().contains("wayfire")
+        || std::env::var_os("WAYFIRE_IPC_SOCKET").is_some()
+}
+
+#[cfg(feature = "wayland")]
+fn configure_panel_via_wayfire(title: &str, x: i32, y: i32, width: u32, height: u32) {
+    let title = title.to_string();
+    tauri::async_runtime::spawn(async move {
+        let client = match get_wayfire_client().await {
+            Some(c) => c,
+            None => {
+                log_info("[panel/wayfire] Wayfire IPC not available");
+                return;
+            }
+        };
+
+        let current_pid = std::process::id() as i64;
+        let title_lower = title.to_lowercase();
+
+        for attempt in 0..50 {
+            let views = match client.list_views_typed().await {
+                Ok(v) => v,
+                Err(_) => {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    continue;
+                }
+            };
+
+            let view = views.iter().find(|v| {
+                let same_pid = v.pid == Some(current_pid);
+                let title_match = v.title.as_deref()
+                    .map(|t| t.to_lowercase() == title_lower)
+                    .unwrap_or(false);
+                same_pid && title_match
+            }).cloned();
+
+            if let Some(view) = view {
+                log_info(&format!("[panel/wayfire] found panel view id={}", view.id));
+
+                let output_id = match client.list_outputs_typed().await {
+                    Ok(outputs) => outputs.iter()
+                        .find(|o| o.geometry.x == x as i64 && o.geometry.y == y as i64)
+                        .map(|o| o.id as u64),
+                    Err(_) => None,
+                };
+
+                let view_id = view.id as u64;
+
+                if let Err(e) = client.configure_view_coords(
+                    view_id, x as i64, y as i64,
+                    width as i64, height as i64,
+                    Some("top"), Some(38), output_id,
+                ).await {
+                    log_info(&format!("[panel/wayfire] configure_view_coords error: {e}, retrying basic"));
+                    let _ = client.configure_view_coords(
+                        view_id, x as i64, y as i64,
+                        width as i64, height as i64,
+                        None, None, output_id,
+                    ).await;
+                }
+
+                let _ = client.set_sticky(view_id, true).await;
+                let _ = client.set_always_on_top(view_id, true).await;
+
+                log_info("[panel/wayfire] panel configured via IPC");
+                return;
+            }
+
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        }
+
+        log_info("[panel/wayfire] panel view not found after 5s");
+    });
+}
 
 pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(app.handle()).ok_or("No primary monitor found")?;
@@ -40,47 +122,66 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         height: 38,
     })))?;
 
-    set_window_properties(&panel_window);
+    set_window_properties(
+        &panel_window,
+        "Vasak Panel".to_string(),
+        primary_monitor_position.x,
+        primary_monitor_position.y,
+        primary_monitor_size.width,
+    );
     Ok(())
 }
 
-fn set_window_properties(window: &WebviewWindow) {
+fn set_window_properties(window: &WebviewWindow, title: String, x: i32, y: i32, width: u32) {
     let gtk_window = window.gtk_window().expect("Failed to get GTK window");
 
     gtk_window.set_type_hint(gdk::WindowTypeHint::Dock);
-    gtk_window.set_skip_taskbar_hint(true);
-    gtk_window.set_skip_pager_hint(true);
-    gtk_window.set_keep_above(true);
-    gtk_window.stick();
+    gtk_window.set_decorated(false);
     gtk_window.set_accept_focus(false);
 
-    // Asegurar que la ventana esté realizada antes de establecer propiedades X11
-    gtk_window.realize();
+    if is_wayfire() {
+        #[cfg(feature = "x11")]
+        {
+            gtk_window.set_skip_taskbar_hint(true);
+            gtk_window.set_skip_pager_hint(true);
+            gtk_window.set_keep_above(true);
+            gtk_window.stick();
+        }
 
-    #[cfg(feature = "wayland")]
-    set_wayland_properties(&gtk_window);
-    #[cfg(feature = "x11")]
-    set_x11_properties(&gtk_window);
+        let _ = window.show();
+        gtk_window.show_all();
+        gtk_window.present();
 
-    gtk_window.show();
+        #[cfg(feature = "wayland")]
+        configure_panel_via_wayfire(&title, x, y, width, 38);
+    } else {
+        if gtk_layer_shell::is_supported() {
+            gtk_window.init_layer_shell();
+            gtk_window.set_namespace("vasak-panel");
+            gtk_window.set_layer(Layer::Top);
+            gtk_window.set_anchor(Edge::Top, true);
+            gtk_window.set_anchor(Edge::Left, true);
+            gtk_window.set_anchor(Edge::Right, true);
+            gtk_window.set_anchor(Edge::Bottom, false);
+            gtk_window.set_keyboard_interactivity(false);
+            gtk_window.set_exclusive_zone(38);
+        }
 
-    // Esperar un poco para dar margen a que el compositor procese la ventana del panel.
-    std::thread::sleep(std::time::Duration::from_millis(250));
-}
+        #[cfg(feature = "x11")]
+        {
+            gtk_window.set_skip_taskbar_hint(true);
+            gtk_window.set_skip_pager_hint(true);
+            gtk_window.set_keep_above(true);
+            gtk_window.stick();
+        }
 
-#[cfg(feature = "wayland")]
-fn set_wayland_properties(_gtk_window: &gtk::ApplicationWindow) {
-    // Nota: El soporte completo para layer-shell en Wayland puede requerir bindings FFI adicionales.
-    // Aquí solo se indica la intención.
-    //
-    // Si usas gtk-layer-shell, deberías llamar a las funciones apropiadas aquí.
-    // Ejemplo pseudocódigo:
-    // gtk_layer_shell::init_for_window(gtk_window);
-    // gtk_layer_shell::set_layer(gtk_window, gtk_layer_shell::Layer::Top);
-    // gtk_layer_shell::set_anchor(gtk_window, gtk_layer_shell::Edge::Top, true);
-    // gtk_layer_shell::set_exclusive_zone(gtk_window, 38);
-    //
-    // Si no tienes gtk-layer-shell, deberías implementarlo vía FFI o usar otra solución.
+        #[cfg(feature = "x11")]
+        set_x11_properties(&gtk_window);
+
+        let _ = window.show();
+        gtk_window.show_all();
+        gtk_window.present();
+    }
 }
 
 #[cfg(feature = "x11")]
