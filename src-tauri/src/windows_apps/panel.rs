@@ -9,8 +9,6 @@ use x11rb::protocol::xproto::ConnectionExt;
 use x11rb::protocol::xproto::PropMode;
 #[cfg(feature = "x11")]
 use x11rb::wrapper::ConnectionExt as _;
-#[cfg(feature = "wayland")]
-use crate::window_manager::wayfire_ipc::get_wayfire_client;
 use crate::logger::log_info;
 use crate::monitor_manager::get_primary_monitor;
 
@@ -24,73 +22,139 @@ fn is_wayfire() -> bool {
 
 #[cfg(feature = "wayland")]
 fn configure_panel_via_wayfire(title: &str, x: i32, y: i32, width: u32, height: u32) {
+    use crate::window_manager::wayfire_ipc::WayfireClient;
+
     let title = title.to_string();
-    tauri::async_runtime::spawn(async move {
-        let client = match get_wayfire_client().await {
-            Some(c) => c,
-            None => {
-                log_info("[panel/wayfire] Wayfire IPC not available");
+    let x = x;
+    let y = y;
+    let width = width;
+    let height = height;
+
+    std::thread::spawn(move || {
+        let rt = match tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        {
+            Ok(rt) => rt,
+            Err(e) => {
+                log_info(&format!("[panel/wayfire] failed to create runtime: {e}"));
                 return;
             }
         };
 
-        let current_pid = std::process::id() as i64;
-        let title_lower = title.to_lowercase();
+        rt.block_on(async move {
+            log_info(&format!(
+                "[panel/wayfire] connecting to Wayfire IPC for '{title}' at ({x},{y}) {width}x{height}"
+            ));
 
-        for attempt in 0..50 {
-            let views = match client.list_views_typed().await {
-                Ok(v) => v,
-                Err(_) => {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                    continue;
+            let client = match WayfireClient::connect().await {
+                Ok(c) => c,
+                Err(e) => {
+                    log_info(&format!("[panel/wayfire] connection failed: {e}"));
+                    return;
                 }
             };
 
-            let view = views.iter().find(|v| {
-                let same_pid = v.pid == Some(current_pid);
-                let title_match = v.title.as_deref()
-                    .map(|t| t.to_lowercase() == title_lower)
-                    .unwrap_or(false);
-                same_pid && title_match
-            }).cloned();
+            let current_pid = std::process::id() as i64;
+            let title_lower = title.to_lowercase();
 
-            if let Some(view) = view {
-                log_info(&format!("[panel/wayfire] found panel view id={}", view.id));
-
-                let output_id = match client.list_outputs_typed().await {
-                    Ok(outputs) => outputs.iter()
-                        .find(|o| o.geometry.x == x as i64 && o.geometry.y == y as i64)
-                        .map(|o| o.id as u64),
-                    Err(_) => None,
+            for attempt in 0..50 {
+                let views = match client.list_views_typed().await {
+                    Ok(v) => v,
+                    Err(_) => {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                        continue;
+                    }
                 };
 
-                let view_id = view.id as u64;
+                log_info(&format!(
+                    "[panel/wayfire] attempt {attempt}: {} views, pid={current_pid} title='{title_lower}'",
+                    views.len()
+                ));
 
-                if let Err(e) = client.configure_view_coords(
-                    view_id, x as i64, y as i64,
-                    width as i64, height as i64,
-                    Some("top"), Some(38), output_id,
-                ).await {
-                    log_info(&format!("[panel/wayfire] configure_view_coords error: {e}, retrying basic"));
-                    let _ = client.configure_view_coords(
+                let view = views.iter().find(|v| {
+                    v.pid == Some(current_pid)
+                        && v.title.as_deref()
+                            .map(|t| t.to_lowercase() == title_lower)
+                            .unwrap_or(false)
+                }).cloned();
+
+                if let Some(view) = view {
+                    log_info(&format!("[panel/wayfire] found view id={}", view.id));
+
+                    let output_id = match client.list_outputs_typed().await {
+                        Ok(outputs) => outputs.iter()
+                            .find(|o| o.geometry.x == x as i64 && o.geometry.y == y as i64)
+                            .map(|o| o.id as u64),
+                        Err(_) => None,
+                    };
+
+                    let view_id = view.id as u64;
+
+                    match client.configure_view_coords(
                         view_id, x as i64, y as i64,
                         width as i64, height as i64,
-                        None, None, output_id,
-                    ).await;
+                        Some("top"), None, output_id,
+                    ).await {
+                        Ok(_) => log_info("[panel/wayfire] configure_view_coords OK"),
+                        Err(e) => log_info(&format!("[panel/wayfire] configure_view_coords error: {e}")),
+                    }
+
+                    match client.set_sticky(view_id, true).await {
+                        Ok(_) => log_info("[panel/wayfire] set_sticky OK"),
+                        Err(e) => log_info(&format!("[panel/wayfire] set_sticky error: {e}")),
+                    }
+
+                    match client.set_always_on_top(view_id, true).await {
+                        Ok(_) => log_info("[panel/wayfire] set_always_on_top OK"),
+                        Err(e) => log_info(&format!("[panel/wayfire] set_always_on_top error: {e}")),
+                    }
+
+                    log_info("[panel/wayfire] panel configured successfully");
+                    return;
                 }
 
-                let _ = client.set_sticky(view_id, true).await;
-                let _ = client.set_always_on_top(view_id, true).await;
-
-                log_info("[panel/wayfire] panel configured via IPC");
-                return;
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             }
 
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        }
-
-        log_info("[panel/wayfire] panel view not found after 5s");
+            log_info("[panel/wayfire] panel view not found after 5s");
+        });
     });
+}
+
+fn create_layer_shell_spacer(width: u32) {
+    if !gtk_layer_shell::is_supported() {
+        log_info("[panel/spacer] layer-shell not supported, skipping");
+        return;
+    }
+
+    log_info("[panel/spacer] creating layer-shell spacer for exclusive zone");
+
+    let spacer = gtk::Window::new(gtk::WindowType::Toplevel);
+    spacer.set_title("vasak-panel-spacer");
+    spacer.set_decorated(false);
+    spacer.set_accept_focus(false);
+    spacer.set_app_paintable(true);
+
+    if let Some(visual) = gtk::prelude::WidgetExt::screen(&spacer)
+        .and_then(|s| s.rgba_visual())
+    {
+        spacer.set_visual(Some(&visual));
+    }
+
+    spacer.init_layer_shell();
+    spacer.set_namespace("vasak-panel-spacer");
+    spacer.set_layer(Layer::Top);
+    spacer.set_anchor(Edge::Top, true);
+    spacer.set_anchor(Edge::Left, true);
+    spacer.set_anchor(Edge::Right, true);
+    spacer.set_exclusive_zone(38);
+    spacer.set_keyboard_interactivity(false);
+
+    spacer.show_all();
+    spacer.present();
+
+    log_info("[panel/spacer] layer-shell spacer created");
 }
 
 pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
@@ -129,6 +193,9 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         primary_monitor_position.y,
         primary_monitor_size.width,
     );
+
+    create_layer_shell_spacer(primary_monitor_size.width);
+
     Ok(())
 }
 
@@ -139,48 +206,29 @@ fn set_window_properties(window: &WebviewWindow, title: String, x: i32, y: i32, 
     gtk_window.set_decorated(false);
     gtk_window.set_accept_focus(false);
 
-    if is_wayfire() {
-        #[cfg(feature = "x11")]
-        {
-            gtk_window.set_skip_taskbar_hint(true);
-            gtk_window.set_skip_pager_hint(true);
-            gtk_window.set_keep_above(true);
-            gtk_window.stick();
-        }
+    // X11 hints for XWayland (Wayfire) or pure X11
+    #[cfg(feature = "x11")]
+    {
+        gtk_window.set_skip_taskbar_hint(true);
+        gtk_window.set_skip_pager_hint(true);
+        gtk_window.set_keep_above(true);
+        gtk_window.stick();
+    }
 
-        let _ = window.show();
-        gtk_window.show_all();
-        gtk_window.present();
-
-        #[cfg(feature = "wayland")]
-        configure_panel_via_wayfire(&title, x, y, width, 38);
-    } else {
-        if gtk_layer_shell::is_supported() {
-            gtk_window.init_layer_shell();
-            gtk_window.set_namespace("vasak-panel");
-            gtk_window.set_layer(Layer::Top);
-            gtk_window.set_anchor(Edge::Top, true);
-            gtk_window.set_anchor(Edge::Left, true);
-            gtk_window.set_anchor(Edge::Right, true);
-            gtk_window.set_anchor(Edge::Bottom, false);
-            gtk_window.set_keyboard_interactivity(false);
-            gtk_window.set_exclusive_zone(38);
-        }
-
-        #[cfg(feature = "x11")]
-        {
-            gtk_window.set_skip_taskbar_hint(true);
-            gtk_window.set_skip_pager_hint(true);
-            gtk_window.set_keep_above(true);
-            gtk_window.stick();
-        }
-
-        #[cfg(feature = "x11")]
+    // Full EWMH for pure X11 (no layer-shell available)
+    #[cfg(feature = "x11")]
+    if !gtk_layer_shell::is_supported() {
         set_x11_properties(&gtk_window);
+    }
 
-        let _ = window.show();
-        gtk_window.show_all();
-        gtk_window.present();
+    let _ = window.show();
+    gtk_window.show_all();
+    gtk_window.present();
+
+    // On Wayfire, configure layer, sticky, always-on-top via IPC
+    #[cfg(feature = "wayland")]
+    if is_wayfire() {
+        configure_panel_via_wayfire(&title, x, y, width, 38);
     }
 }
 
@@ -192,7 +240,6 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
     if let Some(gdk_window) = gtk_window.window() {
         let display = gdk_window.display();
 
-        // Usar geometría completa del monitor para calcular correctamente STRUT(_PARTIAL)
         if let Some(monitor) = display.primary_monitor() {
             let geometry = monitor.geometry();
             let monitor_x = geometry.x().max(0) as u32;
@@ -203,13 +250,11 @@ fn set_x11_properties(gtk_window: &gtk::ApplicationWindow) {
 
                 let window_ptr = gdk_window.as_ptr();
 
-                // Asegurar que la ventana tenga backend nativo X11
                 ffi::gdk_window_ensure_native(window_ptr);
 
                 let top_start_x = monitor_x;
                 let top_end_x = monitor_x + monitor_width - 1;
 
-                // Escribir EWMH directamente vía X11 evita conversiones ambiguas en formato 32.
                 if let Err(err) = apply_x11_panel_ewmh(window_ptr, PANEL_HEIGHT, top_start_x, top_end_x) {
                     eprintln!("[panel/x11] Error aplicando propiedades EWMH: {}", err);
                 }
@@ -279,7 +324,6 @@ fn apply_x11_panel_ewmh(
     )
     .map_err(|e| e.to_string())?;
 
-    // Orden EWMH: left, right, top, bottom
     let atom_wm_strut = intern("_NET_WM_STRUT")?;
     conn.change_property32(
         PropMode::REPLACE,
@@ -290,10 +334,6 @@ fn apply_x11_panel_ewmh(
     )
     .map_err(|e| e.to_string())?;
 
-    // Orden EWMH:
-    // left, right, top, bottom,
-    // left_start_y, left_end_y, right_start_y, right_end_y,
-    // top_start_x, top_end_x, bottom_start_x, bottom_end_x
     let atom_wm_strut_partial = intern("_NET_WM_STRUT_PARTIAL")?;
     let strut_partial = [
         0,
