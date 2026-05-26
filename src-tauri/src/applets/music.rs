@@ -266,6 +266,14 @@ fn is_well_known_bus(bus: &str) -> bool {
     bus.starts_with("org.mpris.MediaPlayer2.")
 }
 
+fn is_valid_bus_name(bus: &str) -> bool {
+    if bus.starts_with(":") {
+        return bus.len() >= 4;
+    }
+
+    is_well_known_bus(bus)
+}
+
 // --- STATE HELPERS ---
 
 /// Get the currently active player name
@@ -542,7 +550,12 @@ pub fn fetch_now_playing() -> Result<serde_json::Value, String> {
     // Return what the Monitor thinks is active
     let active = get_active_player();
     if let Some(player) = active {
-         return fetch_player_info_blocking(&player);
+         if is_valid_bus_name(&player) {
+             return fetch_player_info_blocking(&player);
+         }
+
+         log::warn!("[music] Ignoring invalid active player bus: {}", player);
+         set_active_player(None);
     }
     Ok(json!({ "title": "Nothing playing", "status": "Stopped" }))
 }
@@ -575,6 +588,15 @@ pub fn mpris_previous(player: String) -> Result<String, String> {
 
 fn resolve_target(inc: String) -> String {
     if !inc.is_empty() {
+        if !is_valid_bus_name(&inc) {
+            if let Some(active) = get_active_player() {
+                if is_valid_bus_name(&active) {
+                    return active;
+                }
+            }
+            return String::new();
+        }
+
         // If caller passes an ephemeral bus (":1.x") but we already have a well-known active, prefer active.
         if inc.starts_with(":") {
             if let Some(active) = get_active_player() {

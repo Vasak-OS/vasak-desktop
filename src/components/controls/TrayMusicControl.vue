@@ -46,7 +46,7 @@ const isPlaying = computed(() => String(musicInfo.value?.status || '').toLowerCa
 
 async function sendCommand(cmd: string): Promise<void> {
 	const player = musicInfo.value?.player || '';
-	if (!player) {
+  if (!isValidBusName(player)) {
 		console.warn('[music] no player bus name available');
 		return;
 	}
@@ -55,6 +55,10 @@ async function sendCommand(cmd: string): Promise<void> {
 	} catch (e) {
 		logError(`[music] Error en comando ${cmd}:`, e);
 	}
+}
+
+function isValidBusName(name: string): boolean {
+  return name.startsWith(':') ? name.length >= 4 : name.startsWith('org.mpris.MediaPlayer2.');
 }
 
 function onPrev(): void {
@@ -100,11 +104,15 @@ onMounted(async () => {
 	nextIcon.value = await getSymbolSource('media-skip-forward');
 	playIcon.value = await getSymbolSource('media-playback-start');
 	pauseIcon.value = await getSymbolSource('media-playback-pause');
-	musicInfo.value = await musicNowPlaying();
-	listen('music-playing-update', (event) => {
-		const payload = (event.payload || {}) as Partial<MusicInfo>;
-		Object.assign(musicInfo.value, payload);
-	});
+  try {
+    musicInfo.value = await musicNowPlaying();
+  } catch (error) {
+    logError('[music] Error obteniendo estado inicial:', error);
+  }
+  await listen('music-playing-update', (event) => {
+    const payload = (event.payload || {}) as Partial<MusicInfo>;
+    Object.assign(musicInfo.value, payload);
+  });
 });
 </script>
 
