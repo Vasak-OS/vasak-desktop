@@ -5,6 +5,7 @@ mod brightness;
 mod control_center;
 mod logger;
 mod menu;
+mod panel;
 mod music;
 mod network;
 mod notifications;
@@ -25,6 +26,7 @@ pub use brightness::{get_brightness_info, set_brightness_info};
 pub use control_center::toggle_control_center;
 pub use logger::{log_from_frontend, get_log_file_path, read_log_file, get_last_log_lines};
 pub use menu::{get_menu_items, toggle_menu};
+pub use panel::show_panel;
 pub use music::{music_next_track, music_now_playing, music_play_pause, music_previous_track};
 pub use network::toggle_network_applet;
 pub use notifications::{

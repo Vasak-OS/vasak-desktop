@@ -160,6 +160,12 @@
   }
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 body * {
   @apply text-tx-main transition-colors duration-300;
 }

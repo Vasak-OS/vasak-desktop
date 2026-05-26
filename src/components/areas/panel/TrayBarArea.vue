@@ -150,7 +150,7 @@ onMounted(async () => {
 		}
 	});
 	try {
-		await initSniWatcher;
+		await initSniWatcher();
 	} catch (error) {
 		logError('[TryPanel] Init SNI Watcher', error);
 	}
