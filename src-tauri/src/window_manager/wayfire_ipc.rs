@@ -285,7 +285,7 @@ impl WayfireClient {
     }
 
     pub async fn set_minimized(&self, view_id: u64, state: bool) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wm-actions/set-minimized", json!({ "id": view_id, "state": state })).await
+        self.send_and_wait("wm-actions/set-minimized", json!({ "view_id": view_id, "state": state })).await
     }
 
     pub async fn configure_view_coords(
@@ -320,15 +320,15 @@ impl WayfireClient {
     }
 
     pub async fn set_sticky(&self, view_id: u64, state: bool) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wm-actions/set-sticky", json!({ "id": view_id, "state": state })).await
+        self.send_and_wait("wm-actions/set-sticky", json!({ "view_id": view_id, "state": state })).await
     }
 
     pub async fn set_always_on_top(&self, view_id: u64, state: bool) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wm-actions/set-always-on-top", json!({ "id": view_id, "state": state })).await
+        self.send_and_wait("wm-actions/set-always-on-top", json!({ "view_id": view_id, "state": state })).await
     }
 
     pub async fn send_to_back(&self, view_id: u64) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wm-actions/send-to-back", json!({ "id": view_id })).await
+        self.send_and_wait("wm-actions/send-to-back", json!({ "view_id": view_id })).await
     }
 }
 
