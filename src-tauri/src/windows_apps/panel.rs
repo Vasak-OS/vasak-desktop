@@ -191,7 +191,7 @@ fn set_window_properties(window: &WebviewWindow, title: String, x: i32, y: i32, 
         gtk_window.set_anchor(Edge::Left, true);
         gtk_window.set_anchor(Edge::Right, true);
         gtk_window.set_exclusive_zone(38);
-        gtk_window.set_keyboard_interactivity(true);
+        gtk_window.set_keyboard_interactivity(false);
         gtk_window.set_size_request(width as i32, 38);
     }
 
