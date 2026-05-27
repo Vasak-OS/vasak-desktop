@@ -12,17 +12,7 @@
   "app": {
     "enableGTKAppId": true,
     "windows": [
-      {
-        "title": "Vasak Panel",
-        "url": "index.html#/panel",
-        "label": "panel",
-        "decorations": false,
-        "visible": false,
-        "transparent": true,
-        "skipTaskbar": true,
-        "alwaysOnTop": true
-      },
-      {
+{
         "title": "Vasak Desktop",
         "url": "index.html#/desktop",
         "label": "desktop",

@@ -137,48 +137,16 @@ async fn apply_wayfire_geometry(
 
     let view_id = view.id as u64;
 
-    // Try rich configuration first (layer + exclusive zone), then fallback to plain geometry.
-    let rich_config = client
-        .configure_view_coords(
-            view_id,
-            x as i64,
-            y as i64,
-            width as i64,
-            height as i64,
-            Some(match mode {
-                WaylandLayerMode::Panel => "top",
-                WaylandLayerMode::Desktop => "background",
-            }),
-            Some(match mode {
-                WaylandLayerMode::Panel => 38,
-                WaylandLayerMode::Desktop => 0,
-            }),
-            output_id,
-        )
-        .await;
-
-    match &rich_config {
-        Ok(val) => log_info(&format!("[wayland_layer] configure-view (rich) response: {}", serde_json::to_string(val).unwrap_or_else(|_| "<non-serializable>".into()))),
-        Err(e) => log_warning(&format!("[wayland_layer] configure-view (rich) error: {}", e)),
-    }
-
-    if let Err(err) = rich_config {
-        log_warning(&format!("[wayland_layer] rich configure-view failed, retrying basic geometry: {}", err));
-        client
-            .configure_view_coords(
-                view_id,
-                x as i64,
-                y as i64,
-                width as i64,
-                height as i64,
-                None,
-                None,
-                output_id,
-            )
-            .await
-            .map_err(|error| error.to_string())?;
-
-            log_info("[wayland_layer] configure-view (basic) applied");
+    match client.configure_view_coords(
+        view_id,
+        x as i64,
+        y as i64,
+        width as i64,
+        height as i64,
+        output_id,
+    ).await {
+        Ok(val) => log_info(&format!("[wayland_layer] configure-view response: {}", serde_json::to_string(&val).unwrap_or_else(|_| "<non-serializable>".into()))),
+        Err(e) => log_warning(&format!("[wayland_layer] configure-view error: {}", e)),
     }
 
     // After configuration, fetch the view again and log its current properties for diagnosis.
@@ -219,43 +187,16 @@ async fn apply_wayfire_geometry(
                 attempt + 1
             ));
 
-            let reapply = client
-                .configure_view_coords(
-                    view_id,
-                    x as i64,
-                    y as i64,
-                    width as i64,
-                    height as i64,
-                    Some(match mode {
-                        WaylandLayerMode::Panel => "top",
-                        WaylandLayerMode::Desktop => "background",
-                    }),
-                    Some(match mode {
-                        WaylandLayerMode::Panel => 38,
-                        WaylandLayerMode::Desktop => 0,
-                    }),
-                    output_id,
-                )
-                .await;
-
-            if let Err(err) = reapply {
-                log_warning(&format!(
-                    "[wayland_layer] reapply rich configure failed for mapped view {}, trying basic: {}",
-                    view_id, err
-                ));
-
-                let _ = client
-                    .configure_view_coords(
-                        view_id,
-                        x as i64,
-                        y as i64,
-                        width as i64,
-                        height as i64,
-                        None,
-                        None,
-                        output_id,
-                    )
-                    .await;
+            match client.configure_view_coords(
+                view_id,
+                x as i64,
+                y as i64,
+                width as i64,
+                height as i64,
+                output_id,
+            ).await {
+                Ok(val) => log_info(&format!("[wayland_layer] reapply configure-view: {}", serde_json::to_string(&val).unwrap_or_else(|_| "<non-serializable>".into()))),
+                Err(e) => log_warning(&format!("[wayland_layer] reapply configure-view error: {}", e)),
             }
 
             break;

@@ -295,22 +295,12 @@ impl WayfireClient {
         y: i64,
         w: i64,
         h: i64,
-        layer: Option<&str>,
-        exclusive_zone: Option<i64>,
         output_id: Option<u64>,
     ) -> Result<Value, Box<dyn Error + Send + Sync>> {
         let mut data = json!({
             "id": view_id,
             "geometry": { "x": x, "y": y, "width": w, "height": h }
         });
-
-        if let Some(layer) = layer {
-            data["layer"] = json!(layer);
-        }
-
-        if let Some(exclusive_zone) = exclusive_zone {
-            data["exclusive_zone"] = json!(exclusive_zone);
-        }
 
         if let Some(output_id) = output_id {
             data["output_id"] = json!(output_id);
@@ -329,6 +319,36 @@ impl WayfireClient {
 
     pub async fn send_to_back(&self, view_id: u64) -> Result<Value, Box<dyn Error + Send + Sync>> {
         self.send_and_wait("wm-actions/send-to-back", json!({ "view_id": view_id })).await
+    }
+
+    pub async fn set_view_property(
+        &self,
+        view_id: u64,
+        property: &str,
+        value: Value,
+    ) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        self.send_and_wait("window-rules/set-view-property", json!({
+            "id": view_id,
+            "property": property,
+            "value": value,
+        })).await
+    }
+
+    pub async fn list_methods(&self) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
+        let response = self.send_and_wait("list-methods", Value::Null).await?;
+        if let Some(methods) = response.get("methods").and_then(|m| m.as_array()) {
+            Ok(methods.iter().filter_map(|m| m.as_str().map(String::from)).collect())
+        } else {
+            Err("unexpected response format".into())
+        }
+    }
+
+    pub async fn get_config_option(&self, option: &str) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        self.send_and_wait("wayfire/get-config-option", json!({ "option": option })).await
+    }
+
+    pub async fn set_config_options(&self, options: Value) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        self.send_and_wait("wayfire/set-config-options", json!({ "config": options })).await
     }
 }
 
