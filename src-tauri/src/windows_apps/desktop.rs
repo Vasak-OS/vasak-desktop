@@ -108,11 +108,11 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
 
 fn set_window_properties(
     window: &tauri::WebviewWindow,
-    title: String,
-    x: i32,
-    y: i32,
-    width: u32,
-    height: u32,
+    _title: String,
+    _x: i32,
+    _y: i32,
+    _width: u32,
+    _height: u32,
 ) {
     let gtk_window = window.gtk_window().expect("Failed to get GTK window");
 
