@@ -1,6 +1,8 @@
 use gtk::prelude::*;
 use gtk_layer_shell::{Edge, Layer, LayerShell};
-use tauri::{App, Manager, PhysicalPosition, PhysicalSize, Position, Size, WebviewWindow};
+use tauri::{
+    App, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+};
 #[cfg(feature = "x11")]
 use x11rb::connection::Connection;
 #[cfg(feature = "x11")]
@@ -94,7 +96,7 @@ fn configure_panel_via_wayfire(title: &str, x: i32, y: i32, width: u32, height: 
                     match client.configure_view_coords(
                         view_id, x as i64, y as i64,
                         width as i64, height as i64,
-                        Some("top"), None, output_id,
+                        output_id,
                     ).await {
                         Ok(_) => log_info("[panel/wayfire] configure_view_coords OK"),
                         Err(e) => log_info(&format!("[panel/wayfire] configure_view_coords error: {e}")),
@@ -110,6 +112,8 @@ fn configure_panel_via_wayfire(title: &str, x: i32, y: i32, width: u32, height: 
                         Err(e) => log_info(&format!("[panel/wayfire] set_always_on_top error: {e}")),
                     }
 
+                    // skip_taskbar via IPC no tiene efecto en esta versión de Wayfire
+                    // (issue #1642, marcado wontfix). Solo funciona en X11/XWayland.
                     log_info("[panel/wayfire] panel configured successfully");
                     return;
                 }
@@ -122,69 +126,27 @@ fn configure_panel_via_wayfire(title: &str, x: i32, y: i32, width: u32, height: 
     });
 }
 
-fn create_layer_shell_spacer(width: u32) {
-    if !gtk_layer_shell::is_supported() {
-        log_info("[panel/spacer] layer-shell not supported, skipping");
-        return;
-    }
-
-    log_info("[panel/spacer] creating layer-shell spacer for exclusive zone");
-
-    let spacer = gtk::Window::new(gtk::WindowType::Toplevel);
-    spacer.set_title("vasak-panel-spacer");
-    spacer.set_decorated(false);
-    spacer.set_accept_focus(false);
-    spacer.set_app_paintable(true);
-
-    if let Some(visual) = gtk::prelude::WidgetExt::screen(&spacer)
-        .and_then(|s| s.rgba_visual())
-    {
-        spacer.set_visual(Some(&visual));
-    }
-
-    spacer.init_layer_shell();
-    spacer.set_namespace("vasak-panel-spacer");
-    spacer.set_layer(Layer::Top);
-    spacer.set_anchor(Edge::Top, true);
-    spacer.set_anchor(Edge::Left, true);
-    spacer.set_anchor(Edge::Right, true);
-    spacer.set_exclusive_zone(38);
-    spacer.set_keyboard_interactivity(false);
-
-    spacer.show_all();
-    spacer.present();
-
-    log_info("[panel/spacer] layer-shell spacer created");
-}
-
 pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(app.handle()).ok_or("No primary monitor found")?;
     let primary_monitor_size = primary_monitor.size();
     let primary_monitor_position = primary_monitor.position();
 
-    let panel_window = app
-        .get_webview_window("panel")
-        .expect("panel window not found");
-
-    panel_window.set_position(Position::Physical(PhysicalPosition {
-        x: primary_monitor_position.x,
-        y: primary_monitor_position.y,
-    }))?;
-
-    panel_window.set_size(Size::Physical(PhysicalSize {
-        width: primary_monitor_size.width,
-        height: 38,
-    }))?;
-
-    panel_window.set_max_size(Some(Size::Physical(PhysicalSize {
-        width: primary_monitor_size.width,
-        height: 38,
-    })))?;
-
-    panel_window.set_min_size(Some(Size::Physical(PhysicalSize {
-        width: primary_monitor_size.width,
-        height: 38,
-    })))?;
+    let panel_window = WebviewWindowBuilder::new(
+        app,
+        "panel",
+        WebviewUrl::App("index.html#/panel".into()),
+    )
+    .title("Vasak Panel")
+    .decorations(false)
+    .transparent(true)
+    .skip_taskbar(true)
+    .always_on_top(true)
+    .inner_size(primary_monitor_size.width as f64, 38.0)
+    .max_inner_size(primary_monitor_size.width as f64, 38.0)
+    .min_inner_size(primary_monitor_size.width as f64, 38.0)
+    .position(primary_monitor_position.x as f64, primary_monitor_position.y as f64)
+    .visible(false)
+    .build()?;
 
     set_window_properties(
         &panel_window,
@@ -193,8 +155,6 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         primary_monitor_position.y,
         primary_monitor_size.width,
     );
-
-    create_layer_shell_spacer(primary_monitor_size.width);
 
     Ok(())
 }
@@ -205,14 +165,34 @@ fn set_window_properties(window: &WebviewWindow, title: String, x: i32, y: i32, 
     gtk_window.set_type_hint(gdk::WindowTypeHint::Dock);
     gtk_window.set_decorated(false);
     gtk_window.set_accept_focus(false);
+    gtk_window.set_skip_taskbar_hint(true);
+    gtk_window.set_skip_pager_hint(true);
+    gtk_window.set_app_paintable(true);
+
+    if let Some(visual) = gtk::prelude::WidgetExt::screen(&gtk_window)
+        .and_then(|s| s.rgba_visual())
+    {
+        gtk_window.set_visual(Some(&visual));
+    }
 
     // X11 hints for XWayland (Wayfire) or pure X11
     #[cfg(feature = "x11")]
     {
-        gtk_window.set_skip_taskbar_hint(true);
-        gtk_window.set_skip_pager_hint(true);
         gtk_window.set_keep_above(true);
         gtk_window.stick();
+    }
+
+    // Wlr-layer-shell: panel como layer-surface (excluye del switcher/Alt+Tab en Wayfire)
+    if gtk_layer_shell::is_supported() {
+        gtk_window.init_layer_shell();
+        gtk_window.set_namespace("vasak-panel");
+        gtk_window.set_layer(Layer::Top);
+        gtk_window.set_anchor(Edge::Top, true);
+        gtk_window.set_anchor(Edge::Left, true);
+        gtk_window.set_anchor(Edge::Right, true);
+        gtk_window.set_exclusive_zone(38);
+        gtk_window.set_keyboard_interactivity(true);
+        gtk_window.set_size_request(width as i32, 38);
     }
 
     // Full EWMH for pure X11 (no layer-shell available)
@@ -225,9 +205,9 @@ fn set_window_properties(window: &WebviewWindow, title: String, x: i32, y: i32, 
     gtk_window.show_all();
     gtk_window.present();
 
-    // On Wayfire, configure layer, sticky, always-on-top via IPC
+    // On Wayfire, configure sticky, always-on-top via IPC (fallback: no-op en layer-shell)
     #[cfg(feature = "wayland")]
-    if is_wayfire() {
+    if is_wayfire() && !gtk_layer_shell::is_supported() {
         configure_panel_via_wayfire(&title, x, y, width, 38);
     }
 }
