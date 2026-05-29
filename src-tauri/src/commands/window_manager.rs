@@ -8,7 +8,7 @@ pub async fn get_windows(state: tauri::State<'_, WMState>) -> Result<Vec<WindowI
     log_debug("Obteniendo lista de ventanas");
     state
         .window_manager
-        .lock()
+        .read()
         .map_err(|e| {
             log_error(&format!("Error al bloquear window_manager: {}", e));
             e.to_string()
@@ -25,7 +25,7 @@ pub async fn toggle_window(window_id: String, state: tauri::State<'_, WMState>) 
     log_info(&format!("Alternando ventana: {}", window_id));
     state
         .window_manager
-        .lock()
+        .read()
         .map_err(|e| {
             log_error(&format!("Error al bloquear window_manager: {}", e));
             e.to_string()

@@ -100,7 +100,7 @@ impl WaylandManager {
 }
 
 impl WindowManagerBackend for WaylandManager {
-    fn get_window_list(&mut self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
+    fn get_window_list(&self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
         let windows = Self::block_on_async(async {
             let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
             let views = client.list_views_typed().await?;
