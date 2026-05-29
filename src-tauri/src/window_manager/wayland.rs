@@ -1,6 +1,5 @@
 use super::{wayfire_ipc::{get_wayfire_client, View}, WindowInfo, WindowManagerBackend};
 use std::sync::mpsc::Sender;
-use std::io;
 
 pub struct WaylandManager {
 }
@@ -10,16 +9,16 @@ impl WaylandManager {
         Ok(Self {})
     }
 
-    fn run_wayfire_blocking<T, F>(operation: F) -> Result<T, Box<dyn std::error::Error>>
+    fn block_on_async<F, T>(f: F) -> Result<T, Box<dyn std::error::Error>>
     where
-        T: Send + 'static,
-        F: FnOnce() -> Result<T, Box<dyn std::error::Error + Send + Sync>> + Send + 'static,
+        F: std::future::Future<Output = Result<T, Box<dyn std::error::Error + Send + Sync>>>,
     {
-        let result = std::thread::spawn(move || operation())
-            .join()
-            .map_err(|_| io::Error::other("Wayfire worker thread panicked"))?;
-
-        result.map_err(|error| -> Box<dyn std::error::Error> { error })
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => tokio::task::block_in_place(|| handle.block_on(f))
+                .map_err(|e| -> Box<dyn std::error::Error> { e }),
+            Err(_) => tauri::async_runtime::block_on(f)
+                .map_err(|e| -> Box<dyn std::error::Error> { e }),
+        }
     }
 
     fn normalize_icon_name(raw: &str) -> String {
@@ -50,13 +49,13 @@ impl WaylandManager {
         view
             .type_field
             .as_deref()
-            .map(|value| {
+            .is_some_and(|value| {
+                let lower = value.to_lowercase();
                 matches!(
-                    value.to_lowercase().as_str(),
+                    lower.as_str(),
                     "panel" | "desktop" | "dock" | "layer-shell" | "layershell"
-                ) || value.to_lowercase().contains("layer-shell")
+                ) || lower.contains("layer-shell")
             })
-            .unwrap_or(false)
     }
 
     fn view_to_window_info(view: &View) -> Option<WindowInfo> {
@@ -102,13 +101,13 @@ impl WaylandManager {
 
 impl WindowManagerBackend for WaylandManager {
     fn get_window_list(&mut self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
-        let windows = Self::run_wayfire_blocking(|| tauri::async_runtime::block_on(async {
+        let windows = Self::block_on_async(async {
             let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
             let views = client.list_views_typed().await?;
             let mut windows: Vec<WindowInfo> = views.iter().filter_map(Self::view_to_window_info).collect();
             windows.sort_by(|left, right| left.id.cmp(&right.id));
             Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(windows)
-        }))?;
+        })?;
 
         Ok(windows)
     }
@@ -144,7 +143,7 @@ impl WindowManagerBackend for WaylandManager {
         let view_id = win_id.parse::<u64>().map_err(|error| format!("invalid Wayfire view id {win_id}: {error}"))?;
         let view_id_i64 = i64::try_from(view_id).map_err(|error| format!("Wayfire view id out of range {win_id}: {error}"))?;
 
-        Self::run_wayfire_blocking(move || tauri::async_runtime::block_on(async move {
+        Self::block_on_async(async move {
             let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
             let views = client.list_views_typed().await?;
             let view = views
@@ -160,7 +159,7 @@ impl WindowManagerBackend for WaylandManager {
             } else {
                 client.set_focus(view_id).await.map(|_| ())
             }
-        }))?;
+        })?;
 
         Ok(())
     }

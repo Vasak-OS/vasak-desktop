@@ -4,7 +4,7 @@ pub mod wayfire_ipc;
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::Sender;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct WindowInfo {
     pub id: String,
     pub title: String,

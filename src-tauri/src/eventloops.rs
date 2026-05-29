@@ -1,4 +1,5 @@
 use crate::window_manager;
+use crate::window_manager::WindowInfo;
 use crate::logger::{log_info, log_error};
 use window_manager::WindowManager;
 use std::sync::mpsc::channel;
@@ -30,14 +31,14 @@ pub fn setup_windows_monitoring(
     let polling_handle = app_handle.clone();
 
     std::thread::spawn(move || {
-        let mut last_snapshot: Option<String> = None;
+        let mut last_snapshot: Option<Vec<WindowInfo>> = None;
 
         loop {
-            let snapshot = {
+            let windows = {
                 let mut wm = polling_manager.lock().unwrap_or_else(|error| error.into_inner());
 
                 match wm.get_window_list() {
-                    Ok(windows) => serde_json::to_string(&windows).ok(),
+                    Ok(windows) => Some(windows),
                     Err(error) => {
                         log_error(&format!("Error obteniendo snapshot de ventanas: {}", error));
                         None
@@ -45,11 +46,9 @@ pub fn setup_windows_monitoring(
                 }
             };
 
-            if let Some(snapshot) = snapshot {
-                let changed = last_snapshot.as_deref() != Some(snapshot.as_str());
-
-                if changed {
-                    last_snapshot = Some(snapshot);
+            if let Some(windows) = windows {
+                if last_snapshot.as_ref() != Some(&windows) {
+                    last_snapshot = Some(windows);
                     let _ = polling_handle.emit("window-update", ());
                 }
             }
