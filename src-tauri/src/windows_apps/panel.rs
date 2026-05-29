@@ -30,27 +30,17 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     layer_win.set_decorated(false);
     layer_win.set_size_request(width, 38);
 
-    // Visual RGBA (si hay soporte)
-    if let Some(screen) = gtk::prelude::WidgetExt::screen(&layer_win) {
-        if let Some(rgba) = screen.rgba_visual() {
-            layer_win.set_visual(Some(&rgba));
-        }
-    }
-
-    // Configurar layer-shell: Top, exclusive_zone(38), keyboard interactivo
+    // Configurar layer-shell: Top, exclusive zone automático, sin teclado
     layer_win.init_layer_shell();
     layer_win.set_namespace("vasak-panel");
     layer_win.set_layer(Layer::Top);
     layer_win.set_anchor(Edge::Top, true);
     layer_win.set_anchor(Edge::Left, true);
     layer_win.set_anchor(Edge::Right, true);
-    layer_win.set_exclusive_zone(38);
+    layer_win.auto_exclusive_zone_enable();
     layer_win.set_keyboard_interactivity(false);
 
     // 3. Reparent: extraer el WebKitWebView de la ventana xdg y ponerlo en layer-shell.
-    // No usamos with_webview porque PlatformWebview no es Send.
-    // La jerarquía típica de Tauri/wry en Linux es:
-    //   GtkApplicationWindow > GtkBox(Vertical) > WebKitWebView
     if let Some(vbox) = gtk_window.child() {
         if let Some(container) = vbox.dynamic_cast_ref::<gtk::Container>() {
             let children = container.children();
@@ -62,14 +52,18 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // 4. Fondo transparente via CSS (si funciona con layer-shell, bien; si no, opaco)
-    if let Some(screen) = gtk::prelude::WidgetExt::screen(&gtk_window) {
+    // 4. Forzar fondo transparente en la ventana layer-shell.
+    if let Some(screen) = gtk::prelude::WidgetExt::screen(&layer_win) {
+        if let Some(rgba) = screen.rgba_visual() {
+            layer_win.set_visual(Some(&rgba));
+        }
         let css = gtk::CssProvider::new();
-        css.load_from_data(b"window { background: transparent; }").ok();
-        gtk::StyleContext::add_provider_for_screen(
-            &screen,
+        css.load_from_data(
+            b"window { background-color: rgba(0, 0, 0, 0); }"
+        ).ok();
+        layer_win.style_context().add_provider(
             &css,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION + 1,
         );
     }
     let _ = panel_window.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)));

@@ -2,8 +2,7 @@ use crate::app_url::get_app_url;
 use gtk::prelude::*;
 use gtk_layer_shell::{Edge, Layer, LayerShell};
 use tauri::{
-    async_runtime::spawn, App, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, Size,
-    Url, WebviewUrl, WebviewWindowBuilder,
+    async_runtime::spawn, App, Monitor, Url, WebviewUrl, WebviewWindowBuilder,
 };
 
 use crate::monitor_manager::{get_monitors, get_primary_monitor};
@@ -15,29 +14,22 @@ pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor_size = primary_monitor.size();
     let primary_monitor_position = primary_monitor.position();
 
-    let primary_desktop_window = app
-        .get_webview_window("desktop")
-        .expect("desktop window not found");
-
-    primary_desktop_window.set_position(Position::Physical(PhysicalPosition {
-        x: primary_monitor_position.x,
-        y: primary_monitor_position.y,
-    }))?;
-
-    primary_desktop_window.set_size(Size::Physical(PhysicalSize {
-        width: primary_monitor_size.width,
-        height: primary_monitor_size.height,
-    }))?;
-
-    primary_desktop_window.set_max_size(Some(Size::Physical(PhysicalSize {
-        width: primary_monitor_size.width,
-        height: primary_monitor_size.height,
-    })))?;
-
-    primary_desktop_window.set_min_size(Some(Size::Physical(PhysicalSize {
-        width: primary_monitor_size.width,
-        height: primary_monitor_size.height,
-    })))?;
+    let primary_desktop_window = WebviewWindowBuilder::new(
+        app,
+        "desktop",
+        WebviewUrl::App("index.html#/desktop".into()),
+    )
+    .title("Vasak Desktop")
+    .decorations(false)
+    .transparent(true)
+    .inner_size(primary_monitor_size.width as f64, primary_monitor_size.height as f64)
+    .max_inner_size(primary_monitor_size.width as f64, primary_monitor_size.height as f64)
+    .min_inner_size(primary_monitor_size.width as f64, primary_monitor_size.height as f64)
+    .position(primary_monitor_position.x as f64, primary_monitor_position.y as f64)
+    .visible(false)
+    .skip_taskbar(true)
+    .always_on_bottom(true)
+    .build()?;
 
     set_window_properties(
         &primary_desktop_window,

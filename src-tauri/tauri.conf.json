@@ -11,18 +11,7 @@
   },
   "app": {
     "enableGTKAppId": true,
-    "windows": [
-{
-        "title": "Vasak Desktop",
-        "url": "index.html#/desktop",
-        "label": "desktop",
-        "decorations": false,
-        "transparent": true,
-        "visible": false,
-        "skipTaskbar": true,
-        "alwaysOnBottom": true
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null,
       "assetProtocol": {
