@@ -6,7 +6,6 @@ use tokio::time::{sleep, Duration};
 #[derive(Clone, Copy, Debug)]
 pub enum WaylandLayerMode {
     Panel,
-    Desktop,
 }
 
 pub fn configure_wayland_layer(
@@ -208,16 +207,8 @@ async fn apply_wayfire_geometry(
         }
     }
 
-    match mode {
-        WaylandLayerMode::Panel => {
-            let _ = client.set_sticky(view_id, true).await;
-            let _ = client.set_always_on_top(view_id, true).await;
-        }
-        WaylandLayerMode::Desktop => {
-            let _ = client.set_sticky(view_id, true).await;
-            let _ = client.send_to_back(view_id).await;
-        }
-    }
+    let _ = client.set_sticky(view_id, true).await;
+    let _ = client.set_always_on_top(view_id, true).await;
 
     Ok(())
 }
