@@ -29,6 +29,23 @@ impl WaylandManager {
                 || title.starts_with("Vasak Desktop "))
     }
 
+    fn is_layer_shell_window(view: &View) -> bool {
+        if Self::is_shell_window(view) {
+            return true;
+        }
+
+        view
+            .type_field
+            .as_deref()
+            .map(|value| {
+                matches!(
+                    value.to_lowercase().as_str(),
+                    "panel" | "desktop" | "dock" | "layer-shell" | "layershell"
+                ) || value.to_lowercase().contains("layer-shell")
+            })
+            .unwrap_or(false)
+    }
+
     fn view_to_window_info(view: &View) -> Option<WindowInfo> {
         if view.mapped == Some(false) {
             return None;
@@ -38,7 +55,7 @@ impl WaylandManager {
             return None;
         }
 
-        if Self::is_shell_window(view) {
+        if Self::is_layer_shell_window(view) {
             return None;
         }
 
