@@ -1,5 +1,5 @@
 use std::sync::{Mutex, OnceLock};
-use tauri::{AppHandle, Monitor, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Monitor};
 use crate::logger::{log_info, log_debug, log_error};
 
 static AVAILABLE_MONITORS: OnceLock<Mutex<Option<Vec<Monitor>>>> = OnceLock::new();
@@ -7,15 +7,7 @@ static AVAILABLE_MONITORS: OnceLock<Mutex<Option<Vec<Monitor>>>> = OnceLock::new
 pub fn get_monitors(app: &AppHandle) -> Option<Vec<Monitor>> {
     if AVAILABLE_MONITORS.get().is_none() {
         log_debug("Detectando monitores disponibles");
-        let temp_window =
-            WebviewWindowBuilder::new(app, "temp", WebviewUrl::App("index.html".into()))
-                .title("Temp")
-                .inner_size(1.0, 1.0)
-                .visible(false)
-                .build()
-                .ok()?;
-
-        let monitors = temp_window.available_monitors().ok()?;
+        let monitors = app.available_monitors().ok()?;
         log_info(&format!("Detectados {} monitores", monitors.len()));
         for (i, monitor) in monitors.iter().enumerate() {
             log_debug(&format!("  Monitor {}: {}x{} en ({},{})", 
@@ -25,8 +17,6 @@ pub fn get_monitors(app: &AppHandle) -> Option<Vec<Monitor>> {
         AVAILABLE_MONITORS
             .set(Mutex::new(Some(monitors)))
             .expect("Failed to set AVAILABLE_MONITORS");
-        // Cerrar la ventana temporal
-        let _ = temp_window.close();
     }
 
     let monitors = AVAILABLE_MONITORS.get_or_init(|| Mutex::new(None));

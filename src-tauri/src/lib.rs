@@ -117,7 +117,17 @@ pub fn run() {
         ])
         .setup(move |app| {
             logger::log_info("Configurando aplicación Tauri...");
-            
+
+            // Suprimir Gdk-CRITICAL de inicialización Wayland (internos de GDK,
+            // inofensivos pero ruidosos).
+            glib::log_set_handler(
+                Some("Gdk"),
+                glib::LogLevels::LEVEL_CRITICAL,
+                false,  // fatal
+                false,  // recursion
+                |_domain, _level, _message| {},
+            );
+
             let _ = create_desktops(app);
             let _ = create_panel(app);
 
