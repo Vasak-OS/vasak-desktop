@@ -41,8 +41,12 @@ async fn apply_wayfire_geometry(
         .ok_or_else(|| "Wayfire IPC not available".to_string())?;
 
     let expected_title = title.to_lowercase();
-    let current_pid = std::process::id() as i64;
     let mut found_view = None;
+
+    log_info(&format!(
+        "[wayland_layer] starting apply title={} mode={mode:?} target=({}, {}) size={}x{}",
+        title, x, y, width, height
+    ));
 
     for attempt in 0..30 {
         let views = client
@@ -50,56 +54,32 @@ async fn apply_wayfire_geometry(
             .await
             .map_err(|error| error.to_string())?;
 
-        // Try to match by a variety of heuristics, including type/layer fields.
+        log_info(&format!(
+            "[wayland_layer] attempt {} list-views count={}",
+            attempt + 1,
+            views.len()
+        ));
+
+        // For regular windows we only want the real toplevel view, not the desktop/background layer-shell.
         found_view = views.iter().find(|view| {
             let view_title = view.title.as_deref().unwrap_or_default().to_lowercase();
             let app_id = view.app_id.as_deref().unwrap_or_default().to_lowercase();
             let role = view.role.as_deref().unwrap_or_default().to_lowercase();
-            let same_process = view.pid == Some(current_pid);
-            let geom = view.geometry.as_ref().or(view.bbox.as_ref());
-            let geom_matches = geom
-                .map(|g| {
-                    let width_close = (g.width - width as i64).abs() <= 16;
-                    let height_close = (g.height - height as i64).abs() <= 16;
-                    width_close && height_close
-                })
-                .unwrap_or(false);
-            let mut matched = false;
 
-            if view_title == expected_title
+            if matches!(view.layer.as_deref(), Some("background") | Some("bottom")) {
+                return false;
+            }
+
+            if !matches!(view.type_field.as_deref(), Some("toplevel")) {
+                return false;
+            }
+
+            view_title == expected_title
                 || view_title.contains(&expected_title)
                 || app_id == expected_title
                 || app_id.contains(&expected_title)
                 || role == expected_title
                 || role.contains(&expected_title)
-            {
-                matched = true;
-            }
-
-            if !matched && (same_process && geom_matches) {
-                matched = true;
-            }
-
-            // Also allow matching by known type/layer fields if present.
-            if !matched {
-                if let Some(type_field) = &view.type_field {
-                    let tf = type_field.to_lowercase();
-                    if tf.contains("panel") || tf.contains("desktop") || tf.contains("dock") {
-                        matched = true;
-                    }
-                }
-            }
-
-            if !matched {
-                if let Some(layer_field) = &view.layer {
-                    let lf = layer_field.to_lowercase();
-                    if lf == "top" || lf == "background" || lf == "overlay" {
-                        matched = true;
-                    }
-                }
-            }
-
-            matched
         }).cloned();
 
         if found_view.is_some() {
@@ -125,13 +105,39 @@ async fn apply_wayfire_geometry(
     log_info(&format!("[wayland_layer] matched view id={} title={:?} app_id={:?} pid={:?} layer={:?}", view.id, view.title, view.app_id, view.pid, view.layer));
 
     let output_id = match client.list_outputs_typed().await {
-        Ok(outputs) => outputs
-            .into_iter()
-            .find(|output| {
+        Ok(outputs) => {
+            log_info(&format!("[wayland_layer] outputs count={}", outputs.len()));
+            let matched_output = outputs.iter().find(|output| {
                 let geometry = &output.geometry;
-                geometry.x == x as i64 && geometry.y == y as i64
-            })
-            .map(|output| output.id as u64),
+                let point_x = x as i64;
+                let point_y = y as i64;
+
+                point_x >= geometry.x
+                    && point_x < geometry.x + geometry.width
+                    && point_y >= geometry.y
+                    && point_y < geometry.y + geometry.height
+            });
+
+            let selected = matched_output
+                .map(|output| output.id as u64)
+                .or_else(|| outputs.first().map(|output| output.id as u64));
+
+            if let Some(output) = outputs.iter().find(|output| Some(output.id as u64) == selected) {
+                log_info(&format!(
+                    "[wayland_layer] selected output id={} name={} geometry=({}, {}) {}x{}",
+                    output.id,
+                    output.name,
+                    output.geometry.x,
+                    output.geometry.y,
+                    output.geometry.width,
+                    output.geometry.height
+                ));
+            } else {
+                log_warning("[wayland_layer] no output selected, configure-view will use compositor default");
+            }
+
+            selected
+        }
         Err(_) => None,
     };
 
@@ -166,6 +172,7 @@ async fn apply_wayfire_geometry(
 
     // If the view was configured before map (common for panel), re-apply after it maps.
     if view.mapped != Some(true) {
+        log_info(&format!("[wayland_layer] view {} not mapped yet, waiting to reapply geometry", view_id));
         for attempt in 0..30 {
             sleep(Duration::from_millis(100)).await;
 
