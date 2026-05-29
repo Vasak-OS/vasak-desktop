@@ -2,6 +2,7 @@
 rustflags = [
     "-C", "link-arg=-fuse-ld=lld",  # LLD: linker más rápido, mejor dead-code elimination
     "-C", "target-cpu=x86-64",       # Baseline x86-64: compatible con cualquier CPU de 64 bits
+    "-C", "target-feature=-sse4a,-avx,-avx2", # Evita instrucciones no soportadas en CPUs antiguas
     "-C", "link-arg=-Wl,--as-needed", # Solo linkea libs que realmente se usan (reduce tamaño y startup)
 ]
 
