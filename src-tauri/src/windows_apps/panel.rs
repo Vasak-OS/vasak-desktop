@@ -18,7 +18,6 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     )
     .title("Vasak Panel")
     .decorations(false)
-    .transparent(true)
     .inner_size(monitor_size.width as f64, 38.0)
     .visible(false)
     .build()?;

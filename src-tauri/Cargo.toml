@@ -30,6 +30,7 @@ wayland-protocols-wlr = { version = "0.3", features = ["client"], optional = tru
 freedesktop_entry_parser = "1.3"
 gtk = "0.18"
 gdk = "0.18"
+glib = "0.18"
 gtk-layer-shell = { version = "0.8", features = ["v0_5"] }
 base64 = "0.22"
 #tauri-plugin-vicons = {path = "../../tauri-plugin-vicons"}
