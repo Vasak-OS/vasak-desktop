@@ -1,5 +1,6 @@
 use super::{wayfire_ipc::{get_wayfire_client, View}, WindowInfo, WindowManagerBackend};
 use std::sync::mpsc::Sender;
+use std::io;
 
 pub struct WaylandManager {
 }
@@ -7,6 +8,18 @@ pub struct WaylandManager {
 impl WaylandManager {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {})
+    }
+
+    fn run_wayfire_blocking<T, F>(operation: F) -> Result<T, Box<dyn std::error::Error>>
+    where
+        T: Send + 'static,
+        F: FnOnce() -> Result<T, Box<dyn std::error::Error + Send + Sync>> + Send + 'static,
+    {
+        let result = std::thread::spawn(move || operation())
+            .join()
+            .map_err(|_| io::Error::other("Wayfire worker thread panicked"))?;
+
+        result.map_err(|error| -> Box<dyn std::error::Error> { error })
     }
 
     fn normalize_icon_name(raw: &str) -> String {
@@ -89,16 +102,13 @@ impl WaylandManager {
 
 impl WindowManagerBackend for WaylandManager {
     fn get_window_list(&mut self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
-        let windows = tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
-                let views = client.list_views_typed().await?;
-                let mut windows: Vec<WindowInfo> = views.iter().filter_map(Self::view_to_window_info).collect();
-                windows.sort_by(|left, right| left.id.cmp(&right.id));
-                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(windows)
-            })
-        })
-        .map_err(|error| -> Box<dyn std::error::Error> { error })?;
+        let windows = Self::run_wayfire_blocking(|| tauri::async_runtime::block_on(async {
+            let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
+            let views = client.list_views_typed().await?;
+            let mut windows: Vec<WindowInfo> = views.iter().filter_map(Self::view_to_window_info).collect();
+            windows.sort_by(|left, right| left.id.cmp(&right.id));
+            Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(windows)
+        }))?;
 
         Ok(windows)
     }
@@ -134,26 +144,23 @@ impl WindowManagerBackend for WaylandManager {
         let view_id = win_id.parse::<u64>().map_err(|error| format!("invalid Wayfire view id {win_id}: {error}"))?;
         let view_id_i64 = i64::try_from(view_id).map_err(|error| format!("Wayfire view id out of range {win_id}: {error}"))?;
 
-        tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(async {
-                let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
-                let views = client.list_views_typed().await?;
-                let view = views
-                    .into_iter()
-                    .find(|candidate| candidate.id == view_id_i64)
-                    .ok_or_else(|| format!("Wayfire view not found: {view_id}"))?;
+        Self::run_wayfire_blocking(move || tauri::async_runtime::block_on(async move {
+            let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
+            let views = client.list_views_typed().await?;
+            let view = views
+                .into_iter()
+                .find(|candidate| candidate.id == view_id_i64)
+                .ok_or_else(|| format!("Wayfire view not found: {view_id}"))?;
 
-                if view.minimized.unwrap_or(false) {
-                    client.set_minimized(view_id, false).await?;
-                    client.set_focus(view_id).await.map(|_| ())
-                } else if view.activated {
-                    client.set_minimized(view_id, true).await.map(|_| ())
-                } else {
-                    client.set_focus(view_id).await.map(|_| ())
-                }
-            })
-        })
-        .map_err(|error| -> Box<dyn std::error::Error> { error })?;
+            if view.minimized.unwrap_or(false) {
+                client.set_minimized(view_id, false).await?;
+                client.set_focus(view_id).await.map(|_| ())
+            } else if view.activated {
+                client.set_minimized(view_id, true).await.map(|_| ())
+            } else {
+                client.set_focus(view_id).await.map(|_| ())
+            }
+        }))?;
 
         Ok(())
     }
