@@ -168,7 +168,7 @@ onUnmounted(() => {
 <template>
   <div class="flex items-center gap-1 px-2 h-full">
     <TransitionGroup move-class="transition-transform duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]" enter-active-class="transition-all duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.55,0,0.45,1)]" enter-from-class="opacity-0 -translate-x-5 scale-80 -rotate-12" leave-to-class="opacity-0 translate-x-5 scale-80 rotate-12" tag="div" class="flex items-center gap-1">
-      <TrayMusicControl />
+      <TrayMusicControl key="music-control" />
       <div
         v-for="item in trayItems"
         :key="item.service_name"
@@ -200,10 +200,10 @@ onUnmounted(() => {
         <!-- Status indicator -->
         <div v-if="item.status === 'NeedsAttention'" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50" />
       </div>
-      <TrayIconSound />
-      <TrayIconBattery v-if="existBattery" />
-      <TrayIconBluetooth />
-      <TrayIconNetwork />
+      <TrayIconSound key="icon-sound" />
+      <TrayIconBattery v-if="existBattery" key="icon-battery" />
+      <TrayIconBluetooth key="icon-bluetooth" />
+      <TrayIconNetwork key="icon-network" />
     </TransitionGroup>
 
     <!-- Context Menu -->
