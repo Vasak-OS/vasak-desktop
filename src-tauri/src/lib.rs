@@ -25,7 +25,7 @@ use eventloops::{
     setup_dbus_service,
     setup_windows_monitoring,
 };
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use structs::WMState;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
@@ -48,7 +48,7 @@ pub fn run() {
     // Inicializar el sistema de logging
     logger::log_info("Vasak Desktop iniciando...");
     
-    let window_manager = Arc::new(Mutex::new(
+    let window_manager = Arc::new(RwLock::new(
         WindowManager::new().expect("Failed to initialize window manager"),
     ));
 

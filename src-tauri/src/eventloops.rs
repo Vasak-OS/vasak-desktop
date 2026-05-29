@@ -3,19 +3,19 @@ use crate::window_manager::WindowInfo;
 use crate::logger::{log_info, log_error};
 use window_manager::WindowManager;
 use std::sync::mpsc::channel;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tauri::Emitter;
 
 pub fn setup_windows_monitoring(
-    window_manager: Arc<Mutex<WindowManager>>,
+    window_manager: Arc<RwLock<WindowManager>>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), Box<dyn std::error::Error>> {
     log_info("Configurando monitoreo de ventanas");
     let (tx, rx) = channel();
 
     {
-        let mut wm = window_manager.lock().unwrap_or_else(|error| error.into_inner());
+        let mut wm = window_manager.write().unwrap_or_else(|error| error.into_inner());
         wm.backend.setup_event_monitoring(tx)?;
         log_info("Monitoreo de eventos de ventanas establecido");
     }
@@ -35,7 +35,7 @@ pub fn setup_windows_monitoring(
 
         loop {
             let windows = {
-                let mut wm = polling_manager.lock().unwrap_or_else(|error| error.into_inner());
+                let wm = polling_manager.read().unwrap_or_else(|error| error.into_inner());
 
                 match wm.get_window_list() {
                     Ok(windows) => Some(windows),
