@@ -9,6 +9,16 @@ impl WaylandManager {
         Ok(Self {})
     }
 
+    fn normalize_icon_name(raw: &str) -> String {
+        let candidate = raw.trim().to_lowercase();
+        if candidate.is_empty() {
+            return String::new();
+        }
+
+        let tail = candidate.rsplit('.').next().unwrap_or(&candidate);
+        tail.replace(['_', ' '], "-")
+    }
+
     fn is_shell_window(view: &View) -> bool {
         let title = view.title.as_deref().unwrap_or_default();
         let app_id = view.app_id.as_deref().unwrap_or_default();
@@ -20,7 +30,7 @@ impl WaylandManager {
     }
 
     fn view_to_window_info(view: &View) -> Option<WindowInfo> {
-        if view.type_field.as_deref() != Some("toplevel") {
+        if view.mapped == Some(false) {
             return None;
         }
 
@@ -35,9 +45,20 @@ impl WaylandManager {
         let title = view.title.clone().unwrap_or_default();
         let icon = view
             .app_id
-            .clone()
-            .or_else(|| view.role.clone())
-            .unwrap_or_default();
+            .as_deref()
+            .map(Self::normalize_icon_name)
+            .filter(|icon| !icon.is_empty())
+            .or_else(|| {
+                view.role
+                    .as_deref()
+                    .map(Self::normalize_icon_name)
+                    .filter(|icon| !icon.is_empty())
+            })
+            .unwrap_or_else(|| "application-x-executable".to_string());
+
+        if title.is_empty() && icon == "application-x-executable" {
+            return None;
+        }
 
         Some(WindowInfo {
             id: view.id.to_string(),
@@ -51,12 +72,14 @@ impl WaylandManager {
 
 impl WindowManagerBackend for WaylandManager {
     fn get_window_list(&mut self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
-        let windows = tauri::async_runtime::block_on(async {
-            let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
-            let views = client.list_views_typed().await?;
-            let mut windows: Vec<WindowInfo> = views.iter().filter_map(Self::view_to_window_info).collect();
-            windows.sort_by(|left, right| left.id.cmp(&right.id));
-            Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(windows)
+        let windows = tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
+                let views = client.list_views_typed().await?;
+                let mut windows: Vec<WindowInfo> = views.iter().filter_map(Self::view_to_window_info).collect();
+                windows.sort_by(|left, right| left.id.cmp(&right.id));
+                Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(windows)
+            })
         })
         .map_err(|error| -> Box<dyn std::error::Error> { error })?;
 
@@ -92,10 +115,26 @@ impl WindowManagerBackend for WaylandManager {
 
     fn toggle_window(&self, win_id: &str) -> Result<(), Box<dyn std::error::Error>> {
         let view_id = win_id.parse::<u64>().map_err(|error| format!("invalid Wayfire view id {win_id}: {error}"))?;
+        let view_id_i64 = i64::try_from(view_id).map_err(|error| format!("Wayfire view id out of range {win_id}: {error}"))?;
 
-        tauri::async_runtime::block_on(async {
-            let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
-            client.set_focus(view_id).await.map(|_| ())
+        tokio::task::block_in_place(|| {
+            tokio::runtime::Handle::current().block_on(async {
+                let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
+                let views = client.list_views_typed().await?;
+                let view = views
+                    .into_iter()
+                    .find(|candidate| candidate.id == view_id_i64)
+                    .ok_or_else(|| format!("Wayfire view not found: {view_id}"))?;
+
+                if view.minimized.unwrap_or(false) {
+                    client.set_minimized(view_id, false).await?;
+                    client.set_focus(view_id).await.map(|_| ())
+                } else if view.activated {
+                    client.set_minimized(view_id, true).await.map(|_| ())
+                } else {
+                    client.set_focus(view_id).await.map(|_| ())
+                }
+            })
         })
         .map_err(|error| -> Box<dyn std::error::Error> { error })?;
 
