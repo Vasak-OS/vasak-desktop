@@ -99,7 +99,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<nav class="relative z-20 flex w-full justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden p-1 rounded-corner bg-ui-bg/95 backdrop-blur-md border border-ui-border/80 shadow-[0_8px_24px_rgba(0,0,0,0.18)] px-3">
+	<nav class="relative z-20 flex w-full justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80 px-3">
     <div class="flex items-center gap-1">
       <img :src="menuIcon" alt="Menu" @click="openMenu" class="h-7 w-7 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out" />
 			<div class="w-1 h-7 bg-ui-bg/80"></div>
