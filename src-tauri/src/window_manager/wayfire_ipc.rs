@@ -137,7 +137,6 @@ fn is_usable_socket(path: &Path) -> bool {
 pub struct WayfireClient {
     writer: Arc<AsyncMutex<OwnedWriteHalf>>,
     pending: Arc<AsyncMutex<VecDeque<Value>>>,
-    events: Arc<AsyncMutex<VecDeque<Value>>>,
     notify: Arc<Notify>,
     request_lock: Arc<AsyncMutex<()>>,
     event_tx: broadcast::Sender<Value>,
@@ -159,17 +158,15 @@ impl WayfireClient {
 
                         let writer = Arc::new(AsyncMutex::new(writer));
                         let pending = Arc::new(AsyncMutex::new(VecDeque::new()));
-                        let events = Arc::new(AsyncMutex::new(VecDeque::new()));
                         let notify = Arc::new(Notify::new());
                         let request_lock = Arc::new(AsyncMutex::new(()));
                         let (event_tx, _) = broadcast::channel(128);
 
-                        Self::spawn_reader(reader, pending.clone(), events.clone(), notify.clone(), event_tx.clone());
+                        Self::spawn_reader(reader, pending.clone(), notify.clone(), event_tx.clone());
 
                         return Ok(Self {
                             writer,
                             pending,
-                            events,
                             notify,
                             request_lock,
                             event_tx,
@@ -198,7 +195,6 @@ impl WayfireClient {
     fn spawn_reader(
         mut reader: OwnedReadHalf,
         pending: Arc<AsyncMutex<VecDeque<Value>>>,
-        events: Arc<AsyncMutex<VecDeque<Value>>>,
         notify: Arc<Notify>,
         event_tx: broadcast::Sender<Value>,
     ) {
@@ -220,7 +216,6 @@ impl WayfireClient {
                 };
 
                 if message.get("event").is_some() {
-                    events.lock().await.push_back(message.clone());
                     let _ = event_tx.send(message.clone());
                 }
 
@@ -254,8 +249,6 @@ impl WayfireClient {
         loop {
             if let Some(message) = self.pending.lock().await.pop_front() {
                 if message.get("event").is_some() {
-                    self.events.lock().await.push_back(message.clone());
-                    let _ = self.event_tx.send(message);
                     continue;
                 }
 

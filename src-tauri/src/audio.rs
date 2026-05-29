@@ -3,10 +3,25 @@ use crate::error::{Result, VasakError};
 use crate::logger::{log_info, log_error, log_debug};
 use crate::structs::{VolumeInfo, AudioDevice};
 use crate::utils::CommandExecutor;
+use std::sync::{Mutex, OnceLock};
+use std::time::Instant;
 use tauri::{AppHandle, Emitter};
 
-/// Obtiene el ID del sink de audio por defecto
+fn sink_cache() -> &'static Mutex<Option<(String, Instant)>> {
+    static CACHE: OnceLock<Mutex<Option<(String, Instant)>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(None))
+}
+
+/// Obtiene el ID del sink de audio por defecto (con caché de 2s)
 fn get_default_sink_id() -> Result<String> {
+    if let Ok(cache) = sink_cache().lock() {
+        if let Some((id, time)) = cache.as_ref() {
+            if time.elapsed() < std::time::Duration::from_secs(2) {
+                return Ok(id.clone());
+            }
+        }
+    }
+
     log_debug("Obteniendo ID del sink de audio por defecto");
     let status_output = CommandExecutor::run(CMD_WPCTL, &["status"])?;
 
@@ -49,6 +64,10 @@ fn get_default_sink_id() -> Result<String> {
             log_error("No se encontró el sink de audio por defecto");
             VasakError::NotFound("No se encontró el sink por defecto".to_string())
         })?;
+
+    if let Ok(mut cache) = sink_cache().lock() {
+        let _ = cache.insert((default_sink_id.clone(), Instant::now()));
+    }
 
     log_debug(&format!("Sink de audio por defecto: {}", default_sink_id));
     Ok(default_sink_id)
