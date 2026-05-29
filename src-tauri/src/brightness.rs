@@ -1,23 +1,17 @@
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::sync::OnceLock;
-use crate::constants::{CMD_BRIGHTNESSCTL, CMD_XRANDR, BACKLIGHT_PATH};
+use crate::constants::{CMD_BRIGHTNESSCTL, BACKLIGHT_PATH};
 use crate::error::{Result, VasakError};
 use crate::logger::{log_info, log_error, log_debug};
 use crate::structs::BrightnessInfo;
 use crate::utils::CommandExecutor;
-
-/// Detecta si estamos en Wayland
-fn is_wayland() -> bool {
-    std::env::var("WAYLAND_DISPLAY").is_ok()
-}
 
 /// Método de control de brillo disponible
 #[derive(Clone)]
 enum BrightnessMethod {
     Brightnessctl,
     Sysfs(PathBuf),
-    Xrandr,
 }
 
 /// Cache global del método de brillo detectado
@@ -52,12 +46,6 @@ fn detect_brightness_method() -> Result<BrightnessMethod> {
     if let Ok(device_path) = find_backlight_device() {
         log_info(&format!("Usando sysfs para control de brillo: {:?}", device_path));
         return Ok(BrightnessMethod::Sysfs(device_path));
-    }
-
-    // 3. Intentar xrandr si estamos en X11
-    if !is_wayland() && CommandExecutor::run_silent(CMD_XRANDR, &["--version"]) {
-        log_info("Usando xrandr para control de brillo");
-        return Ok(BrightnessMethod::Xrandr);
     }
 
     log_error("No se encontró método de control de brillo disponible");
@@ -148,26 +136,6 @@ fn get_brightness_sysfs(device_path: &Path) -> Result<BrightnessInfo> {
     })
 }
 
-/// Obtiene el brillo usando xrandr (X11 only)
-fn get_brightness_xrandr() -> Result<BrightnessInfo> {
-    let output = CommandExecutor::run(CMD_XRANDR, &["--verbose"])?;
-
-    let current_brightness = output
-        .lines()
-        .find(|line| line.contains("Brightness:"))
-        .and_then(|line| line.split_whitespace().nth(1))
-        .and_then(|value| value.parse::<f32>().ok())
-        .ok_or_else(|| VasakError::NotFound("Could not find current brightness".to_string()))?;
-
-    let current = (current_brightness * 100.0) as u32;
-
-    Ok(BrightnessInfo {
-        current,
-        max: 100,
-        min: 0,
-    })
-}
-
 /// Obtiene la información actual del brillo del sistema
 pub fn get_brightness() -> Result<BrightnessInfo> {
     log_debug("Obteniendo información de brillo del sistema");
@@ -176,7 +144,6 @@ pub fn get_brightness() -> Result<BrightnessInfo> {
     let result = match method {
         BrightnessMethod::Brightnessctl => get_brightness_brightnessctl(),
         BrightnessMethod::Sysfs(device_path) => get_brightness_sysfs(&device_path),
-        BrightnessMethod::Xrandr => get_brightness_xrandr(),
     };
     
     if let Ok(ref info) = result {
@@ -214,25 +181,6 @@ fn set_brightness_sysfs(device_path: &Path, brightness: u32) -> Result<()> {
     Ok(())
 }
 
-/// Establece el brillo usando xrandr (X11 only)
-fn set_brightness_xrandr(brightness: u32) -> Result<()> {
-    let brightness_value = (brightness as f32 / 100.0).to_string();
-
-    let output = CommandExecutor::run(CMD_XRANDR, &["--listmonitors"])?;
-
-    let monitors: Vec<&str> = output
-        .lines()
-        .skip(1)
-        .filter_map(|line| line.split_whitespace().last())
-        .collect();
-
-    for monitor in monitors {
-        CommandExecutor::run(CMD_XRANDR, &["--output", monitor, "--brightness", &brightness_value])?;
-    }
-
-    Ok(())
-}
-
 /// Establece el brillo del sistema
 pub fn set_brightness(brightness: u32) -> Result<()> {
     log_debug(&format!("Estableciendo brillo del sistema a: {}%", brightness));
@@ -241,7 +189,6 @@ pub fn set_brightness(brightness: u32) -> Result<()> {
     let result = match method {
         BrightnessMethod::Brightnessctl => set_brightness_brightnessctl(brightness),
         BrightnessMethod::Sysfs(device_path) => set_brightness_sysfs(&device_path, brightness),
-        BrightnessMethod::Xrandr => set_brightness_xrandr(brightness),
     };
     
     if result.is_ok() {

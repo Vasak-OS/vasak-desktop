@@ -123,9 +123,6 @@ fn set_window_properties(
         gtk_window.set_exclusive_zone(0);
     }
 
-    #[cfg(feature = "x11")]
-    gtk_window.set_skip_taskbar_hint(true);
-
     let _ = window.show();
     gtk_window.show_all();
     gtk_window.present();

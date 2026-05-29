@@ -8,7 +8,7 @@
     "build": "vue-tsc --noEmit && bunx --bun vite build",
     "preview": "bunx --bun vite preview",
     "tauri": "tauri",
-    "tauri:build": "tauri build --features x11,wayland",
+    "tauri:build": "tauri build --features wayland",
     "lint": "bunx --bun biome check .",
     "lint:fix": "bunx --bun biome check --write . && bunx --bun biome format --write .",
     "format": "bunx --bun biome format --write ."
