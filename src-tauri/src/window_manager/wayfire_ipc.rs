@@ -317,10 +317,12 @@ impl WayfireClient {
         self.send_and_wait("wm-actions/set-always-on-top", json!({ "view_id": view_id, "state": state })).await
     }
 
+    #[allow(dead_code)]
     pub async fn send_to_back(&self, view_id: u64) -> Result<Value, Box<dyn Error + Send + Sync>> {
         self.send_and_wait("wm-actions/send-to-back", json!({ "view_id": view_id })).await
     }
 
+    #[allow(dead_code)]
     pub async fn set_view_property(
         &self,
         view_id: u64,
@@ -334,6 +336,7 @@ impl WayfireClient {
         })).await
     }
 
+    #[allow(dead_code)]
     pub async fn list_methods(&self) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
         let response = self.send_and_wait("list-methods", Value::Null).await?;
         if let Some(methods) = response.get("methods").and_then(|m| m.as_array()) {
@@ -343,10 +346,12 @@ impl WayfireClient {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn get_config_option(&self, option: &str) -> Result<Value, Box<dyn Error + Send + Sync>> {
         self.send_and_wait("wayfire/get-config-option", json!({ "option": option })).await
     }
 
+    #[allow(dead_code)]
     pub async fn set_config_options(&self, options: Value) -> Result<Value, Box<dyn Error + Send + Sync>> {
         self.send_and_wait("wayfire/set-config-options", json!({ "config": options })).await
     }
