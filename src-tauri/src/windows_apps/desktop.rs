@@ -1,6 +1,6 @@
 use crate::app_url::get_app_url;
 use gtk::prelude::*;
-use gtk_layer_shell::{Edge, Layer, LayerShell};
+use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use tauri::{
     async_runtime::spawn, App, Monitor, Url, WebviewUrl, WebviewWindowBuilder,
 };
@@ -119,7 +119,7 @@ fn set_window_properties(
         gtk_window.set_anchor(Edge::Left, true);
         gtk_window.set_anchor(Edge::Right, true);
         gtk_window.set_anchor(Edge::Bottom, true);
-        gtk_window.set_keyboard_interactivity(false);
+        gtk_window.set_keyboard_mode(KeyboardMode::None);
         gtk_window.set_exclusive_zone(0);
     }
 

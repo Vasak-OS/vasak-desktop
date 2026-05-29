@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use gtk_layer_shell::{Edge, Layer, LayerShell};
+use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use tauri::{
     App, WebviewUrl, WebviewWindowBuilder,
 };
@@ -37,7 +37,7 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     layer_win.set_anchor(Edge::Left, true);
     layer_win.set_anchor(Edge::Right, true);
     layer_win.auto_exclusive_zone_enable();
-    layer_win.set_keyboard_interactivity(false);
+    layer_win.set_keyboard_mode(KeyboardMode::None);
 
     // 3. Reparent: extraer el WebKitWebView de la ventana xdg y ponerlo en layer-shell.
     if let Some(vbox) = gtk_window.child() {
