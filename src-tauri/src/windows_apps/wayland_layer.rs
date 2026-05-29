@@ -9,7 +9,6 @@ pub enum WaylandLayerMode {
     Desktop,
 }
 
-#[cfg(feature = "wayland")]
 pub fn configure_wayland_layer(
     title: String,
     mode: WaylandLayerMode,
@@ -27,7 +26,6 @@ pub fn configure_wayland_layer(
     });
 }
 
-#[cfg(feature = "wayland")]
 async fn apply_wayfire_geometry(
     title: &str,
     mode: WaylandLayerMode,
@@ -222,16 +220,4 @@ async fn apply_wayfire_geometry(
     }
 
     Ok(())
-}
-
-#[cfg(not(feature = "wayland"))]
-pub fn configure_wayland_layer(
-    _title: String,
-    _mode: WaylandLayerMode,
-    _x: i32,
-    _y: i32,
-    _width: u32,
-    _height: u32,
-) {
-    log_warning("[wayland_layer] wayland feature disabled; skipping Wayfire IPC setup");
 }
