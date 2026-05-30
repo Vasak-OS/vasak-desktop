@@ -138,29 +138,60 @@ impl BatteryApplet {
                 "status": "connected"
             }));
         }
-        
+
+        let mut last_info: Option<BatteryInfo> = None;
         let mut stream = MessageStream::from(conn.as_ref());
-        while let Some(msg_result) = stream.next().await {
-            match msg_result {
-                Ok(msg) => {
+
+        loop {
+            tokio::select! {
+                biased;
+
+                msg_result = stream.next() => {
+                    let msg = match msg_result {
+                        Some(Ok(msg)) => msg,
+                        Some(Err(e)) => {
+                            log::error!("[battery] Stream error: {}", e);
+                            return Err(format!("D-Bus stream error: {}", e));
+                        }
+                        None => {
+                            return Err("D-Bus connection closed".to_string());
+                        }
+                    };
+
                     let header = msg.header();
                     if let (Some(interface), Some(member), Some(obj_path)) = (header.interface(), header.member(), header.path()) {
                         if interface.as_str() == "org.freedesktop.DBus.Properties" &&
                            member.as_str() == "PropertiesChanged" &&
                            obj_path.as_str() == path {
-                               if let Some(info) = get_battery_info().await {
-                                    let _ = app_handle.emit("battery-update", &info);
-                               }
+                               let info = get_battery_info().await;
+                               Self::emit_if_changed(app_handle, &mut last_info, &info).await;
                         }
                     }
                 }
-                Err(e) => {
-                    log::error!("[battery] Stream error: {}", e);
-                    return Err(format!("D-Bus stream error: {}", e));
+
+                _ = tokio::time::sleep(Duration::from_secs(5)) => {
+                    let info = get_battery_info().await;
+                    Self::emit_if_changed(app_handle, &mut last_info, &info).await;
                 }
             }
         }
-        Err("D-Bus connection closed".to_string())
+    }
+
+    async fn emit_if_changed(app_handle: &AppHandle, last_info: &mut Option<BatteryInfo>, current: &Option<BatteryInfo>) {
+        let should_emit = match (last_info.as_ref(), current) {
+            (_, None) => false,
+            (None, Some(_)) => true,
+            (Some(last), Some(cur)) => {
+                (last.percentage - cur.percentage).abs() > 0.5
+                    || last.is_charging != cur.is_charging
+                    || last.state != cur.state
+            }
+        };
+
+        if should_emit {
+            let _ = app_handle.emit("battery-update", current);
+            *last_info = current.clone();
+        }
     }
 }
 
