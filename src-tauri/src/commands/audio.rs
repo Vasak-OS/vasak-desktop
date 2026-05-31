@@ -57,7 +57,7 @@ pub fn toggle_audio_applet(app: AppHandle) -> Result<(), ()> {
     log_debug("Alternando applet de audio");
     if let Some(audio_window) = app.get_webview_window("applet_audio") {
         if audio_window.is_visible().unwrap_or(false) {
-            audio_window.close().expect("Failed to close audio window");
+            let _ = audio_window.close();
         } else {
             let _ = audio_window.show();
             let _ = audio_window.set_focus();

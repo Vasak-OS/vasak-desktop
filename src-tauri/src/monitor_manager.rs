@@ -14,13 +14,13 @@ pub fn get_monitors(app: &AppHandle) -> Option<Vec<Monitor>> {
                 i, monitor.size().width, monitor.size().height,
                 monitor.position().x, monitor.position().y));
         }
-        AVAILABLE_MONITORS
-            .set(Mutex::new(Some(monitors)))
-            .expect("Failed to set AVAILABLE_MONITORS");
+        let _ = AVAILABLE_MONITORS.set(Mutex::new(Some(monitors)));
     }
 
-    let monitors = AVAILABLE_MONITORS.get_or_init(|| Mutex::new(None));
-    monitors.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    AVAILABLE_MONITORS.get()
+        .and_then(|m| m.lock().ok())
+        .map(|guard| guard.clone())
+        .unwrap_or_default()
 }
 
 pub fn get_primary_monitor(app: &AppHandle) -> Option<Monitor> {

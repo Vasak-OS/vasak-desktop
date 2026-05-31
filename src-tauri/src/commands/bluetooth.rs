@@ -7,7 +7,7 @@ pub fn toggle_bluetooth_applet(app: AppHandle) -> Result<(), ()> {
     if let Some(bluetooth_window) = app.get_webview_window("applet_bluetooth") {
         if bluetooth_window.is_visible().unwrap_or(false) {
             log_info("Cerrando applet de Bluetooth");
-            bluetooth_window.close().expect("Failed to close bluetooth window");
+            let _ = bluetooth_window.close();
         } else {
             log_info("Mostrando applet de Bluetooth");
             let _ = bluetooth_window.show();

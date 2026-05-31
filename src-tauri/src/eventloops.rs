@@ -67,7 +67,6 @@ pub fn setup_dbus_service(app_handle: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
         if let Err(e) = crate::dbus_service::start_dbus_service(app_handle).await {
             log_error(&format!("Error al iniciar servicio D-Bus: {}", e));
-            eprintln!("Error starting D-Bus service: {}", e);
         }
     });
 }

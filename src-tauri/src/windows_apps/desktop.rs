@@ -1,4 +1,5 @@
 use crate::app_url::get_app_url;
+use crate::logger::log_error;
 use gtk::prelude::*;
 use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use tauri::{
@@ -94,7 +95,7 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
         monitor_size.height,
     );
     } else {
-        eprintln!("Failed to create desktop window for monitor {}", index);
+        log_error(&format!("Failed to create desktop window for monitor {}", index));
     }
 }
 
