@@ -1,77 +1,24 @@
 
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, type Ref, ref, watch } from 'vue';
-import type { MusicInfo } from '@/interfaces/music';
-import { musicNowPlaying } from '@/services/audio.service';
-import { processImageUrl } from '@/utils/image';
-import { logError } from '@/utils/logger';
+import { onMounted, ref } from 'vue';
+import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 
-const musicInfo: Ref<MusicInfo> = ref({
-	title: '',
-	artist: '',
-	player: '',
-	artUrl: '',
-	status: '',
-});
-
-const imgSrc: Ref<string> = ref('');
-
-// Watch for artUrl changes to update imgSrc
-watch(
-	() => musicInfo.value?.artUrl,
-	async (newUrl) => {
-		const processedUrl = processImageUrl(newUrl);
-		if (processedUrl) {
-			imgSrc.value = processedUrl;
-		} else {
-			imgSrc.value = await getIconSource('applications-multimedia');
-		}
-	},
-	{ immediate: true }
-);
-
-async function onImgError(): Promise<void> {
-	imgSrc.value = await getIconSource('applications-multimedia');
-}
-const prevIcon: Ref<string> = ref('');
-const nextIcon: Ref<string> = ref('');
-const playIcon: Ref<string> = ref('');
-const pauseIcon: Ref<string> = ref('');
-
-const isPlaying = computed(() => String(musicInfo.value?.status || '').toLowerCase() === 'playing');
-
-async function sendCommand(cmd: string): Promise<void> {
-	const player = musicInfo.value?.player || '';
-  if (!isValidBusName(player)) {
-		console.warn('[music] no player bus name available');
-		return;
-	}
-	try {
-		await invoke(cmd, { player });
-	} catch (e) {
-		logError(`[music] Error en comando ${cmd}:`, e);
-	}
-}
-
-function isValidBusName(name: string): boolean {
-  return name.startsWith(':') ? name.length >= 4 : name.startsWith('org.mpris.MediaPlayer2.');
-}
-
-function onPrev(): void {
-	sendCommand('music_previous_track');
-}
-
-function onNext(): void {
-	sendCommand('music_next_track');
-}
-
-function onPlayPause(): void {
-	sendCommand('music_play_pause');
-}
+const {
+	musicInfo,
+	imgSrc,
+	prevIcon,
+	nextIcon,
+	playIcon,
+	pauseIcon,
+	isPlaying,
+	onPrev,
+	onNext,
+	onPlayPause,
+	onImgError,
+	initIcons,
+	initMusicInfo,
+} = useMusicPlayer();
 
 const visible = ref(false);
 const isHiding = ref(false);
@@ -99,20 +46,8 @@ function onLeave(): void {
 }
 
 onMounted(async () => {
-	imgSrc.value = await getIconSource('applications-multimedia');
-	prevIcon.value = await getSymbolSource('media-seek-backward');
-	nextIcon.value = await getSymbolSource('media-skip-forward');
-	playIcon.value = await getSymbolSource('media-playback-start');
-	pauseIcon.value = await getSymbolSource('media-playback-pause');
-  try {
-    musicInfo.value = await musicNowPlaying();
-  } catch (error) {
-    logError('[music] Error obteniendo estado inicial:', error);
-  }
-  await listen('music-playing-update', (event) => {
-    const payload = (event.payload || {}) as Partial<MusicInfo>;
-    Object.assign(musicInfo.value, payload);
-  });
+	await initIcons();
+	await initMusicInfo();
 });
 </script>
 

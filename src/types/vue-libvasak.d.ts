@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 /** biome-ignore-all lint/complexity/noBannedTypes: <False positive> */
 declare module '@vasakgroup/vue-libvasak' {
-	import { DefineComponent, App } from 'vue';
+	import { App, DefineComponent } from 'vue';
 
 	/* Layout */
 	export interface WindowFrameProps {

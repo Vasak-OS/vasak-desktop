@@ -1,15 +1,15 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, onUnmounted, type Ref, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { getBatteryInfo } from '@/services/core.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 
-const batteryInfo: Ref<BatteryInfo> = ref({
+const batteryInfo = ref<BatteryInfo>({
 	has_battery: false,
 	percentage: 0,
 	state: 'Unknown',
@@ -17,8 +17,7 @@ const batteryInfo: Ref<BatteryInfo> = ref({
 	is_charging: false,
 });
 
-const batteryIconSrc: Ref<string> = ref('');
-const unlistenBattery: Ref<(() => void) | null> = ref(null);
+const batteryIconSrc = ref('');
 
 const batteryAltText = computed(() => {
 	if (!batteryInfo.value.has_battery) return 'No battery detected';
@@ -111,17 +110,12 @@ async function toggleBatteryInfo() {
 }
 
 onMounted(async () => {
-	unlistenBattery.value = await listen('battery-update', (event) => {
-		batteryInfo.value = event.payload as BatteryInfo;
-		updateIcon();
-	});
 	await getBatteryInfoComp();
 });
 
-onUnmounted(() => {
-	if (unlistenBattery.value) {
-		unlistenBattery.value();
-	}
+useEventListener('battery-update', (event) => {
+	batteryInfo.value = event.payload as BatteryInfo;
+	updateIcon();
 });
 </script>
 

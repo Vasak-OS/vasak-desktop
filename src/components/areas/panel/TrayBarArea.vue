@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { onMounted, onUnmounted, type Ref, ref } from 'vue';
 import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
@@ -19,6 +18,7 @@ import {
 	trayItemSecondaryActivate,
 	trayMenuItemClick,
 } from '@/services/tray.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError, logWarning } from '@/utils/logger';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
@@ -37,9 +37,6 @@ const contextMenu = ref<{
 	items: [],
 	trayId: '',
 });
-
-let unlisten: (() => void) | null = null;
-let unlistenBatteryEvent: (() => void) | null = null;
 
 const refreshTrayItems = async (): Promise<void> => {
 	try {
@@ -132,23 +129,13 @@ const getItemStatusClass = (item: TrayItem) => {
 
 onMounted(async () => {
 	await refreshTrayItems();
-	unlisten = await listen('tray-update', refreshTrayItems);
 	bluetoothInitialized.value = await isBluetoothPluginInitialized();
-	// Inicial: consultar si existe batería
 	try {
 		existBattery.value = await batteryExists();
 	} catch (e) {
 		logWarning('[TrayPanel] batteryExists failed:', e);
 		existBattery.value = false;
 	}
-
-	// Suscribirse a eventos de batería para actualizar visibilidad en caliente
-	unlistenBatteryEvent = await listen('battery-update', (event) => {
-		const payload: any = event.payload || {};
-		if (typeof payload.has_battery === 'boolean') {
-			existBattery.value = payload.has_battery;
-		}
-	});
 	try {
 		await initSniWatcher();
 	} catch (error) {
@@ -159,9 +146,16 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-	unlisten?.();
-	unlistenBatteryEvent?.();
 	document.removeEventListener('click', hideContextMenu);
+});
+
+useEventListener('tray-update', refreshTrayItems);
+
+useEventListener('battery-update', (event) => {
+	const payload: any = event.payload || {};
+	if (typeof payload.has_battery === 'boolean') {
+		existBattery.value = payload.has_battery;
+	}
 });
 </script>
 
