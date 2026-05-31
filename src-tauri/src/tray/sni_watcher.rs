@@ -1,5 +1,5 @@
 use super::{emit_tray_update, TrayManager};
-use crate::logger::{log_error, log_info};
+use crate::logger::{log_error, log_info, log_debug};
 use crate::structs::{TrayCategory, TrayItem, TrayStatus};
 use crate::tray::sni_item::SniItemProxy;
 use base64::{engine::general_purpose, Engine as _};
@@ -84,8 +84,16 @@ impl SniWatcher {
                         Some(msg) = name_stream.next() => {
                             if let Ok(message) = msg {
                                 if let Ok((name, _old_owner, new_owner)) = message.body().deserialize::<(&str, &str, &str)>() {
-                                    if new_owner.is_empty() && name.starts_with("org.kde.StatusNotifierItem") {
-                                        Self::unregister_item(&tray_manager, &app_handle, name).await;
+                                    if new_owner.is_empty() {
+                                        // Check if the disconnected name is tracked in the tray
+                                        let is_tracked = {
+                                            let manager = tray_manager.read().await;
+                                            manager.contains_key(name)
+                                        };
+                                        if is_tracked {
+                                            log_debug(&format!("[SNI] Name owner changed, removing: {}", name));
+                                            Self::unregister_item(&tray_manager, &app_handle, name).await;
+                                        }
                                     }
                                 }
                             }
