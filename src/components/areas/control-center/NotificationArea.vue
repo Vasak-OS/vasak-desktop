@@ -47,8 +47,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
 import type { Notification, NotificationGroupData } from '@/interfaces/notifications';
 import {
@@ -56,9 +55,9 @@ import {
 	deleteNotification,
 	getAllNotifications,
 } from '@/services/notification.service';
+import { useEventListener } from '@/tools/event.listener';
 
 const notifications = ref<Notification[]>([]);
-let unlistenNotifications: (() => void) | null = null;
 
 // Computed para agrupar notificaciones por aplicación
 const groupedNotifications = computed<NotificationGroupData[]>(() => {
@@ -116,16 +115,10 @@ async function clearAllNotifications() {
 
 onMounted(async () => {
 	await loadNotifications();
-
-	unlistenNotifications = await listen('notifications-updated', (event) => {
-		notifications.value = event.payload as Notification[];
-	});
 });
 
-onUnmounted(() => {
-	if (unlistenNotifications) {
-		unlistenNotifications();
-	}
+useEventListener('notifications-updated', (event) => {
+	notifications.value = event.payload as Notification[];
 });
 </script>
 

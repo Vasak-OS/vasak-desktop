@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
 import {
 	type AdapterInfo,
 	connectDevice,
@@ -13,23 +12,22 @@ import {
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 
-const connectedDevices: Ref<any[]> = ref([]);
-const availableDevices: Ref<any[]> = ref([]);
-const isTogglingBluetooth: Ref<boolean> = ref(false);
-const bluetoothIcon: Ref<string> = ref('');
-const syncIcon: Ref<string> = ref('');
+const connectedDevices = ref<any[]>([]);
+const availableDevices = ref<any[]>([]);
+const isTogglingBluetooth = ref(false);
+const bluetoothIcon = ref('');
+const syncIcon = ref('');
 const defaultAdapter = ref<AdapterInfo | null>(null);
-const connectedDevicesCount: Ref<number> = ref(0);
-const loading: Ref<boolean> = ref(true);
+const connectedDevicesCount = ref(0);
+const loading = ref(true);
 const isScanning = ref(false);
-
-let unlistenBluetooth: Ref<(() => void) | null> = ref(null);
 
 const toggleBT = async () => {
 	isTogglingBluetooth.value = true;
@@ -81,18 +79,14 @@ const scanDevices = async () => {
 	isScanning.value = false;
 };
 
-// Lifecycle hooks
 onMounted(async () => {
 	defaultAdapter.value = await getDefaultAdapter();
 	syncIcon.value = await getSymbolSource('refreshstructure');
 	await refreshDevices();
 	await getBluetoothIcon();
-	unlistenBluetooth.value = await listen('bluetooth-change', handleBluetoothChange);
 });
 
-onUnmounted(() => {
-	if (unlistenBluetooth.value) unlistenBluetooth.value();
-});
+useEventListener('bluetooth-change', handleBluetoothChange);
 
 const getBluetoothIcon = async () => {
 	try {

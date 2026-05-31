@@ -3,15 +3,15 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import { homeDir } from '@tauri-apps/api/path';
 import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
-import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { type ComputedRef, computed, onMounted, ref, watch } from 'vue';
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import type { FileEntry } from '@/interfaces/file';
+import { useEventListener } from '@/tools/event.listener';
 import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
 
@@ -20,8 +20,6 @@ const configStore = useConfigStore() as Store<
 	{ config: VSKConfig; loadConfig: () => Promise<void> }
 >;
 const desktopFiles = ref<FileEntry[]>([]);
-
-let unlistenConfigChanged: (() => void) | null = null;
 
 // Computados reactivos que leen directamente de la configuración del store
 const backgroundPath = computed(() => {
@@ -109,16 +107,11 @@ watch(showHiddenFiles, () => {
 onMounted(async () => {
 	await (configStore as any).loadConfig();
 	await loadDesktopFiles();
-	unlistenConfigChanged = await listen('config-changed', async () => {
-		await (configStore as any).loadConfig();
-		await loadDesktopFiles();
-	});
 });
 
-onUnmounted(() => {
-	if (unlistenConfigChanged) {
-		unlistenConfigChanged();
-	}
+useEventListener('config-changed', async () => {
+	await (configStore as any).loadConfig();
+	await loadDesktopFiles();
 });
 </script>
 

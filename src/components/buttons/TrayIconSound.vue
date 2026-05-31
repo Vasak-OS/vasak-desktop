@@ -1,26 +1,24 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, type Ref, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
-import type { UnlistenFn } from '@/interfaces/event';
 import type { VolumeInfo } from '@/interfaces/volume';
-import { getAudioVolume } from '@/services/audio.service';
+import { getAudioVolume } from '@/services/core.service';
 import { toggleAudioApplet } from '@/services/window.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
 
-const volumeInfo: Ref<VolumeInfo> = ref({
+const volumeInfo = ref<VolumeInfo>({
 	current: 0,
 	min: 0,
 	max: 100,
 	is_muted: false,
 });
-const currentVolume: Ref<number> = ref(0);
-const currentIcon: Ref<string> = ref('');
-const unlistenVolume: Ref<UnlistenFn | null> = ref(null);
+const currentVolume = ref(0);
+const currentIcon = ref('');
 
 async function updateIcon(): Promise<void> {
 	try {
@@ -60,12 +58,13 @@ async function toggleApplet(): Promise<void> {
 }
 
 onMounted(async () => {
-	unlistenVolume.value = await listen('volume-changed', (event) => {
-		volumeInfo.value = event.payload as VolumeInfo;
-		currentVolume.value = (event.payload as VolumeInfo).current;
-		updateIcon();
-	});
 	await getVolumeInfo();
+});
+
+useEventListener<VolumeInfo>('volume-changed', (event) => {
+	volumeInfo.value = event.payload;
+	currentVolume.value = event.payload.current;
+	updateIcon();
 });
 </script>
 <template>

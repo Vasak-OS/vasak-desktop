@@ -1,13 +1,14 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
+import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { nextTick, onMounted, type Ref, ref } from 'vue';
 import {
 	connectToWifi,
 	type NetworkInfo,
 	type WiFiConnectionConfig,
 } from '@/services/network.service';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { nextTick, onMounted, type Ref, ref } from 'vue';
 import ActionButton from '../buttons/ActionButton.vue';
 import ListCard from './ListCard.vue';
 
@@ -45,12 +46,12 @@ onMounted(async () => {
 });
 
 const securityLabelMap: Record<string, string> = {
-  none: 'Abierta',
-  wep: 'WEP',
-  'wpa-psk': 'WPA-PSK',
-  'wpa-eap': 'WPA-EAP',
-  'wpa2-psk': 'WPA2-PSK',
-  'wpa3-psk': 'WPA3-PSK',
+	none: 'Abierta',
+	wep: 'WEP',
+	'wpa-psk': 'WPA-PSK',
+	'wpa-eap': 'WPA-EAP',
+	'wpa2-psk': 'WPA2-PSK',
+	'wpa3-psk': 'WPA3-PSK',
 };
 
 const securityLabel = securityLabelMap[String(props.security_type)] || String(props.security_type);

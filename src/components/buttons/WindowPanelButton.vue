@@ -19,15 +19,15 @@ const toggleWindow = async (): Promise<void> => {
 };
 
 onMounted(async () => {
-  try {
-    iconSource.value = await getIconSource(iconName.value);
-  } catch {
-    try {
-      iconSource.value = await getIconSource('application-x-executable');
-    } catch {
-      iconSource.value = '';
-    }
-  }
+	try {
+		iconSource.value = await getIconSource(iconName.value);
+	} catch {
+		try {
+			iconSource.value = await getIconSource('application-x-executable');
+		} catch {
+			iconSource.value = '';
+		}
+	}
 });
 </script>
 

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
 	getBrightnessInfo as fetchBrightnessInfo,
 	setBrightnessInfo,
 } from '@/services/core.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 import SliderControl from '../forms/SliderControl.vue';
 
@@ -17,15 +17,14 @@ interface BrightnessInfo {
 	max: number;
 }
 
-const brightnessInfo: Ref<BrightnessInfo> = ref<BrightnessInfo>({
+const brightnessInfo = ref<BrightnessInfo>({
 	current: 100,
 	min: 0,
 	max: 100,
 });
 
-const currentBrightness: Ref<number> = ref(100);
-const currentIcon: Ref<string> = ref('');
-let unlisten: (() => void) | null = null;
+const currentBrightness = ref(100);
+const currentIcon = ref('');
 let setDebitTimeout: ReturnType<typeof setTimeout> | null = null;
 
 async function updateIcon() {
@@ -88,21 +87,19 @@ const getPercentageClass = (percentage: number) => {
 };
 
 onMounted(async () => {
-	unlisten = await listen('brightness-changed', async (event) => {
-		brightnessInfo.value = event.payload as BrightnessInfo;
-		currentBrightness.value = (event.payload as BrightnessInfo).current;
-		await updateIcon();
-	});
 	await getBrightnessInfo();
 });
 
 onUnmounted(() => {
-	if (unlisten) {
-		unlisten();
-	}
 	if (setDebitTimeout) {
 		clearTimeout(setDebitTimeout);
 	}
+});
+
+useEventListener<BrightnessInfo>('brightness-changed', async (event) => {
+	brightnessInfo.value = event.payload;
+	currentBrightness.value = event.payload.current;
+	await updateIcon();
 });
 </script>
 

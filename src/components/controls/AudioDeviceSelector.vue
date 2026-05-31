@@ -1,11 +1,9 @@
-import { getAudioDevices, setAudioDevice } from '@/services/core.service';
-
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
 import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, type Ref, ref } from 'vue';
-import { getAudioDevices, setAudioDevice } from '@/services/audio.service';
+import { getAudioDevices, setAudioDevice } from '@/services/core.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 
 interface AudioDevice {
@@ -51,14 +49,14 @@ async function onDeviceChange(deviceId: string) {
 onMounted(async () => {
 	speakerIcon.value = await getSymbolSource('audio-speakers-symbolic');
 	await loadDevices();
+});
 
-	listen<AudioDevice[]>('audio-devices-changed', (event) => {
-		devices.value = event.payload;
-		const defaultDevice = event.payload.find((d) => d.is_default);
-		if (defaultDevice) {
-			selectedDeviceId.value = defaultDevice.id;
-		}
-	});
+useEventListener<AudioDevice[]>('audio-devices-changed', (event) => {
+	devices.value = event.payload;
+	const defaultDevice = event.payload.find((d) => d.is_default);
+	if (defaultDevice) {
+		selectedDeviceId.value = defaultDevice.id;
+	}
 });
 
 function getDeviceName(device: AudioDevice): string {

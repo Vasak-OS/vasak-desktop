@@ -1,28 +1,27 @@
 
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, nextTick, onMounted, type Ref, ref, watch } from 'vue';
-import type { MusicInfo } from '@/interfaces/music';
-import { musicNowPlaying } from '@/services/audio.service';
-import { processImageUrl } from '@/utils/image';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
+import { nextTick, onMounted, ref, watch } from 'vue';
+import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { logError } from '@/utils/logger';
 
-const musicInfo: Ref<MusicInfo> = ref({
-	title: '',
-	artist: '',
-	player: '',
-	artUrl: '',
-	status: '',
-});
-
-const imgSrc: Ref<string> = ref('');
-const prevIcon: Ref<string> = ref('');
-const nextIcon: Ref<string> = ref('');
-const playIcon: Ref<string> = ref('');
-const pauseIcon: Ref<string> = ref('');
+const {
+	musicInfo,
+	imgSrc,
+	isPlaying,
+	prevIcon,
+	nextIcon,
+	playIcon,
+	pauseIcon,
+	onPrev,
+	onNext,
+	onPlayPause,
+	onImgError,
+	initIcons,
+	initMusicInfo,
+} = useMusicPlayer();
 
 const commandError = ref('');
 const showError = ref(false);
@@ -31,62 +30,9 @@ let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 const dbusStatus = ref('connected');
 const dbusMessage = ref('');
 
-const isPlaying = computed(() => String(musicInfo.value?.status || '').toLowerCase() === 'playing');
-
-async function sendCommand(cmd: string): Promise<void> {
-	const player = musicInfo.value?.player || '';
-	if (!player) {
-		showErrorMessage('No hay reproductor activo');
-		return;
-	}
-	try {
-		await invoke(cmd, { player });
-		if (showError.value) {
-			showError.value = false;
-			commandError.value = '';
-		}
-	} catch (e: any) {
-		logError(`[music] Error en comando ${cmd}:`, e);
-		const msg = e?.message || e?.toString() || 'Error al ejecutar comando';
-		showErrorMessage(msg);
-	}
-}
-
-function showErrorMessage(msg: string): void {
-	commandError.value = msg;
-	showError.value = true;
-	if (errorTimeout) clearTimeout(errorTimeout);
-	errorTimeout = globalThis.setTimeout(() => {
-		showError.value = false;
-		commandError.value = '';
-	}, 3000);
-}
-
-function onPrev(): void {
-	sendCommand('music_previous_track');
-}
-
-function onNext(): void {
-	sendCommand('music_next_track');
-}
-
-function onPlayPause(): void {
-	sendCommand('music_play_pause');
-}
-
 onMounted(async () => {
-	imgSrc.value = await getIconSource('applications-multimedia');
-	prevIcon.value = await getSymbolSource('media-seek-backward');
-	nextIcon.value = await getSymbolSource('media-skip-forward');
-	playIcon.value = await getSymbolSource('media-playback-start');
-	pauseIcon.value = await getSymbolSource('media-playback-pause');
-	musicInfo.value = await musicNowPlaying();
-	listen('music-playing-update', (event) => {
-		const payload = (event.payload || {}) as Partial<MusicInfo>;
-		console.log('[MusicWidget] Received update:', payload);
-		Object.assign(musicInfo.value, payload);
-	});
-
+	await initIcons();
+	await initMusicInfo();
 	listen('dbus-status', (event: any) => {
 		const payload = event.payload;
 		if (payload.service === 'music') {
@@ -139,29 +85,6 @@ watch(
 		updateTitleOverflow();
 	}
 );
-watch(
-	() => musicInfo.value?.artUrl,
-	async (newUrl) => {
-		const processedUrl = processImageUrl(newUrl);
-		if (processedUrl) {
-			imgSrc.value = processedUrl;
-		} else {
-			imgSrc.value = await getIconSource('applications-multimedia');
-		}
-	},
-	{ immediate: true }
-);
-
-async function onImgError(): Promise<void> {
-	try {
-		const defaultIcon = await getIconSource('applications-multimedia');
-		if (defaultIcon) {
-			imgSrc.value = defaultIcon;
-		}
-	} catch (e) {
-		console.warn('Failed to load default icon:', e);
-	}
-}
 </script>
 
 <template>
