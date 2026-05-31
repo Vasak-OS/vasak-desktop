@@ -60,17 +60,7 @@ const networkAlt = computed(() => {
 const getCurrentNetwork = async () => {
 	try {
 		networkState.value = await getCurrentNetworkState();
-		console.log(
-			'[network-debug] TrayIconNetwork initial state:',
-			JSON.stringify(networkState.value)
-		);
 		networkIconSrc.value = await getSymbolSource(networkState.value.icon);
-		console.log(
-			'[network-debug] TrayIconNetwork icon resolved:',
-			networkState.value.icon,
-			'->',
-			networkIconSrc.value
-		);
 		return networkState;
 	} catch (error) {
 		networkIconSrc.value = await getSymbolSource('network-offline-symbolic');
@@ -94,18 +84,8 @@ onMounted(async () => {
 });
 
 useEventListener<NetworkInfo>('network-changed', async (event) => {
-	console.log(
-		'[network-debug] TrayIconNetwork network-changed payload:',
-		JSON.stringify(event.payload)
-	);
 	networkState.value = event.payload;
 	networkIconSrc.value = await getSymbolSource(event.payload.icon);
-	console.log(
-		'[network-debug] TrayIconNetwork icon after event:',
-		event.payload.icon,
-		'->',
-		networkIconSrc.value
-	);
 });
 
 useEventListener('vpn-changed', refreshVpnStatus);
