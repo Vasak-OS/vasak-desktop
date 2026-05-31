@@ -51,11 +51,13 @@ async fn apply_wayfire_geometry(
             .await
             .map_err(|error| error.to_string())?;
 
-        log_info(&format!(
-            "[wayland_layer] attempt {} list-views count={}",
-            attempt + 1,
-            views.len()
-        ));
+        if attempt % 5 == 0 {
+            log_info(&format!(
+                "[wayland_layer] attempt {} list-views count={}",
+                attempt + 1,
+                views.len()
+            ));
+        }
 
         // For regular windows we only want the real toplevel view, not the desktop/background layer-shell.
         found_view = views.iter().find(|view| {

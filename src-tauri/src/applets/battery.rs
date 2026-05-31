@@ -2,8 +2,7 @@ use super::Applet;
 use crate::structs::BatteryInfo;
 use async_trait::async_trait;
 use futures_util::StreamExt;
-use once_cell::sync::OnceCell;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use zbus::{Connection, MessageStream};
@@ -11,8 +10,8 @@ use zbus::{Connection, MessageStream};
 pub struct BatteryApplet;
 
 // Keep this global for the static methods (used by commands)
-static BATTERY_CONN: OnceCell<Arc<Connection>> = OnceCell::new();
-static BATTERY_DEVICE_PATH: OnceCell<String> = OnceCell::new();
+static BATTERY_CONN: OnceLock<Arc<Connection>> = OnceLock::new();
+static BATTERY_DEVICE_PATH: OnceLock<String> = OnceLock::new();
 
 #[async_trait]
 impl Applet for BatteryApplet {
