@@ -55,14 +55,14 @@ const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
 		} else if (event.button === 0) {
 			// Left click
 			await trayItemActivate({
-				service_name: item.service_name,
+				serviceName: item.service_name,
 				x: event.clientX,
 				y: event.clientY,
 			});
 		} else if (event.button === 1) {
 			// Middle click
 			await trayItemSecondaryActivate({
-				service_name: item.service_name,
+				serviceName: item.service_name,
 				x: event.clientX,
 				y: event.clientY,
 			});
@@ -77,7 +77,7 @@ const showContextMenu = async (item: TrayItem, event: MouseEvent) => {
 
 	try {
 		const menuItems: TrayMenu[] = await getTrayMenu({
-			service_name: item.service_name,
+			serviceName: item.service_name,
 		});
 
 		contextMenu.value = {
@@ -95,8 +95,8 @@ const showContextMenu = async (item: TrayItem, event: MouseEvent) => {
 const handleMenuItemClick = async (menuItem: TrayMenu) => {
 	try {
 		await trayMenuItemClick({
-			service_name: contextMenu.value.trayId,
-			menu_id: menuItem.id,
+			serviceName: contextMenu.value.trayId,
+			menuId: menuItem.id,
 		});
 		contextMenu.value.visible = false;
 	} catch (error) {

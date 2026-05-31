@@ -39,10 +39,6 @@ export function useNetworkState() {
 	const getCurrentNetwork = async () => {
 		try {
 			networkState.value = await getCurrentNetworkState();
-			console.log(
-				'[network-debug] getCurrentNetworkState:',
-				JSON.parse(JSON.stringify(networkState.value))
-			);
 			networkIconSrc.value = await getIconSource(networkState.value.icon);
 			return networkState;
 		} catch (error) {
@@ -62,7 +58,6 @@ export function useNetworkState() {
 	};
 
 	useEventListener<NetworkInfo>('network-changed', async (event) => {
-		console.log('[network-debug] network-changed payload:', event.payload);
 		networkState.value = event.payload;
 		networkIconSrc.value = await getIconSource(event.payload.icon);
 	});
