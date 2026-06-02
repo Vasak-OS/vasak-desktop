@@ -1,26 +1,24 @@
 <script lang="ts" setup>
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { onMounted, type Ref, ref } from 'vue';
+import { computed, type Ref, ref } from 'vue';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import weatherCodesData from '@/data/weatherCodes.json';
 import type { CodeDataType, WeatherInfo } from '@/interfaces/weather';
 
 const codeData: CodeDataType = weatherCodesData as CodeDataType;
 
-const iconPath: Ref<string> = ref('');
 const weatherInfo: Ref<WeatherInfo | null> = ref(null);
 const props = defineProps<{
 	code: number;
 	dayOrNight: 'day' | 'night';
 }>();
 
-onMounted(async () => {
+const iconPath = useIcon(computed(() => {
 	weatherInfo.value = codeData[String(props.code)];
 	if (weatherInfo.value) {
-		iconPath.value = await getIconSource(weatherInfo.value[props.dayOrNight].image);
-	} else {
-		iconPath.value = 'weather-severe-alert'; // Default icon for unknown codes
+		return weatherInfo.value[props.dayOrNight].image;
 	}
-});
+	return 'weather-severe-alert';
+}));
 </script>
 
 <template>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
 	getBrightnessInfo as fetchBrightnessInfo,
@@ -24,26 +24,7 @@ const brightnessInfo = ref<BrightnessInfo>({
 });
 
 const currentBrightness = ref(100);
-const currentIcon = ref('');
 let setDebitTimeout: ReturnType<typeof setTimeout> | null = null;
-
-async function updateIcon() {
-	try {
-		let iconName: string;
-
-		if (brightnessPercentage.value > 66) {
-			iconName = 'display-brightness-high-symbolic';
-		} else if (brightnessPercentage.value > 33) {
-			iconName = 'display-brightness-medium-symbolic';
-		} else {
-			iconName = 'display-brightness-low-symbolic';
-		}
-
-		currentIcon.value = await getSymbolSource(iconName);
-	} catch (error) {
-		logError('Error loading brightness icon:', error);
-	}
-}
 
 const brightnessPercentage = computed(() => {
 	if (brightnessInfo.value.max <= 0) return 0;
@@ -52,12 +33,17 @@ const brightnessPercentage = computed(() => {
 	return Math.round((loading / range) * 100);
 });
 
+const currentIcon = useSymbol(computed(() => {
+	if (brightnessPercentage.value > 66) return 'display-brightness-high-symbolic';
+	if (brightnessPercentage.value > 33) return 'display-brightness-medium-symbolic';
+	return 'display-brightness-low-symbolic';
+}));
+
 async function getBrightnessInfo() {
 	try {
 		const info = await fetchBrightnessInfo();
 		brightnessInfo.value = info;
 		currentBrightness.value = info.current;
-		await updateIcon();
 	} catch (error) {
 		logError('Error getting brightness:', error);
 	}
@@ -73,7 +59,6 @@ async function updateBrightness() {
 			await setBrightnessInfo({
 				brightness: Number(currentBrightness.value),
 			});
-			await updateIcon();
 		}, 50);
 	} catch (error) {
 		logError('Error setting brightness:', error);
@@ -99,7 +84,6 @@ onUnmounted(() => {
 useEventListener<BrightnessInfo>('brightness-changed', async (event) => {
 	brightnessInfo.value = event.payload;
 	currentBrightness.value = event.payload.current;
-	await updateIcon();
 });
 </script>
 

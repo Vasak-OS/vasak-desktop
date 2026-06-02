@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, ref, watch } from 'vue';
+import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import type { MusicInfo } from '@/interfaces/music';
 import { musicNowPlaying } from '@/services/core.service';
 import { useEventListener } from '@/tools/event.listener';
@@ -16,10 +16,10 @@ export function useMusicPlayer() {
 		status: '',
 	});
 	const imgSrc = ref('');
-	const prevIcon = ref('');
-	const nextIcon = ref('');
-	const playIcon = ref('');
-	const pauseIcon = ref('');
+	const prevIcon = useSymbol(computed(() => 'media-seek-backward'));
+	const nextIcon = useSymbol(computed(() => 'media-skip-forward'));
+	const playIcon = useSymbol(computed(() => 'media-playback-start'));
+	const pauseIcon = useSymbol(computed(() => 'media-playback-pause'));
 
 	const isPlaying = computed(
 		() => String(musicInfo.value?.status || '').toLowerCase() === 'playing'
@@ -51,16 +51,16 @@ export function useMusicPlayer() {
 		sendCommand('music_play_pause');
 	}
 
+	const fallbackIconRef = useIcon(computed(() => 'applications-multimedia'));
+
 	async function onImgError(): Promise<void> {
-		imgSrc.value = await getIconSource('applications-multimedia');
+		imgSrc.value = fallbackIconRef.value || 'applications-multimedia';
 	}
 
 	async function initIcons(): Promise<void> {
-		imgSrc.value = await getIconSource('applications-multimedia');
-		prevIcon.value = await getSymbolSource('media-seek-backward');
-		nextIcon.value = await getSymbolSource('media-skip-forward');
-		playIcon.value = await getSymbolSource('media-playback-start');
-		pauseIcon.value = await getSymbolSource('media-playback-pause');
+		if (!imgSrc.value) {
+			imgSrc.value = fallbackIconRef.value || 'applications-multimedia';
+		}
 	}
 
 	async function initMusicInfo(): Promise<void> {
@@ -73,12 +73,12 @@ export function useMusicPlayer() {
 
 	watch(
 		() => musicInfo.value?.artUrl,
-		async (newUrl) => {
+		(newUrl) => {
 			const processedUrl = processImageUrl(newUrl);
 			if (processedUrl) {
 				imgSrc.value = processedUrl;
 			} else {
-				imgSrc.value = await getIconSource('applications-multimedia');
+				imgSrc.value = fallbackIconRef.value || 'applications-multimedia';
 			}
 		},
 		{ immediate: true }

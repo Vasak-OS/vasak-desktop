@@ -1,18 +1,13 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { onMounted, type Ref, ref } from 'vue';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { RouterLink } from 'vue-router';
 
 const props = defineProps<{
 	to: string;
 	icon: string;
 }>();
-const iconSrc: Ref<string> = ref('');
-
-onMounted(async () => {
-	iconSrc.value = await getIconSource(props.icon);
-});
+const iconSrc = useIcon(() => props.icon);
 </script>
 <template>
   <li class="w-14 h-14 my-4">

@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import {
@@ -12,6 +11,7 @@ import {
 	type VpnStatus,
 } from '@/services/network.service';
 import { useEventListener } from '@/tools/event.listener';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 interface Props {
@@ -34,7 +34,7 @@ const networkState = ref<NetworkInfo>({
 	is_connected: false,
 });
 const vpnStatus = ref<VpnStatus | null>(null);
-const networkIconSrc = ref('');
+const networkIconSrc = useSymbol(computed(() => networkState.value.icon));
 
 const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 
@@ -60,10 +60,8 @@ const networkAlt = computed(() => {
 const getCurrentNetwork = async () => {
 	try {
 		networkState.value = await getCurrentNetworkState();
-		networkIconSrc.value = await getSymbolSource(networkState.value.icon);
 		return networkState;
 	} catch (error) {
-		networkIconSrc.value = await getSymbolSource('network-offline-symbolic');
 		logError('Error getting current network state:', error);
 		return null;
 	}
@@ -83,9 +81,8 @@ onMounted(async () => {
 	await refreshVpnStatus();
 });
 
-useEventListener<NetworkInfo>('network-changed', async (event) => {
+useEventListener<NetworkInfo>('network-changed', (event) => {
 	networkState.value = event.payload;
-	networkIconSrc.value = await getSymbolSource(event.payload.icon);
 });
 
 useEventListener('vpn-changed', refreshVpnStatus);
