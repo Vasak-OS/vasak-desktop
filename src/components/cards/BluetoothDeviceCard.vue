@@ -2,18 +2,19 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import DeviceCard from './DeviceCard.vue';
 
-const icon: Ref<string> = ref('');
 const extraInfo: Ref<any> = ref({});
 const props = defineProps<{
 	device: any;
 	actionLabel: string;
 	connected?: boolean;
 }>();
+
+const icon = useIcon(computed(() => props.device.icon || 'bluetooth'));
 
 const deviceTitle = computed(() => props.device.alias || props.device.name || props.device.address);
 
@@ -38,7 +39,6 @@ const deviceExtraInfo = computed(() => {
 });
 
 onMounted(async () => {
-	icon.value = await getIconSource(props.device.icon || 'bluetooth');
 	if (props.device.path) {
 		try {
 			extraInfo.value = await getDeviceInfo(props.device.path);

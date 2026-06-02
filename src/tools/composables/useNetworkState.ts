@@ -1,5 +1,5 @@
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, ref } from 'vue';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import {
 	getCurrentNetworkState,
 	getVpnStatus,
@@ -22,7 +22,7 @@ export function useNetworkState() {
 		is_connected: false,
 	});
 	const vpnStatus = ref<VpnStatus | null>(null);
-	const networkIconSrc = ref('');
+	const networkIconSrc = useIcon(computed(() => networkState.value.icon));
 
 	const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 
@@ -39,10 +39,8 @@ export function useNetworkState() {
 	const getCurrentNetwork = async () => {
 		try {
 			networkState.value = await getCurrentNetworkState();
-			networkIconSrc.value = await getIconSource(networkState.value.icon);
 			return networkState;
 		} catch (error) {
-			networkIconSrc.value = await getIconSource('network-offline-symbolic');
 			logError('Error getting current network state:', error);
 			return null;
 		}
@@ -57,9 +55,8 @@ export function useNetworkState() {
 		}
 	};
 
-	useEventListener<NetworkInfo>('network-changed', async (event) => {
+	useEventListener<NetworkInfo>('network-changed', (event) => {
 		networkState.value = event.payload;
-		networkIconSrc.value = await getIconSource(event.payload.icon);
 	});
 
 	useEventListener('vpn-changed', refreshVpnStatus);

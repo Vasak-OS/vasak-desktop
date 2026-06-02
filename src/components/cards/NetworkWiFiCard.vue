@@ -2,8 +2,8 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { nextTick, onMounted, type Ref, ref } from 'vue';
+import { computed, nextTick, type Ref, ref } from 'vue';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import {
 	connectToWifi,
 	type NetworkInfo,
@@ -12,7 +12,7 @@ import {
 import ActionButton from '../buttons/ActionButton.vue';
 import ListCard from './ListCard.vue';
 
-const netIcon: Ref<string> = ref('');
+const netIcon = useSymbol(computed(() => props.icon));
 const props = defineProps<NetworkInfo>();
 
 const showModal = ref(false);
@@ -30,7 +30,6 @@ const confirmConnect = async () => {
 	connecting.value = true;
 	errorMsg.value = '';
 	try {
-		// Aquí llamas al plugin con la pass
 		await connectToWifi({ ssid: props.ssid, password: password.value } as WiFiConnectionConfig);
 		showModal.value = false;
 		password.value = '';
@@ -40,10 +39,6 @@ const confirmConnect = async () => {
 		connecting.value = false;
 	}
 };
-
-onMounted(async () => {
-	netIcon.value = await getSymbolSource(props.icon);
-});
 
 const securityLabelMap: Record<string, string> = {
 	none: 'Abierta',

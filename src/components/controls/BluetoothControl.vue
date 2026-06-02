@@ -2,17 +2,22 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { type Ref, ref } from 'vue';
+import { computed, type Ref, ref } from 'vue';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
 import ToggleControl from '../forms/ToggleControl.vue';
 
 const isTogglingBluetooth: Ref<boolean> = ref(false);
 
-const { bluetoothIcon, isBluetoothOn, connectedDevicesCount } = useBluetoothState({
-	getIcon: getIconSource,
+const { isBluetoothOn, connectedDevicesCount } = useBluetoothState({
+	getIcon: async () => '',
 });
+
+const bluetoothIcon = useIcon(computed(() => {
+	if (!isBluetoothOn.value) return 'bluetooth-disabled-symbolic';
+	return connectedDevicesCount.value > 0 ? 'bluetooth-active-symbolic' : 'bluetooth-symbolic';
+}));
 
 const toggleBT = async (): Promise<void> => {
 	try {

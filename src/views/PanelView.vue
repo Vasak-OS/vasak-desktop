@@ -2,8 +2,8 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { Command } from '@tauri-apps/plugin-shell';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { onMounted, ref } from 'vue';
+import { useIcons } from '@/tools/composables/useReactiveIcon';
 import menuIcon from '@/assets/vectors/icon.svg';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
@@ -13,22 +13,14 @@ import { toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 
-const notifyIcon = ref('');
-const configIcon = ref('');
-const fileManagerIcon = ref('');
-
 const notifications = ref<Notification[]>([]);
 const hasNewNotifications = ref(false);
 
-const setIcons = async () => {
-	try {
-		notifyIcon.value = await getIconSource('preferences-desktop-notification');
-		configIcon.value = await getIconSource('preferences-system');
-		fileManagerIcon.value = await getIconSource('system-file-manager');
-	} catch (err) {
-		logError('Error finding icons:', err);
-	}
-};
+const { notifyIcon, configIcon, fileManagerIcon } = useIcons({
+	notifyIcon: 'preferences-desktop-notification',
+	configIcon: 'preferences-system',
+	fileManagerIcon: 'system-file-manager',
+});
 
 const openMenu = async () => {
 	try {
@@ -73,7 +65,6 @@ async function loadNotifications() {
 }
 
 onMounted(async () => {
-	setIcons();
 	await loadNotifications();
 });
 

@@ -1,5 +1,5 @@
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, ref } from 'vue';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import type { VolumeInfo } from '@/interfaces/volume';
 import { getAudioVolume, setAudioVolume, toggleAudioMute } from '@/services/core.service';
 import { useEventListener } from '@/tools/event.listener';
@@ -14,17 +14,10 @@ export function useVolumeState() {
 		is_muted: false,
 	});
 	const currentVolume = ref(0);
-	const currentIcon = ref('');
-
-	async function updateIcon(): Promise<void> {
-		try {
-			const percentage = calculateVolumePercentage(volumeInfo.value, currentVolume.value);
-			const iconName = getVolumeIconName(volumeInfo.value.is_muted, percentage);
-			currentIcon.value = await getSymbolSource(iconName);
-		} catch (error) {
-			logError('Error loading volume icon:', error);
-		}
-	}
+	const currentIcon = useSymbol(computed(() => {
+		const percentage = calculateVolumePercentage(volumeInfo.value, currentVolume.value);
+		return getVolumeIconName(volumeInfo.value.is_muted, percentage);
+	}));
 
 	const volumePercentage = computed(() =>
 		calculateVolumePercentage(volumeInfo.value, currentVolume.value)
@@ -35,7 +28,6 @@ export function useVolumeState() {
 			const info = await getAudioVolume();
 			volumeInfo.value = info;
 			currentVolume.value = info.current;
-			await updateIcon();
 		} catch (error) {
 			logError('Error getting volume:', error);
 		}
@@ -44,7 +36,6 @@ export function useVolumeState() {
 	async function updateVolume(): Promise<void> {
 		try {
 			await setAudioVolume({ volume: currentVolume.value });
-			await updateIcon();
 		} catch (error) {
 			logError('Error setting volume:', error);
 		}
@@ -65,10 +56,9 @@ export function useVolumeState() {
 		return '';
 	}
 
-	useEventListener<VolumeInfo>('volume-changed', async (event) => {
+	useEventListener<VolumeInfo>('volume-changed', (event) => {
 		volumeInfo.value = event.payload;
 		currentVolume.value = event.payload.current;
-		await updateIcon();
 	});
 
 	return {
@@ -80,6 +70,5 @@ export function useVolumeState() {
 		updateVolume,
 		toggleMute,
 		getPercentageClass,
-		updateIcon,
 	};
 }

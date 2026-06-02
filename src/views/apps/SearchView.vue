@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { nextTick, onMounted, onUnmounted, type Ref, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { globalSearch } from '@/services/core.service';
 import { executeSearchResult } from '@/services/search.service';
 import { logError } from '@/utils/logger';
@@ -24,8 +24,7 @@ const selectedIndex = ref(0);
 const loading = ref(false);
 const currentWindow = getCurrentWindow();
 
-// Icono del sistema para búsqueda (vicons)
-const searchIconSrc: Ref<string> = ref('');
+const searchIconSrc = useIcon(computed(() => 'search'));
 
 let debounceTimer: number | null = null;
 
@@ -116,10 +115,7 @@ const scrollToSelected = () => {
 	});
 };
 
-// Auto-focus input on mount
 onMounted(async () => {
-	// Cargar ícono de búsqueda desde vicons
-	searchIconSrc.value = await getIconSource('search');
 	nextTick(() => {
 		document.querySelector<HTMLInputElement>('.search-input')?.focus();
 	});

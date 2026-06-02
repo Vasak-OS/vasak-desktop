@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, ref, watch } from 'vue';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
+import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { VolumeInfo } from '@/interfaces/volume';
 import { getAudioVolume } from '@/services/core.service';
@@ -18,32 +18,18 @@ const volumeInfo = ref<VolumeInfo>({
 	is_muted: false,
 });
 const currentVolume = ref(0);
-const currentIcon = ref('');
-
-async function updateIcon(): Promise<void> {
-	try {
-		const percentage = calculateVolumePercentage(volumeInfo.value, currentVolume.value);
-		const iconName = getVolumeIconName(volumeInfo.value.is_muted, percentage);
-		currentIcon.value = await getSymbolSource(iconName);
-	} catch (error) {
-		logError('Error loading volume icon:', error);
-	}
-}
-
 const volumePercentage = computed(() =>
 	calculateVolumePercentage(volumeInfo.value, currentVolume.value)
 );
-
-watch([() => volumeInfo.value.is_muted, volumePercentage], updateIcon, {
-	immediate: true,
-});
+const currentIcon = useSymbol(computed(() =>
+	getVolumeIconName(volumeInfo.value.is_muted, volumePercentage.value)
+));
 
 async function getVolumeInfo(): Promise<void> {
 	try {
 		const info = (await getAudioVolume()) as VolumeInfo;
 		volumeInfo.value = info;
 		currentVolume.value = info.current;
-		await updateIcon();
 	} catch (error) {
 		logError('Error getting volume:', error);
 	}
@@ -64,7 +50,6 @@ onMounted(async () => {
 useEventListener<VolumeInfo>('volume-changed', (event) => {
 	volumeInfo.value = event.payload;
 	currentVolume.value = event.payload.current;
-	updateIcon();
 });
 </script>
 <template>

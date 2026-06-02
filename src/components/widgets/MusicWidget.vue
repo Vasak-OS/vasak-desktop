@@ -2,7 +2,6 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { nextTick, onMounted, ref, watch } from 'vue';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { logError } from '@/utils/logger';

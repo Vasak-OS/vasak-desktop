@@ -1,14 +1,14 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, type Ref, ref } from 'vue';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
+import { computed } from 'vue';
 import type { WindowPanelButtonProps } from '@/interfaces/window';
 import { toggleWindow as sysToggleWindow } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const props = defineProps<WindowPanelButtonProps>();
-const iconSource: Ref<string> = ref<string>('');
 const iconName = computed(() => props.icon?.trim() || 'application-x-executable');
+const iconSource = useIcon(iconName);
 
 const toggleWindow = async (): Promise<void> => {
 	try {
@@ -17,18 +17,6 @@ const toggleWindow = async (): Promise<void> => {
 		logError('[Window] Error alternando ventana:', error);
 	}
 };
-
-onMounted(async () => {
-	try {
-		iconSource.value = await getIconSource(iconName.value);
-	} catch {
-		try {
-			iconSource.value = await getIconSource('application-x-executable');
-		} catch {
-			iconSource.value = '';
-		}
-	}
-});
 </script>
 
 <template>

@@ -2,8 +2,8 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, type Ref, ref } from 'vue';
+import { useIcons } from '@/tools/composables/useReactiveIcon';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
 import MenuArea from '@/components/areas/menu/MenuArea.vue';
 import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
@@ -25,11 +25,14 @@ import { logError } from '@/utils/logger';
 const menuData: Ref<Array<any>> = ref([]);
 const categorySelected: Ref<any> = ref('all');
 const filter: Ref<string> = ref('');
-const logoutImg: Ref<string> = ref('');
-const shutdownImg: Ref<string> = ref('');
-const rebootImg: Ref<string> = ref('');
-const suspendImg: Ref<string> = ref('');
-const settingsImg: Ref<string> = ref('');
+
+const { logoutImg, shutdownImg, rebootImg, suspendImg, settingsImg } = useIcons({
+	logoutImg: 'system-log-out',
+	shutdownImg: 'system-shutdown',
+	rebootImg: 'system-reboot',
+	suspendImg: 'system-suspend',
+	settingsImg: 'settings',
+});
 
 const setMenu = async () => {
 	try {
@@ -98,21 +101,8 @@ const apps = computed(() => {
 
 const appsOfCategory = computed(() => (menuData.value as any)[categorySelected.value]?.apps);
 
-const setImages = async () => {
-	try {
-		logoutImg.value = await getIconSource('system-log-out');
-		shutdownImg.value = await getIconSource('system-shutdown');
-		rebootImg.value = await getIconSource('system-reboot');
-		suspendImg.value = await getIconSource('system-suspend');
-		settingsImg.value = await getIconSource('settings');
-	} catch (error) {
-		logError('Error loading session icons:', error);
-	}
-};
-
 onMounted(async () => {
 	setMenu();
-	setImages();
 	document.addEventListener('keydown', (event) => {
 		if (event.key === 'Escape') {
 			try {

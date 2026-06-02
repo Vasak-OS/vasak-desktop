@@ -1,8 +1,8 @@
 
 <script lang="ts" setup>
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { onMounted, type Ref, ref } from 'vue';
+import { computed } from 'vue';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { openApp as sysOpenApp } from '@/services/app.service';
 import { logError } from '@/utils/logger';
 
@@ -13,7 +13,7 @@ const props = defineProps({
 	},
 });
 
-const appIcon: Ref<string> = ref(props.app.icon);
+const appIcon = useIcon(computed(() => props.app.icon));
 const appWindow = getCurrentWindow();
 
 const openApp = async () => {
@@ -25,14 +25,6 @@ const openApp = async () => {
 		appWindow.close();
 	}
 };
-
-const getAppIcon = async () => {
-	appIcon.value = await getIconSource(props.app.icon);
-};
-
-onMounted(() => {
-	getAppIcon();
-});
 </script>
 
 <template>

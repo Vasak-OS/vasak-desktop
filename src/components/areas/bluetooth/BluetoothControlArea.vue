@@ -11,8 +11,8 @@ import {
 	scanForDevices,
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
+import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
@@ -22,8 +22,7 @@ import { logError } from '@/utils/logger';
 const connectedDevices = ref<any[]>([]);
 const availableDevices = ref<any[]>([]);
 const isTogglingBluetooth = ref(false);
-const bluetoothIcon = ref('');
-const syncIcon = ref('');
+const syncIcon = useSymbol(computed(() => 'refreshstructure'));
 const defaultAdapter = ref<AdapterInfo | null>(null);
 const connectedDevicesCount = ref(0);
 const loading = ref(true);
@@ -49,7 +48,6 @@ const handleBluetoothChange = async (event: any) => {
 		connectedDevices,
 		defaultAdapter,
 	});
-	getBluetoothIcon();
 };
 
 const refreshDevices = async () => {
@@ -79,25 +77,17 @@ const scanDevices = async () => {
 	isScanning.value = false;
 };
 
+const bluetoothIcon = useIcon(computed(() => {
+	connectedDevicesCount.value = connectedDevices.value.length;
+	return resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
+}));
+
 onMounted(async () => {
 	defaultAdapter.value = await getDefaultAdapter();
-	syncIcon.value = await getSymbolSource('refreshstructure');
 	await refreshDevices();
-	await getBluetoothIcon();
 });
 
 useEventListener('bluetooth-change', handleBluetoothChange);
-
-const getBluetoothIcon = async () => {
-	try {
-		connectedDevicesCount.value = connectedDevices.value.length;
-		const iconName = resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
-		bluetoothIcon.value = await getIconSource(iconName);
-	} catch (error) {
-		logError('Error loading bluetooth icon:', error);
-		bluetoothIcon.value = '';
-	}
-};
 
 const connect = async (device: any) => {
 	await connectDevice(device.path);
