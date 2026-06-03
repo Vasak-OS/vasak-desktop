@@ -27,9 +27,10 @@ useEventListener('config-changed', () => {
 		'config',
 		{ config: any; loadConfig: () => Promise<void> }
 	>;
-	document.startViewTransition(() => {
-		configStore.loadConfig();
-	});
+	if (typeof document.startViewTransition === 'function') {
+		return document.startViewTransition(() => configStore.loadConfig());
+	}
+	return configStore.loadConfig();
 });
 </script>
 
