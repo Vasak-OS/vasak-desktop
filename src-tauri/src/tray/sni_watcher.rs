@@ -85,10 +85,10 @@ impl SniWatcher {
                             if let Ok(message) = msg {
                                 if let Ok((name, _old_owner, new_owner)) = message.body().deserialize::<(&str, &str, &str)>() {
                                     if new_owner.is_empty() {
-                                        // Check if the disconnected name is tracked in the tray
+                                        // Check if the disconnected name is tracked directly or via bus_name
                                         let is_tracked = {
                                             let manager = tray_manager.read().await;
-                                            manager.contains_key(name)
+                                            manager.contains_key(name) || manager.values().any(|v| v.bus_name.as_deref() == Some(name))
                                         };
                                         if is_tracked {
                                             log_debug(&format!("[SNI] Name owner changed, removing: {}", name));
@@ -118,14 +118,14 @@ impl SniWatcher {
     ) -> Result<(), Box<dyn std::error::Error>> {
         log_info(&format!("[SNI] Registrando item: {}", service_name));
 
-        let (bus_name, object_path) = if service_name.starts_with('/') {
+        let (bus_name, object_path, map_key) = if service_name.starts_with('/') {
             let sender = sender_bus.ok_or("Registro SNI sin sender para object path")?;
-            (sender, service_name.to_string())
+            (sender, service_name.to_string(), sender.to_string())
         } else if service_name.contains('/') {
             let parts: Vec<&str> = service_name.splitn(2, '/').collect();
-            (parts[0], format!("/{}", parts[1]))
+            (parts[0], format!("/{}", parts[1]), service_name.to_string())
         } else {
-            (service_name, "/StatusNotifierItem".to_string())
+            (service_name, "/StatusNotifierItem".to_string(), service_name.to_string())
         };
 
         let proxy = SniItemProxy::builder(connection)
@@ -134,11 +134,12 @@ impl SniWatcher {
             .build()
             .await?;
 
-        let item = Self::create_tray_item_from_proxy(&proxy, service_name).await?;
+        let mut item = Self::create_tray_item_from_proxy(&proxy, service_name).await?;
+        item.bus_name = sender_bus.map(|s| s.to_string());
 
         {
             let mut manager = tray_manager.write().await;
-            manager.insert(service_name.to_string(), item);
+            manager.insert(map_key, item);
         }
 
         emit_tray_update(app_handle).await;
@@ -148,13 +149,17 @@ impl SniWatcher {
     async fn unregister_item(
         tray_manager: &TrayManager,
         app_handle: &AppHandle,
-        service_name: &str,
+        name: &str,
     ) {
-        log_info(&format!("[SNI] Desregistrando item: {}", service_name));
+        log_info(&format!("[SNI] Desregistrando item: {}", name));
 
         {
             let mut manager = tray_manager.write().await;
-            manager.remove(service_name);
+            if manager.contains_key(name) {
+                manager.remove(name);
+            } else {
+                manager.retain(|_, v| v.bus_name.as_deref() != Some(name));
+            }
         }
 
         emit_tray_update(app_handle).await;
@@ -193,6 +198,7 @@ impl SniWatcher {
         Ok(TrayItem {
             id,
             service_name: service_name.to_string(),
+            bus_name: None,
             icon_name,
             icon_data,
             title,

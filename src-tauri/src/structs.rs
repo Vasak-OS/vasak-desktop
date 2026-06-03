@@ -100,6 +100,7 @@ pub struct AudioDevice {
 pub struct TrayItem {
     pub id: String,
     pub service_name: String,
+    pub bus_name: Option<String>,
     pub icon_name: Option<String>,
     pub icon_data: Option<String>,
     pub title: Option<String>,
