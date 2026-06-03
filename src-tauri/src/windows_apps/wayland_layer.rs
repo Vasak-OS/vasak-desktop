@@ -142,17 +142,14 @@ async fn apply_wayfire_geometry(
 
     let view_id = view.id as u64;
 
-    match client.configure_view_coords(
+    client.configure_view_coords(
         view_id,
         x as i64,
         y as i64,
         width as i64,
         height as i64,
         output_id,
-    ).await {
-        Ok(val) => log_info(&format!("[wayland_layer] configure-view response: {}", serde_json::to_string(&val).unwrap_or_else(|_| "<non-serializable>".into()))),
-        Err(e) => log_warning(&format!("[wayland_layer] configure-view error: {}", e)),
-    }
+    ).await.map_err(|e| format!("[wayland_layer] configure-view error for {title}: {e}"))?;
 
     // After configuration, fetch the view again and log its current properties for diagnosis.
     if let Ok(all_views) = client.list_views_typed().await {
@@ -193,24 +190,23 @@ async fn apply_wayfire_geometry(
                 attempt + 1
             ));
 
-            match client.configure_view_coords(
+            client.configure_view_coords(
                 view_id,
                 x as i64,
                 y as i64,
                 width as i64,
                 height as i64,
                 output_id,
-            ).await {
-                Ok(val) => log_info(&format!("[wayland_layer] reapply configure-view: {}", serde_json::to_string(&val).unwrap_or_else(|_| "<non-serializable>".into()))),
-                Err(e) => log_warning(&format!("[wayland_layer] reapply configure-view error: {}", e)),
-            }
+            ).await.map_err(|e| format!("[wayland_layer] reapply configure-view error for {title}: {e}"))?;
 
             break;
         }
     }
 
-    let _ = client.set_sticky(view_id, true).await;
-    let _ = client.set_always_on_top(view_id, true).await;
+    client.set_sticky(view_id, true).await
+        .map_err(|e| format!("[wayland_layer] set_sticky error for {title}: {e}"))?;
+    client.set_always_on_top(view_id, true).await
+        .map_err(|e| format!("[wayland_layer] set_always_on_top error for {title}: {e}"))?;
 
     Ok(())
 }
