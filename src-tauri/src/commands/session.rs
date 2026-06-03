@@ -7,8 +7,18 @@ extern "C" {
 
 #[tauri::command]
 pub fn detect_display_server() -> String {
-    log_info("Servidor de display detectado: wayland");
-    "wayland".to_string()
+    if std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("wayland") {
+        log_info("Servidor de display detectado: wayland");
+        return "wayland".to_string();
+    }
+
+    if std::env::var("DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("x11") {
+        log_info("Servidor de display detectado: x11");
+        return "x11".to_string();
+    }
+
+    log_info("Servidor de display no detectado, reportando: unknown");
+    "unknown".to_string()
 }
 
 #[tauri::command]
