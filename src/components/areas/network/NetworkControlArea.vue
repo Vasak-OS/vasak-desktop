@@ -153,7 +153,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import {
@@ -178,6 +178,7 @@ const loading = ref(false);
 const availableNetworks = ref<NetworkInfo[]>([]);
 const networkStats = ref<NetworkStats | null>(null);
 const vpnStatus = ref<VpnStatus | null>(null);
+let statsPollInterval: ReturnType<typeof setInterval> | undefined;
 const wifiStatus = ref('Checking...');
 const ethernetStatus = ref('Checking...');
 
@@ -322,9 +323,13 @@ onMounted(async () => {
 	await refreshEthernetStatus();
 	await refreshVpnStatus();
 	await refreshNetworkStats();
-	setInterval(() => {
+	statsPollInterval = setInterval(() => {
 		void refreshNetworkStats();
 	}, 2000);
+});
+
+onUnmounted(() => {
+	clearInterval(statsPollInterval);
 });
 
 useEventListener<any>('network-changed', async () => {
