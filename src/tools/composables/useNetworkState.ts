@@ -39,7 +39,7 @@ export function useNetworkState() {
 	const getCurrentNetwork = async () => {
 		try {
 			networkState.value = await getCurrentNetworkState();
-			return networkState;
+			return networkState.value;
 		} catch (error) {
 			logError('Error getting current network state:', error);
 			return null;
