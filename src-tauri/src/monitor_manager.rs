@@ -1,26 +1,16 @@
-use std::sync::{Mutex, OnceLock};
 use tauri::{AppHandle, Monitor};
 use crate::logger::{log_info, log_debug, log_error};
 
-static AVAILABLE_MONITORS: OnceLock<Mutex<Option<Vec<Monitor>>>> = OnceLock::new();
-
 pub fn get_monitors(app: &AppHandle) -> Option<Vec<Monitor>> {
-    if AVAILABLE_MONITORS.get().is_none() {
-        log_debug("Detectando monitores disponibles");
-        let monitors = app.available_monitors().ok()?;
-        log_info(&format!("Detectados {} monitores", monitors.len()));
-        for (i, monitor) in monitors.iter().enumerate() {
-            log_debug(&format!("  Monitor {}: {}x{} en ({},{})", 
-                i, monitor.size().width, monitor.size().height,
-                monitor.position().x, monitor.position().y));
-        }
-        let _ = AVAILABLE_MONITORS.set(Mutex::new(Some(monitors)));
+    log_debug("Detectando monitores disponibles");
+    let monitors = app.available_monitors().ok()?;
+    log_info(&format!("Detectados {} monitores", monitors.len()));
+    for (i, monitor) in monitors.iter().enumerate() {
+        log_debug(&format!("  Monitor {}: {}x{} en ({},{})", 
+            i, monitor.size().width, monitor.size().height,
+            monitor.position().x, monitor.position().y));
     }
-
-    AVAILABLE_MONITORS.get()
-        .and_then(|m| m.lock().ok())
-        .map(|guard| guard.clone())
-        .unwrap_or_default()
+    Some(monitors)
 }
 
 pub fn get_primary_monitor(app: &AppHandle) -> Option<Monitor> {
