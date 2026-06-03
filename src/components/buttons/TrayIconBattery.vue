@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { getBatteryInfo } from '@/services/core.service';
@@ -68,11 +68,9 @@ async function getBatteryInfoComp() {
 				is_charging: false,
 			};
 		}
-		await updateIcon();
 	} catch (error) {
 		logError('Error getting battery info:', error);
 		batteryInfo.value.has_battery = false;
-		await updateIcon();
 	}
 }
 
@@ -86,7 +84,6 @@ onMounted(async () => {
 
 useEventListener('battery-update', (event) => {
 	batteryInfo.value = event.payload as BatteryInfo;
-	updateIcon();
 });
 </script>
 
