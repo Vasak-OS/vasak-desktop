@@ -213,11 +213,11 @@ impl WayfireClient {
                     let message: Value = serde_json::from_slice(&buffer).map_err(|_| ())?;
 
                     if message.get("event").is_some() {
-                        let _ = event_tx.send(message.clone());
+                        let _ = event_tx.send(message);
+                    } else {
+                        pending.lock().await.push_back(message);
+                        notify.notify_waiters();
                     }
-
-                    pending.lock().await.push_back(message);
-                    notify.notify_waiters();
                 }
             }
             .await;
