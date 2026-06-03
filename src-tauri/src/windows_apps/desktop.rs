@@ -39,7 +39,7 @@ pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         primary_monitor_position.y,
         primary_monitor_size.width,
         primary_monitor_size.height,
-    );
+    ).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
 
     for (index, monitor) in monitors.iter().enumerate() {
         if monitor.position() == primary_monitor_position {
@@ -86,14 +86,16 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
     let _ = other_desktop_window.navigate(url);
 
-    set_window_properties(
+    if let Err(e) = set_window_properties(
         &other_desktop_window,
         format!("Vasak Desktop {}", index),
         monitor_position.x,
         monitor_position.y,
         monitor_size.width,
         monitor_size.height,
-    );
+    ) {
+        log_error(&format!("{e}"));
+    }
     } else {
         log_error(&format!("Failed to create desktop window for monitor {}", index));
     }
@@ -106,8 +108,8 @@ fn set_window_properties(
     _y: i32,
     _width: u32,
     _height: u32,
-) {
-    let gtk_window = window.gtk_window().expect("Failed to get GTK window");
+) -> Result<(), String> {
+    let gtk_window = window.gtk_window().map_err(|e| format!("Failed to get GTK window for {}: {e}", window.label()))?;
 
     gtk_window.set_type_hint(gdk::WindowTypeHint::Desktop);
     gtk_window.set_accept_focus(false);
@@ -127,4 +129,5 @@ fn set_window_properties(
     let _ = window.show();
     gtk_window.show_all();
     gtk_window.present();
+    Ok(())
 }
