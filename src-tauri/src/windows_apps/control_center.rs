@@ -27,7 +27,7 @@ pub async fn create_control_center_window(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
     let primary_monitor_size = primary_monitor.size();
-    let app_height = (primary_monitor_size.height - 60).into();
+    let app_height = primary_monitor_size.height.saturating_sub(60) as f64;
     let panel_width = 350;
     let monitor_position = primary_monitor.position();
     let monitor_size = primary_monitor_size;
