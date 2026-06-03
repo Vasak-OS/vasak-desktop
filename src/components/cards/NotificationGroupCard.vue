@@ -72,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
 import { logError } from '@/utils/logger';
