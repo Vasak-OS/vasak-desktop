@@ -1,3 +1,4 @@
+use gdk::prelude::*;
 use gtk::prelude::*;
 use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use tauri::{
@@ -31,6 +32,11 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
     // Configurar layer-shell: Top, exclusive zone automático, sin teclado
     layer_win.init_layer_shell();
+    if let Some(display) = gdk::Display::default() {
+        if let Some(monitor) = display.primary_monitor() {
+            layer_win.set_monitor(&monitor);
+        }
+    }
     layer_win.set_namespace("vasak-panel");
     layer_win.set_layer(Layer::Top);
     layer_win.set_anchor(Edge::Top, true);
@@ -40,15 +46,16 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     layer_win.set_keyboard_mode(KeyboardMode::None);
 
     // 3. Reparent: extraer el WebKitWebView de la ventana xdg y ponerlo en layer-shell.
-    if let Some(vbox) = gtk_window.child() {
-        if let Some(container) = vbox.dynamic_cast_ref::<gtk::Container>() {
-            let children = container.children();
-            if let Some(widget) = children.first() {
-                let widget = widget.clone();
-                container.remove(&widget);
-                layer_win.add(&widget);
-            }
-        }
+    let reparented = gtk_window.child().and_then(|vbox| {
+        let container = vbox.dynamic_cast_ref::<gtk::Container>()?.clone();
+        let widget = container.children().first()?.clone();
+        container.remove(&widget);
+        layer_win.add(&widget);
+        Some(())
+    }).is_some();
+
+    if !reparented {
+        return Err("No se pudo reparentar el webview".into());
     }
 
     // 4. Forzar fondo transparente en la ventana layer-shell.
