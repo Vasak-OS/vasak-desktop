@@ -148,10 +148,7 @@ impl WayfireClient {
         let mut last_error: Option<Box<dyn Error + Send + Sync>> = None;
 
         loop {
-            if let Some(socket_path) = socket_candidates()
-                .into_iter()
-                .find(|candidate| is_usable_socket(candidate))
-            {
+            for socket_path in socket_candidates().into_iter().filter(|c| is_usable_socket(c)) {
                 match UnixStream::connect(&socket_path).await {
                     Ok(stream) => {
                         let (reader, writer) = stream.into_split();
