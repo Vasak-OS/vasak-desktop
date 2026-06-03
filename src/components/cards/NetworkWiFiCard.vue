@@ -12,8 +12,8 @@ import {
 import ActionButton from '../buttons/ActionButton.vue';
 import ListCard from './ListCard.vue';
 
-const netIcon = useSymbol(computed(() => props.icon));
 const props = defineProps<NetworkInfo>();
+const netIcon = useSymbol(computed(() => props.icon));
 
 const showModal = ref(false);
 const password = ref('');
