@@ -5,6 +5,7 @@ use std::env;
 use std::error::Error;
 use std::os::unix::fs::FileTypeExt;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::OnceLock;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -140,6 +141,7 @@ pub struct WayfireClient {
     notify: Arc<Notify>,
     request_lock: Arc<AsyncMutex<()>>,
     event_tx: broadcast::Sender<Value>,
+    closed: Arc<AtomicBool>,
 }
 
 impl WayfireClient {
@@ -158,8 +160,9 @@ impl WayfireClient {
                         let notify = Arc::new(Notify::new());
                         let request_lock = Arc::new(AsyncMutex::new(()));
                         let (event_tx, _) = broadcast::channel(128);
+                        let closed = Arc::new(AtomicBool::new(false));
 
-                        Self::spawn_reader(reader, pending.clone(), notify.clone(), event_tx.clone());
+                        Self::spawn_reader(reader, pending.clone(), notify.clone(), event_tx.clone(), closed.clone());
 
                         return Ok(Self {
                             writer,
@@ -167,6 +170,7 @@ impl WayfireClient {
                             notify,
                             request_lock,
                             event_tx,
+                            closed,
                         });
                     }
                     Err(error) => {
@@ -194,29 +198,32 @@ impl WayfireClient {
         pending: Arc<AsyncMutex<VecDeque<Value>>>,
         notify: Arc<Notify>,
         event_tx: broadcast::Sender<Value>,
+        closed: Arc<AtomicBool>,
     ) {
         tokio::spawn(async move {
-            loop {
-                let mut header = [0u8; 4];
-                if reader.read_exact(&mut header).await.is_err() {
-                    break;
+            let result: Result<(), ()> = async {
+                loop {
+                    let mut header = [0u8; 4];
+                    reader.read_exact(&mut header).await.map_err(|_| ())?;
+
+                    let len = u32::from_le_bytes(header) as usize;
+                    let mut buffer = vec![0u8; len];
+                    reader.read_exact(&mut buffer).await.map_err(|_| ())?;
+
+                    let message: Value = serde_json::from_slice(&buffer).map_err(|_| ())?;
+
+                    if message.get("event").is_some() {
+                        let _ = event_tx.send(message.clone());
+                    }
+
+                    pending.lock().await.push_back(message);
+                    notify.notify_waiters();
                 }
+            }
+            .await;
 
-                let len = u32::from_le_bytes(header) as usize;
-                let mut buffer = vec![0u8; len];
-                if reader.read_exact(&mut buffer).await.is_err() {
-                    break;
-                }
-
-                let Ok(message) = serde_json::from_slice::<Value>(&buffer) else {
-                    break;
-                };
-
-                if message.get("event").is_some() {
-                    let _ = event_tx.send(message.clone());
-                }
-
-                pending.lock().await.push_back(message);
+            if result.is_err() {
+                closed.store(true, Ordering::SeqCst);
                 notify.notify_waiters();
             }
         });
@@ -227,6 +234,10 @@ impl WayfireClient {
     }
 
     pub async fn send_and_wait(&self, method: &str, data: Value) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        if self.closed.load(Ordering::SeqCst) {
+            return Err("Wayfire IPC connection closed".into());
+        }
+
         let _request_guard = self.request_lock.lock().await;
 
         let payload = json!({
@@ -244,6 +255,10 @@ impl WayfireClient {
         }
 
         loop {
+            if self.closed.load(Ordering::SeqCst) {
+                return Err("Wayfire IPC connection closed".into());
+            }
+
             if let Some(message) = self.pending.lock().await.pop_front() {
                 if message.get("event").is_some() {
                     continue;
