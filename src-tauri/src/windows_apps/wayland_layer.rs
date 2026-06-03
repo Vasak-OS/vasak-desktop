@@ -85,13 +85,13 @@ async fn apply_wayfire_geometry(
             break;
         }
 
-        // If this is the last attempt and we still haven't matched, log the full views for diagnosis.
+        // If this is the last attempt and we still haven't matched, log a sanitized view summary.
         if attempt == 29 {
-            if let Ok(serialized) = serde_json::to_string_pretty(&views) {
-                log_warning(&format!("[wayland_layer] list-views (final attempt): {}", serialized));
-            } else {
-                log_warning("[wayland_layer] list-views: <failed to serialize views>");
-            }
+            let summary: Vec<String> = views.iter().map(|v| {
+                format!("id={} app_id={:?} role={:?} layer={:?} type={:?}",
+                    v.id, v.app_id, v.role, v.layer, v.type_field)
+            }).collect();
+            log_warning(&format!("[wayland_layer] list-views (final attempt, {} views): {:?}", views.len(), summary));
         }
 
         sleep(Duration::from_millis(100)).await;
