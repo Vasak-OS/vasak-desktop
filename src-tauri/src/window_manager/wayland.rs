@@ -94,7 +94,7 @@ impl WaylandManager {
             title,
             is_minimized: view.minimized.unwrap_or(false),
             icon,
-            demands_attention: view.sticky,
+            demands_attention: None,
         })
     }
 }
@@ -105,7 +105,11 @@ impl WindowManagerBackend for WaylandManager {
             let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
             let views = client.list_views_typed().await?;
             let mut windows: Vec<WindowInfo> = views.iter().filter_map(Self::view_to_window_info).collect();
-            windows.sort_by(|left, right| left.id.cmp(&right.id));
+            windows.sort_by(|left, right| {
+                let l = left.id.parse::<u64>().unwrap_or(u64::MAX);
+                let r = right.id.parse::<u64>().unwrap_or(u64::MAX);
+                l.cmp(&r)
+            });
             Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(windows)
         })?;
 
