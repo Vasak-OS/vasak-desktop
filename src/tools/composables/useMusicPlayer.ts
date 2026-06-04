@@ -72,13 +72,13 @@ export function useMusicPlayer() {
 	}
 
 	watch(
-		() => musicInfo.value?.artUrl,
-		(newUrl) => {
+		[() => musicInfo.value?.artUrl, fallbackIconRef],
+		([newUrl, _fallback]) => {
 			const processedUrl = processImageUrl(newUrl);
 			if (processedUrl) {
 				imgSrc.value = processedUrl;
 			} else {
-				imgSrc.value = fallbackIconRef.value || 'applications-multimedia';
+				imgSrc.value = _fallback || 'applications-multimedia';
 			}
 		},
 		{ immediate: true }
