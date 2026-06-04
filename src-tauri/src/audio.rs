@@ -12,6 +12,12 @@ fn sink_cache() -> &'static Mutex<Option<(String, Instant)>> {
     CACHE.get_or_init(|| Mutex::new(None))
 }
 
+fn clear_sink_cache() {
+    if let Ok(mut cache) = sink_cache().lock() {
+        cache.take();
+    }
+}
+
 /// Obtiene el ID del sink de audio por defecto (con caché de 2s)
 fn get_default_sink_id() -> Result<String> {
     if let Ok(cache) = sink_cache().lock() {
@@ -205,7 +211,9 @@ pub fn list_audio_devices() -> Result<Vec<AudioDevice>> {
 pub fn set_default_audio_device(device_id: &str, app: AppHandle) -> Result<()> {
     log_info(&format!("Estableciendo dispositivo de audio por defecto: {}", device_id));
     CommandExecutor::run(CMD_WPCTL, &["set-default", device_id])?;
-    
+
+    clear_sink_cache();
+
     // Notify frontend of change
     if let Ok(devices) = list_audio_devices() {
         log_debug("Notificando cambio de dispositivos de audio al frontend");
