@@ -15,6 +15,7 @@ import { logError } from '@/utils/logger';
 
 const notifications = ref<Notification[]>([]);
 const hasNewNotifications = ref(false);
+let notificationResetTimer: ReturnType<typeof setTimeout> | undefined;
 
 const { notifyIcon, configIcon, fileManagerIcon } = useIcons({
 	notifyIcon: 'preferences-desktop-notification',
@@ -74,7 +75,8 @@ useEventListener('notifications-updated', (event) => {
 	notifications.value = newNotifications;
 
 	if (hasNewNotifications.value) {
-		setTimeout(() => {
+		clearTimeout(notificationResetTimer);
+		notificationResetTimer = setTimeout(() => {
 			hasNewNotifications.value = false;
 		}, 1000);
 	}
