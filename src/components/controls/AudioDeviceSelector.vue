@@ -55,6 +55,10 @@ useEventListener<AudioDevice[]>('audio-devices-changed', (event) => {
 	const defaultDevice = event.payload.find((d) => d.is_default);
 	if (defaultDevice) {
 		selectedDeviceId.value = defaultDevice.id;
+	} else if (event.payload.length > 0) {
+		selectedDeviceId.value = event.payload[0].id;
+	} else {
+		selectedDeviceId.value = '';
 	}
 });
 
