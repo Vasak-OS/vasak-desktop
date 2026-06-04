@@ -530,6 +530,9 @@ pub async fn fetch_now_playing() -> Result<serde_json::Value, String> {
 
 pub async fn mpris_playpause(player: String) -> Result<String, String> {
     let target = resolve_target(player);
+    if target.is_empty() {
+        return Err("No player selected".into());
+    }
     let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
     let proxy = AsyncProxy::new(&conn, target.as_str(), "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
         .await
