@@ -5,9 +5,12 @@ import { useEventListener } from '@/tools/event.listener';
 
 export function useIcon(iconName: MaybeRef<string>) {
 	const iconSrc = ref('');
+	let requestId = 0;
 
 	async function refresh() {
-		iconSrc.value = await getIconSource(toValue(iconName));
+		const id = ++requestId;
+		const result = await getIconSource(toValue(iconName));
+		if (id === requestId) iconSrc.value = result;
 	}
 
 	watch(() => toValue(iconName), refresh, { immediate: true });
@@ -18,9 +21,12 @@ export function useIcon(iconName: MaybeRef<string>) {
 
 export function useSymbol(iconName: MaybeRef<string>) {
 	const iconSrc = ref('');
+	let requestId = 0;
 
 	async function refresh() {
-		iconSrc.value = await getSymbolSource(toValue(iconName));
+		const id = ++requestId;
+		const result = await getSymbolSource(toValue(iconName));
+		if (id === requestId) iconSrc.value = result;
 	}
 
 	watch(() => toValue(iconName), refresh, { immediate: true });
@@ -33,15 +39,20 @@ export function useIcons(
 	map: Record<string, MaybeRef<string>>
 ): Record<string, import('vue').Ref<string>> {
 	const result: Record<string, import('vue').Ref<string>> = {};
+	const keyTokens: Record<string, number> = {};
+	let batchId = 0;
 
 	async function refreshAll() {
+		const id = ++batchId;
 		for (const [key, name] of Object.entries(map)) {
-			result[key].value = await getIconSource(toValue(name));
+			const src = await getIconSource(toValue(name));
+			if (id === batchId) result[key].value = src;
 		}
 	}
 
 	for (const key of Object.keys(map)) {
 		result[key] = ref('');
+		keyTokens[key] = 0;
 	}
 
 	refreshAll();
@@ -51,7 +62,9 @@ export function useIcons(
 		watch(
 			() => toValue(name),
 			async () => {
-				result[key].value = await getIconSource(toValue(name));
+				const id = ++keyTokens[key];
+				const src = await getIconSource(toValue(name));
+				if (id === keyTokens[key]) result[key].value = src;
 			}
 		);
 	}
@@ -63,15 +76,20 @@ export function useSymbols(
 	map: Record<string, MaybeRef<string>>
 ): Record<string, import('vue').Ref<string>> {
 	const result: Record<string, import('vue').Ref<string>> = {};
+	const keyTokens: Record<string, number> = {};
+	let batchId = 0;
 
 	async function refreshAll() {
+		const id = ++batchId;
 		for (const [key, name] of Object.entries(map)) {
-			result[key].value = await getSymbolSource(toValue(name));
+			const src = await getSymbolSource(toValue(name));
+			if (id === batchId) result[key].value = src;
 		}
 	}
 
 	for (const key of Object.keys(map)) {
 		result[key] = ref('');
+		keyTokens[key] = 0;
 	}
 
 	refreshAll();
@@ -81,7 +99,9 @@ export function useSymbols(
 		watch(
 			() => toValue(name),
 			async () => {
-				result[key].value = await getSymbolSource(toValue(name));
+				const id = ++keyTokens[key];
+				const src = await getSymbolSource(toValue(name));
+				if (id === keyTokens[key]) result[key].value = src;
 			}
 		);
 	}
