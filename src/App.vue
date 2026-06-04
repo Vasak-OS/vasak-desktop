@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** biome-ignore-all lint/correctness/noUnusedImports: */
+/** biome-ignore-all lint/correctness/noUnusedImports: imports used in template */
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { onMounted } from 'vue';
