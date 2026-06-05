@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
-import { computed, nextTick, type Ref, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import {
 	connectToWifi,

@@ -9,7 +9,6 @@ const {
 	volumeInfo,
 	currentVolume,
 	currentIcon,
-	volumePercentage,
 	getVolumeInfo,
 	updateVolume,
 	toggleMute,
