@@ -7,7 +7,7 @@ const props = defineProps<{
 	to: string;
 	icon: string;
 }>();
-const iconSrc = useIcon(() => props.icon);
+const iconSrc = useIcon(props.icon);
 </script>
 <template>
   <li class="w-14 h-14 my-4">

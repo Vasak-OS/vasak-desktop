@@ -4,7 +4,6 @@
 import { listen } from '@tauri-apps/api/event';
 import { nextTick, onMounted, ref, watch } from 'vue';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
-import { logError } from '@/utils/logger';
 
 const {
 	musicInfo,
@@ -24,7 +23,6 @@ const {
 
 const commandError = ref('');
 const showError = ref(false);
-let errorTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const dbusStatus = ref('connected');
 const dbusMessage = ref('');
