@@ -37,7 +37,11 @@ const handleAdapterPropertyChanged = (data: any, state: BluetoothStateRefs) => {
 };
 
 const handleDeviceAdded = (data: any, state: BluetoothStateRefs) => {
-	addDeviceIfNotExists(state.availableDevices, data);
+	if (data.connected) {
+		addDeviceIfNotExists(state.connectedDevices, data);
+	} else {
+		addDeviceIfNotExists(state.availableDevices, data);
+	}
 };
 
 const handleDeviceRemoved = (data: any, state: BluetoothStateRefs) => {

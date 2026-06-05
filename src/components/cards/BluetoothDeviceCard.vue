@@ -12,6 +12,7 @@ const props = defineProps<{
 	device: any;
 	actionLabel: string;
 	connected?: boolean;
+	isConnecting?: boolean;
 }>();
 
 const icon = useIcon(computed(() => props.device.icon || 'bluetooth'));
@@ -58,6 +59,7 @@ onMounted(async () => {
     :metadata="deviceMetadata"
     :extra-info="deviceExtraInfo"
     :is-connected="connected"
+    :is-connecting="isConnecting"
     :action-label="actionLabel"
     @action="$emit('action')"
   />

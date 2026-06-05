@@ -8,6 +8,7 @@ import {
 	getAvailableDevices,
 	getConnectedDevices,
 	getDefaultAdapter,
+	getDeviceInfo,
 	scanForDevices,
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
@@ -27,6 +28,7 @@ const defaultAdapter = ref<AdapterInfo | null>(null);
 const connectedDevicesCount = ref(0);
 const loading = ref(true);
 const isScanning = ref(false);
+const connectingPath = ref<string | null>(null);
 
 const toggleBT = async () => {
 	isTogglingBluetooth.value = true;
@@ -90,12 +92,41 @@ onMounted(async () => {
 useEventListener('bluetooth-change', handleBluetoothChange);
 
 const connect = async (device: any) => {
-	await connectDevice(device.path);
-	await refreshDevices();
+	console.log('[BT] Connect clicked for:', device.path, device.name || device.alias);
+	connectingPath.value = device.path;
+	try {
+		await connectDevice(device.path);
+		console.log('[BT] connectDevice returned OK, polling for connected state...');
+		let connected = false;
+		for (let i = 0; i < 30; i++) {
+			await new Promise(r => setTimeout(r, 500));
+			try {
+				const info = await getDeviceInfo(device.path);
+				console.log('[BT] Poll', i, 'connected:', info?.connected);
+				if (info?.connected) {
+					connected = true;
+					break;
+				}
+			} catch (e) {
+				console.log('[BT] Poll', i, 'error:', e);
+			}
+		}
+		console.log('[BT] Poll done, connected:', connected);
+		await refreshDevices();
+	} catch (e) {
+		console.error('[BT] connectDevice threw:', e);
+		logError('Error connecting to device:', e);
+	}
+	connectingPath.value = null;
 };
 const disconnect = async (device: any) => {
-	await disconnectDevice(device.path);
-	await refreshDevices();
+	try {
+		await disconnectDevice(device.path);
+		await refreshDevices();
+	} catch (e) {
+		console.error('[BT] disconnectDevice threw:', e);
+		logError('Error disconnecting device:', e);
+	}
 };
 </script>
 
@@ -142,6 +173,7 @@ const disconnect = async (device: any) => {
               <BluetoothDeviceCard
                 :device="dev"
                 action-label="Conectar"
+                :is-connecting="connectingPath === dev.path"
                 @action="connect(dev)"
               />
             </li>
