@@ -26,10 +26,11 @@
     
     <button
       v-if="showActionButton"
-      class="bg-vsk-primary rounded-vsk px-4 py-2 text-sm font-semibold cursor-pointer hover:opacity-70"
+      class="bg-vsk-primary rounded-vsk px-4 py-2 text-sm font-semibold cursor-pointer hover:opacity-70 disabled:opacity-50 disabled:cursor-not-allowed"
+      :disabled="isConnecting"
       @click.stop="handleAction"
     >
-      {{ actionLabel }}
+      {{ isConnecting ? 'Conectando...' : actionLabel }}
     </button>
 
     <!-- Status indicator for connected state -->
@@ -48,6 +49,7 @@ interface Props {
 	metadata?: string;
 	extraInfo?: string[];
 	isConnected?: boolean;
+	isConnecting?: boolean;
 	showActionButton?: boolean;
 	actionLabel?: string;
 	showStatusIndicator?: boolean;
@@ -60,6 +62,7 @@ withDefaults(defineProps<Props>(), {
 	metadata: '',
 	extraInfo: () => [],
 	isConnected: false,
+	isConnecting: false,
 	showActionButton: true,
 	actionLabel: 'Conectar',
 	showStatusIndicator: false,
