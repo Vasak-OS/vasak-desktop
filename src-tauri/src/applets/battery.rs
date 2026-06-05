@@ -215,14 +215,17 @@ pub async fn has_battery() -> bool {
 
 pub async fn get_battery_info() -> Option<BatteryInfo> {
     // Try cached connection, or create a new one
-    let cached_conn = BATTERY_CONN.lock().unwrap().clone();
+    let (cached_conn, cached_path) = {
+        let conn_guard = BATTERY_CONN.lock().unwrap();
+        let path_guard = BATTERY_DEVICE_PATH.lock().unwrap();
+        (conn_guard.clone(), path_guard.clone())
+    };
     let conn = match cached_conn {
         Some(c) => c,
         None => Connection::system().await.ok().map(Arc::new)?,
     };
 
     // Try cached path, or search for it
-    let cached_path = BATTERY_DEVICE_PATH.lock().unwrap().clone();
     let device_path = match cached_path {
         Some(p) => p,
         None => find_battery_path(&conn).await

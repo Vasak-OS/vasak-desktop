@@ -6,10 +6,25 @@ use tauri::{
 };
 use crate::monitor_manager::get_primary_monitor;
 
+fn find_gdk_monitor(tauri_monitor: &tauri::Monitor) -> Option<gdk::Monitor> {
+    let pos = tauri_monitor.position();
+    let display = gdk::Display::default()?;
+    for i in 0..display.n_monitors() {
+        let mon = display.monitor(i)?;
+        let rect = mon.geometry();
+        if rect.x() == pos.x && rect.y() == pos.y {
+            return Some(mon);
+        }
+    }
+    None
+}
+
 pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(app.handle()).ok_or("No primary monitor found")?;
     let monitor_size = primary_monitor.size();
     let width = monitor_size.width as i32;
+
+    let layer_monitor = find_gdk_monitor(&primary_monitor).ok_or("No matching GDK monitor found for primary monitor")?;
 
     // 1. Crear WebviewWindow de Tauri (xdg-toplevel interno) para tener IPC listo.
     let panel_window = WebviewWindowBuilder::new(
@@ -32,11 +47,7 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
     // Configurar layer-shell: Top, exclusive zone automático, sin teclado
     layer_win.init_layer_shell();
-    if let Some(display) = gdk::Display::default() {
-        if let Some(monitor) = display.primary_monitor() {
-            layer_win.set_monitor(&monitor);
-        }
-    }
+    layer_win.set_monitor(&layer_monitor);
     layer_win.set_namespace("vasak-panel");
     layer_win.set_layer(Layer::Top);
     layer_win.set_anchor(Edge::Top, true);
@@ -46,16 +57,33 @@ pub fn create_panel(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     layer_win.set_keyboard_mode(KeyboardMode::None);
 
     // 3. Reparent: extraer el WebKitWebView de la ventana xdg y ponerlo en layer-shell.
-    let reparented = gtk_window.child().and_then(|vbox| {
-        let container = vbox.dynamic_cast_ref::<gtk::Container>()?.clone();
-        let widget = container.children().first()?.clone();
-        container.remove(&widget);
-        layer_win.add(&widget);
-        Some(())
-    }).is_some();
+    let (reparented, child_type, container_type) = gtk_window.child().map_or(
+        (false, "None".to_string(), "None".to_string()),
+        |vbox| {
+            let child_name = vbox.type_().name().to_string();
+            let container = vbox.dynamic_cast_ref::<gtk::Container>();
+            match container {
+                Some(container) => {
+                    let container_name = container.type_().name().to_string();
+                    match container.children().first() {
+                        Some(widget) => {
+                            let widget_name = widget.type_().name().to_string();
+                            container.remove(widget);
+                            layer_win.add(widget);
+                            (true, widget_name, container_name)
+                        }
+                        None => (false, child_name, container_name),
+                    }
+                }
+                None => (false, child_name, "Not a Container".to_string()),
+            }
+        },
+    );
 
     if !reparented {
-        return Err("No se pudo reparentar el webview".into());
+        return Err(format!(
+            "No se pudo reparentar el webview: child={child_type}, container={container_type}"
+        ).into());
     }
 
     // 4. Forzar fondo transparente en la ventana layer-shell.

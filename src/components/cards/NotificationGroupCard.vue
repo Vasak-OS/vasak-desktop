@@ -75,7 +75,6 @@
 import { computed, onMounted, ref } from 'vue';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
-import { logError } from '@/utils/logger';
 import ActionButton from '../buttons/ActionButton.vue';
 
 interface Notification {
