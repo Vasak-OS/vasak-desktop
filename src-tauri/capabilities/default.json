@@ -81,6 +81,9 @@
     "bluetooth-manager:allow-start-scan",
     "bluetooth-manager:allow-stop-scan",
     "bluetooth-manager:allow-connect-device",
-    "bluetooth-manager:allow-get-device-info"
+    "bluetooth-manager:allow-disconnect-device",
+    "bluetooth-manager:allow-get-device-info",
+    "bluetooth-manager:allow-get-adapter-state",
+    "bluetooth-manager:allow-list-paired-devices"
   ]
 }
