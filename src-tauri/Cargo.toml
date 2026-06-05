@@ -22,31 +22,30 @@ tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-x11rb = { version = "0.13", optional = true, features = ["allow-unsafe-code"] }
-wayland-client = { version = "0.31", optional = true }
-wayland-protocols = { version = "0.32", features = ["staging", "client"], optional = true }
-wayland-protocols-wlr = { version = "0.3", features = ["client"], optional = true }
+wayland-client = { version = "0.31", features = ["system"] }
+wayland-protocols = { version = "0.32", features = ["staging", "client"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 
 freedesktop_entry_parser = "1.3"
 gtk = "0.18"
 gdk = "0.18"
+glib = "0.18"
+gtk-layer-shell = { version = "0.8", features = ["v0_6"] }
 base64 = "0.22"
-#tauri-plugin-vicons = {path = "../../tauri-plugin-vicons"}
-tauri-plugin-vicons = "2"
-#tauri-plugin-config-manager = {path = "../../tauri-plugin-config-manager"}
-tauri-plugin-config-manager = "2"
+tauri-plugin-vicons = {path = "../../tauri-plugin-vicons"}
+#tauri-plugin-vicons = "2"
+tauri-plugin-config-manager = {path = "../../tauri-plugin-config-manager"}
+#tauri-plugin-config-manager = "2"
 tauri-plugin-user-data = "2"
 tauri-plugin-opener = "2"
-#tauri-plugin-network-manager = { path = "../../tauri-plugin-network-manager" }
-tauri-plugin-network-manager = "2"
+tauri-plugin-network-manager = { path = "../../tauri-plugin-network-manager" }
+#tauri-plugin-network-manager = "2"
 #tauri-plugin-bluetooth-manager = { path = "../../tauri-plugin-bluetooth-manager" }
 tauri-plugin-bluetooth-manager = "2"
 tauri-plugin-fs = "2"
-zbus = { version = "4", features = ["tokio"] }
+zbus = { version = "4", default-features = false, features = ["async-io"] }
 zvariant = "4"
-libc = "0.2"
-once_cell = "1.8"
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.0", features = ["rt", "sync", "time", "net", "io-util", "fs", "process", "macros"] }
 image = "0.25"
 futures-util = "0.3"
 log = "0.4"
@@ -54,18 +53,15 @@ async-trait = "0.1.89"
 dirs = "5.0"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 thiserror = "2.0"
-urlencoding = "2.1"
 chrono = "0.4"
 shlex = "1.3"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-positioner = { version = "2.0.0", features = ["tray-icon"] }
+tauri-plugin-positioner = { version = "2", features = ["tray-icon"] }
 tauri-plugin-single-instance = "2"
 
 [features]
-default = ["x11", "wayland"]
-x11 = ["dep:x11rb"]
-wayland = ["dep:wayland-client", "dep:wayland-protocols", "dep:wayland-protocols-wlr"]
+default = []
 custom-protocol = ["tauri/custom-protocol"]
 
 [profile.dev]
@@ -73,7 +69,7 @@ incremental = true # Compile your binary in smaller steps.
 
 [profile.release]
 codegen-units = 1  # Allows LLVM to perform better optimization.
-lto = true      
+lto = "fat"     
 opt-level = 3      # Máxima optimización de velocidad. Usar "s" para priorizar tamaño.
 panic = "abort"    # Higher performance by disabling panic handlers.
 strip = true       # Ensures debug symbols are removed.

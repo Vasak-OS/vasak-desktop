@@ -1,11 +1,10 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { onMounted, type Ref, ref } from 'vue';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { toggleSearch } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
-const iconSrc: Ref<string> = ref('');
+const iconSrc = useIcon('search');
 
 const openSearch = async () => {
 	try {
@@ -14,10 +13,6 @@ const openSearch = async () => {
 		logError('Error opening search:', error);
 	}
 };
-
-onMounted(async () => {
-	iconSrc.value = await getIconSource('search');
-});
 </script>
 
 <template>

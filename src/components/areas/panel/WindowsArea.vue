@@ -2,15 +2,14 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import WindowPanelButton from '@/components/buttons/WindowPanelButton.vue';
 import type { WindowInfo } from '@/interfaces/window';
 import { getWindows } from '@/services/window.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 
 const windows = ref<WindowInfo[]>([]);
-let unlisten: (() => void) | null = null;
 
 const refreshWindows = async (): Promise<void> => {
 	try {
@@ -22,12 +21,9 @@ const refreshWindows = async (): Promise<void> => {
 
 onMounted(async () => {
 	await refreshWindows();
-	unlisten = await listen('window-update', refreshWindows);
 });
 
-onUnmounted(() => {
-	unlisten?.();
-});
+useEventListener('window-update', refreshWindows);
 </script>
 
 <template>

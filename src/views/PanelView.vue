@@ -1,35 +1,27 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
 import { Command } from '@tauri-apps/plugin-shell';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { onMounted, ref } from 'vue';
+import { useIcons } from '@/tools/composables/useReactiveIcon';
 import menuIcon from '@/assets/vectors/icon.svg';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import { getAllNotifications } from '@/services/notification.service';
 import { toggleControlCenter, toggleMenu } from '@/services/window.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
-
-const notifyIcon: Ref<string> = ref('');
-const configIcon: Ref<string> = ref('');
-const fileManagerIcon: Ref<string> = ref('');
 
 const notifications = ref<Notification[]>([]);
 const hasNewNotifications = ref(false);
-let unlistenNotifications: Ref<(() => void) | null> = ref(null);
+let notificationResetTimer: ReturnType<typeof setTimeout> | undefined;
 
-const setIcons = async () => {
-	try {
-		notifyIcon.value = await getIconSource('preferences-desktop-notification');
-		configIcon.value = await getIconSource('preferences-system');
-		fileManagerIcon.value = await getIconSource('system-file-manager');
-	} catch (err) {
-		logError('Error finding icons:', err);
-	}
-};
+const { notifyIcon, configIcon, fileManagerIcon } = useIcons({
+	notifyIcon: 'preferences-desktop-notification',
+	configIcon: 'preferences-system',
+	fileManagerIcon: 'system-file-manager',
+});
 
 const openMenu = async () => {
 	try {
@@ -74,32 +66,25 @@ async function loadNotifications() {
 }
 
 onMounted(async () => {
-	setIcons();
 	await loadNotifications();
-
-	unlistenNotifications.value = await listen('notifications-updated', (event) => {
-		const newNotifications = event.payload as Notification[];
-		hasNewNotifications.value = newNotifications.length > notifications.value.length;
-		notifications.value = newNotifications;
-
-		// Reset animation after a short delay
-		if (hasNewNotifications.value) {
-			setTimeout(() => {
-				hasNewNotifications.value = false;
-			}, 1000);
-		}
-	});
 });
 
-onUnmounted(() => {
-	if (unlistenNotifications.value) {
-		unlistenNotifications.value();
+useEventListener('notifications-updated', (event) => {
+	const newNotifications = event.payload as Notification[];
+	hasNewNotifications.value = newNotifications.length > notifications.value.length;
+	notifications.value = newNotifications;
+
+	if (hasNewNotifications.value) {
+		clearTimeout(notificationResetTimer);
+		notificationResetTimer = setTimeout(() => {
+			hasNewNotifications.value = false;
+		}, 1000);
 	}
 });
 </script>
 
 <template>
-  <nav class="flex justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border px-3">
+	<nav class="relative z-20 flex w-[calc(100%-8px)] justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80 px-3">
     <div class="flex items-center gap-1">
       <img :src="menuIcon" alt="Menu" @click="openMenu" class="h-7 w-7 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out" />
 			<div class="w-1 h-7 bg-ui-bg/80"></div>

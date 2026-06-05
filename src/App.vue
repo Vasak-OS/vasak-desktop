@@ -1,13 +1,11 @@
 <script setup lang="ts">
-/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
+/** biome-ignore-all lint/correctness/noUnusedImports: imports used in template */
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted } from 'vue';
 import { RouterView } from 'vue-router';
+import { useEventListener } from '@/tools/event.listener';
 import { logDebug, logError, logInfo } from '@/utils/logger';
-
-let unlistenConfig: (() => void) | null = null;
 
 onMounted(async () => {
 	logInfo('App.vue montado, cargando configuración');
@@ -18,23 +16,21 @@ onMounted(async () => {
 		>;
 		await configStore.loadConfig();
 		logDebug('Configuración cargada correctamente');
-
-		unlistenConfig = await listen('config-changed', async () => {
-			logInfo('Evento config-changed recibido, recargando configuración');
-			document.startViewTransition(() => {
-				configStore.loadConfig();
-			});
-		});
 	} catch (error: any) {
 		logError('Error al cargar configuración en App.vue', { error: error.message });
 	}
 });
 
-onUnmounted(() => {
-	logDebug('App.vue desmontado');
-	if (unlistenConfig !== null) {
-		unlistenConfig();
+useEventListener('config-changed', () => {
+	logInfo('Evento config-changed recibido, recargando configuración');
+	const configStore = useConfigStore() as Store<
+		'config',
+		{ config: any; loadConfig: () => Promise<void> }
+	>;
+	if (typeof document.startViewTransition === 'function') {
+		return document.startViewTransition(() => configStore.loadConfig());
 	}
+	return configStore.loadConfig();
 });
 </script>
 

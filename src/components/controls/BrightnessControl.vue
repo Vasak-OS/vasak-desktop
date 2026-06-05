@@ -1,13 +1,13 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
 	getBrightnessInfo as fetchBrightnessInfo,
 	setBrightnessInfo,
 } from '@/services/core.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 import SliderControl from '../forms/SliderControl.vue';
 
@@ -17,34 +17,14 @@ interface BrightnessInfo {
 	max: number;
 }
 
-const brightnessInfo: Ref<BrightnessInfo> = ref<BrightnessInfo>({
+const brightnessInfo = ref<BrightnessInfo>({
 	current: 100,
 	min: 0,
 	max: 100,
 });
 
-const currentBrightness: Ref<number> = ref(100);
-const currentIcon: Ref<string> = ref('');
-let unlisten: (() => void) | null = null;
+const currentBrightness = ref(100);
 let setDebitTimeout: ReturnType<typeof setTimeout> | null = null;
-
-async function updateIcon() {
-	try {
-		let iconName: string;
-
-		if (brightnessPercentage.value > 66) {
-			iconName = 'display-brightness-high-symbolic';
-		} else if (brightnessPercentage.value > 33) {
-			iconName = 'display-brightness-medium-symbolic';
-		} else {
-			iconName = 'display-brightness-low-symbolic';
-		}
-
-		currentIcon.value = await getSymbolSource(iconName);
-	} catch (error) {
-		logError('Error loading brightness icon:', error);
-	}
-}
 
 const brightnessPercentage = computed(() => {
 	if (brightnessInfo.value.max <= 0) return 0;
@@ -53,12 +33,17 @@ const brightnessPercentage = computed(() => {
 	return Math.round((loading / range) * 100);
 });
 
+const currentIcon = useSymbol(computed(() => {
+	if (brightnessPercentage.value > 66) return 'display-brightness-high-symbolic';
+	if (brightnessPercentage.value > 33) return 'display-brightness-medium-symbolic';
+	return 'display-brightness-low-symbolic';
+}));
+
 async function getBrightnessInfo() {
 	try {
 		const info = await fetchBrightnessInfo();
 		brightnessInfo.value = info;
 		currentBrightness.value = info.current;
-		await updateIcon();
 	} catch (error) {
 		logError('Error getting brightness:', error);
 	}
@@ -74,7 +59,6 @@ async function updateBrightness() {
 			await setBrightnessInfo({
 				brightness: Number(currentBrightness.value),
 			});
-			await updateIcon();
 		}, 50);
 	} catch (error) {
 		logError('Error setting brightness:', error);
@@ -88,21 +72,18 @@ const getPercentageClass = (percentage: number) => {
 };
 
 onMounted(async () => {
-	unlisten = await listen('brightness-changed', async (event) => {
-		brightnessInfo.value = event.payload as BrightnessInfo;
-		currentBrightness.value = (event.payload as BrightnessInfo).current;
-		await updateIcon();
-	});
 	await getBrightnessInfo();
 });
 
 onUnmounted(() => {
-	if (unlisten) {
-		unlisten();
-	}
 	if (setDebitTimeout) {
 		clearTimeout(setDebitTimeout);
 	}
+});
+
+useEventListener<BrightnessInfo>('brightness-changed', async (event) => {
+	brightnessInfo.value = event.payload;
+	currentBrightness.value = event.payload.current;
 });
 </script>
 

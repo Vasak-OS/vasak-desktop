@@ -153,51 +153,49 @@
 </template>
 
 <script setup lang="ts">
-import { listen } from '@tauri-apps/api/event';
-import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import {
-  getCurrentNetworkState,
+	getCurrentNetworkState,
 	getNetworkStats,
-  getVpnStatus,
-  listWifiNetworks,
+	getVpnStatus,
 	getWirelessEnabled,
 	isWirelessAvailable,
+	listWifiNetworks,
+	type NetworkInfo,
+	type NetworkStats,
 	setWirelessEnabled,
-  type NetworkStats,
-  type NetworkInfo,
-  type VpnStatus,
+	type VpnStatus,
 } from '@/services/network.service';
 import { toggleNetworkApplet } from '@/services/window.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 
-const wifiEnabled: Ref<boolean> = ref(true);
-const wifiAvailable: Ref<boolean> = ref(true);
-const loading: Ref<boolean> = ref(false);
-const availableNetworks: Ref<NetworkInfo[]> = ref([]);
-const networkStats: Ref<NetworkStats | null> = ref(null);
-const vpnStatus: Ref<VpnStatus | null> = ref(null);
-const wifiStatus: Ref<string> = ref('Checking...');
-const ethernetStatus: Ref<string> = ref('Checking...');
-let unlisten: (() => void) | null = null;
-let unlistenVpn: (() => void) | null = null;
-let statsInterval: ReturnType<typeof setInterval> | null = null;
+const wifiEnabled = ref(true);
+const wifiAvailable = ref(true);
+const loading = ref(false);
+const availableNetworks = ref<NetworkInfo[]>([]);
+const networkStats = ref<NetworkStats | null>(null);
+const vpnStatus = ref<VpnStatus | null>(null);
+let statsPollInterval: ReturnType<typeof setInterval> | undefined;
+const wifiStatus = ref('Checking...');
+const ethernetStatus = ref('Checking...');
 
 const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 const vpnLabel = computed(() => {
-  if (!vpnConnected.value) return 'Sin conexión VPN activa';
-  return vpnStatus.value?.active_profile_name
-    ? `Conectada: ${vpnStatus.value.active_profile_name}`
-    : 'Conexión VPN activa';
+	if (!vpnConnected.value) return 'Sin conexión VPN activa';
+	return vpnStatus.value?.active_profile_name
+		? `Conectada: ${vpnStatus.value.active_profile_name}`
+		: 'Conexión VPN activa';
 });
 
 const formatBytesPerSecond = (value?: number) => {
-  const safe = Math.max(0, value ?? 0);
-  if (safe < 1024) return `${safe.toFixed(0)} B/s`;
-  if (safe < 1024 * 1024) return `${(safe / 1024).toFixed(1)} KB/s`;
-  if (safe < 1024 * 1024 * 1024) return `${(safe / (1024 * 1024)).toFixed(1)} MB/s`;
-  return `${(safe / (1024 * 1024 * 1024)).toFixed(2)} GB/s`;
+	const safe = Math.max(0, value ?? 0);
+	if (safe < 1024) return `${safe.toFixed(0)} B/s`;
+	if (safe < 1024 * 1024) return `${(safe / 1024).toFixed(1)} KB/s`;
+	if (safe < 1024 * 1024 * 1024) return `${(safe / (1024 * 1024)).toFixed(1)} MB/s`;
+	return `${(safe / (1024 * 1024 * 1024)).toFixed(2)} GB/s`;
 };
 
 const downloadSpeedLabel = computed(() => formatBytesPerSecond(networkStats.value?.download_speed));
@@ -214,18 +212,18 @@ defineProps({
 const checkWirelessStatus = async () => {
 	try {
 		const available = await isWirelessAvailable();
-    wifiAvailable.value = available;
+		wifiAvailable.value = available;
 
 		if (available) {
 			const enabled = await getWirelessEnabled();
-      wifiEnabled.value = enabled;
-      wifiStatus.value = enabled ? 'Activado' : 'Desactivado';
+			wifiEnabled.value = enabled;
+			wifiStatus.value = enabled ? 'Activado' : 'Desactivado';
 
 			if (enabled) {
 				await refreshNetworks();
 			}
 		} else {
-      wifiStatus.value = 'No disponible';
+			wifiStatus.value = 'No disponible';
 			wifiEnabled.value = false;
 		}
 	} catch (e) {
@@ -238,10 +236,10 @@ const toggleWifi = async () => {
 
 	try {
 		const newState = !wifiEnabled.value;
-    await setWirelessEnabled(newState);
+		await setWirelessEnabled(newState);
 
 		wifiEnabled.value = newState;
-    wifiStatus.value = newState ? 'Activado' : 'Desactivado';
+		wifiStatus.value = newState ? 'Activado' : 'Desactivado';
 
 		if (wifiEnabled.value) {
 			await refreshNetworks();
@@ -254,40 +252,40 @@ const toggleWifi = async () => {
 };
 
 const refreshVpnStatus = async () => {
-  try {
-    vpnStatus.value = await getVpnStatus();
-  } catch (error) {
-    vpnStatus.value = null;
-    logError('Error fetching VPN status:', error);
-  }
+	try {
+		vpnStatus.value = await getVpnStatus();
+	} catch (error) {
+		vpnStatus.value = null;
+		logError('Error fetching VPN status:', error);
+	}
 };
 
 const refreshNetworkStats = async () => {
-  try {
-    networkStats.value = await getNetworkStats();
-  } catch (error) {
-    logError('Error fetching network stats:', error);
-  }
+	try {
+		networkStats.value = await getNetworkStats();
+	} catch (error) {
+		logError('Error fetching network stats:', error);
+	}
 };
 
 const updateEthernetStatus = (state: NetworkInfo | null) => {
 	if (!state) {
-    ethernetStatus.value = 'Desconocido';
+		ethernetStatus.value = 'Desconocido';
 		return;
 	}
 
 	const isEthernet = state.connection_type?.toLowerCase() === 'ethernet';
 	if (isEthernet && state.is_connected) {
-    ethernetStatus.value = 'Conectado';
+		ethernetStatus.value = 'Conectado';
 		return;
 	}
 
 	if (isEthernet && !state.is_connected) {
-    ethernetStatus.value = 'Desconectado';
+		ethernetStatus.value = 'Desconectado';
 		return;
 	}
 
-  ethernetStatus.value = 'Sin enlace';
+	ethernetStatus.value = 'Sin enlace';
 };
 
 const refreshEthernetStatus = async () => {
@@ -296,7 +294,7 @@ const refreshEthernetStatus = async () => {
 		updateEthernetStatus(state);
 	} catch (error) {
 		logError('Error fetching ethernet status:', error);
-    ethernetStatus.value = 'Desconocido';
+		ethernetStatus.value = 'Desconocido';
 	}
 };
 
@@ -323,22 +321,22 @@ const closeApplet = async () => {
 onMounted(async () => {
 	await checkWirelessStatus();
 	await refreshEthernetStatus();
-  await refreshVpnStatus();
-  await refreshNetworkStats();
-	unlisten = await listen<any>('network-changed', async () => {
-		await checkWirelessStatus();
-		await refreshEthernetStatus();
-    await refreshNetworkStats();
-	});
-  unlistenVpn = await listen('vpn-changed', refreshVpnStatus);
-  statsInterval = setInterval(() => {
-    void refreshNetworkStats();
-  }, 2000);
+	await refreshVpnStatus();
+	await refreshNetworkStats();
+	statsPollInterval = setInterval(() => {
+		void refreshNetworkStats();
+	}, 2000);
 });
 
 onUnmounted(() => {
-	if (unlisten) unlisten();
-  if (unlistenVpn) unlistenVpn();
-  if (statsInterval) clearInterval(statsInterval);
+	clearInterval(statsPollInterval);
 });
+
+useEventListener<any>('network-changed', async () => {
+	await checkWirelessStatus();
+	await refreshEthernetStatus();
+	await refreshNetworkStats();
+});
+
+useEventListener('vpn-changed', refreshVpnStatus);
 </script>

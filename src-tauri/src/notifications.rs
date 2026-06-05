@@ -1,18 +1,17 @@
 use crate::structs::{Notification, NotificationUrgency};
 use crate::logger::{log_debug, log_error, log_info, log_warning};
-use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use tauri::{AppHandle, Emitter};
 use tokio::sync::{RwLock, Notify};
 use zbus::{interface, Connection};
 use zbus::zvariant::Value;
 
 // Global stores
-static APP_HANDLE: Lazy<Arc<RwLock<Option<AppHandle>>>> = Lazy::new(|| Arc::new(RwLock::new(None)));
-static NOTIFICATIONS: Lazy<Arc<RwLock<Vec<Notification>>>> = Lazy::new(|| Arc::new(RwLock::new(Vec::new())));
+static APP_HANDLE: LazyLock<Arc<RwLock<Option<AppHandle>>>> = LazyLock::new(|| Arc::new(RwLock::new(None)));
+static NOTIFICATIONS: LazyLock<Arc<RwLock<Vec<Notification>>>> = LazyLock::new(|| Arc::new(RwLock::new(Vec::new())));
 // Debounce notifier
-static NOTIFY_UPDATE: Lazy<Arc<Notify>> = Lazy::new(|| Arc::new(Notify::new()));
+static NOTIFY_UPDATE: LazyLock<Arc<Notify>> = LazyLock::new(|| Arc::new(Notify::new()));
 
 const MAX_NOTIFICATIONS: usize = 50;
 
@@ -129,7 +128,7 @@ pub async fn send_system_notification(
 // --------------------------------------------------------------------------------
 
 // Global connection storage
-static DBUS_CONNECTION: Lazy<Arc<RwLock<Option<Connection>>>> = Lazy::new(|| Arc::new(RwLock::new(None)));
+static DBUS_CONNECTION: LazyLock<Arc<RwLock<Option<Connection>>>> = LazyLock::new(|| Arc::new(RwLock::new(None)));
 
 #[derive(Clone)]
 struct NotificationServer;
@@ -308,12 +307,3 @@ pub async fn start_notification_server() -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
-#[allow(dead_code)]
-pub async fn start_notification_monitor() -> Result<(), String> {
-    tokio::spawn(async {
-        if let Err(e) = start_notification_server().await {
-            log_error(&format!("Error starting Notification Server: {}", e));
-        }
-    });
-    Ok(())
-}

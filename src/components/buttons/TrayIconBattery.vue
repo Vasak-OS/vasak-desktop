@@ -1,24 +1,21 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, onUnmounted, type Ref, ref, watch } from 'vue';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
+import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { getBatteryInfo } from '@/services/core.service';
+import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 
-const batteryInfo: Ref<BatteryInfo> = ref({
+const batteryInfo = ref<BatteryInfo>({
 	has_battery: false,
 	percentage: 0,
 	state: 'Unknown',
 	is_present: false,
 	is_charging: false,
 });
-
-const batteryIconSrc: Ref<string> = ref('');
-const unlistenBattery: Ref<(() => void) | null> = ref(null);
 
 const batteryAltText = computed(() => {
 	if (!batteryInfo.value.has_battery) return 'No battery detected';
@@ -35,54 +32,27 @@ const tooltipClass = computed(() => ({
 	'text-primary': batteryInfo.value.percentage >= 50 && !batteryInfo.value.is_charging,
 }));
 
-async function updateIcon() {
-	const getIconName = () => {
-		if (!batteryInfo.value.has_battery) {
-			return 'battery-missing-symbolic';
-		}
+const batteryIconName = computed(() => {
+	if (!batteryInfo.value.has_battery) return 'battery-missing-symbolic';
 
-		const percentage = batteryInfo.value.percentage;
-		const isCharging = batteryInfo.value.is_charging;
+	const { percentage, is_charging: isCharging } = batteryInfo.value;
 
-		// Iconos de carga
-		if (isCharging) {
-			if (percentage >= 90) return 'battery-full-charging-symbolic';
-			if (percentage >= 70) return 'battery-good-charging-symbolic';
-			if (percentage >= 40) return 'battery-low-charging-symbolic';
-			if (percentage >= 20) return 'battery-caution-charging-symbolic';
-			return 'battery-empty-charging-symbolic';
-		}
-
-		// Iconos normales
-		if (percentage >= 90) return 'battery-full-symbolic';
-		if (percentage >= 70) return 'battery-good-symbolic';
-		if (percentage >= 40) return 'battery-low-symbolic';
-		if (percentage >= 20) return 'battery-caution-symbolic';
-		return 'battery-empty-symbolic';
-	};
-
-	try {
-		batteryIconSrc.value = await getSymbolSource(getIconName());
-	} catch (error) {
-		logError('Error loading battery icon:', error);
-		try {
-			batteryIconSrc.value = await getSymbolSource('battery-symbolic');
-		} catch (fallbackError) {
-			logError('Error loading fallback battery icon:', fallbackError);
-		}
+	if (isCharging) {
+		if (percentage >= 90) return 'battery-full-charging-symbolic';
+		if (percentage >= 70) return 'battery-good-charging-symbolic';
+		if (percentage >= 40) return 'battery-low-charging-symbolic';
+		if (percentage >= 20) return 'battery-caution-charging-symbolic';
+		return 'battery-empty-charging-symbolic';
 	}
-}
 
-watch(
-	[
-		() => batteryInfo.value.has_battery,
-		() => batteryInfo.value.percentage,
-		() => batteryInfo.value.is_charging,
-		() => batteryInfo.value.state,
-	],
-	updateIcon,
-	{ immediate: true }
-);
+	if (percentage >= 90) return 'battery-full-symbolic';
+	if (percentage >= 70) return 'battery-good-symbolic';
+	if (percentage >= 40) return 'battery-low-symbolic';
+	if (percentage >= 20) return 'battery-caution-symbolic';
+	return 'battery-empty-symbolic';
+});
+
+const batteryIconSrc = useSymbol(batteryIconName);
 
 async function getBatteryInfoComp() {
 	try {
@@ -98,11 +68,15 @@ async function getBatteryInfoComp() {
 				is_charging: false,
 			};
 		}
-		await updateIcon();
 	} catch (error) {
 		logError('Error getting battery info:', error);
-		batteryInfo.value.has_battery = false;
-		await updateIcon();
+		batteryInfo.value = {
+			has_battery: false,
+			percentage: 0,
+			state: 'Unknown',
+			is_present: false,
+			is_charging: false,
+		};
 	}
 }
 
@@ -111,17 +85,11 @@ async function toggleBatteryInfo() {
 }
 
 onMounted(async () => {
-	unlistenBattery.value = await listen('battery-update', (event) => {
-		batteryInfo.value = event.payload as BatteryInfo;
-		updateIcon();
-	});
 	await getBatteryInfoComp();
 });
 
-onUnmounted(() => {
-	if (unlistenBattery.value) {
-		unlistenBattery.value();
-	}
+useEventListener('battery-update', (event) => {
+	batteryInfo.value = event.payload as BatteryInfo;
 });
 </script>
 

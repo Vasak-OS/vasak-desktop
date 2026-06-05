@@ -11,10 +11,10 @@ pub fn get_menu_items() -> HashMap<String, CategoryInfo> {
 }
 
 #[tauri::command]
-pub fn toggle_menu(app: AppHandle) -> Result<(), ()> {
+pub fn toggle_menu(app: AppHandle) -> Result<(), tauri::Error> {
     if let Some(menu_window) = app.get_webview_window("menu") {
         if menu_window.is_visible().unwrap_or(false) {
-            menu_window.close().expect("Failed to close menu window");
+            menu_window.close()?;
         } else {
             let _ = menu_window.show();
             let _ = menu_window.set_focus();

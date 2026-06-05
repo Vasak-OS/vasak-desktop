@@ -2,8 +2,7 @@ use super::Applet;
 use crate::structs::BatteryInfo;
 use async_trait::async_trait;
 use futures_util::StreamExt;
-use once_cell::sync::OnceCell;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use zbus::{Connection, MessageStream};
@@ -11,8 +10,8 @@ use zbus::{Connection, MessageStream};
 pub struct BatteryApplet;
 
 // Keep this global for the static methods (used by commands)
-static BATTERY_CONN: OnceCell<Arc<Connection>> = OnceCell::new();
-static BATTERY_DEVICE_PATH: OnceCell<String> = OnceCell::new();
+static BATTERY_CONN: Mutex<Option<Arc<Connection>>> = Mutex::new(None);
+static BATTERY_DEVICE_PATH: Mutex<Option<String>> = Mutex::new(None);
 
 #[async_trait]
 impl Applet for BatteryApplet {
@@ -25,7 +24,7 @@ impl Applet for BatteryApplet {
             Ok(c) => Arc::new(c),
             Err(e) => return Err(Box::new(e)),
         };
-        BATTERY_CONN.set(conn.clone()).ok();
+        *BATTERY_CONN.lock().unwrap() = Some(conn.clone());
 
         let battery_path = find_battery_path(&conn).await;
         
@@ -41,7 +40,7 @@ impl Applet for BatteryApplet {
 
         if let Some(path) = battery_path {
              // Cache the path for future lookups
-             BATTERY_DEVICE_PATH.set(path.clone()).ok();
+             BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
              
              // Prefer DBus events if available
              self.run_dbus_loop(app_handle, conn, path).await;
@@ -95,7 +94,7 @@ impl BatteryApplet {
         }
     }
 
-    async fn run_dbus_loop(&self, app_handle: AppHandle, conn: Arc<Connection>, path: String) {
+    async fn run_dbus_loop(&self, app_handle: AppHandle, mut conn: Arc<Connection>, mut path: String) {
         let mut reconnect_attempts = 0u32;
         let max_reconnects = 5;
         
@@ -125,6 +124,17 @@ impl BatteryApplet {
                         "attempt": reconnect_attempts
                     }));
                     tokio::time::sleep(std::time::Duration::from_secs(2u64.pow(reconnect_attempts.min(3)))).await;
+
+                    // Create fresh connection and update caches
+                    if let Ok(c) = Connection::system().await {
+                        let new_conn = Arc::new(c);
+                        *BATTERY_CONN.lock().unwrap() = Some(new_conn.clone());
+                        conn = new_conn;
+                    }
+                    if let Some(p) = find_battery_path(&conn).await {
+                        BATTERY_DEVICE_PATH.lock().unwrap().replace(p.clone());
+                        path = p;
+                    }
                 }
             }
         }
@@ -138,29 +148,60 @@ impl BatteryApplet {
                 "status": "connected"
             }));
         }
-        
+
+        let mut last_info: Option<BatteryInfo> = None;
         let mut stream = MessageStream::from(conn.as_ref());
-        while let Some(msg_result) = stream.next().await {
-            match msg_result {
-                Ok(msg) => {
+
+        loop {
+            tokio::select! {
+                biased;
+
+                msg_result = stream.next() => {
+                    let msg = match msg_result {
+                        Some(Ok(msg)) => msg,
+                        Some(Err(e)) => {
+                            log::error!("[battery] Stream error: {}", e);
+                            return Err(format!("D-Bus stream error: {}", e));
+                        }
+                        None => {
+                            return Err("D-Bus connection closed".to_string());
+                        }
+                    };
+
                     let header = msg.header();
                     if let (Some(interface), Some(member), Some(obj_path)) = (header.interface(), header.member(), header.path()) {
                         if interface.as_str() == "org.freedesktop.DBus.Properties" &&
                            member.as_str() == "PropertiesChanged" &&
                            obj_path.as_str() == path {
-                               if let Some(info) = get_battery_info().await {
-                                    let _ = app_handle.emit("battery-update", &info);
-                               }
+                               let info = get_battery_info().await;
+                               Self::emit_if_changed(app_handle, &mut last_info, &info).await;
                         }
                     }
                 }
-                Err(e) => {
-                    log::error!("[battery] Stream error: {}", e);
-                    return Err(format!("D-Bus stream error: {}", e));
+
+                _ = tokio::time::sleep(Duration::from_secs(5)) => {
+                    let info = get_battery_info().await;
+                    Self::emit_if_changed(app_handle, &mut last_info, &info).await;
                 }
             }
         }
-        Err("D-Bus connection closed".to_string())
+    }
+
+    async fn emit_if_changed(app_handle: &AppHandle, last_info: &mut Option<BatteryInfo>, current: &Option<BatteryInfo>) {
+        let should_emit = match (last_info.as_ref(), current) {
+            (_, None) => false,
+            (None, Some(_)) => true,
+            (Some(last), Some(cur)) => {
+                (last.percentage - cur.percentage).abs() > 0.5
+                    || last.is_charging != cur.is_charging
+                    || last.state != cur.state
+            }
+        };
+
+        if should_emit {
+            let _ = app_handle.emit("battery-update", current);
+            *last_info = current.clone();
+        }
     }
 }
 
@@ -173,31 +214,55 @@ pub async fn has_battery() -> bool {
 }
 
 pub async fn get_battery_info() -> Option<BatteryInfo> {
-    // Try to reuse connection if possible, or create new one (system)
-    let conn = if let Some(c) = BATTERY_CONN.get() {
-        c.clone()
-    } else {
-        Connection::system().await.ok().map(Arc::new)?
+    // Try cached connection, or create a new one
+    let (cached_conn, cached_path) = {
+        let conn_guard = BATTERY_CONN.lock().unwrap();
+        let path_guard = BATTERY_DEVICE_PATH.lock().unwrap();
+        (conn_guard.clone(), path_guard.clone())
+    };
+    let conn = match cached_conn {
+        Some(c) => c,
+        None => Connection::system().await.ok().map(Arc::new)?,
     };
 
-    // Optimization: Use cached path if available to avoid enumeration
-    let device_path = if let Some(path) = BATTERY_DEVICE_PATH.get() {
-        path.clone()
-    } else {
-        // Fallback: search for it (and cache it if found?)
-        // find_battery_path caches it? No, find_battery_path is external.
-        // Let's just find it.
-        find_battery_path(&conn).await.unwrap_or_else(|| "/org/freedesktop/UPower/devices/battery_BAT0".to_string())
+    // Try cached path, or search for it
+    let device_path = match cached_path {
+        Some(p) => p,
+        None => find_battery_path(&conn).await
+            .unwrap_or_else(|| "/org/freedesktop/UPower/devices/battery_BAT0".to_string()),
     };
-    
+
     let proxy = zbus::Proxy::new(
         &conn,
         "org.freedesktop.UPower",
         device_path.as_str(),
         "org.freedesktop.UPower.Device"
     ).await.ok()?;
-    
-    get_battery_info_from_proxy(proxy).await
+
+    let result = get_battery_info_from_proxy(proxy).await;
+    if result.is_some() {
+        return result;
+    }
+
+    // Stale connection — create fresh one and update cache
+    if let Ok(new_conn) = Connection::system().await {
+        let new_conn = Arc::new(new_conn);
+        *BATTERY_CONN.lock().unwrap() = Some(new_conn.clone());
+
+        let new_path = find_battery_path(&new_conn).await
+            .unwrap_or_else(|| device_path.clone());
+        BATTERY_DEVICE_PATH.lock().unwrap().replace(new_path.clone());
+
+        let proxy = zbus::Proxy::new(
+            &new_conn,
+            "org.freedesktop.UPower",
+            new_path.as_str(),
+            "org.freedesktop.UPower.Device"
+        ).await.ok()?;
+        return get_battery_info_from_proxy(proxy).await;
+    }
+
+    None
 }
 
 async fn get_battery_info_from_proxy(proxy: zbus::Proxy<'_>) -> Option<BatteryInfo> {

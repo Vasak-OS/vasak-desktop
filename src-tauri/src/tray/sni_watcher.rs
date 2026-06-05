@@ -1,5 +1,5 @@
 use super::{emit_tray_update, TrayManager};
-use crate::logger::{log_error, log_info};
+use crate::logger::{log_error, log_info, log_debug};
 use crate::structs::{TrayCategory, TrayItem, TrayStatus};
 use crate::tray::sni_item::SniItemProxy;
 use base64::{engine::general_purpose, Engine as _};
@@ -64,7 +64,18 @@ impl SniWatcher {
                         Some(msg) = stream.next() => {
                             if let Ok(message) = msg {
                                 if let Ok(service_name) = message.body().deserialize::<&str>() {
-                                    if let Err(e) = Self::register_item(&connection, &tray_manager, &app_handle, service_name).await {
+                                    let sender_bus = message
+                                        .header()
+                                        .sender()
+                                        .map(|s| s.as_str().to_string());
+
+                                    if let Err(e) = Self::register_item(
+                                        &connection,
+                                        &tray_manager,
+                                        &app_handle,
+                                        service_name,
+                                        sender_bus.as_deref(),
+                                    ).await {
                                         log_error(&format!("[SNI] Error registrando item {}: {}", service_name, e));
                                     }
                                 }
@@ -73,8 +84,16 @@ impl SniWatcher {
                         Some(msg) = name_stream.next() => {
                             if let Ok(message) = msg {
                                 if let Ok((name, _old_owner, new_owner)) = message.body().deserialize::<(&str, &str, &str)>() {
-                                    if new_owner.is_empty() && name.starts_with("org.kde.StatusNotifierItem") {
-                                        Self::unregister_item(&tray_manager, &app_handle, name).await;
+                                    if new_owner.is_empty() {
+                                        // Check if the disconnected name is tracked directly or via bus_name
+                                        let is_tracked = {
+                                            let manager = tray_manager.read().await;
+                                            manager.contains_key(name) || manager.values().any(|v| v.bus_name.as_deref() == Some(name))
+                                        };
+                                        if is_tracked {
+                                            log_debug(&format!("[SNI] Name owner changed, removing: {}", name));
+                                            Self::unregister_item(&tray_manager, &app_handle, name).await;
+                                        }
                                     }
                                 }
                             }
@@ -95,14 +114,18 @@ impl SniWatcher {
         tray_manager: &TrayManager,
         app_handle: &AppHandle,
         service_name: &str,
+        sender_bus: Option<&str>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         log_info(&format!("[SNI] Registrando item: {}", service_name));
 
-        let (bus_name, object_path) = if service_name.contains('/') {
+        let (bus_name, object_path, map_key) = if service_name.starts_with('/') {
+            let sender = sender_bus.ok_or("Registro SNI sin sender para object path")?;
+            (sender, service_name.to_string(), sender.to_string())
+        } else if service_name.contains('/') {
             let parts: Vec<&str> = service_name.splitn(2, '/').collect();
-            (parts[0], format!("/{}", parts[1]))
+            (parts[0], format!("/{}", parts[1]), service_name.to_string())
         } else {
-            (service_name, "/StatusNotifierItem".to_string())
+            (service_name, "/StatusNotifierItem".to_string(), service_name.to_string())
         };
 
         let proxy = SniItemProxy::builder(connection)
@@ -111,11 +134,12 @@ impl SniWatcher {
             .build()
             .await?;
 
-        let item = Self::create_tray_item_from_proxy(&proxy, service_name).await?;
+        let mut item = Self::create_tray_item_from_proxy(&proxy, service_name).await?;
+        item.bus_name = sender_bus.map(|s| s.to_string());
 
         {
             let mut manager = tray_manager.write().await;
-            manager.insert(service_name.to_string(), item);
+            manager.insert(map_key, item);
         }
 
         emit_tray_update(app_handle).await;
@@ -125,13 +149,17 @@ impl SniWatcher {
     async fn unregister_item(
         tray_manager: &TrayManager,
         app_handle: &AppHandle,
-        service_name: &str,
+        name: &str,
     ) {
-        log_info(&format!("[SNI] Desregistrando item: {}", service_name));
+        log_info(&format!("[SNI] Desregistrando item: {}", name));
 
         {
             let mut manager = tray_manager.write().await;
-            manager.remove(service_name);
+            if manager.contains_key(name) {
+                manager.remove(name);
+            } else {
+                manager.retain(|_, v| v.bus_name.as_deref() != Some(name));
+            }
         }
 
         emit_tray_update(app_handle).await;
@@ -170,6 +198,7 @@ impl SniWatcher {
         Ok(TrayItem {
             id,
             service_name: service_name.to_string(),
+            bus_name: None,
             icon_name,
             icon_data,
             title,
@@ -275,6 +304,7 @@ impl SniWatcher {
                     &self.tray_manager,
                     &self.app_handle,
                     &name,
+                    None,
                 )
                 .await
                 {

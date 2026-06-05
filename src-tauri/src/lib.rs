@@ -25,7 +25,7 @@ use eventloops::{
     setup_dbus_service,
     setup_windows_monitoring,
 };
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use structs::WMState;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
@@ -48,7 +48,7 @@ pub fn run() {
     // Inicializar el sistema de logging
     logger::log_info("Vasak Desktop iniciando...");
     
-    let window_manager = Arc::new(Mutex::new(
+    let window_manager = Arc::new(RwLock::new(
         WindowManager::new().expect("Failed to initialize window manager"),
     ));
 
@@ -81,6 +81,7 @@ pub fn run() {
             detect_display_server,
             get_menu_items,
             toggle_menu,
+            show_panel,
             get_audio_volume,
             set_audio_volume,
             toggle_audio_mute,
@@ -98,6 +99,10 @@ pub fn run() {
             toggle_network_applet,
             init_sni_watcher,
             get_tray_items,
+            tray_item_activate,
+            tray_item_secondary_activate,
+            get_tray_menu,
+            tray_menu_item_click,
             toggle_bluetooth_applet,
             music_play_pause,
             music_next_track,
@@ -105,6 +110,7 @@ pub fn run() {
             music_now_playing,
             battery_exists,
             battery_fetch_info,
+            get_battery_info,
             global_search,
             execute_search_result,
             toggle_search,
@@ -115,7 +121,17 @@ pub fn run() {
         ])
         .setup(move |app| {
             logger::log_info("Configurando aplicación Tauri...");
-            
+
+            // Suprimir Gdk-CRITICAL de inicialización Wayland (internos de GDK,
+            // inofensivos pero ruidosos).
+            glib::log_set_handler(
+                Some("Gdk"),
+                glib::LogLevels::LEVEL_CRITICAL,
+                false,  // fatal
+                false,  // recursion
+                |_domain, _level, _message| {},
+            );
+
             let _ = create_desktops(app);
             let _ = create_panel(app);
 

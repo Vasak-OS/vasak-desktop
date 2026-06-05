@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use chrono::Local;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 /// Nivel de log
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,7 +42,7 @@ impl LogSource {
 }
 
 /// Logger global
-pub static LOGGER: Lazy<Mutex<VasakLogger>> = Lazy::new(|| {
+pub static LOGGER: LazyLock<Mutex<VasakLogger>> = LazyLock::new(|| {
     let logger = VasakLogger::new();
     Mutex::new(logger)
 });

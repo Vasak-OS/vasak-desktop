@@ -1,12 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export type WiFiSecurityType =
-	| 'none'
-	| 'wep'
-	| 'wpa-psk'
-	| 'wpa-eap'
-	| 'wpa2-psk'
-	| 'wpa3-psk';
+export type WiFiSecurityType = 'none' | 'wep' | 'wpa-psk' | 'wpa-eap' | 'wpa2-psk' | 'wpa3-psk';
 
 export interface NetworkInfo {
 	name: string;
