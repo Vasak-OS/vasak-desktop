@@ -70,7 +70,13 @@ async function getBatteryInfoComp() {
 		}
 	} catch (error) {
 		logError('Error getting battery info:', error);
-		batteryInfo.value.has_battery = false;
+		batteryInfo.value = {
+			has_battery: false,
+			percentage: 0,
+			state: 'Unknown',
+			is_present: false,
+			is_charging: false,
+		};
 	}
 }
 
