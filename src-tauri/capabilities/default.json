@@ -73,6 +73,7 @@
     "network-manager:allow-get-wireless-enabled",
     "network-manager:allow-set-wireless-enabled",
     "network-manager:allow-is-wireless-available",
+    "network-manager:allow-get-vpn-status",
     "bluetooth-manager:allow-list-adapters",
     "bluetooth-manager:allow-list-devices",
     "bluetooth-manager:allow-set-adapter-powered",

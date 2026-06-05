@@ -1,17 +1,17 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { listen } from '@tauri-apps/api/event';
-import { getSymbolSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import {
 	getCurrentNetworkState,
 	getVpnStatus,
-	toggleNetworkApplet,
 	type NetworkInfo,
+	toggleNetworkApplet,
 	type VpnStatus,
 } from '@/services/network.service';
+import { useEventListener } from '@/tools/event.listener';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 interface Props {
@@ -22,9 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showProfileName: true,
 });
 
-let unlistenNetwork: Ref<(() => void) | null> = ref(null);
-let unlistenVpn: Ref<(() => void) | null> = ref(null);
-const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
+const networkState = ref<NetworkInfo>({
 	name: 'Unknown',
 	ssid: 'Unknown',
 	connection_type: 'Unknown',
@@ -35,8 +33,8 @@ const networkState: Ref<NetworkInfo> = ref<NetworkInfo>({
 	security_type: 'none',
 	is_connected: false,
 });
-const vpnStatus: Ref<VpnStatus | null> = ref(null);
-const networkIconSrc: Ref<string> = ref('');
+const vpnStatus = ref<VpnStatus | null>(null);
+const networkIconSrc = useSymbol(computed(() => networkState.value.icon));
 
 const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 
@@ -62,10 +60,8 @@ const networkAlt = computed(() => {
 const getCurrentNetwork = async () => {
 	try {
 		networkState.value = await getCurrentNetworkState();
-		networkIconSrc.value = await getSymbolSource(networkState.value.icon);
 		return networkState;
 	} catch (error) {
-		networkIconSrc.value = await getSymbolSource('network-offline-symbolic');
 		logError('Error getting current network state:', error);
 		return null;
 	}
@@ -83,19 +79,13 @@ const refreshVpnStatus = async () => {
 onMounted(async () => {
 	await getCurrentNetwork();
 	await refreshVpnStatus();
-
-	unlistenNetwork.value = await listen<NetworkInfo>('network-changed', async (event) => {
-		networkState.value = event.payload;
-		networkIconSrc.value = await getSymbolSource(event.payload.icon);
-	});
-
-	unlistenVpn.value = await listen('vpn-changed', refreshVpnStatus);
 });
 
-onUnmounted(() => {
-	unlistenNetwork.value?.();
-	unlistenVpn.value?.();
+useEventListener<NetworkInfo>('network-changed', (event) => {
+	networkState.value = event.payload;
 });
+
+useEventListener('vpn-changed', refreshVpnStatus);
 </script>
 
 <template>

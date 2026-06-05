@@ -1,26 +1,14 @@
 
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-import { onMounted } from 'vue';
-import NetworkControlArea from '@/components/areas/network/NetworkControlArea.vue';
-import { toggleNetworkApplet } from '@/services/window.service';
-import { logError } from '@/utils/logger';
 
-onMounted(async () => {
-	document.addEventListener('keydown', (event) => {
-		if (event.key === 'Escape') {
-			try {
-				toggleNetworkApplet();
-			} catch (error) {
-				logError('Error al cerrar applet de red:', error);
-			}
-		}
-	});
-});
+import NetworkControlArea from '@/components/areas/network/NetworkControlArea.vue';
+import AppletFrame from '@/components/layouts/AppletFrame.vue';
+import { toggleNetworkApplet } from '@/services/window.service';
 </script>
 
 <template>
-  <div class="bg-ui-bg/80 h-screen w-screen border border-ui-border rounded-corner-window p-4">
+  <AppletFrame :close-fn="toggleNetworkApplet">
     <NetworkControlArea />
-  </div>
+  </AppletFrame>
 </template>

@@ -1,248 +1,140 @@
-use super::{WindowInfo, WindowManagerBackend};
-use std::collections::HashMap;
+use super::{wayfire_ipc::{get_wayfire_client, View}, WindowInfo, WindowManagerBackend};
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
-use wayland_client::protocol::{wl_output, wl_registry, wl_seat};
-use wayland_client::{Connection, Dispatch, EventQueue, Proxy, QueueHandle};
-
-// Import wlr protocols
-use wayland_protocols_wlr::foreign_toplevel::v1::client::{
-    zwlr_foreign_toplevel_handle_v1::{self, ZwlrForeignToplevelHandleV1},
-    zwlr_foreign_toplevel_manager_v1::{self, ZwlrForeignToplevelManagerV1},
-};
-
-#[derive(Debug, Clone)]
-struct ToplevelInfo {
-    handle: ZwlrForeignToplevelHandleV1,
-    title: String,
-    app_id: String,
-    is_maximized: bool,
-    is_minimized: bool,
-    is_activated: bool,
-    is_fullscreen: bool,
-}
-
-impl ToplevelInfo {
-    fn new(handle: ZwlrForeignToplevelHandleV1) -> Self {
-        Self {
-            handle,
-            title: String::new(),
-            app_id: String::new(),
-            is_maximized: false,
-            is_minimized: false,
-            is_activated: false,
-            is_fullscreen: false,
-        }
-    }
-
-    fn to_window_info(&self, id: &str) -> WindowInfo {
-        WindowInfo {
-            id: id.to_string(),
-            title: self.title.clone(),
-            is_minimized: self.is_minimized,
-            icon: self.app_id.clone(),
-            demands_attention: None, // Wayland doesn't have direct equivalent in this protocol
-        }
-    }
-
-    fn should_show(&self) -> bool {
-        let skip_apps = [
-            "vpanel",
-            "tauri", 
-            "vasak-control-center",
-            "plank",
-            "docky",
-            "cairo-dock",
-            "polybar",
-            "waybar",
-            "tint2",
-            "plasmashell",
-            "krunner",
-            "systemsettings",
-            "kwin",
-            "plasma-desktop"
-        ];
-        
-        // Also skip empty app_ids if title is also empty (ghost windows)
-        if self.app_id.is_empty() && self.title.is_empty() {
-             return false;
-        }
-
-        let app_id_lower = self.app_id.to_lowercase();
-        !skip_apps.iter().any(|app| app_id_lower.contains(app))
-    }
-}
-
-struct AppState {
-    toplevels: HashMap<u32, ToplevelInfo>,
-    manager: Option<ZwlrForeignToplevelManagerV1>,
-    seat: Option<wl_seat::WlSeat>,
-    event_sender: Option<Sender<()>>,
-}
-
-impl AppState {
-    fn new() -> Self {
-        Self {
-            toplevels: HashMap::new(),
-            manager: None,
-            seat: None,
-            event_sender: None,
-        }
-    }
-}
 
 pub struct WaylandManager {
-    conn: Connection,
-    event_queue: EventQueue<AppState>,
-    state: Arc<Mutex<AppState>>,
 }
 
 impl WaylandManager {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let conn = Connection::connect_to_env()
-            .map_err(|e| format!("Failed to connect to Wayland: {}", e))?;
-        
-        let event_queue = conn.new_event_queue::<AppState>();
-        let qh = event_queue.handle();
-        
-        let _registry = conn.display().get_registry(&qh, ());
-        
-        let state = Arc::new(Mutex::new(AppState::new()));
-
-        Ok(WaylandManager {
-            conn,
-            event_queue,
-            state,
-        })
+        Ok(Self {})
     }
 
-    pub fn setup_protocol_bindings(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // Dispatch pending events to set up protocol bindings
-        log::info!("Dispatching events to discover available protocols...");
-        
-        let mut guard = match self.state.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner()
-        };
-
-        self.event_queue.blocking_dispatch(&mut *guard)
-            .map_err(|e| format!("Failed to dispatch events: {}", e))?;
-        
-        // Check if manager is available
-        let state_guard = match self.state.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner()
-        };
-        if state_guard.manager.is_some() {
-            log::info!("Using wlr-foreign-toplevel-management protocol");
-            return Ok(());
+    fn block_on_async<F, T>(f: F) -> Result<T, Box<dyn std::error::Error>>
+    where
+        F: std::future::Future<Output = Result<T, Box<dyn std::error::Error + Send + Sync>>>,
+    {
+        match tokio::runtime::Handle::try_current() {
+            Ok(handle) => tokio::task::block_in_place(|| handle.block_on(f))
+                .map_err(|e| -> Box<dyn std::error::Error> { e }),
+            Err(_) => tauri::async_runtime::block_on(f)
+                .map_err(|e| -> Box<dyn std::error::Error> { e }),
         }
-        
-        drop(state_guard);
-        Err("wlr-foreign-toplevel-management protocol not available.".into())
+    }
+
+    fn normalize_icon_name(raw: &str) -> String {
+        let candidate = raw.trim().to_lowercase();
+        if candidate.is_empty() {
+            return String::new();
+        }
+
+        let tail = candidate.rsplit('.').next().unwrap_or(&candidate);
+        tail.replace(['_', ' '], "-")
+    }
+
+    fn is_shell_window(view: &View) -> bool {
+        let title = view.title.as_deref().unwrap_or_default();
+        let app_id = view.app_id.as_deref().unwrap_or_default();
+
+        (app_id == "vasak-desktop")
+            && (title == "Vasak Panel"
+                || title == "Vasak Desktop"
+                || title.starts_with("Vasak Desktop "))
+    }
+
+    fn is_layer_shell_window(view: &View) -> bool {
+        if Self::is_shell_window(view) {
+            return true;
+        }
+
+        view
+            .type_field
+            .as_deref()
+            .is_some_and(|value| {
+                let lower = value.to_lowercase();
+                matches!(
+                    lower.as_str(),
+                    "panel" | "desktop" | "dock" | "layer-shell" | "layershell"
+                ) || lower.contains("layer-shell")
+            })
+    }
+
+    fn view_to_window_info(view: &View) -> Option<WindowInfo> {
+        if view.mapped == Some(false) {
+            return None;
+        }
+
+        if matches!(view.layer.as_deref(), Some("background") | Some("bottom")) {
+            return None;
+        }
+
+        if Self::is_layer_shell_window(view) {
+            return None;
+        }
+
+        let title = view.title.clone().unwrap_or_default();
+        let icon = view
+            .app_id
+            .as_deref()
+            .map(Self::normalize_icon_name)
+            .filter(|icon| !icon.is_empty())
+            .or_else(|| {
+                view.role
+                    .as_deref()
+                    .map(Self::normalize_icon_name)
+                    .filter(|icon| !icon.is_empty())
+            })
+            .unwrap_or_else(|| "application-x-executable".to_string());
+
+        if title.is_empty() && icon == "application-x-executable" {
+            return None;
+        }
+
+        Some(WindowInfo {
+            id: view.id.to_string(),
+            title,
+            is_minimized: view.minimized.unwrap_or(false),
+            icon,
+            demands_attention: None,
+        })
     }
 }
 
 impl WindowManagerBackend for WaylandManager {
-    fn get_window_list(&mut self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
-        // Safe lock for dispatch
-        {
-            let mut guard = match self.state.lock() {
-                Ok(g) => g,
-                Err(p) => {
-                    log::warn!("Mutex poisoned in get_window_list dispatch, recovering");
-                    p.into_inner()
-                }
-            };
-            
-            if let Err(e) = self.event_queue.blocking_dispatch(&mut *guard) {
-                 log::warn!("Failed to dispatch events during get_window_list: {}", e);
-            }
-        }
-
-        let state = match self.state.lock() {
-            Ok(g) => g,
-            Err(p) => p.into_inner()
-        };
-        
-        let mut windows: Vec<WindowInfo> = Vec::new();
-        
-        for (id, toplevel) in &state.toplevels {
-            if toplevel.should_show() {
-                windows.push(toplevel.to_window_info(&id.to_string()));
-            }
-        }
-        
-        windows.sort_by(|a, b| a.id.cmp(&b.id));
+    fn get_window_list(&self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
+        let windows = Self::block_on_async(async {
+            let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
+            let views = client.list_views_typed().await?;
+            let mut windows: Vec<WindowInfo> = views.iter().filter_map(Self::view_to_window_info).collect();
+            windows.sort_by(|left, right| {
+                let l = left.id.parse::<u64>().unwrap_or(u64::MAX);
+                let r = right.id.parse::<u64>().unwrap_or(u64::MAX);
+                l.cmp(&r)
+            });
+            Result::<_, Box<dyn std::error::Error + Send + Sync>>::Ok(windows)
+        })?;
 
         Ok(windows)
     }
 
     fn setup_event_monitoring(&mut self, tx: Sender<()>) -> Result<(), Box<dyn std::error::Error>> {
-        match self.setup_protocol_bindings() {
-            Ok(_) => {
-                log::info!("Wayland window management initialized successfully");
-            }
-            Err(e) => {
-                log::error!("Failed to initialize Wayland protocols: {}", e);
-                return Err(e);
-            }
-        }
-        
-        {
-            let mut state = match self.state.lock() {
-                Ok(g) => g,
-                Err(p) => p.into_inner()
-            };
-            state.event_sender = Some(tx);
-        }
+        let client = tauri::async_runtime::block_on(async {
+            get_wayfire_client()
+                .await
+                .ok_or("Unable to connect to Wayfire IPC")
+        })?;
+        let mut receiver = client.subscribe();
 
-        let state_clone = Arc::clone(&self.state);
-        
-        let conn_clone = self.conn.clone();
-        
-        std::thread::spawn(move || {
-            let event_queue = conn_clone.new_event_queue::<AppState>();
-            let qh = event_queue.handle();
-            let _registry = conn_clone.display().get_registry(&qh, ());
-            let mut event_queue = event_queue;
+        let _ = tx.send(());
 
+        tauri::async_runtime::spawn(async move {
             loop {
-                // Ensure we don't hold the lock longer than needed, and handle poison
-                {
-                    let _guard = match state_clone.lock() {
-                        Ok(g) => g,
-                        Err(p) => {
-                             log::warn!("Background thread mutex poisoned, recovering");
-                             p.into_inner()
-                        }
-                    };
-                } // drop guard immediately
-                
-                let mut guard = match state_clone.lock() {
-                    Ok(g) => g,
-                    Err(p) => p.into_inner()
-                };
-
-                match event_queue.dispatch_pending(&mut *guard) {
-                    Ok(_) => {},
-                    Err(e) => {
-                        log::error!("Error dispatching pending: {}", e);
-                        break;
+                match receiver.recv().await {
+                    Ok(_) => {
+                        let _ = tx.send(());
                     }
-                }
-
-                let _ = conn_clone.flush();
-
-                match event_queue.prepare_read() {
-                    Some(guard) => {
-                        if let Err(e) = guard.read() {
-                                 log::error!("Error reading events: {}", e);
-                                 break;
-                        }
-                    },
-                    None => {
-                        continue;
+                    Err(err) => {
+                        log::warn!("Wayfire event stream closed: {}", err);
+                        break;
                     }
                 }
             }
@@ -252,203 +144,33 @@ impl WindowManagerBackend for WaylandManager {
     }
 
     fn toggle_window(&self, win_id: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let id: u32 = win_id.parse()
-            .map_err(|_| "Invalid window ID format")?;
+        let view_id = win_id.parse::<u64>().map_err(|error| format!("invalid Wayfire view id {win_id}: {error}"))?;
+        let view_id_i64 = i64::try_from(view_id).map_err(|error| format!("Wayfire view id out of range {win_id}: {error}"))?;
 
-        let state = match self.state.lock() {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                log::warn!("Mutex poisoned during toggle_window, recovering state");
-                poisoned.into_inner()
-            }
-        };
-        
-        if let Some(toplevel) = state.toplevels.get(&id) {
-            if let Some(seat) = &state.seat {
-                log::debug!("Toggling window {}: active={}, minimized={}", id, toplevel.is_activated, toplevel.is_minimized);
-                if toplevel.is_minimized {
-                    toplevel.handle.unset_minimized();
-                    toplevel.handle.activate(seat);
-                } else if toplevel.is_activated {
-                    toplevel.handle.set_minimized();
-                } else {
-                    toplevel.handle.activate(seat);
-                }
+        Self::block_on_async(async move {
+            let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
+            let views = client.list_views_typed().await?;
+            let view = views
+                .into_iter()
+                .find(|candidate| candidate.id == view_id_i64)
+                .ok_or_else(|| format!("Wayfire view not found: {view_id}"))?;
+
+            if view.minimized.unwrap_or(false) {
+                client.set_minimized(view_id, false).await?;
+                client.set_focus(view_id).await.map(|_| ())
+            } else if view.activated {
+                client.set_minimized(view_id, true).await.map(|_| ())
             } else {
-                if toplevel.is_minimized {
-                     toplevel.handle.unset_minimized();
-                } else {
-                     toplevel.handle.set_minimized();
-                }
-                log::warn!("No seat found, window activation might fail for window {}", id);
+                client.set_focus(view_id).await.map(|_| ())
             }
-            // Flush commands
-            let _ = self.conn.flush();
-            return Ok(());
-        }
-        
-        log::warn!("Window {} not found in known toplevels", id);
-        Err("Window not found".into())
+        })?;
+
+        Ok(())
     }
 }
 
-// Implement Dispatch for the registry logic
-impl Dispatch<wl_registry::WlRegistry, ()> for AppState {
-    fn event(
-        state: &mut Self,
-        registry: &wl_registry::WlRegistry,
-        event: wl_registry::Event,
-        _: &(),
-        _: &Connection,
-        qh: &QueueHandle<AppState>,
-    ) {
-        if let wl_registry::Event::Global { name, interface, version } = event {
-            match interface.as_str() {
-                "zwlr_foreign_toplevel_manager_v1" => {
-                    if version >= 1 {
-                        let manager = registry.bind::<ZwlrForeignToplevelManagerV1, _, _>(
-                            name, 
-                            1.min(version), 
-                            qh, 
-                            ()
-                        );
-                        state.manager = Some(manager);
-                        log::info!("Found wlr-foreign-toplevel-management protocol");
-                    }
-                }
-                "wl_seat" => {
-                    if version >= 1 {
-                        let seat = registry.bind::<wl_seat::WlSeat, _, _>(
-                            name,
-                            1.min(version),
-                            qh,
-                            ()
-                        );
-                        state.seat = Some(seat);
-                    }
-                }
-                _ => {}
-            }
-        }
+impl Default for WaylandManager {
+    fn default() -> Self {
+        Self::new().expect("Failed to initialize WaylandManager")
     }
-}
-
-// Implement Dispatch for manager
-impl Dispatch<ZwlrForeignToplevelManagerV1, ()> for AppState {
-    fn event(
-        state: &mut Self,
-        _: &ZwlrForeignToplevelManagerV1,
-        event: zwlr_foreign_toplevel_manager_v1::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<AppState>,
-    ) {
-        match event {
-            zwlr_foreign_toplevel_manager_v1::Event::Toplevel { toplevel } => {
-                let id = toplevel.id().protocol_id();
-                let info = ToplevelInfo::new(toplevel);
-                state.toplevels.insert(id, info);
-            }
-            zwlr_foreign_toplevel_manager_v1::Event::Finished => {
-                log::info!("Foreign toplevel manager finished");
-            }
-            _ => {}
-        }
-    }
-}
-
-// Implement Dispatch for handles
-impl Dispatch<ZwlrForeignToplevelHandleV1, ()> for AppState {
-    fn event(
-        state: &mut Self,
-        handle: &ZwlrForeignToplevelHandleV1,
-        event: zwlr_foreign_toplevel_handle_v1::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<AppState>,
-    ) {
-        let id = handle.id().protocol_id();
-        let mut changed = false;
-        
-        if let Some(toplevel_info) = state.toplevels.get_mut(&id) {
-            match event {
-                zwlr_foreign_toplevel_handle_v1::Event::Title { title } => {
-                    toplevel_info.title = title;
-                    changed = true;
-                }
-                zwlr_foreign_toplevel_handle_v1::Event::AppId { app_id } => {
-                    toplevel_info.app_id = app_id;
-                    changed = true;
-                }
-                zwlr_foreign_toplevel_handle_v1::Event::State { state: window_state } => {
-                    // Parse the state array
-                    let states: Vec<u32> = window_state
-                        .chunks_exact(4)
-                        .map(|chunk| u32::from_ne_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
-                        .collect();
-
-                    // Old states
-                    let old_act = toplevel_info.is_activated;
-                    let old_min = toplevel_info.is_minimized;
-
-                    // Reset
-                    toplevel_info.is_maximized = false;
-                    toplevel_info.is_minimized = false;
-                    toplevel_info.is_activated = false;
-                    toplevel_info.is_fullscreen = false;
-
-                    // Set new
-                    for state_value in states {
-                        match state_value {
-                            0 => toplevel_info.is_maximized = true,
-                            1 => toplevel_info.is_minimized = true,
-                            2 => toplevel_info.is_activated = true,
-                            3 => toplevel_info.is_fullscreen = true,
-                            _ => {}
-                        }
-                    }
-                    
-                    if old_act != toplevel_info.is_activated || old_min != toplevel_info.is_minimized {
-                         changed = true;
-                    }
-                }
-                zwlr_foreign_toplevel_handle_v1::Event::Closed => {
-                    state.toplevels.remove(&id);
-                    changed = true;
-                }
-                zwlr_foreign_toplevel_handle_v1::Event::Done => {
-                }
-                _ => {}
-            }
-        }
-        
-        if changed {
-             if let Some(sender) = &state.event_sender {
-                 let _ = sender.send(());
-             }
-        }
-    }
-}
-
-// Seat stubs
-impl Dispatch<wl_seat::WlSeat, ()> for AppState {
-    fn event(
-        _: &mut Self,
-        _: &wl_seat::WlSeat,
-        _: wl_seat::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<AppState>,
-    ) {}
-}
-
-impl Dispatch<wl_output::WlOutput, ()> for AppState {
-    fn event(
-        _: &mut Self,
-        _: &wl_output::WlOutput,
-        _: wl_output::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<AppState>,
-    ) {}
 }

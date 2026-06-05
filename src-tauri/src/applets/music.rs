@@ -10,10 +10,8 @@ use serde_json::Value as JsonValue;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter};
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use zbus::{
-    blocking::{Connection as BlockingConnection, Proxy as BlockingProxy},
-    blocking::fdo::DBusProxy as BlockingDBusProxy,
     fdo::DBusProxy as AsyncDBusProxy,
     zvariant::Value,
     MessageStream, MessageType, Connection as AsyncConnection, Proxy as AsyncProxy,
@@ -21,7 +19,7 @@ use zbus::{
 
 // Global state for Active Player to ensure commands use the correct target
 // Using a simple Mutex for thread safety across the async monitor and sync commands
-static ACTIVE_PLAYER: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
+static ACTIVE_PLAYER: LazyLock<Mutex<Option<String>>> = LazyLock::new(|| Mutex::new(None));
 
 pub struct MusicApplet;
 
@@ -266,6 +264,14 @@ fn is_well_known_bus(bus: &str) -> bool {
     bus.starts_with("org.mpris.MediaPlayer2.")
 }
 
+fn is_valid_bus_name(bus: &str) -> bool {
+    if bus.starts_with(":") {
+        return bus.len() >= 4;
+    }
+
+    is_well_known_bus(bus)
+}
+
 // --- STATE HELPERS ---
 
 /// Get the currently active player name
@@ -330,36 +336,6 @@ async fn fetch_player_info(conn: &AsyncConnection, name: &str) -> Result<serde_j
     Ok(json!({
         "player": name, // Unique Name used for commands
         "player_identity": identity, // Human readable / Type detection
-        "status": status,
-        "title": title.unwrap_or("Unknown".to_string()),
-        "artist": artist.unwrap_or("Unknown".to_string()),
-        "artUrl": art_url.unwrap_or("".to_string())
-    }))
-}
-
-fn fetch_player_info_blocking(name: &str) -> Result<serde_json::Value, String> {
-    let conn = BlockingConnection::session().map_err(|e| e.to_string())?;
-    let proxy = BlockingProxy::new(&conn, name, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
-        .map_err(|e| e.to_string())?;
-
-    let status = proxy.get_property::<String>("PlaybackStatus").ok().unwrap_or("Stopped".to_string());
-
-    let root_proxy = BlockingProxy::new(&conn, name, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2")
-        .ok();
-    let identity = if let Some(rp) = root_proxy {
-        rp.get_property::<String>("Identity").ok().unwrap_or(name.to_string())
-    } else {
-        name.to_string()
-    };
-
-    let (title, artist, art_url) = match proxy.get_property::<HashMap<String, Value>>("Metadata") {
-        Ok(meta) => parse_metadata(meta),
-        _ => (None, None, None),
-    };
-
-    Ok(json!({
-        "player": name,
-        "player_identity": identity,
         "status": status,
         "title": title.unwrap_or("Unknown".to_string()),
         "artist": artist.unwrap_or("Unknown".to_string()),
@@ -538,43 +514,61 @@ fn normalize_json(v: JsonValue) -> JsonValue {
 
 // --- COMMANDS ---
 
-pub fn fetch_now_playing() -> Result<serde_json::Value, String> {
-    // Return what the Monitor thinks is active
+pub async fn fetch_now_playing() -> Result<serde_json::Value, String> {
     let active = get_active_player();
     if let Some(player) = active {
-         return fetch_player_info_blocking(&player);
+         if is_valid_bus_name(&player) {
+             let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
+             return fetch_player_info(&conn, &player).await;
+         }
+
+         log::warn!("[music] Ignoring invalid active player bus: {}", player);
+         set_active_player(None);
     }
     Ok(json!({ "title": "Nothing playing", "status": "Stopped" }))
 }
 
-pub fn mpris_playpause(player: String) -> Result<String, String> {
+pub async fn mpris_playpause(player: String) -> Result<String, String> {
     let target = resolve_target(player);
-    // read current status
-    let status = BlockingConnection::session()
-        .map_err(|e| e.to_string())
-        .and_then(|conn| {
-            BlockingProxy::new(&conn, target.as_str(), "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
-                .map_err(|e| e.to_string()).map(|proxy| proxy.get_property::<String>("PlaybackStatus").ok().unwrap_or("Unknown".to_string()))
-        }).unwrap_or_else(|_| "Unknown".to_string());
+    if target.is_empty() {
+        return Err("No player selected".into());
+    }
+    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
+    let proxy = AsyncProxy::new(&conn, target.as_str(), "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
+        .await
+        .map_err(|e| e.to_string())?;
+    let status = proxy.get_property::<String>("PlaybackStatus").await
+        .unwrap_or_else(|_| "Unknown".to_string());
     let method = if status == "Paused" { "Play" } else if status == "Playing" { "Pause" } else { "PlayPause" };
-    exec_command(&target, method)?;
+    exec_command_async(&conn, &target, method).await?;
     Ok(target)
 }
 
-pub fn mpris_next(player: String) -> Result<String, String> {
+pub async fn mpris_next(player: String) -> Result<String, String> {
     let target = resolve_target(player);
-    exec_command(&target, "Next")?;
+    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
+    exec_command_async(&conn, &target, "Next").await?;
     Ok(target)
 }
 
-pub fn mpris_previous(player: String) -> Result<String, String> {
+pub async fn mpris_previous(player: String) -> Result<String, String> {
     let target = resolve_target(player);
-    exec_command(&target, "Previous")?;
+    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
+    exec_command_async(&conn, &target, "Previous").await?;
     Ok(target)
 }
 
 fn resolve_target(inc: String) -> String {
     if !inc.is_empty() {
+        if !is_valid_bus_name(&inc) {
+            if let Some(active) = get_active_player() {
+                if is_valid_bus_name(&active) {
+                    return active;
+                }
+            }
+            return String::new();
+        }
+
         // If caller passes an ephemeral bus (":1.x") but we already have a well-known active, prefer active.
         if inc.starts_with(":") {
             if let Some(active) = get_active_player() {
@@ -588,47 +582,47 @@ fn resolve_target(inc: String) -> String {
     get_active_player().unwrap_or_default()
 }
 
-fn exec_command(player: &str, method: &str) -> Result<(), String> {
+async fn exec_command_async(conn: &AsyncConnection, player: &str, method: &str) -> Result<(), String> {
     if player.is_empty() { return Err("No player selected".to_string()); }
-    
-    // Pre-validación de destino
-    let conn = BlockingConnection::session().map_err(|e| e.to_string())?;
-    if !player_available(&conn, player) {
+
+    if !player_available_async(conn, player).await {
         return Err(format!("Player not available: {}", player));
     }
 
-    // Reintentos con backoff
-    call_with_retry_blocking(|| {
-        let proxy = BlockingProxy::new(&conn, player, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
+    call_with_retry_async(|| async {
+        let proxy = AsyncProxy::new(conn, player, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
+            .await
             .map_err(|e| format!("Proxy creation failed: {}", e))?;
         proxy
             .call_method(method, &())
+            .await
             .map(|_| ())
             .map_err(|e| format!("Method call failed: {}", e))
-    }, 3, 50)
+    }, 3, 50).await
 }
 
-fn player_available(conn: &BlockingConnection, name: &str) -> bool {
+async fn player_available_async(conn: &AsyncConnection, name: &str) -> bool {
     if name.starts_with(":") { return true; }
-    match BlockingDBusProxy::new(conn) {
-        Ok(dbus) => dbus.list_names().map(|list| list.into_iter().any(|n| n == name)).unwrap_or(false),
+    match AsyncDBusProxy::new(conn).await {
+        Ok(dbus) => dbus.list_names().await.map(|list| list.into_iter().any(|n| n == name)).unwrap_or(false),
         Err(_) => false,
     }
 }
 
-fn call_with_retry_blocking<F>(mut f: F, attempts: usize, base_delay_ms: u64) -> Result<(), String>
+async fn call_with_retry_async<F, Fut>(mut f: F, attempts: usize, base_delay_ms: u64) -> Result<(), String>
 where
-    F: FnMut() -> Result<(), String>,
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<(), String>>,
 {
     let mut last_err: Option<String> = None;
     for i in 0..attempts {
-        match f() {
+        match f().await {
             Ok(()) => return Ok(()),
             Err(e) => {
                 last_err = Some(e);
                 if i + 1 < attempts {
                     let delay = base_delay_ms * (1 << i);
-                    std::thread::sleep(std::time::Duration::from_millis(delay));
+                    tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
                 }
             }
         }
@@ -636,14 +630,14 @@ where
     Err(last_err.unwrap_or_else(|| "Unknown error".to_string()))
 }
 
-pub fn emit_now_playing(app: &AppHandle, player: &str) -> Result<(), String> {
+pub async fn emit_now_playing(app: &AppHandle, player: &str) -> Result<(), String> {
     if player.is_empty() { return Err("No player selected".to_string()); }
     log::info!("[music] emit_now_playing player={}", player);
-    let info = match fetch_player_info_blocking(player) {
+    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
+    let info = match fetch_player_info(&conn, player).await {
         Ok(i) => i,
         Err(e) => {
             log::warn!("[music] emit_now_playing fetch failed: {}", e);
-            // Return minimal info so UI updates even if fetch fails
             json!({
                 "player": player,
                 "status": "Unknown",
@@ -661,10 +655,12 @@ pub fn emit_now_playing(app: &AppHandle, player: &str) -> Result<(), String> {
     // Schedule a delayed refetch to capture state changes post-command
     let app_clone = app.clone();
     let player_clone = player.to_string();
-    std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_millis(200));
-        if let Ok(fresh_info) = fetch_player_info_blocking(&player_clone) {
-            let _ = app_clone.emit("music-playing-update", &fresh_info);
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        if let Ok(conn) = AsyncConnection::session().await {
+            if let Ok(fresh_info) = fetch_player_info(&conn, &player_clone).await {
+                let _ = app_clone.emit("music-playing-update", &fresh_info);
+            }
         }
     });
 

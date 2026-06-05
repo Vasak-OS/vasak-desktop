@@ -2,8 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -36,8 +35,8 @@ struct DesktopEntry {
 }
 
 // Caché global de aplicaciones
-static APP_CACHE: Lazy<Mutex<HashMap<String, DesktopEntry>>> = Lazy::new(|| Mutex::new(HashMap::new()));
-static CACHE_TIMESTAMP: Lazy<Mutex<Option<std::time::SystemTime>>> = Lazy::new(|| Mutex::new(None));
+static APP_CACHE: LazyLock<Mutex<HashMap<String, DesktopEntry>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
+static CACHE_TIMESTAMP: LazyLock<Mutex<Option<std::time::SystemTime>>> = LazyLock::new(|| Mutex::new(None));
 
 /// Parse a .desktop file
 fn parse_desktop_file(path: &PathBuf) -> Option<DesktopEntry> {
@@ -138,13 +137,12 @@ fn scan_applications() -> HashMap<String, DesktopEntry> {
 /// Refresh application cache if needed
 fn ensure_cache_fresh() {
     let mut timestamp = CACHE_TIMESTAMP.lock()
-        .expect("CACHE_TIMESTAMP lock poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     let now = std::time::SystemTime::now();
     
     let should_refresh = match *timestamp {
         None => true,
         Some(last) => {
-            // Refresh if cache is older than 5 minutes
             now.duration_since(last)
                 .map(|d| d.as_secs() > 300)
                 .unwrap_or(true)
@@ -155,7 +153,7 @@ fn ensure_cache_fresh() {
         log::info!("[search] Refreshing application cache");
         let apps = scan_applications();
         let mut cache = APP_CACHE.lock()
-            .expect("APP_CACHE lock poisoned");
+            .unwrap_or_else(|e| e.into_inner());
         *cache = apps;
         *timestamp = Some(now);
     }
@@ -208,7 +206,7 @@ pub fn search_applications(query: &str, limit: usize) -> Vec<SearchResult> {
     ensure_cache_fresh();
     
     let cache = APP_CACHE.lock()
-        .expect("APP_CACHE lock poisoned");
+        .unwrap_or_else(|e| e.into_inner());
     let mut results: Vec<SearchResult> = cache
         .iter()
         .filter_map(|(id, entry)| {

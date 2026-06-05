@@ -1,12 +1,12 @@
 use crate::window_manager::WindowManager;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use tauri::async_runtime::RwLock;
+use std::sync::{Arc, RwLock};
+use tauri::async_runtime::RwLock as AsyncRwLock;
 
 /// Estado global del gestor de ventanas
 pub struct WMState {
-    pub(crate) window_manager: Arc<Mutex<WindowManager>>,
+    pub(crate) window_manager: Arc<RwLock<WindowManager>>,
 }
 
 /// Representa una notificación del sistema
@@ -43,14 +43,6 @@ pub enum NotificationUrgency {
     Normal,
     /// Urgencia crítica
     Critical,
-}
-
-#[allow(dead_code)]
-#[derive(Default)]
-pub struct NotificationData {
-    pub app_name: String,
-    pub summary: String,
-    pub body: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -108,6 +100,7 @@ pub struct AudioDevice {
 pub struct TrayItem {
     pub id: String,
     pub service_name: String,
+    pub bus_name: Option<String>,
     pub icon_name: Option<String>,
     pub icon_data: Option<String>,
     pub title: Option<String>,
@@ -154,7 +147,7 @@ pub struct TrayMenu {
     pub children: Option<Vec<TrayMenu>>,
 }
 
-pub type TrayManager = Arc<RwLock<HashMap<String, TrayItem>>>;
+pub type TrayManager = Arc<AsyncRwLock<HashMap<String, TrayItem>>>;
 
 /// Información sobre el reproductor de medios actual
 #[allow(dead_code)]

@@ -1,4 +1,3 @@
-use std::env;
 use zbus::Connection;
 use crate::logger::{log_info, log_error};
 
@@ -8,15 +7,18 @@ extern "C" {
 
 #[tauri::command]
 pub fn detect_display_server() -> String {
-    let display_server = if env::var("WAYLAND_DISPLAY").is_ok() {
-        "wayland".to_string()
-    } else if env::var("DISPLAY").is_ok() {
-        "x11".to_string()
-    } else {
-        "unknown".to_string()
-    };
-    log_info(&format!("Servidor de display detectado: {}", display_server));
-    display_server
+    if std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("wayland") {
+        log_info("Servidor de display detectado: wayland");
+        return "wayland".to_string();
+    }
+
+    if std::env::var("DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("x11") {
+        log_info("Servidor de display detectado: x11");
+        return "x11".to_string();
+    }
+
+    log_info("Servidor de display no detectado, reportando: unknown");
+    "unknown".to_string()
 }
 
 #[tauri::command]

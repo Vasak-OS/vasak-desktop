@@ -72,10 +72,9 @@
 </template>
 
 <script setup lang="ts">
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, onMounted, ref } from 'vue';
+import { useIcons } from '@/tools/composables/useReactiveIcon';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
-import { logError } from '@/utils/logger';
 import ActionButton from '../buttons/ActionButton.vue';
 
 interface Notification {
@@ -109,8 +108,10 @@ const emit = defineEmits<{
 }>();
 
 const isExpanded = ref(false);
-const iconSrc = ref('');
-const closeIconSrc = ref('');
+const { iconSrc, closeIconSrc } = useIcons({
+	iconSrc: computed(() => props.group.app_icon),
+	closeIconSrc: 'window-close-symbolic',
+});
 
 // Auto-expandir si hay notificaciones no leídas
 const shouldAutoExpand = computed(() => {
@@ -168,17 +169,9 @@ function onLeave(el: Element) {
 	});
 }
 
-onMounted(async () => {
-	try {
-		iconSrc.value = await getIconSource(props.group.app_icon);
-		closeIconSrc.value = await getIconSource('window-close-symbolic');
-
-		// Auto-expandir si cumple condiciones
-		if (shouldAutoExpand.value) {
-			isExpanded.value = true;
-		}
-	} catch (error) {
-		logError('Error cargando iconos de notificaciones:', error);
+onMounted(() => {
+	if (shouldAutoExpand.value) {
+		isExpanded.value = true;
 	}
 });
 </script>

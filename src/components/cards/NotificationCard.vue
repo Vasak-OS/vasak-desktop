@@ -41,8 +41,8 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
+import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { invokeNotificationAction } from '@/services/notification.service';
 import { logError } from '@/utils/logger';
 import ActionButton from '../buttons/ActionButton.vue';
@@ -66,8 +66,10 @@ defineEmits<{
 	seen: [id: number];
 }>();
 
-const iconSrc = ref('');
-const closeIconSrc = ref('');
+const { iconSrc, closeIconSrc } = useIcons({
+	iconSrc: computed(() => props.notification.app_icon),
+	closeIconSrc: 'window-close-symbolic',
+});
 
 // Parse standard DBus actions [key, label, key, label...]
 const parsedActions = computed(() => {
@@ -99,13 +101,5 @@ async function handleAction(action_key: string) {
 	}
 }
 
-onMounted(async () => {
-	try {
-		iconSrc.value = await getIconSource(props.notification.app_icon);
-		closeIconSrc.value = await getIconSource('window-close-symbolic');
-	} catch (error) {
-		logError('Error cargando iconos de notificación:', error);
-	}
-});
 </script>
 

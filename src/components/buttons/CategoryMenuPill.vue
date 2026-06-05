@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getIconSource } from '@vasakgroup/plugin-vicons';
-import { onMounted, type Ref, ref } from 'vue';
+import { computed } from 'vue';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 
 const emit = defineEmits(['update:categorySelected']);
 
@@ -12,19 +12,11 @@ const props = defineProps<{
 	categorySelected: string;
 }>();
 
-const appIcon: Ref<string> = ref(props.image);
+const appIcon = useIcon(computed(() => props.image));
 
 const setCategory = (category: string) => {
 	emit('update:categorySelected', category);
 };
-
-const getAppIcon = async () => {
-	appIcon.value = await getIconSource(props.image);
-};
-
-onMounted(() => {
-	getAppIcon();
-});
 </script>
 
 <template>

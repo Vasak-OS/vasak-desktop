@@ -1,8 +1,9 @@
 use crate::app_url::get_app_url;
+use crate::logger::log_error;
 use gtk::prelude::*;
+use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use tauri::{
-    async_runtime::spawn, App, Manager, Monitor, PhysicalPosition, PhysicalSize, Position, Size,
-    Url, WebviewUrl, WebviewWindowBuilder,
+    async_runtime::spawn, App, Monitor, Url, WebviewUrl, WebviewWindowBuilder,
 };
 
 use crate::monitor_manager::{get_monitors, get_primary_monitor};
@@ -14,31 +15,31 @@ pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor_size = primary_monitor.size();
     let primary_monitor_position = primary_monitor.position();
 
-    let primary_desktop_window = app
-        .get_webview_window("desktop")
-        .expect("desktop window not found");
+    let primary_desktop_window = WebviewWindowBuilder::new(
+        app,
+        "desktop",
+        WebviewUrl::App("index.html#/desktop".into()),
+    )
+    .title("Vasak Desktop")
+    .decorations(false)
+    .transparent(true)
+    .inner_size(primary_monitor_size.width as f64, primary_monitor_size.height as f64)
+    .max_inner_size(primary_monitor_size.width as f64, primary_monitor_size.height as f64)
+    .min_inner_size(primary_monitor_size.width as f64, primary_monitor_size.height as f64)
+    .position(primary_monitor_position.x as f64, primary_monitor_position.y as f64)
+    .visible(false)
+    .skip_taskbar(true)
+    .always_on_bottom(true)
+    .build()?;
 
-    primary_desktop_window.set_position(Position::Physical(PhysicalPosition {
-        x: primary_monitor_position.x,
-        y: primary_monitor_position.y,
-    }))?;
-
-    primary_desktop_window.set_size(Size::Physical(PhysicalSize {
-        width: primary_monitor_size.width,
-        height: primary_monitor_size.height,
-    }))?;
-
-    primary_desktop_window.set_max_size(Some(Size::Physical(PhysicalSize {
-        width: primary_monitor_size.width,
-        height: primary_monitor_size.height,
-    })))?;
-
-    primary_desktop_window.set_min_size(Some(Size::Physical(PhysicalSize {
-        width: primary_monitor_size.width,
-        height: primary_monitor_size.height,
-    })))?;
-
-    set_window_properties(&primary_desktop_window);
+    set_window_properties(
+        &primary_desktop_window,
+        "Vasak Desktop".to_string(),
+        primary_monitor_position.x,
+        primary_monitor_position.y,
+        primary_monitor_size.width,
+        primary_monitor_size.height,
+    ).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
 
     for (index, monitor) in monitors.iter().enumerate() {
         if monitor.position() == primary_monitor_position {
@@ -74,7 +75,7 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
     .max_inner_size(monitor_size.width as f64, monitor_size.height as f64)
     .min_inner_size(monitor_size.width as f64, monitor_size.height as f64)
     .position(monitor_position.x as f64, monitor_position.y as f64)
-    .visible(true)
+    .visible(false)
     .skip_taskbar(true)
     .always_on_bottom(true)
     .build();
@@ -85,15 +86,48 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
     let _ = other_desktop_window.navigate(url);
 
-    set_window_properties(&other_desktop_window);
+    if let Err(e) = set_window_properties(
+        &other_desktop_window,
+        format!("Vasak Desktop {}", index),
+        monitor_position.x,
+        monitor_position.y,
+        monitor_size.width,
+        monitor_size.height,
+    ) {
+        log_error(&format!("{e}"));
+    }
     } else {
-        eprintln!("Failed to create desktop window for monitor {}", index);
+        log_error(&format!("Failed to create desktop window for monitor {}", index));
     }
 }
 
-fn set_window_properties(window: &tauri::WebviewWindow) {
-    let gtk_window = window.gtk_window().expect("Failed to get GTK window");
+fn set_window_properties(
+    window: &tauri::WebviewWindow,
+    _title: String,
+    _x: i32,
+    _y: i32,
+    _width: u32,
+    _height: u32,
+) -> Result<(), String> {
+    let gtk_window = window.gtk_window().map_err(|e| format!("Failed to get GTK window for {}: {e}", window.label()))?;
 
     gtk_window.set_type_hint(gdk::WindowTypeHint::Desktop);
-    gtk_window.set_skip_taskbar_hint(true);
+    gtk_window.set_accept_focus(false);
+
+    if gtk_layer_shell::is_supported() {
+        gtk_window.init_layer_shell();
+        gtk_window.set_namespace("vasak-desktop");
+        gtk_window.set_layer(Layer::Background);
+        gtk_window.set_anchor(Edge::Top, true);
+        gtk_window.set_anchor(Edge::Left, true);
+        gtk_window.set_anchor(Edge::Right, true);
+        gtk_window.set_anchor(Edge::Bottom, true);
+        gtk_window.set_keyboard_mode(KeyboardMode::None);
+        gtk_window.set_exclusive_zone(0);
+    }
+
+    let _ = window.show();
+    gtk_window.show_all();
+    gtk_window.present();
+    Ok(())
 }

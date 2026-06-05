@@ -25,7 +25,7 @@ export const toggleAudioMute = <T = any>(args?: any): Promise<T> => {
 };
 
 export const getBatteryInfo = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_battery_info', args);
+	return invoke<T>('battery_fetch_info', args);
 };
 
 export const batteryExists = <T = any>(args?: any): Promise<T> => {
@@ -54,4 +54,12 @@ export const getLastLogLines = <T = any>(args: any): Promise<T> => {
 
 export const globalSearch = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('global_search', args);
+};
+
+export const getAudioVolume = <T = any>(args?: any): Promise<T> => {
+	return invoke<T>('get_audio_volume', args);
+};
+
+export const setAudioVolume = <T = any>(args?: any): Promise<T> => {
+	return invoke<T>('set_audio_volume', args);
 };
