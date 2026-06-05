@@ -32,14 +32,14 @@ gdk = "0.18"
 glib = "0.18"
 gtk-layer-shell = { version = "0.8", features = ["v0_6"] }
 base64 = "0.22"
-tauri-plugin-vicons = {path = "../../tauri-plugin-vicons"}
-#tauri-plugin-vicons = "2"
-tauri-plugin-config-manager = {path = "../../tauri-plugin-config-manager"}
-#tauri-plugin-config-manager = "2"
+#tauri-plugin-vicons = {path = "../../tauri-plugin-vicons"}
+tauri-plugin-vicons = "2"
+#tauri-plugin-config-manager = {path = "../../tauri-plugin-config-manager"}
+tauri-plugin-config-manager = "2"
 tauri-plugin-user-data = "2"
 tauri-plugin-opener = "2"
-tauri-plugin-network-manager = { path = "../../tauri-plugin-network-manager" }
-#tauri-plugin-network-manager = "2"
+#tauri-plugin-network-manager = { path = "../../tauri-plugin-network-manager" }
+tauri-plugin-network-manager = "2"
 #tauri-plugin-bluetooth-manager = { path = "../../tauri-plugin-bluetooth-manager" }
 tauri-plugin-bluetooth-manager = "2"
 tauri-plugin-fs = "2"
