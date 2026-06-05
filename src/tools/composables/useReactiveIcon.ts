@@ -40,13 +40,12 @@ export function useIcons(
 ): Record<string, import('vue').Ref<string>> {
 	const result: Record<string, import('vue').Ref<string>> = {};
 	const keyTokens: Record<string, number> = {};
-	let batchId = 0;
 
 	async function refreshAll() {
-		const id = ++batchId;
 		for (const [key, name] of Object.entries(map)) {
+			const keyId = ++keyTokens[key];
 			const src = await getIconSource(toValue(name));
-			if (id === batchId) result[key].value = src;
+			if (keyId === keyTokens[key]) result[key].value = src;
 		}
 	}
 
@@ -77,13 +76,12 @@ export function useSymbols(
 ): Record<string, import('vue').Ref<string>> {
 	const result: Record<string, import('vue').Ref<string>> = {};
 	const keyTokens: Record<string, number> = {};
-	let batchId = 0;
 
 	async function refreshAll() {
-		const id = ++batchId;
 		for (const [key, name] of Object.entries(map)) {
+			const keyId = ++keyTokens[key];
 			const src = await getSymbolSource(toValue(name));
-			if (id === batchId) result[key].value = src;
+			if (keyId === keyTokens[key]) result[key].value = src;
 		}
 	}
 
