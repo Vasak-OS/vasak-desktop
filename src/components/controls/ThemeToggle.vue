@@ -63,8 +63,13 @@ const toggleTheme = async () => {
 	isSwitching.value = true;
 	try {
 		const currentDark = !!configStore.value?.config?.style?.darkmode;
+		// Toggle immediately so the UI responds instantly
+		document.documentElement.classList.toggle('dark', !currentDark);
 		await setDarkMode(!currentDark);
 	} catch (error) {
+		// Revert on error
+		const currentDark = !!configStore.value?.config?.style?.darkmode;
+		document.documentElement.classList.toggle('dark', currentDark);
 		logError('Error toggling system theme:', error);
 	} finally {
 		setTimeout(() => {
