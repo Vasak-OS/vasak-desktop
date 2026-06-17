@@ -1,5 +1,5 @@
 use gtk::prelude::*;
-use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
 
 use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
@@ -18,13 +18,6 @@ pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error
             .skip_taskbar(true)
             .always_on_top(true)
             .build()?;
-
-    let menu_window_for_blur = menu_window.clone();
-    menu_window.on_window_event(move |event| {
-        if matches!(event, WindowEvent::Focused(false)) {
-            let _ = menu_window_for_blur.close();
-        }
-    });
 
     let complete_url = format!("{}/index.html#/menu", get_app_url());
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
