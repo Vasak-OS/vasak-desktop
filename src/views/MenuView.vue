@@ -195,6 +195,7 @@ const onBlur = () => {
                   :image="categoryEntries.all[1].icon"
                   :description="categoryEntries.all[1].description"
                   v-model:categorySelected="categorySelected"
+                  large
                   class="w-full h-full"
                 />
               </div>
