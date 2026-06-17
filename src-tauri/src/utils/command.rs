@@ -3,7 +3,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 use crate::error::{Result, VasakError};
-use crate::logger::{log_debug, log_error};
+use crate::logger::log_error;
 use crate::constants::DEFAULT_COMMAND_TIMEOUT_SECS;
 
 /// Ejecutor de comandos del sistema con soporte para timeouts
@@ -17,7 +17,6 @@ impl CommandExecutor {
     
     /// Ejecuta un comando con un timeout personalizado
     pub fn run_with_timeout(cmd: &str, args: &[&str], timeout: Duration) -> Result<String> {
-        log_debug(&format!("Ejecutando comando: {} {:?}", cmd, args));
         let cmd_owned = cmd.to_string();
         let args_owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
         
@@ -50,7 +49,6 @@ impl CommandExecutor {
             )));
         }
 
-        log_debug(&format!("Comando {} ejecutado exitosamente", cmd));
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
     

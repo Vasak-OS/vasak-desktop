@@ -1,11 +1,10 @@
 use crate::window_manager::WindowInfo;
 use crate::structs::WMState;
-use crate::logger::{log_info, log_error, log_debug};
+use crate::logger::{log_info, log_error};
 
 // Comandos de la API
 #[tauri::command]
 pub async fn get_windows(state: tauri::State<'_, WMState>) -> Result<Vec<WindowInfo>, String> {
-    log_debug("Obteniendo lista de ventanas");
     state
         .window_manager
         .read()

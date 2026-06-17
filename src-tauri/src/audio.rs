@@ -28,7 +28,6 @@ fn get_default_sink_id() -> Result<String> {
         }
     }
 
-    log_debug("Obteniendo ID del sink de audio por defecto");
     let status_output = CommandExecutor::run(CMD_WPCTL, &["status"])?;
 
     // Buscar el sink por defecto
@@ -75,13 +74,11 @@ fn get_default_sink_id() -> Result<String> {
         let _ = cache.insert((default_sink_id.clone(), Instant::now()));
     }
 
-    log_debug(&format!("Sink de audio por defecto: {}", default_sink_id));
     Ok(default_sink_id)
 }
 
 /// Obtiene la información actual del volumen del sistema usando wpctl
 pub fn get_volume() -> Result<VolumeInfo> {
-    log_debug("Obteniendo información del volumen");
     let default_sink_id = get_default_sink_id()?;
 
     // Obtener información del volumen
