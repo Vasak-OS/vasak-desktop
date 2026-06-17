@@ -2,21 +2,20 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
-import { onMounted, onUnmounted, type Ref, ref } from 'vue';
+import { onMounted, type Ref, ref } from 'vue';
 import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
 import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
 import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
 import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
-import type { TrayItem, TrayMenu } from '@/interfaces/tray';
+import type { TrayItem } from '@/interfaces/tray';
 import { batteryExists } from '@/services/core.service';
 import {
 	getTrayItems,
-	getTrayMenu,
 	initSniWatcher,
+	openTrayPopup,
 	trayItemActivate,
 	trayItemSecondaryActivate,
-	trayMenuItemClick,
 } from '@/services/tray.service';
 import { useEventListener } from '@/tools/event.listener';
 import { logError, logWarning } from '@/utils/logger';
@@ -24,19 +23,6 @@ import { logError, logWarning } from '@/utils/logger';
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
 const trayItems = ref<TrayItem[]>([]);
-const contextMenu = ref<{
-	visible: boolean;
-	x: number;
-	y: number;
-	items: TrayMenu[];
-	trayId: string;
-}>({
-	visible: false,
-	x: 0,
-	y: 0,
-	items: [],
-	trayId: '',
-});
 
 const refreshTrayItems = async (): Promise<void> => {
 	try {
@@ -47,20 +33,18 @@ const refreshTrayItems = async (): Promise<void> => {
 };
 
 const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
+	console.log('[TrayPanel] handleTrayClick', event.button, item.service_name, item.menu_path);
 	try {
 		if (event.button === 2) {
-			// Right click
 			event.preventDefault();
-			await showContextMenu(item, event);
+			await openTrayPopup({ serviceName: item.service_name });
 		} else if (event.button === 0) {
-			// Left click
 			await trayItemActivate({
 				serviceName: item.service_name,
 				x: event.clientX,
 				y: event.clientY,
 			});
 		} else if (event.button === 1) {
-			// Middle click
 			await trayItemSecondaryActivate({
 				serviceName: item.service_name,
 				x: event.clientX,
@@ -70,42 +54,6 @@ const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
 	} catch (error) {
 		logError('[TrayPanel] Error manejando click:', error);
 	}
-};
-
-const showContextMenu = async (item: TrayItem, event: MouseEvent) => {
-	if (!item.menu_path) return;
-
-	try {
-		const menuItems: TrayMenu[] = await getTrayMenu({
-			serviceName: item.service_name,
-		});
-
-		contextMenu.value = {
-			visible: true,
-			x: event.clientX,
-			y: event.clientY,
-			items: menuItems,
-			trayId: item.service_name,
-		};
-	} catch (error) {
-		logError('[TrayPanel] Error obteniendo menú:', error);
-	}
-};
-
-const handleMenuItemClick = async (menuItem: TrayMenu) => {
-	try {
-		await trayMenuItemClick({
-			serviceName: contextMenu.value.trayId,
-			menuId: menuItem.id,
-		});
-		contextMenu.value.visible = false;
-	} catch (error) {
-		logError('[TrayPanel] Error en click de menú:', error);
-	}
-};
-
-const hideContextMenu = () => {
-	contextMenu.value.visible = false;
 };
 
 const getItemPulseClass = (item: TrayItem) => {
@@ -141,12 +89,6 @@ onMounted(async () => {
 	} catch (error) {
 		logError('[TryPanel] Init SNI Watcher', error);
 	}
-
-	document.addEventListener('click', hideContextMenu);
-});
-
-onUnmounted(() => {
-	document.removeEventListener('click', hideContextMenu);
 });
 
 useEventListener('tray-update', refreshTrayItems);
@@ -171,8 +113,8 @@ useEventListener('battery-update', (event) => {
           getItemStatusClass(item),
           getItemPulseClass(item),
         ]"
-        @click="(e) => handleTrayClick(item, e)"
-        @contextmenu.prevent="(e) => handleTrayClick(item, e)"
+        @mousedown.prevent="(e) => handleTrayClick(item, e)"
+        @contextmenu.prevent
         :title="item.tooltip || item.title"
       >
         <!-- Icon with loading state -->
@@ -199,41 +141,6 @@ useEventListener('battery-update', (event) => {
       <TrayIconBluetooth key="icon-bluetooth" />
       <TrayIconNetwork key="icon-network" />
     </TransitionGroup>
-
-    <!-- Context Menu -->
-    <Teleport to="body">
-      <Transition enter-active-class="transition-all duration-200 ease-[cubic-bezier(0.25,0.8,0.25,1)]" leave-active-class="transition-all duration-150 ease-[cubic-bezier(0.55,0,0.45,1)]" enter-from-class="opacity-0 -translate-y-full scale-95" leave-to-class="opacity-0 -translate-y-full scale-95">
-        <div
-          v-if="contextMenu.visible"
-          class="fixed z-50 bg-ui-bg/80 backdrop-blur-md border border-ui-border rounded-corner shadow-2xl py-2 min-w-48 max-w-64"
-          :style="{
-            left: `${contextMenu.x}px`,
-            top: `${contextMenu.y - 10}px`,
-            transform: 'translateY(-100%)',
-          }"
-          @click.stop
-        >
-          <div
-            v-for="(menuItem) in contextMenu.items"
-            :key="menuItem.id"
-            :class="[
-              'flex items-center justify-between px-4 py-2 text-sm cursor-pointer transition-colors duration-200 hover:bg-ui-bg/80',
-              {
-                disabled: !menuItem.enabled,
-                separator: menuItem.type === 'separator',
-                checked: menuItem.checked,
-              },
-            ]"
-            @click="menuItem.enabled && handleMenuItemClick(menuItem)"
-          >
-            <span v-if="menuItem.type !== 'separator'" class="flex-1 text-left">
-              {{ menuItem.label }}
-            </span>
-            <div v-if="menuItem.checked" class="text-blue-600 dark:text-blue-400 font-bold ml-2">✓</div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>
 

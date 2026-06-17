@@ -149,6 +149,19 @@ pub struct TrayMenu {
 
 pub type TrayManager = Arc<AsyncRwLock<HashMap<String, TrayItem>>>;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystrayPopupPayload {
+    pub icon_id: String,
+    pub icon_data: Option<String>,
+    pub tooltip: Option<String>,
+    pub status: Option<TrayStatus>,
+    pub title: String,
+    pub service_name: String,
+    pub items: Vec<TrayMenu>,
+}
+
+pub struct SystrayPopupState(pub std::sync::Mutex<Option<SystrayPopupPayload>>);
+
 /// Información sobre el reproductor de medios actual
 #[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]

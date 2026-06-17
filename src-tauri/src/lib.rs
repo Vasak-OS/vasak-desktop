@@ -26,6 +26,7 @@ use eventloops::{
     setup_windows_monitoring,
 };
 use std::sync::{Arc, RwLock};
+use structs::SystrayPopupState;
 use structs::WMState;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
@@ -61,6 +62,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(wm_state)
         .manage(tray_manager)
+        .manage(SystrayPopupState(std::sync::Mutex::new(None)))
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_config_manager::init())
@@ -103,6 +105,9 @@ pub fn run() {
             tray_item_secondary_activate,
             get_tray_menu,
             tray_menu_item_click,
+            open_tray_popup,
+            get_tray_popup_data,
+            tray_popup_click,
             toggle_bluetooth_applet,
             music_play_pause,
             music_next_track,

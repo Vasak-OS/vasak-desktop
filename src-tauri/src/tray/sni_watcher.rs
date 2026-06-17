@@ -134,8 +134,7 @@ impl SniWatcher {
             .build()
             .await?;
 
-        let mut item = Self::create_tray_item_from_proxy(&proxy, service_name).await?;
-        item.bus_name = sender_bus.map(|s| s.to_string());
+        let item = Self::create_tray_item_from_proxy(&proxy, service_name, bus_name).await?;
 
         {
             let mut manager = tray_manager.write().await;
@@ -168,6 +167,7 @@ impl SniWatcher {
     async fn create_tray_item_from_proxy(
         proxy: &SniItemProxy<'_>,
         service_name: &str,
+        bus_name: &str,
     ) -> Result<TrayItem, Box<dyn std::error::Error>> {
         let id = proxy
             .id()
@@ -193,12 +193,18 @@ impl SniWatcher {
         };
 
         let icon_data = Self::get_icon_data(proxy).await;
-        let menu_path = proxy.menu().await.ok();
+        let menu_path = match proxy.menu().await.ok().filter(|path| !path.is_empty()) {
+            Some(path) => Some(path),
+            None => {
+                let default_path = format!("/org/ayatana/NotificationItem/{}/Menu", id);
+                Some(default_path)
+            }
+        };
 
         Ok(TrayItem {
             id,
             service_name: service_name.to_string(),
-            bus_name: None,
+            bus_name: Some(bus_name.to_string()),
             icon_name,
             icon_data,
             title,

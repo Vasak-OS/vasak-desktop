@@ -23,6 +23,10 @@ const routes = [
 				path: 'audio',
 				component: () => import('@/views/applets/AudioAppletView.vue'),
 			},
+			{
+				path: 'tray-popup',
+				component: () => import('@/views/applets/TrayPopupView.vue'),
+			},
 		],
 	},
 	{

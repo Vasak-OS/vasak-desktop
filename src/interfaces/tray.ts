@@ -20,3 +20,13 @@ export interface TrayMenu {
 	icon?: string;
 	children?: TrayMenu[];
 }
+
+export interface SystrayPopupPayload {
+	icon_id: string;
+	icon_data?: string | null;
+	tooltip?: string | null;
+	status?: 'Active' | 'Passive' | 'NeedsAttention' | null;
+	title: string;
+	service_name: string;
+	items: TrayMenu[];
+}
