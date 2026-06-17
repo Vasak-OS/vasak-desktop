@@ -1,8 +1,7 @@
-
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { computed, onMounted, type Ref, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
 import MenuArea from '@/components/areas/menu/MenuArea.vue';
@@ -25,6 +24,7 @@ import { logError } from '@/utils/logger';
 const menuData: Ref<Array<any>> = ref([]);
 const categorySelected: Ref<any> = ref('all');
 const filter: Ref<string> = ref('');
+const leaving = ref(false);
 
 const { logoutImg, shutdownImg, rebootImg, suspendImg, settingsImg } = useIcons({
 	logoutImg: 'system-log-out',
@@ -94,31 +94,46 @@ const openConfiguration = async () => {
 	}
 };
 
+const closeAfterAnimation = () => {
+	leaving.value = true;
+	setTimeout(() => {
+		try { toggleMenu(); } catch { /* window already closed */ }
+	}, 200);
+};
+
 const apps = computed(() => {
-	const allApps = (menuData.value as any).all?.apps;
-	return allApps;
+	return (menuData.value as any)?.all?.apps ?? [];
 });
 
-const appsOfCategory = computed(() => (menuData.value as any)[categorySelected.value]?.apps);
+const appsOfCategory = computed(() => (menuData.value as any)?.[categorySelected.value]?.apps ?? []);
 
 onMounted(async () => {
 	setMenu();
-	document.addEventListener('keydown', (event) => {
-		if (event.key === 'Escape') {
-			try {
-				toggleMenu();
-			} catch (error) {
-				logError('Error al cerrar menú:', error);
-			}
-		}
-	});
+	document.addEventListener('keydown', onKeydown);
+	window.addEventListener('blur', onBlur);
 });
+
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onKeydown);
+	window.removeEventListener('blur', onBlur);
+});
+
+const onKeydown = (event: KeyboardEvent) => {
+	if (event.key === 'Escape') {
+		closeAfterAnimation();
+	}
+};
+
+const onBlur = () => {
+	closeAfterAnimation();
+};
 </script>
 
 <template>
-  <div class="h-screen p-4 rounded-corner bg-ui-bg/80 border border-ui-border">
+  <Transition appear enter-active-class="enter-active">
+    <div :class="['h-screen p-4 rounded-corner bg-ui-bg/80 border border-ui-border', { 'leave-active': leaving }]">
     <div
-      class="flex items-center justify-between gap-4 animate-fade-in mb-4 header-section"
+      class="flex items-center justify-between gap-4 mb-4 header-section"
     >
       <UserMenuCard />
 
@@ -147,27 +162,27 @@ onMounted(async () => {
     </div>
 
     <transition enter-active-class="transition-opacity duration-300 ease-out" leave-active-class="transition-opacity duration-300 ease-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
-      <div v-if="filter !== ''" key="filter-view" class="animate-fade-in">
+      <div v-if="filter !== ''" key="filter-view">
         <FilterArea v-model:apps="apps" v-model:filter="filter" />
       </div>
       <div
         v-else
         key="main-view"
-        class="grid grid-cols-3 gap-4 animate-slide-up-plus h-[calc(100vh-88px)]"
+        class="grid grid-cols-3 gap-4 h-[calc(100vh-88px)]"
       >
         <div
-          class="bg-ui-bg/80 border border-ui-border rounded-corner p-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
+          class="bg-ui-bg/80 border border-ui-border rounded-corner p-4 h-full overflow-y-auto"
         >
           <MenuArea v-model:apps="appsOfCategory" />
         </div>
 
         <div
-          class="rounded-corner bg-ui-bg/80 border border-ui-border p-4 space-y-4 h-full overflow-y-auto animate-[fade-in_0.5s_ease-out_0.2s_backwards]"
+          class="rounded-corner bg-ui-bg/80 border border-ui-border p-4 space-y-4 h-full overflow-y-auto"
         >
           <WeatherWidget />
         </div>
 
-        <div class="animate-[fade-in_0.5s_ease-out_0.2s_backwards] rounded-corner bg-ui-bg/80 border border-ui-border p-4">
+        <div class="rounded-corner bg-ui-bg/80 border border-ui-border p-4">
           <transition-group
             tag="div"
             move-class="transition-transform duration-400 ease-out" enter-active-class="transition-all duration-400 ease-out" leave-active-class="transition-all duration-400 ease-out" enter-from-class="opacity-0 translate-y-[20px] scale-90" leave-to-class="opacity-0 translate-y-[20px] scale-90"
@@ -187,6 +202,39 @@ onMounted(async () => {
         </div>
       </div>
     </transition>
-  </div>
+    </div>
+  </Transition>
 </template>
+
+<style scoped>
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scale-out {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+.enter-active {
+  animation: scale-in 200ms ease-out;
+}
+
+.leave-active {
+  animation: scale-out 200ms ease-in;
+}
+</style>
 
