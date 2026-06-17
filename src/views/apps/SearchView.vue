@@ -22,11 +22,19 @@ const query = ref('');
 const results = ref<SearchResult[]>([]);
 const selectedIndex = ref(0);
 const loading = ref(false);
+const leaving = ref(false);
 const currentWindow = getCurrentWindow();
 
 const searchIconSrc = useIcon(computed(() => 'search'));
 
 let debounceTimer: number | null = null;
+
+const closeAfterAnimation = () => {
+	leaving.value = true;
+	setTimeout(() => {
+		try { currentWindow.close(); } catch { /* window already closed */ }
+	}, 200);
+};
 
 // Watch query changes
 watch(query, (newQuery) => {
@@ -63,7 +71,7 @@ const handleKeydown = async (event: KeyboardEvent) => {
 	switch (event.key) {
 		case 'Escape':
 			event.preventDefault();
-			await currentWindow.close();
+			closeAfterAnimation();
 			break;
 
 		case 'ArrowDown':
@@ -99,7 +107,7 @@ const executeResult = async (result: SearchResult) => {
 			category: result.category,
 			exec: result.exec,
 		});
-		await currentWindow.close();
+		closeAfterAnimation();
 	} catch (error) {
 		logError('[search] Execution error:', error);
 	}
@@ -120,10 +128,12 @@ onMounted(async () => {
 		document.querySelector<HTMLInputElement>('.search-input')?.focus();
 	});
 	globalThis.addEventListener('keydown', handleKeydown);
+	window.addEventListener('blur', closeAfterAnimation);
 });
 
 onUnmounted(() => {
 	globalThis.removeEventListener('keydown', handleKeydown);
+	window.removeEventListener('blur', closeAfterAnimation);
 });
 
 // Helper functions
@@ -155,123 +165,159 @@ function getCategoryLabel(category: string): string {
 </script>
 
 <template>
-  <div class="h-screen w-screen flex items-center justify-center">
+  <Transition appear enter-active-class="enter-active">
     <div
-      class="bg-ui-bg/80 rounded-window flex flex-col w-[700px] max-h-[80vh] overflow-hidden group relative hover:shadow-lg transition-all duration-300"
+      :class="['h-screen w-screen flex items-center justify-center', { 'leave-active': leaving }]"
     >
-      <!-- Decorative overlay like ThemeToggle -->
       <div
-        class="absolute inset-0 rounded-window transition-all duration-500 opacity-0 group-hover:opacity-100 z-0"
-      ></div>
-      <!-- Header -->
-      <div
-        class="flex items-center gap-4 px-6 py-5 border-b border-primary/10 relative z-10"
+        class="bg-ui-bg/80 rounded-window flex flex-col w-[700px] max-h-[80vh] overflow-hidden group relative hover:shadow-lg transition-all duration-300"
       >
-        <img :src="searchIconSrc" alt="Search" class="w-7 h-7 shrink-0" />
-        <input
-          v-model="query"
-          type="text"
-          class="search-input flex-1 bg-transparent border-none outline-none text-xl text-vsk-text font-medium placeholder:text-vsk-text/30"
-          placeholder="Buscar aplicaciones, archivos y acciones..."
-          autofocus
-        />
-        <div v-if="loading" class="text-2xl animate-spin">⏳</div>
-      </div>
-
-      <!-- Results -->
-      <div
-        v-if="results.length > 0"
-        class="flex-1 overflow-y-auto px-3 py-3 relative z-10"
-      >
+        <!-- Decorative overlay like ThemeToggle -->
         <div
-          v-for="(result, index) in results"
-          :key="result.id"
-          class="search-result flex items-center gap-4 p-4 rounded-corner cursor-pointer transition-all duration-200 mb-2 ring-1 ring-primary/20"
-          :class="
-            index === selectedIndex
-              ? 'selected bg-gradient-to-r from-primary/20 to-primary/10 translate-x-2 shadow-md shadow-primary/15 ring-2 ring-primary/40 scale-[1.01]'
-              : 'hover:bg-gradient-to-r hover:from-primary/20 hover:to-primary/10 hover:translate-x-2 hover:shadow-md hover:shadow-primary/15 hover:ring-primary/30'
-          "
-          @click="executeResult(result)"
-          @mouseenter="selectedIndex = index"
+          class="absolute inset-0 rounded-window transition-all duration-500 opacity-0 group-hover:opacity-100 z-0"
+        ></div>
+        <!-- Header -->
+        <div
+          class="flex items-center gap-4 px-6 py-5 border-b border-primary/10 relative z-10"
+        >
+          <img :src="searchIconSrc" alt="Search" class="w-7 h-7 shrink-0" />
+          <input
+            v-model="query"
+            type="text"
+            class="search-input flex-1 bg-transparent border-none outline-none text-xl text-vsk-text font-medium placeholder:text-vsk-text/30"
+            placeholder="Buscar aplicaciones, archivos y acciones..."
+            autofocus
+          />
+          <div v-if="loading" class="text-2xl animate-spin">⏳</div>
+        </div>
+
+        <!-- Results -->
+        <div
+          v-if="results.length > 0"
+          class="flex-1 overflow-y-auto px-3 py-3 relative z-10"
         >
           <div
-            class="w-14 h-14 shrink-0 flex items-center justify-center text-3xl rounded-corner bg-primary/10 border border-primary/20"
+            v-for="(result, index) in results"
+            :key="result.id"
+            class="search-result flex items-center gap-4 p-4 rounded-corner cursor-pointer transition-all duration-200 mb-2 ring-1 ring-primary/20"
+            :class="
+              index === selectedIndex
+                ? 'selected bg-gradient-to-r from-primary/20 to-primary/10 translate-x-2 shadow-md shadow-primary/15 ring-2 ring-primary/40 scale-[1.01]'
+                : 'hover:bg-gradient-to-r hover:from-primary/20 hover:to-primary/10 hover:translate-x-2 hover:shadow-md hover:shadow-primary/15 hover:ring-primary/30'
+            "
+            @click="executeResult(result)"
+            @mouseenter="selectedIndex = index"
           >
-            {{ getCategoryIcon(result.category) }}
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="text-lg font-bold text-vsk-text">
-              {{ result.title }}
+            <div
+              class="w-14 h-14 shrink-0 flex items-center justify-center text-3xl rounded-corner bg-primary/10 border border-primary/20"
+            >
+              {{ getCategoryIcon(result.category) }}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-lg font-bold text-vsk-text">
+                {{ result.title }}
+              </div>
+              <div
+                v-if="result.description"
+                class="text-sm text-vsk-text/60 truncate"
+              >
+                {{ result.description }}
+              </div>
             </div>
             <div
-              v-if="result.description"
-              class="text-sm text-vsk-text/60 truncate"
+              class="px-3 py-1 rounded-full bg-primary/25 border border-primary/30"
             >
-              {{ result.description }}
+              <span
+                class="text-xs font-bold text-primary uppercase tracking-wider"
+              >
+                {{ getCategoryLabel(result.category) }}
+              </span>
             </div>
           </div>
+        </div>
+
+        <!-- Empty States -->
+        <div
+          v-else-if="query.trim() && !loading"
+          class="flex-1 flex items-center justify-center px-6 py-12 relative z-10"
+        >
+          <p class="text-center text-vsk-text/40 text-base">
+            No se encontraron resultados
+          </p>
+        </div>
+
+        <div
+          v-else-if="!query.trim()"
+          class="flex-1 flex items-center justify-center px-6 py-12 relative z-10"
+        >
+          <p class="text-center text-vsk-text/40 text-base">
+            Escribe para buscar aplicaciones, archivos o acciones
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div
+          class="flex justify-center px-6 py-4 border-t border-primary/10 bg-black/10 relative z-10"
+        >
           <div
-            class="px-3 py-1 rounded-full bg-primary/25 border border-primary/30"
+            class="flex gap-5 items-center text-xs text-vsk-text/50 font-medium"
           >
-            <span
-              class="text-xs font-bold text-primary uppercase tracking-wider"
-            >
-              {{ getCategoryLabel(result.category) }}
+            <span class="flex items-center gap-1">
+              <kbd
+                class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
+                >↑↓</kbd
+              >
+              Navegar
+            </span>
+            <span class="flex items-center gap-1">
+              <kbd
+                class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
+                >Enter</kbd
+              >
+              Ejecutar
+            </span>
+            <span class="flex items-center gap-1">
+              <kbd
+                class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
+                >Esc</kbd
+              >
+              Cerrar
             </span>
           </div>
         </div>
       </div>
-
-      <!-- Empty States -->
-      <div
-        v-else-if="query.trim() && !loading"
-        class="flex-1 flex items-center justify-center px-6 py-12 relative z-10"
-      >
-        <p class="text-center text-vsk-text/40 text-base">
-          No se encontraron resultados
-        </p>
-      </div>
-
-      <div
-        v-else-if="!query.trim()"
-        class="flex-1 flex items-center justify-center px-6 py-12 relative z-10"
-      >
-        <p class="text-center text-vsk-text/40 text-base">
-          Escribe para buscar aplicaciones, archivos o acciones
-        </p>
-      </div>
-
-      <!-- Footer -->
-      <div
-        class="flex justify-center px-6 py-4 border-t border-primary/10 bg-black/10 relative z-10"
-      >
-        <div
-          class="flex gap-5 items-center text-xs text-vsk-text/50 font-medium"
-        >
-          <span class="flex items-center gap-1">
-            <kbd
-              class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
-              >↑↓</kbd
-            >
-            Navegar
-          </span>
-          <span class="flex items-center gap-1">
-            <kbd
-              class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
-              >Enter</kbd
-            >
-            Ejecutar
-          </span>
-          <span class="flex items-center gap-1">
-            <kbd
-              class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
-              >Esc</kbd
-            >
-            Cerrar
-          </span>
-        </div>
-      </div>
     </div>
-  </div>
+  </Transition>
 </template>
+
+<style scoped>
+@keyframes fade-scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-scale-out {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+.enter-active {
+  animation: fade-scale-in 200ms ease-out;
+}
+
+.leave-active {
+  animation: fade-scale-out 200ms ease-in;
+}
+</style>
