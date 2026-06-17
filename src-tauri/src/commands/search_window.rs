@@ -3,7 +3,7 @@ use tauri::{AppHandle, Manager};
 
 #[tauri::command]
 pub async fn toggle_search(app: AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("global_search") {
+    if let Some(window) = app.get_webview_window("app_search") {
         if window.is_visible().unwrap_or(false) {
             window.hide().map_err(|e| e.to_string())?;
         } else {

@@ -1,6 +1,8 @@
 use gtk::prelude::*;
 use std::sync::Arc;
-use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+};
 
 use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
@@ -9,21 +11,28 @@ pub async fn create_applet_bluetooth_window(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
 
-    let applet_bluetooth_window = Arc::new(
-        WebviewWindowBuilder::new(
-            &app,
-            "applet_bluetooth",
-            WebviewUrl::App("index.html#/applets/bluetooth".into()),
-        )
-        .title("Vasak Bluetooth Applet")
-        .decorations(false)
-        .transparent(true)
-        .inner_size(700.0, 620.0)
-        .max_inner_size(700.0, 620.0)
-        .min_inner_size(700.0, 620.0)
-        .visible(true)
-        .build()?,
-    );
+    let window = WebviewWindowBuilder::new(
+        &app,
+        "applet_bluetooth",
+        WebviewUrl::App("index.html#/applets/bluetooth".into()),
+    )
+    .title("Vasak Bluetooth Applet")
+    .decorations(false)
+    .transparent(true)
+    .inner_size(700.0, 620.0)
+    .max_inner_size(700.0, 620.0)
+    .min_inner_size(700.0, 620.0)
+    .visible(true)
+    .build()?;
+
+    let win_for_blur = window.clone();
+    window.on_window_event(move |event| {
+        if matches!(event, WindowEvent::Focused(false)) {
+            let _ = win_for_blur.close();
+        }
+    });
+
+    let applet_bluetooth_window = Arc::new(window);
 
     let complete_url = format!("{}/index.html#/applets/bluetooth", get_app_url());
     let url = Url::parse(&complete_url).expect("Failed to parse URL");

@@ -1,6 +1,6 @@
 use gtk::prelude::*;
 use std::sync::Arc;
-use tauri::{AppHandle, Url, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 use crate::app_url::get_app_url;
 use crate::monitor_manager::get_primary_monitor;
@@ -26,22 +26,29 @@ pub async fn create_search_window(
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
     let _primary_monitor_size = primary_monitor.size();
 
-    let search_window = Arc::new(
-        WebviewWindowBuilder::new(
-            &app,
-            "app_search",
-            WebviewUrl::App("index.html#/apps/search".into()),
-        )
-        .title("Vasak Search")
-        .decorations(false)
-        .transparent(true)
-        .inner_size(700.0, 600.0)
-        .visible(true)
-        .skip_taskbar(true)
-        .always_on_top(true)
-        .center()
-        .build()?,
-    );
+    let window = WebviewWindowBuilder::new(
+        &app,
+        "app_search",
+        WebviewUrl::App("index.html#/apps/search".into()),
+    )
+    .title("Vasak Search")
+    .decorations(false)
+    .transparent(true)
+    .inner_size(700.0, 600.0)
+    .visible(true)
+    .skip_taskbar(true)
+    .always_on_top(true)
+    .center()
+    .build()?;
+
+    let win_for_blur = window.clone();
+    window.on_window_event(move |event| {
+        if matches!(event, WindowEvent::Focused(false)) {
+            let _ = win_for_blur.close();
+        }
+    });
+
+    let search_window = Arc::new(window);
 
     let complete_url = format!("{}/index.html#/apps/search", get_app_url());
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
