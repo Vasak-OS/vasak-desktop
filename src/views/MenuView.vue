@@ -107,6 +107,13 @@ const apps = computed(() => {
 
 const appsOfCategory = computed(() => (menuData.value as any)?.[categorySelected.value]?.apps ?? []);
 
+const categoryEntries = computed(() => {
+	const entries = Object.entries(menuData.value as Record<string, any>);
+	const allIdx = entries.findIndex(([k]) => k === 'all');
+	const all = allIdx >= 0 ? entries.splice(allIdx, 1)[0] : entries.shift();
+	return { all, others: entries };
+});
+
 onMounted(async () => {
 	setMenu();
 	document.addEventListener('keydown', onKeydown);
@@ -177,28 +184,42 @@ const onBlur = () => {
         </div>
 
         <div
-          class="rounded-corner bg-ui-bg/80 border border-ui-border p-4 space-y-4 h-full overflow-y-auto"
+          class="col-span-2 grid gap-4 h-full min-h-0"
+          style="grid-template-rows: 1fr 2fr"
         >
-          <WeatherWidget />
-        </div>
+          <div class="rounded-corner bg-ui-bg/80 border border-ui-border p-4 overflow-y-auto min-h-0">
+            <div class="h-full grid gap-3 min-h-0" style="grid-template-columns: 1fr 2fr">
+              <div v-if="categoryEntries.all" class="flex items-center justify-center">
+                <CategoryMenuPill
+                  :category="categoryEntries.all[0]"
+                  :image="categoryEntries.all[1].icon"
+                  :description="categoryEntries.all[1].description"
+                  v-model:categorySelected="categorySelected"
+                  class="w-full h-full"
+                />
+              </div>
 
-        <div class="rounded-corner bg-ui-bg/80 border border-ui-border p-4">
-          <transition-group
-            tag="div"
-            move-class="transition-transform duration-400 ease-out" enter-active-class="transition-all duration-400 ease-out" leave-active-class="transition-all duration-400 ease-out" enter-from-class="opacity-0 translate-y-[20px] scale-90" leave-to-class="opacity-0 translate-y-[20px] scale-90"
-            appear
-            class="flex flex-wrap flex-row justify-center gap-3"
-          >
-            <CategoryMenuPill
-              v-for="(value, key) in menuData"
-              :key="key"
-              :category="key"
-              :image="value.icon"
-              :description="value.description"
-              v-model:categorySelected="categorySelected"
-              class="transition-all duration-200 ease-out hover:-translate-y-1 hover:scale-[1.03] hover:bg-secondary"
-            />
-          </transition-group>
+              <transition-group
+                tag="div"
+                move-class="transition-transform duration-400 ease-out" enter-active-class="transition-all duration-400 ease-out" leave-active-class="transition-all duration-400 ease-out" enter-from-class="opacity-0 translate-y-[20px] scale-90" leave-to-class="opacity-0 translate-y-[20px] scale-90"
+                appear
+                class="grid grid-cols-3 grid-rows-2 gap-3 min-h-0"
+              >
+                <CategoryMenuPill
+                  v-for="([key, value]) in categoryEntries.others.slice(0, 6)"
+                  :key="key"
+                  :category="key"
+                  :image="value.icon"
+                  :description="value.description"
+                  v-model:categorySelected="categorySelected"
+                />
+              </transition-group>
+            </div>
+          </div>
+
+          <div class="rounded-corner bg-ui-bg/80 border border-ui-border p-4 overflow-y-auto min-h-0">
+            <WeatherWidget />
+          </div>
         </div>
       </div>
     </transition>

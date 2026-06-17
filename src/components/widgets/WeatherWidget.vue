@@ -2,8 +2,8 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { computed, onMounted, ref } from 'vue';
-import CurrentWeatherCard from '@/components/cards/CurrentWeatherCard.vue';
 import DailyWeatherCard from '@/components/cards/DailyWeatherCard.vue';
+import WeatherIcon from '@/components/icon/WeatherIcon.vue';
 
 const weather = ref({
 	latitude: 52.52,
@@ -70,36 +70,43 @@ const dayOrNight = computed(() => {
 	return weather.value.current.is_day ? 'day' : 'night';
 });
 
+const formatDay = (dateStr: string) => {
+	const d = new Date(dateStr);
+	d.setDate(d.getDate() + 1);
+	return d.toLocaleDateString(undefined, { weekday: 'long' });
+};
+
 onMounted(async () => {
 	weather.value = await getWeather();
 });
 </script>
 
 <template>
-  <div class="flex flex-col gap-2">
+  <div class="h-full grid gap-2 min-h-0" style="grid-template-columns: 2fr 3fr;">
     <template v-if="weather">
-      <CurrentWeatherCard
-        :current="weather.current"
-        :units="weather.current_units"
-        :dayOrNight="dayOrNight"
-      />
-      <transition-group
-        tag="div"
-        move-class="transition-transform duration-300 ease-out" enter-active-class="transition-all duration-300 ease-out" leave-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0 scale-80 translate-y-[15px]" leave-to-class="opacity-0 scale-80 translate-y-[15px]"
-        appear
-        class="flex flex-wrap gap-2 justify-around [&>div]:grow [&>div]:text-center [&_.weather-icon]:drop-shadow-[0px_1px_2px_rgba(0,0,0,0.3)] [&_.temp-max]:text-base [&_.temp-max]:font-semibold [&_.temp-min]:text-base [&_.temp-min]:font-semibold"
-      >
+      <div class="flex flex-col items-center justify-center gap-4 rounded-corner bg-ui-surface/80 border border-primary p-4">
+        <div class="text-4xl font-bold">{{ weather.current.temperature_2m }}{{ weather.current_units.temperature_2m }}</div>
+        <WeatherIcon :code="weather.current.weather_code" :dayOrNight="dayOrNight" class="w-16 h-16" />
+        <div class="text-lg font-semibold">{{ formatDay(weather.daily.time[0]) }}</div>
+        <div class="flex gap-3 text-base">
+          <span class="font-semibold">{{ weather.daily.temperature_2m_max[0] }}°</span>
+          <span class="text-vsk-text/60">{{ weather.daily.temperature_2m_min[0] }}°</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 grid-rows-2 gap-2 min-h-0">
         <DailyWeatherCard
-          v-for="(_value, key) in weather.daily.time"
-          :key="key"
-          :date="weather.daily.time[key]"
-          :min="weather.daily.temperature_2m_min[key]"
-          :max="weather.daily.temperature_2m_max[key]"
+          v-for="(_, key) in weather.daily.time.slice(1)"
+          :key="key + 1"
+          :date="weather.daily.time[key + 1]"
+          :min="weather.daily.temperature_2m_min[key + 1]"
+          :max="weather.daily.temperature_2m_max[key + 1]"
           :units="weather.daily_units"
           :dayOrNight="dayOrNight"
-          :weatherCode="weather.daily.weather_code[key]"
+          :weatherCode="weather.daily.weather_code[key + 1]"
+          class="h-full"
         />
-      </transition-group>
+      </div>
     </template>
     <template v-else> NO se puede cargar el clima </template>
   </div>

@@ -21,15 +21,15 @@ const setCategory = (category: string) => {
 
 <template>
   <button
-    class="p-2 rounded-corner hover:scale-120"
+    class="w-full h-full flex items-center justify-center p-2 rounded-corner hover:scale-110 transition-transform duration-200"
     @click="setCategory(category)"
 :class="[
     category === categorySelected
       ? 'bg-primary border border-secondary relative'
-      : 'bg-transparent'
+      : 'bg-transparent border border-transparent hover:bg-ui-surface/60'
   ]"
   >
-    <img :src="appIcon" :title="description" :alt="category" class="h-12" />
+    <img :src="appIcon" :title="description" :alt="category" class="h-10" />
   </button>
 </template>
 
