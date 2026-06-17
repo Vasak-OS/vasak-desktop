@@ -10,6 +10,7 @@ const props = defineProps<{
 	image: string;
 	description: string;
 	categorySelected: string;
+	large?: boolean;
 }>();
 
 const appIcon = useIcon(computed(() => props.image));
@@ -29,7 +30,7 @@ const setCategory = (category: string) => {
       : 'bg-transparent border border-transparent hover:bg-ui-surface/60'
   ]"
   >
-    <img :src="appIcon" :title="description" :alt="category" class="h-10" />
+    <img :src="appIcon" :title="description" :alt="category" :class="large ? 'h-14' : 'h-10'" />
   </button>
 </template>
 
