@@ -23,3 +23,15 @@ export const initSniWatcher = <T = any>(args?: any): Promise<T> => {
 export const getTrayItems = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('get_tray_items', args);
 };
+
+export const openTrayPopup = <T = any>(args: any): Promise<T> => {
+	return invoke<T>('open_tray_popup', args);
+};
+
+export const getTrayPopupData = <T = any>(args?: any): Promise<T> => {
+	return invoke<T>('get_tray_popup_data', args);
+};
+
+export const trayPopupClick = <T = any>(args: any): Promise<T> => {
+	return invoke<T>('tray_popup_click', args);
+};

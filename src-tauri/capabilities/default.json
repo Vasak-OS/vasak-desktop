@@ -11,7 +11,8 @@
     "applet_network",
     "applet_audio",
     "app_terminal",
-    "app_search"
+    "app_search",
+    "systray_popup"
   ],
   "permissions": [
     "core:default",
