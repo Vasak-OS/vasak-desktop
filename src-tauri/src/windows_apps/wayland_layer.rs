@@ -1,6 +1,5 @@
 use crate::logger::{log_info, log_warning};
 use crate::window_manager::wayfire_ipc::get_wayfire_client;
-use serde_json;
 use tokio::time::{sleep, Duration};
 
 #[derive(Clone, Copy, Debug)]
@@ -16,8 +15,6 @@ pub fn configure_wayland_layer(
     width: u32,
     height: u32,
 ) {
-    log_info(&format!("[wayland_layer] configure_wayland_layer called (mode={mode:?}, title={title})"));
-
     tauri::async_runtime::spawn(async move {
         if let Err(err) = apply_wayfire_geometry(&title, mode, x, y, width, height).await {
             log_warning(&format!("[wayland_layer] unable to apply Wayfire geometry for {title}: {err}"));
@@ -27,7 +24,7 @@ pub fn configure_wayland_layer(
 
 async fn apply_wayfire_geometry(
     title: &str,
-    mode: WaylandLayerMode,
+    _mode: WaylandLayerMode,
     x: i32,
     y: i32,
     width: u32,
@@ -40,24 +37,11 @@ async fn apply_wayfire_geometry(
     let expected_title = title.to_lowercase();
     let mut found_view = None;
 
-    log_info(&format!(
-        "[wayland_layer] starting apply title={} mode={mode:?} target=({}, {}) size={}x{}",
-        title, x, y, width, height
-    ));
-
     for attempt in 0..30 {
         let views = client
             .list_views_typed()
             .await
             .map_err(|error| error.to_string())?;
-
-        if attempt % 5 == 0 {
-            log_info(&format!(
-                "[wayland_layer] attempt {} list-views count={}",
-                attempt + 1,
-                views.len()
-            ));
-        }
 
         // For regular windows we only want the real toplevel view, not the desktop/background layer-shell.
         found_view = views.iter().find(|view| {
@@ -105,7 +89,6 @@ async fn apply_wayfire_geometry(
 
     let output_id = match client.list_outputs_typed().await {
         Ok(outputs) => {
-            log_info(&format!("[wayland_layer] outputs count={}", outputs.len()));
             let matched_output = outputs.iter().find(|output| {
                 let geometry = &output.geometry;
                 let point_x = x as i64;
@@ -120,20 +103,6 @@ async fn apply_wayfire_geometry(
             let selected = matched_output
                 .map(|output| output.id as u64)
                 .or_else(|| outputs.first().map(|output| output.id as u64));
-
-            if let Some(output) = outputs.iter().find(|output| Some(output.id as u64) == selected) {
-                log_info(&format!(
-                    "[wayland_layer] selected output id={} name={} geometry=({}, {}) {}x{}",
-                    output.id,
-                    output.name,
-                    output.geometry.x,
-                    output.geometry.y,
-                    output.geometry.width,
-                    output.geometry.height
-                ));
-            } else {
-                log_warning("[wayland_layer] no output selected, configure-view will use compositor default");
-            }
 
             selected
         }
@@ -151,25 +120,9 @@ async fn apply_wayfire_geometry(
         output_id,
     ).await.map_err(|e| format!("[wayland_layer] configure-view error for {title}: {e}"))?;
 
-    // After configuration, fetch the view again and log its current properties for diagnosis.
-    if let Ok(all_views) = client.list_views_typed().await {
-        if let Some(updated) = all_views.into_iter().find(|v| v.id == view_id as i64) {
-            if let Ok(serialized) = serde_json::to_string_pretty(&updated) {
-                log_info(&format!("[wayland_layer] updated view after configure: {}", serialized));
-            } else {
-                log_warning("[wayland_layer] failed to serialize updated view");
-            }
-        } else {
-            log_warning(&format!("[wayland_layer] view id={} not found after configure", view_id));
-        }
-    } else {
-        log_warning("[wayland_layer] failed to list views after configure");
-    }
-
     // If the view was configured before map (common for panel), re-apply after it maps.
     if view.mapped != Some(true) {
-        log_info(&format!("[wayland_layer] view {} not mapped yet, waiting to reapply geometry", view_id));
-        for attempt in 0..30 {
+        for _attempt in 0..30 {
             sleep(Duration::from_millis(100)).await;
 
             let Ok(all_views) = client.list_views_typed().await else {
@@ -183,12 +136,6 @@ async fn apply_wayfire_geometry(
             if mapped_view.mapped != Some(true) {
                 continue;
             }
-
-            log_info(&format!(
-                "[wayland_layer] view {} mapped=true on attempt {}, reapplying geometry",
-                view_id,
-                attempt + 1
-            ));
 
             client.configure_view_coords(
                 view_id,

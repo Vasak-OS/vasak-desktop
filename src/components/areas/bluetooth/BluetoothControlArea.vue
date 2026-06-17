@@ -92,29 +92,20 @@ onMounted(async () => {
 useEventListener('bluetooth-change', handleBluetoothChange);
 
 const connect = async (device: any) => {
-	console.log('[BT] Connect clicked for:', device.path, device.name || device.alias);
 	connectingPath.value = device.path;
 	try {
 		await connectDevice(device.path);
-		console.log('[BT] connectDevice returned OK, polling for connected state...');
-		let connected = false;
 		for (let i = 0; i < 30; i++) {
 			await new Promise(r => setTimeout(r, 500));
 			try {
 				const info = await getDeviceInfo(device.path);
-				console.log('[BT] Poll', i, 'connected:', info?.connected);
-				if (info?.connected) {
-					connected = true;
-					break;
-				}
-			} catch (e) {
-				console.log('[BT] Poll', i, 'error:', e);
+				if (info?.connected) break;
+			} catch {
+				// keep polling
 			}
 		}
-		console.log('[BT] Poll done, connected:', connected);
 		await refreshDevices();
 	} catch (e) {
-		console.error('[BT] connectDevice threw:', e);
 		logError('Error connecting to device:', e);
 	}
 	connectingPath.value = null;
@@ -124,7 +115,6 @@ const disconnect = async (device: any) => {
 		await disconnectDevice(device.path);
 		await refreshDevices();
 	} catch (e) {
-		console.error('[BT] disconnectDevice threw:', e);
 		logError('Error disconnecting device:', e);
 	}
 };

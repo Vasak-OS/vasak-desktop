@@ -1,10 +1,10 @@
 use gtk::prelude::*;
 use tauri::{
-    AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+    AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder,
 };
 use tokio::time::{sleep, Duration};
 
-use crate::logger::{log_info, log_warning};
+use crate::logger::log_info;
 use crate::app_url::get_app_url;
 use crate::monitor_manager::get_primary_monitor;
 use crate::windows_apps::wayland_layer::{configure_wayland_layer, WaylandLayerMode};
@@ -62,28 +62,18 @@ pub async fn create_control_center_window(
         .always_on_top(true)
         .build()?;
 
-    let control_center_window_for_blur = control_center_window.clone();
-    control_center_window.on_window_event(move |event| {
-        if matches!(event, WindowEvent::Focused(false)) {
-            let _ = control_center_window_for_blur.close();
-        }
-    });
-
     let complete_url = format!("{}/index.html#/control_center", get_app_url());
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
     let _ = control_center_window.navigate(url);
 
-    log_warning("[control_center] applying initial Tauri position before Wayfire geometry");
     control_center_window.set_position(Position::Physical(PhysicalPosition {
         x: right_x,
         y: bottom_y,
     }))?;
 
-    log_info("[control_center] showing control center window");
     let _ = control_center_window.show();
     control_center_window.set_focus()?;
 
-    log_info("[control_center] requesting Wayfire geometry apply (first pass)");
     configure_wayland_layer(
         "Vasak Control Center".to_string(),
         WaylandLayerMode::Panel,
@@ -95,7 +85,6 @@ pub async fn create_control_center_window(
 
     tauri::async_runtime::spawn(async move {
         sleep(Duration::from_millis(200)).await;
-        log_info("[control_center] requesting Wayfire geometry apply (second pass)");
         configure_wayland_layer(
             "Vasak Control Center".to_string(),
             WaylandLayerMode::Panel,
