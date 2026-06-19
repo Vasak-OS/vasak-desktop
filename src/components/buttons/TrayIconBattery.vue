@@ -37,19 +37,20 @@ const batteryIconName = computed(() => {
 
 	const { percentage, is_charging: isCharging } = batteryInfo.value;
 
-	if (isCharging) {
-		if (percentage >= 90) return 'battery-full-charging-symbolic';
-		if (percentage >= 70) return 'battery-good-charging-symbolic';
-		if (percentage >= 40) return 'battery-low-charging-symbolic';
-		if (percentage >= 20) return 'battery-caution-charging-symbolic';
-		return 'battery-empty-charging-symbolic';
-	}
+	let baseName: string;
+	if (percentage < 10) baseName = 'battery-000';
+	else if (percentage < 20) baseName = 'battery-010';
+	else if (percentage < 30) baseName = 'battery-020';
+	else if (percentage < 40) baseName = 'battery-030';
+	else if (percentage < 50) baseName = 'battery-040';
+	else if (percentage < 60) baseName = 'battery-050';
+	else if (percentage < 70) baseName = 'battery-060';
+	else if (percentage < 80) baseName = 'battery-070';
+	else if (percentage < 90) baseName = 'battery-080';
+	else if (percentage < 95) baseName = 'battery-090';
+	else baseName = 'battery-100';
 
-	if (percentage >= 90) return 'battery-full-symbolic';
-	if (percentage >= 70) return 'battery-good-symbolic';
-	if (percentage >= 40) return 'battery-low-symbolic';
-	if (percentage >= 20) return 'battery-caution-symbolic';
-	return 'battery-empty-symbolic';
+	return isCharging ? `${baseName}-charging` : baseName;
 });
 
 const batteryIconSrc = useSymbol(batteryIconName);
