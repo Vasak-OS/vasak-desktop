@@ -32,13 +32,7 @@ impl WaylandManager {
     }
 
     fn is_shell_window(view: &View) -> bool {
-        let title = view.title.as_deref().unwrap_or_default();
-        let app_id = view.app_id.as_deref().unwrap_or_default();
-
-        (app_id == "vasak-desktop")
-            && (title == "Vasak Panel"
-                || title == "Vasak Desktop"
-                || title.starts_with("Vasak Desktop "))
+        view.app_id.as_deref() == Some("vasak-desktop")
     }
 
     fn is_layer_shell_window(view: &View) -> bool {
@@ -60,6 +54,11 @@ impl WaylandManager {
 
     fn view_to_window_info(view: &View) -> Option<WindowInfo> {
         if view.mapped == Some(false) {
+            return None;
+        }
+
+        // Skip non-focusable windows (tooltips, popups)
+        if view.focusable == Some(false) {
             return None;
         }
 
