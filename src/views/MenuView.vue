@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
 import MenuArea from '@/components/areas/menu/MenuArea.vue';
@@ -10,7 +10,8 @@ import SessionButton from '@/components/buttons/SessionButton.vue';
 import UserMenuCard from '@/components/cards/UserMenuCard.vue';
 import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
-import { getMenuItems } from '@/services/app.service';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getMenuItems, openApp } from '@/services/app.service';
 import {
 	detectDisplayServer as sysDetectDisplayServer,
 	logout as sysLogout,
@@ -25,6 +26,8 @@ const menuData: Ref<Array<any>> = ref([]);
 const categorySelected: Ref<any> = ref('all');
 const filter: Ref<string> = ref('');
 const leaving = ref(false);
+const selectedIndex = ref(0);
+const menuWindow = getCurrentWindow();
 
 const { logoutImg, shutdownImg, rebootImg, suspendImg, settingsImg } = useIcons({
 	logoutImg: 'system-log-out',
@@ -107,6 +110,17 @@ const apps = computed(() => {
 
 const appsOfCategory = computed(() => (menuData.value as any)?.[categorySelected.value]?.apps ?? []);
 
+const appsFiltred = computed(() => {
+	const allApps = (menuData.value as any)?.all?.apps ?? [];
+	const query = filter.value.toLowerCase();
+	if (!query) return [];
+	return allApps.filter(
+		(app: any) =>
+			app.name.toLowerCase().includes(query) ||
+			app.description.toLowerCase().includes(query)
+	);
+});
+
 const categoryEntries = computed(() => {
 	const entries = Object.entries(menuData.value as Record<string, any>);
 	const allIdx = entries.findIndex(([k]) => k === 'all');
@@ -125,9 +139,40 @@ onBeforeUnmount(() => {
 	window.removeEventListener('blur', onBlur);
 });
 
+watch(filter, () => {
+	selectedIndex.value = 0;
+});
+
+watch(appsFiltred, (list) => {
+	if (selectedIndex.value >= list.length) {
+		selectedIndex.value = Math.max(0, list.length - 1);
+	}
+});
+
 const onKeydown = (event: KeyboardEvent) => {
 	if (event.key === 'Escape') {
 		closeAfterAnimation();
+		return;
+	}
+
+	if (!filter.value) return;
+
+	const list = appsFiltred.value;
+	if (list.length === 0) return;
+
+	if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+		event.preventDefault();
+		selectedIndex.value = (selectedIndex.value + 1) % list.length;
+	} else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+		event.preventDefault();
+		selectedIndex.value = (selectedIndex.value - 1 + list.length) % list.length;
+	} else if (event.key === 'Enter') {
+		event.preventDefault();
+		const app = list[selectedIndex.value];
+		if (app?.path) {
+			openApp({ path: app.path });
+			menuWindow.close();
+		}
 	}
 };
 
@@ -170,7 +215,7 @@ const onBlur = () => {
 
     <transition enter-active-class="transition-opacity duration-300 ease-out" leave-active-class="transition-opacity duration-300 ease-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
       <div v-if="filter !== ''" key="filter-view">
-        <FilterArea v-model:apps="apps" v-model:filter="filter" />
+        <FilterArea v-model:apps="apps" v-model:filter="filter" :selected-index="selectedIndex" />
       </div>
       <div
         v-else

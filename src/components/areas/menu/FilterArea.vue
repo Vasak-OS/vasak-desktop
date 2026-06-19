@@ -11,6 +11,10 @@ const props = defineProps({
 		type: String,
 		required: true,
 	},
+	selectedIndex: {
+		type: Number,
+		default: 0,
+	},
 });
 
 const appsFiltred = computed((): Array<any> => {
@@ -30,9 +34,10 @@ const appsFiltred = computed((): Array<any> => {
     class="flex flex-wrap gap-1 p-0.5"
   >
     <AppMenuButton 
-      v-for="app in appsFiltred" 
+      v-for="(app, index) in appsFiltred" 
       :key="app.name" 
       :app="app" 
+      :selected="index === selectedIndex"
       class="transition-all rounded-corner hover:border hover:border-secondary duration-300 ease-out hover:scale-[1.02] hover:bg-primary"
     />
   </transition-group>

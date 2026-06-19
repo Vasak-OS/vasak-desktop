@@ -11,6 +11,10 @@ const props = defineProps({
 		type: Object,
 		required: true,
 	},
+	selected: {
+		type: Boolean,
+		default: false,
+	},
 });
 
 const appIcon = useIcon(computed(() => props.app.icon));
@@ -31,7 +35,10 @@ const openApp = async () => {
   <button
     :title="app.name"
     @click="openApp()"
-    class="transform hover:translate-y-1 hover:scale-110 transition-transform duration-200"
+    :class="[
+      'transform hover:translate-y-1 hover:scale-110 transition-transform duration-200 rounded-corner',
+      selected ? 'bg-primary/20 border border-secondary scale-110' : ''
+    ]"
   >
     <img :src="appIcon" class="h-10 m-2" :alt="app.name" :title="app.name" />
     <span style="display: none">{{ app.name }}</span>
