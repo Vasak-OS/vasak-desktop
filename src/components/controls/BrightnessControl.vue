@@ -81,9 +81,16 @@ onUnmounted(() => {
 	}
 });
 
-useEventListener<BrightnessInfo>('brightness-changed', async (event) => {
-	brightnessInfo.value = event.payload;
-	currentBrightness.value = event.payload.current;
+useEventListener('brightness-changed', async (event: { payload: Record<string, number> }) => {
+	const p = event.payload;
+	if (p.current !== undefined) {
+		brightnessInfo.value = p as BrightnessInfo;
+		currentBrightness.value = p.current;
+	} else if (p.value !== undefined && p.max !== undefined && p.max > 0) {
+		const current = p.percentage ?? Math.round((p.value / p.max) * 100);
+		brightnessInfo.value = { current, max: 100, min: 0 };
+		currentBrightness.value = current;
+	}
 });
 </script>
 
