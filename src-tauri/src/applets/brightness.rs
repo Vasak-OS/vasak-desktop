@@ -61,9 +61,9 @@ fn monitor_brightness(app: AppHandle) {
                      };
 
                      let _ = app.emit("brightness-changed", serde_json::json!({
-                         "value": current,
-                         "max": max,
-                         "percentage": percentage
+                         "current": percentage,
+                         "max": 100,
+                         "min": 0
                      }));
                  } else {
                      // No change
