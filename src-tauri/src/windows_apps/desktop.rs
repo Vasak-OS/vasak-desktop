@@ -109,25 +109,29 @@ fn set_window_properties(
     _width: u32,
     _height: u32,
 ) -> Result<(), String> {
-    let gtk_window = window.gtk_window().map_err(|e| format!("Failed to get GTK window for {}: {e}", window.label()))?;
+    let window = window.clone();
+    glib::MainContext::default().invoke(move || {
+        if let Ok(gtk_window) = window.gtk_window() {
+            gtk_window.set_type_hint(gdk::WindowTypeHint::Desktop);
+            gtk_window.set_accept_focus(false);
 
-    gtk_window.set_type_hint(gdk::WindowTypeHint::Desktop);
-    gtk_window.set_accept_focus(false);
+            if gtk_layer_shell::is_supported() {
+                gtk_window.init_layer_shell();
+                gtk_window.set_namespace("vasak-desktop");
+                gtk_window.set_layer(Layer::Background);
+                gtk_window.set_anchor(Edge::Top, true);
+                gtk_window.set_anchor(Edge::Left, true);
+                gtk_window.set_anchor(Edge::Right, true);
+                gtk_window.set_anchor(Edge::Bottom, true);
+                gtk_window.set_keyboard_mode(KeyboardMode::None);
+                gtk_window.set_exclusive_zone(0);
+            }
 
-    if gtk_layer_shell::is_supported() {
-        gtk_window.init_layer_shell();
-        gtk_window.set_namespace("vasak-desktop");
-        gtk_window.set_layer(Layer::Background);
-        gtk_window.set_anchor(Edge::Top, true);
-        gtk_window.set_anchor(Edge::Left, true);
-        gtk_window.set_anchor(Edge::Right, true);
-        gtk_window.set_anchor(Edge::Bottom, true);
-        gtk_window.set_keyboard_mode(KeyboardMode::None);
-        gtk_window.set_exclusive_zone(0);
-    }
+            let _ = window.show();
+            gtk_window.show_all();
+            gtk_window.present();
+        }
+    });
 
-    let _ = window.show();
-    gtk_window.show_all();
-    gtk_window.present();
     Ok(())
 }

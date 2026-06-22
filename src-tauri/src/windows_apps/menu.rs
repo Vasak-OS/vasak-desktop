@@ -42,8 +42,10 @@ pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error
 }
 
 fn set_window_properties(window: &tauri::WebviewWindow) {
-    let gtk_window = window.gtk_window().expect("Failed to get GTK window");
-
-    gtk_window.set_type_hint(gdk::WindowTypeHint::Menu);
-    gtk_window.set_skip_taskbar_hint(true);
+    let window = window.clone();
+    glib::MainContext::default().invoke(move || {
+        let gtk_window = window.gtk_window().expect("Failed to get GTK window");
+        gtk_window.set_type_hint(gdk::WindowTypeHint::Menu);
+        gtk_window.set_skip_taskbar_hint(true);
+    });
 }
