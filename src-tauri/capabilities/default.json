@@ -49,6 +49,7 @@
     {
       "identifier": "fs:scope",
       "allow": [
+        "$HOME",
         "$HOME/**",
         "$HOME/.config/**"
       ]
