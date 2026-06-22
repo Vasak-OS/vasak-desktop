@@ -1,7 +1,8 @@
 use gtk::prelude::*;
 use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
 
-use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
+
+use crate::{app_url::get_app_url, gtk_utils, monitor_manager::get_primary_monitor};
 
 pub async fn create_systray_popup_window(
     app: AppHandle,
@@ -50,11 +51,12 @@ pub async fn create_systray_popup_window(
 }
 
 fn set_window_properties(window: &tauri::WebviewWindow) {
-    let window = window.clone();
-    glib::MainContext::default().invoke(move || {
-        if let Ok(gtk_window) = window.gtk_window() {
-            gtk_window.set_type_hint(gdk::WindowTypeHint::Utility);
-            gtk_window.set_skip_taskbar_hint(true);
+    if let Ok(gtk_window) = window.gtk_window() {
+        unsafe {
+            gtk_utils::invoke_on_main(move || {
+                gtk_window.set_type_hint(gdk::WindowTypeHint::Utility);
+                gtk_window.set_skip_taskbar_hint(true);
+            });
         }
-    });
+    }
 }
