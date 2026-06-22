@@ -6,6 +6,8 @@ use tauri::{
     async_runtime::spawn, App, Monitor, Url, WebviewUrl, WebviewWindowBuilder,
 };
 
+
+use crate::gtk_utils;
 use crate::monitor_manager::{get_monitors, get_primary_monitor};
 
 pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
@@ -104,14 +106,17 @@ async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor:
 fn set_window_properties(
     window: &tauri::WebviewWindow,
     _title: String,
-    _x: i32,
-    _y: i32,
+    x: i32,
+    y: i32,
     _width: u32,
     _height: u32,
 ) -> Result<(), String> {
-    let window = window.clone();
-    glib::MainContext::default().invoke(move || {
-        if let Ok(gtk_window) = window.gtk_window() {
+    let gtk_window = window.gtk_window().map_err(|e| format!("Failed to get GTK window for {}: {e}", window.label()))?;
+
+    let _ = window.show();
+
+    unsafe {
+        gtk_utils::invoke_on_main(move || {
             gtk_window.set_type_hint(gdk::WindowTypeHint::Desktop);
             gtk_window.set_accept_focus(false);
 
@@ -125,13 +130,24 @@ fn set_window_properties(
                 gtk_window.set_anchor(Edge::Bottom, true);
                 gtk_window.set_keyboard_mode(KeyboardMode::None);
                 gtk_window.set_exclusive_zone(0);
+
+                if let Some(display) = gdk::Display::default() {
+                    for i in 0..display.n_monitors() {
+                        if let Some(monitor) = display.monitor(i) {
+                            let geo = monitor.geometry();
+                            if geo.x() == x && geo.y() == y {
+                                gtk_window.set_monitor(&monitor);
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
-            let _ = window.show();
             gtk_window.show_all();
             gtk_window.present();
-        }
-    });
+        });
+    }
 
     Ok(())
 }

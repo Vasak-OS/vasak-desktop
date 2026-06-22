@@ -17,6 +17,7 @@ mod monitor_manager;
 mod notifications;
 mod tray;
 mod utils;
+mod gtk_utils;
 mod window_manager;
 mod windows_apps;
 

@@ -2,13 +2,16 @@ use gtk::prelude::*;
 use std::sync::Arc;
 use tauri::{AppHandle, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
+
 use crate::app_url::get_app_url;
+use crate::gtk_utils;
 use crate::monitor_manager::get_primary_monitor;
 
 fn set_window_properties(window: &tauri::WebviewWindow) -> Result<(), Box<dyn std::error::Error>> {
-    let window = window.clone();
-    glib::MainContext::default().invoke(move || {
-        if let Ok(gtk_window) = window.gtk_window() {
+    let gtk_window = window.gtk_window()?;
+
+    unsafe {
+        gtk_utils::invoke_on_main(move || {
             gtk_window.set_resizable(false);
             gtk_window.set_type_hint(gtk::gdk::WindowTypeHint::Dialog);
             gtk_window.set_urgency_hint(true);
@@ -17,8 +20,8 @@ fn set_window_properties(window: &tauri::WebviewWindow) -> Result<(), Box<dyn st
             gtk_window.set_decorated(false);
             gtk_window.set_keep_above(true);
             gtk_window.stick();
-        }
-    });
+        });
+    }
 
     Ok(())
 }

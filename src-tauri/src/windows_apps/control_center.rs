@@ -4,23 +4,26 @@ use tauri::{
 };
 use tokio::time::{sleep, Duration};
 
+
 use crate::logger::log_info;
 use crate::app_url::get_app_url;
+use crate::gtk_utils;
 use crate::monitor_manager::get_primary_monitor;
 use crate::windows_apps::wayland_layer::{configure_wayland_layer, WaylandLayerMode};
 
 fn set_window_properties(window: &tauri::WebviewWindow) -> Result<(), Box<dyn std::error::Error>> {
-    let window = window.clone();
-    glib::MainContext::default().invoke(move || {
-        if let Ok(gtk_window) = window.gtk_window() {
+    let gtk_window = window.gtk_window()?;
+
+    unsafe {
+        gtk_utils::invoke_on_main(move || {
             gtk_window.set_resizable(false);
             gtk_window.set_type_hint(gtk::gdk::WindowTypeHint::Utility);
             gtk_window.set_urgency_hint(true);
             gtk_window.set_skip_taskbar_hint(true);
             gtk_window.set_skip_pager_hint(true);
             gtk_window.stick();
-        }
-    });
+        });
+    }
 
     Ok(())
 }
