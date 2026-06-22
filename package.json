@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.1",
-    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-opener": "~2.5.4",
     "@tauri-apps/plugin-shell": "~2.3.5",
@@ -32,8 +32,8 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
     "@tailwindcss/postcss": "^4.3.1",
-    "@tauri-apps/cli": "^2.11.2",
-    "@types/node": "^25.9.3",
+    "@tauri-apps/cli": "^2.11.3",
+    "@types/node": "^25.9.4",
     "@vitejs/plugin-vue": "^6.0.7",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.1",
