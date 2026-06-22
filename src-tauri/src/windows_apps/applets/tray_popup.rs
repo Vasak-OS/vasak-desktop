@@ -50,8 +50,11 @@ pub async fn create_systray_popup_window(
 }
 
 fn set_window_properties(window: &tauri::WebviewWindow) {
-    if let Ok(gtk_window) = window.gtk_window() {
-        gtk_window.set_type_hint(gdk::WindowTypeHint::Utility);
-        gtk_window.set_skip_taskbar_hint(true);
-    }
+    let window = window.clone();
+    glib::MainContext::default().invoke(move || {
+        if let Ok(gtk_window) = window.gtk_window() {
+            gtk_window.set_type_hint(gdk::WindowTypeHint::Utility);
+            gtk_window.set_skip_taskbar_hint(true);
+        }
+    });
 }

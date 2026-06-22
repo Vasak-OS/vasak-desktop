@@ -6,16 +6,19 @@ use crate::app_url::get_app_url;
 use crate::monitor_manager::get_primary_monitor;
 
 fn set_window_properties(window: &tauri::WebviewWindow) -> Result<(), Box<dyn std::error::Error>> {
-    let gtk_window = window.gtk_window()?;
-
-    gtk_window.set_resizable(false);
-    gtk_window.set_type_hint(gtk::gdk::WindowTypeHint::Dialog);
-    gtk_window.set_urgency_hint(true);
-    gtk_window.set_skip_taskbar_hint(true);
-    gtk_window.set_skip_pager_hint(true);
-    gtk_window.set_decorated(false);
-    gtk_window.set_keep_above(true);
-    gtk_window.stick();
+    let window = window.clone();
+    glib::MainContext::default().invoke(move || {
+        if let Ok(gtk_window) = window.gtk_window() {
+            gtk_window.set_resizable(false);
+            gtk_window.set_type_hint(gtk::gdk::WindowTypeHint::Dialog);
+            gtk_window.set_urgency_hint(true);
+            gtk_window.set_skip_taskbar_hint(true);
+            gtk_window.set_skip_pager_hint(true);
+            gtk_window.set_decorated(false);
+            gtk_window.set_keep_above(true);
+            gtk_window.stick();
+        }
+    });
 
     Ok(())
 }
