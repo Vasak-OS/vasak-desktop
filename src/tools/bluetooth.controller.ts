@@ -136,9 +136,11 @@ export function useBluetoothState(options: BluetoothComposableOptions) {
 
 	const getBluetoothIcon = async (): Promise<void> => {
 		try {
-			connectedDevicesCount.value = await getConnectedDevicesCount(
-				defaultAdapter.value?.path as string
-			);
+			if (defaultAdapter.value?.path) {
+				connectedDevicesCount.value = await getConnectedDevicesCount(
+					defaultAdapter.value.path
+				);
+			}
 			const iconName = resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
 			bluetoothIcon.value = await options.getIcon(iconName);
 		} catch (error) {
@@ -149,9 +151,6 @@ export function useBluetoothState(options: BluetoothComposableOptions) {
 	const initializeBluetoothState = async (): Promise<void> => {
 		defaultAdapter.value = await getDefaultAdapter();
 		await getBluetoothIcon();
-		connectedDevicesCount.value = await getConnectedDevicesCount(
-			defaultAdapter.value?.path as string
-		);
 		unlistenBluetooth.value = await listen('bluetooth-change', handleBluetoothChange);
 	};
 
