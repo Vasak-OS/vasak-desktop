@@ -1,14 +1,43 @@
 use freedesktop_entry_parser::parse_entry;
-use std::fs;
-use std::path::Path;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::fs;
+use std::path::PathBuf;
 use crate::logger::log_info;
 use crate::structs::{AppEntry, CategoryInfo};
 
+fn get_applications_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+
+    if let Ok(data_dirs) = std::env::var("XDG_DATA_DIRS") {
+        for dir in data_dirs.split(':') {
+            let apps_dir = PathBuf::from(dir).join("applications");
+            if apps_dir.exists() {
+                dirs.push(apps_dir);
+            }
+        }
+    } else {
+        for dir in &["/usr/share", "/usr/local/share"] {
+            let apps_dir = PathBuf::from(dir).join("applications");
+            if apps_dir.exists() {
+                dirs.push(apps_dir);
+            }
+        }
+    }
+
+    if let Some(home) = dirs::home_dir() {
+        let user_apps = home.join(".local/share/applications");
+        if user_apps.exists() {
+            dirs.push(user_apps);
+        }
+    }
+
+    dirs
+}
+
 fn normalize_category(categories: &str) -> String {
     let categories: Vec<&str> = categories.split(';').collect();
-    
-    // Primero intentamos encontrar una categoría específica
+
     for category in categories.iter() {
         match *category {
             "Development" | "IDE" | "GUIDesigner" | "Programming" | "WebDevelopment" | "Building" | "Debugger" => return "develop".to_string(),
@@ -20,17 +49,15 @@ fn normalize_category(categories: &str) -> String {
             _ => continue,
         }
     }
-    
-    // Si no encontramos una categoría específica, retornamos "utility"
+
     "utility".to_string()
 }
 
 pub fn get_menu() -> HashMap<String, CategoryInfo> {
     log_info("Cargando menú de aplicaciones");
     let mut menu_items: HashMap<String, CategoryInfo> = HashMap::new();
-    let apps_dir = Path::new("/usr/share/applications");
-    
-    // Inicializar todas las categorías con estructuras vacías
+    let mut seen_names: HashSet<String> = HashSet::new();
+
     let categories = ["all", "develop", "network", "settings", "media", "games", "utility"];
     for &category in categories.iter() {
         menu_items.insert(category.to_string(), CategoryInfo {
@@ -40,44 +67,54 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
         });
     }
 
-    if let Ok(entries) = fs::read_dir(apps_dir) {
-        for entry in entries.flatten() {
-            if let Ok(path) = entry.path().into_os_string().into_string() {
-                if path.ends_with(".desktop") {
-                    
-                    if let Ok(entry_data) = parse_entry(&path) {
-                        let desktop_entry = entry_data.section("Desktop Entry");
-                        
-                        // Ignorar entradas que no deberían mostrarse
-                        if desktop_entry.attr("NoDisplay").unwrap_or("false") == "true" {
-                            continue;
-                        }
+    for apps_dir in get_applications_dirs() {
+        if let Ok(entries) = fs::read_dir(&apps_dir) {
+            for entry in entries.flatten() {
+                let path_str = match entry.path().into_os_string().into_string() {
+                    Ok(p) => p,
+                    Err(_) => continue,
+                };
 
-                        let categories = desktop_entry.attr("Categories").unwrap_or("");
-                        
-                        let normalized_category = normalize_category(categories);
-                        
-                        let name = desktop_entry.attr("Name").unwrap_or("").to_string();
-                        
-                        let app_entry = AppEntry {
-                            category: normalized_category.clone(),
-                            name: name.clone(),
-                            generic: desktop_entry.attr("GenericName").unwrap_or("").to_string(),
-                            description: desktop_entry.attr("Comment").unwrap_or("").to_string(),
-                            icon: desktop_entry.attr("Icon").unwrap_or("").to_string(),
-                            keywords: desktop_entry.attr("Keywords").unwrap_or("").to_string(),
-                            path: path.clone(),
-                        };
+                if !path_str.ends_with(".desktop") {
+                    continue;
+                }
 
-                        // Agregar a la categoría específica
-                        if let Some(category_info) = menu_items.get_mut(&normalized_category) {
-                            category_info.apps.push(app_entry.clone());
-                        }
+                let file_name = match entry.file_name().into_string() {
+                    Ok(n) => n,
+                    Err(_) => continue,
+                };
 
-                        // Agregar a "all"
-                        if let Some(all_category) = menu_items.get_mut("all") {
-                            all_category.apps.push(app_entry);
-                        }
+                if !seen_names.insert(file_name) {
+                    continue;
+                }
+
+                if let Ok(entry_data) = parse_entry(&path_str) {
+                    let desktop_entry = entry_data.section("Desktop Entry");
+
+                    if desktop_entry.attr("NoDisplay").unwrap_or("false") == "true" {
+                        continue;
+                    }
+
+                    let app_categories = desktop_entry.attr("Categories").unwrap_or("");
+                    let normalized_category = normalize_category(app_categories);
+                    let name = desktop_entry.attr("Name").unwrap_or("").to_string();
+
+                    let app_entry = AppEntry {
+                        category: normalized_category.clone(),
+                        name: name.clone(),
+                        generic: desktop_entry.attr("GenericName").unwrap_or("").to_string(),
+                        description: desktop_entry.attr("Comment").unwrap_or("").to_string(),
+                        icon: desktop_entry.attr("Icon").unwrap_or("").to_string(),
+                        keywords: desktop_entry.attr("Keywords").unwrap_or("").to_string(),
+                        path: path_str.clone(),
+                    };
+
+                    if let Some(category_info) = menu_items.get_mut(&normalized_category) {
+                        category_info.apps.push(app_entry.clone());
+                    }
+
+                    if let Some(all_category) = menu_items.get_mut("all") {
+                        all_category.apps.push(app_entry);
                     }
                 }
             }
@@ -111,4 +148,4 @@ fn get_category_description(category: &str) -> String {
         "utility" => "Utilidades".to_string(),
         _ => "Otras aplicaciones".to_string(),
     }
-} 
+}
