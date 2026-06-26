@@ -13,6 +13,6 @@ pub const AUDIO_FAST_POLL_ITERATIONS: u32 = 10;
 pub const DBUS_SERVICE_NAME: &str = "org.vasak.os.Desktop";
 
 // Comandos del sistema
-pub const CMD_WPCTL: &str = "wpctl";
+pub const CMD_PACTL: &str = "pactl";
 pub const CMD_BRIGHTNESSCTL: &str = "brightnessctl";
 pub const CMD_BUSCTL: &str = "busctl";
