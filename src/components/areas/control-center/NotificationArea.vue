@@ -28,7 +28,7 @@
       v-if="groupedNotifications.length === 0"
       class="text-center transition-opacity duration-300 ease-in-out text-tx-muted py-8"
     >
-      <div class="opacity-60">🔔</div>
+      <img :src="emptyIcon" alt="" class="w-8 h-8 opacity-60 mx-auto" />
       <p class="mt-2">No hay notificaciones</p>
     </div>
 
@@ -55,9 +55,11 @@ import {
 	deleteNotification,
 	getAllNotifications,
 } from '@/services/notification.service';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useEventListener } from '@/tools/event.listener';
 
 const notifications = ref<Notification[]>([]);
+const emptyIcon = useSymbol('preferences-desktop-notification');
 
 // Computed para agrupar notificaciones por aplicación
 const groupedNotifications = computed<NotificationGroupData[]>(() => {

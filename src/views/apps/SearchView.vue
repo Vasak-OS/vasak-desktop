@@ -2,9 +2,9 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { globalSearch } from '@/services/core.service';
 import { executeSearchResult } from '@/services/search.service';
+import { useIcon, useReactiveSymbols } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 interface SearchResult {
@@ -27,12 +27,22 @@ const currentWindow = getCurrentWindow();
 
 const searchIconSrc = useIcon(computed(() => 'search'));
 
+const { appIconSrc, fileIconSrc, actionIconSrc } = useReactiveSymbols({
+	appIconSrc: 'applications-all',
+	fileIconSrc: 'text-x-generic',
+	actionIconSrc: 'system-run',
+});
+
 let debounceTimer: number | null = null;
 
 const closeAfterAnimation = () => {
 	leaving.value = true;
 	setTimeout(() => {
-		try { currentWindow.close(); } catch { /* window already closed */ }
+		try {
+			currentWindow.close();
+		} catch {
+			/* window already closed */
+		}
 	}, 200);
 };
 
@@ -136,17 +146,16 @@ onUnmounted(() => {
 	window.removeEventListener('blur', closeAfterAnimation);
 });
 
-// Helper functions
 function getCategoryIcon(category: string): string {
 	switch (category) {
 		case 'application':
-			return '📦';
+			return appIconSrc.value;
 		case 'file':
-			return '📄';
+			return fileIconSrc.value;
 		case 'action':
-			return '⚡';
+			return actionIconSrc.value;
 		default:
-			return '🔹';
+			return appIconSrc.value;
 	}
 }
 
@@ -209,9 +218,13 @@ function getCategoryLabel(category: string): string {
             @mouseenter="selectedIndex = index"
           >
             <div
-              class="w-14 h-14 shrink-0 flex items-center justify-center text-3xl rounded-corner bg-primary/10 border border-primary/20"
+              class="w-14 h-14 shrink-0 flex items-center justify-center rounded-corner bg-primary/10 border border-primary/20"
             >
-              {{ getCategoryIcon(result.category) }}
+              <img
+                :src="getCategoryIcon(result.category)"
+                alt=""
+                class="w-8 h-8"
+              />
             </div>
             <div class="flex-1 min-w-0">
               <div class="text-lg font-bold text-vsk-text">

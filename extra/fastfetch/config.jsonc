@@ -1,0 +1,54 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "version": 1,
+
+  "logo": {
+    "source": "/usr/share/vasak-desktop/fastfetch/logo.txt",
+    "padding": { "top": 0, "right": 2, "left": 0, "bottom": 0 },
+    "color": {
+      "top": "blue",
+      "bottom": "cyan"
+    }
+  },
+
+  "display": {
+    "separator": " → ",
+    "color": "blue",
+    "key": { "width": 12 }
+  },
+
+  "modules": [
+    "title",
+    {
+      "type": "separator",
+      "format": "───────  SYSTEM  ───────"
+    },
+    "os",
+    "host",
+    "kernel",
+    "uptime",
+    "packages",
+    "shell",
+    "de",
+    "wm",
+    "wmtheme",
+    "terminal",
+    "terminalfont",
+    {
+      "type": "separator",
+      "format": "──────  HARDWARE  ──────"
+    },
+    "cpu",
+    "gpu",
+    "memory",
+    "disk",
+    {
+      "type": "separator",
+      "format": "──────  SOFTWARE  ──────"
+    },
+    "display",
+    "locale",
+    "break",
+    "colors"
+  ]
+}
