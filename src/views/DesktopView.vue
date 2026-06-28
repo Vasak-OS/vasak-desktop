@@ -3,11 +3,12 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { homeDir } from '@tauri-apps/api/path';
 import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
-import { type ComputedRef, computed, onMounted, ref, watch } from 'vue';
+import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import type { FileEntry } from '@/interfaces/file';
@@ -104,9 +105,18 @@ watch(showHiddenFiles, () => {
 	loadDesktopFiles();
 });
 
+let unlistenTheme: (() => void) | null = null;
+
 onMounted(async () => {
 	await (configStore as any).loadConfig();
 	await loadDesktopFiles();
+	unlistenTheme = await listen('vicons:theme-changed', () => {
+		loadDesktopFiles();
+	});
+});
+
+onUnmounted(() => {
+	unlistenTheme?.();
 });
 
 useEventListener('config-changed', async () => {

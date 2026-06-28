@@ -16,7 +16,7 @@
           (configStore?.config as any)?.style?.darkmode,
       }"></div>
 
-    <ToggleControl :icon="icon" :alt="(configStore?.config as any)?.style?.darkmode
+    <ToggleControl :icon="themeIcon" :alt="(configStore?.config as any)?.style?.darkmode
         ? 'Toggle light theme'
         : 'Toggle dark theme'
       " :tooltip="(configStore?.config as any)?.style?.darkmode
@@ -38,23 +38,24 @@
 import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { computed, onMounted, type Ref, ref } from 'vue';
-import dark from '@/assets/img/dark.png';
-import light from '@/assets/img/light.png';
+import { useReactiveSymbol } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 import ToggleControl from '../forms/ToggleControl.vue';
 
 const configStore = ref<any>(null);
 const isSwitching: Ref<boolean> = ref(false);
 
+const themeIcon = useReactiveSymbol(
+	computed(() =>
+		configStore.value?.config?.style?.darkmode ? 'weather-clear' : 'weather-clear-night'
+	)
+);
+
 onMounted(() => {
 	configStore.value = useConfigStore() as Store<
 		'config',
 		{ config: any; loadConfig: () => Promise<void> }
 	>;
-});
-
-const icon = computed(() => {
-	return configStore.value?.config?.style?.darkmode ? light : dark;
 });
 
 const toggleTheme = async () => {

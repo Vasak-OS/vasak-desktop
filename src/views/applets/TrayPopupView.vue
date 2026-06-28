@@ -6,11 +6,14 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppletFrame from '@/components/layouts/AppletFrame.vue';
 import type { SystrayPopupPayload, TrayMenu } from '@/interfaces/tray';
 import { getTrayPopupData, trayPopupClick } from '@/services/tray.service';
+import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const currentWindow = getCurrentWindow();
 const data = ref<SystrayPopupPayload | null>(null);
 const leaving = ref(false);
+const fallbackIcon = useIcon('applications-other');
+const checkIcon = useSymbol('object-select-symbolic');
 
 const popupIcon = computed(() => {
 	if (!data.value?.icon_data) return null;
@@ -26,19 +29,19 @@ const itemCount = computed(() => data.value?.items?.length ?? 0);
 type RenderedTrayItem = TrayMenu & { depth: number };
 
 const renderItems = computed<RenderedTrayItem[]>(() => {
-  const output: RenderedTrayItem[] = [];
+	const output: RenderedTrayItem[] = [];
 
-  const appendItems = (items: TrayMenu[] | undefined, depth: number) => {
-    for (const item of items ?? []) {
-      output.push({ ...item, depth });
-      if (item.children?.length) {
-        appendItems(item.children, depth + 1);
-      }
-    }
-  };
+	const appendItems = (items: TrayMenu[] | undefined, depth: number) => {
+		for (const item of items ?? []) {
+			output.push({ ...item, depth });
+			if (item.children?.length) {
+				appendItems(item.children, depth + 1);
+			}
+		}
+	};
 
-  appendItems(data.value?.items, 0);
-  return output;
+	appendItems(data.value?.items, 0);
+	return output;
 });
 
 const closeAfterAnimation = () => {
@@ -76,7 +79,7 @@ onMounted(async () => {
 	try {
 		const payload = await getTrayPopupData();
 		data.value = payload;
-		if (!payload || !payload.items || payload.items.length === 0) {
+		if (!payload?.items || payload.items.length === 0) {
 			console.warn('[TrayPopup] No menu items available');
 		}
 	} catch (error) {
@@ -106,9 +109,12 @@ onBeforeUnmount(() => {
               class="w-full h-full object-contain p-2"
               alt="Tray icon"
             />
-            <span v-else class="text-base text-primary font-semibold">
-              {{ data?.icon_id ? data.icon_id.slice(0, 1).toUpperCase() : '◈' }}
-            </span>
+            <img
+              v-else
+              :src="fallbackIcon"
+              class="w-full h-full object-contain p-2"
+              alt="Tray icon"
+            />
           </div>
 
           <div class="min-w-0 flex-1">
@@ -173,7 +179,7 @@ onBeforeUnmount(() => {
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2 min-w-0" :style="item.depth > 0 ? { paddingLeft: '0.25rem' } : undefined">
                     <span class="text-sm font-medium text-vsk-text truncate">{{ item.label }}</span>
-                    <span v-if="item.checked" class="text-primary text-xs">✓</span>
+                    <img v-if="item.checked" :src="checkIcon" alt="✓" class="w-3.5 h-3.5" />
                   </div>
                   <p class="mt-1 text-xs text-vsk-text/55 truncate">
                     <span v-if="item.icon">{{ item.icon }}</span>

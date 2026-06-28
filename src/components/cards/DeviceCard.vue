@@ -16,9 +16,10 @@
         <div v-if="metadata" class="text-xs text-tx-muted truncate">
           {{ metadata }}
         </div>
-        <div v-if="extraInfo && extraInfo.length > 0" class="text-xs text-tx-muted flex gap-2 mt-1">
-          <span v-for="(info, index) in extraInfo" :key="index">
-            {{ info }}
+        <div v-if="extraInfo && extraInfo.length > 0" class="text-xs text-tx-muted flex gap-3 mt-1 flex-wrap">
+          <span v-for="(info, index) in extraInfo" :key="index" class="inline-flex items-center gap-1">
+            <img :src="info.icon" alt="" class="w-3.5 h-3.5" />
+            {{ info.text }}
           </span>
         </div>
       </div>
@@ -42,12 +43,17 @@
 </template>
 
 <script setup lang="ts">
+interface ExtraInfoItem {
+	icon: string;
+	text: string;
+}
+
 interface Props {
 	icon: string;
 	title: string;
 	subtitle?: string;
 	metadata?: string;
-	extraInfo?: string[];
+	extraInfo?: ExtraInfoItem[];
 	isConnected?: boolean;
 	isConnecting?: boolean;
 	showActionButton?: boolean;

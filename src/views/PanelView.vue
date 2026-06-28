@@ -3,13 +3,12 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { Command } from '@tauri-apps/plugin-shell';
 import { onMounted, ref } from 'vue';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
-import menuIcon from '@/assets/vectors/icon.svg';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import { getAllNotifications } from '@/services/notification.service';
 import { toggleControlCenter, toggleMenu } from '@/services/window.service';
+import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
 
@@ -17,7 +16,8 @@ const notifications = ref<Notification[]>([]);
 const hasNewNotifications = ref(false);
 let notificationResetTimer: ReturnType<typeof setTimeout> | undefined;
 
-const { notifyIcon, configIcon, fileManagerIcon } = useIcons({
+const { menuIcon, notifyIcon, configIcon, fileManagerIcon } = useIcons({
+	menuIcon: 'start-here',
 	notifyIcon: 'preferences-desktop-notification',
 	configIcon: 'preferences-system',
 	fileManagerIcon: 'system-file-manager',
