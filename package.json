@@ -14,7 +14,7 @@
     "format": "bunx --bun biome format --write ."
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.3.1",
+    "@tailwindcss/vite": "^4.3.2",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-fs": "^2.5.1",
     "@tauri-apps/plugin-opener": "~2.5.4",
@@ -30,16 +30,16 @@
     "vue-router": "^5.1.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.1",
-    "@tailwindcss/postcss": "^4.3.1",
-    "@tauri-apps/cli": "^2.11.3",
+    "@biomejs/biome": "^2.5.2",
+    "@tailwindcss/postcss": "^4.3.2",
+    "@tauri-apps/cli": "^2.11.4",
     "@types/node": "^25.9.4",
     "@vitejs/plugin-vue": "^6.0.7",
-    "postcss": "^8.5.15",
-    "tailwindcss": "^4.3.1",
+    "postcss": "^8.5.16",
+    "tailwindcss": "^4.3.2",
     "terser": "^5.48.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.6",
-    "vue-tsc": "^3.3.5"
+    "vue-tsc": "^3.3.6"
   }
 }
