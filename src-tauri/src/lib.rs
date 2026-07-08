@@ -39,6 +39,7 @@ use applets::{
     battery::BatteryApplet,
     bluetooth::BluetoothApplet,
     brightness::BrightnessApplet,
+    keyboard_leds::KeyboardLedsApplet,
     music::MusicApplet,
     network::NetworkApplet,
     notifications::NotificationApplet, 
@@ -77,6 +78,7 @@ pub fn run() {
             get_windows,
             toggle_window,
             open_app,
+            show_osd,
             toggle_session_popup,
             logout,
             shutdown,
@@ -153,6 +155,7 @@ pub fn run() {
                 manager.register(BatteryApplet).await;
                 manager.register(BluetoothApplet).await;
                 manager.register(BrightnessApplet).await;
+                manager.register(KeyboardLedsApplet).await;
                 manager.register(MusicApplet).await;
                 manager.register(NetworkApplet).await;
                 manager.register(TrayApplet).await;

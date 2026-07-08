@@ -13,7 +13,8 @@
     "app_terminal",
     "app_search",
     "systray_popup",
-    "session_popup"
+    "session_popup",
+    "osd_popup"
   ],
   "permissions": [
     "core:default",
@@ -64,6 +65,7 @@
     "core:window:allow-close",
     "core:window:allow-toggle-maximize",
     "core:window:allow-minimize",
+    "core:window:allow-hide",
     "positioner:allow-move-window",
     "positioner:allow-set-tray-icon-state",
     "vicons:default",

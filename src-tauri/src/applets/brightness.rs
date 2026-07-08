@@ -3,6 +3,8 @@ use async_trait::async_trait;
 use tauri::{AppHandle, Emitter};
 use std::error::Error;
 
+use crate::commands::osd::show_osd_internal;
+
 pub struct BrightnessApplet;
 
 #[async_trait]
@@ -20,7 +22,6 @@ impl Applet for BrightnessApplet {
 
 fn monitor_brightness(app: AppHandle) {
     tokio::spawn(async move {
-        // Find device path once
         let device_path = match find_backlight_device() {
             Some(p) => p,
             None => {
@@ -29,16 +30,14 @@ fn monitor_brightness(app: AppHandle) {
             }
         };
 
-        // Paths
-        let brightness_path = device_path.join("actual_brightness"); // Or "brightness"
+        let brightness_path = device_path.join("actual_brightness");
         let max_path = device_path.join("max_brightness");
 
         let mut interval_ms = 2000;
         let mut no_change_count = 0;
         let mut last_val = -1;
-        
+
         loop {
-            // Adjust interval
             tokio::time::sleep(tokio::time::Duration::from_millis(interval_ms)).await;
 
             let current_res = read_int_file(&brightness_path).await;
@@ -46,16 +45,13 @@ fn monitor_brightness(app: AppHandle) {
 
             if let (Ok(current), Ok(max)) = (current_res, max_res) {
                  if current != last_val {
-                     // Changed! 
                      last_val = current;
-                     
-                     // Switch to fast polling
+
                      interval_ms = 200;
                      no_change_count = 0;
 
-                     // Emit event
                      let percentage = if max > 0 {
-                         (current as f64 / max as f64 * 100.0).round() as u8
+                         (current as f64 / max as f64 * 100.0).round() as u32
                      } else {
                          0
                      };
@@ -65,16 +61,23 @@ fn monitor_brightness(app: AppHandle) {
                          "max": 100,
                          "min": 0
                      }));
+
+                     let _ = show_osd_internal(
+                         "display-brightness",
+                         percentage as f64,
+                         100.0,
+                         &format!("Brillo: {}%", percentage),
+                         &app,
+                     )
+                     .await;
                  } else {
-                     // No change
                      no_change_count += 1;
-                     if no_change_count > 10 { // 2 seconds of stability
+                     if no_change_count > 10 {
                          interval_ms = 2000;
                      }
                  }
             } else {
                 log::error!("Failed to read brightness values");
-                // Back off
                 interval_ms = 5000;
             }
         }
@@ -86,10 +89,9 @@ fn find_backlight_device() -> Option<std::path::PathBuf> {
     if !base.exists() {
         return None;
     }
-    
+
     if let Ok(entries) = std::fs::read_dir(base) {
         if let Some(entry) = entries.flatten().next() {
-            // Prefer intel_backlight or just return the first one
             return Some(entry.path());
         }
     }

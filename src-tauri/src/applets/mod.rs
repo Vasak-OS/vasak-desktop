@@ -9,6 +9,7 @@ pub mod audio;
 pub mod battery;
 pub mod bluetooth;
 pub mod brightness;
+pub mod keyboard_leds;
 pub mod music;
 pub mod network;
 pub mod notifications;
