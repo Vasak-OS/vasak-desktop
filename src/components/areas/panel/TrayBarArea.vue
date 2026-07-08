@@ -5,6 +5,8 @@ import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manag
 import { onMounted, type Ref, ref } from 'vue';
 import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
 import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
+import TrayIconCapsLock from '@/components/buttons/TrayIconCapsLock.vue';
+import TrayIconMicrophone from '@/components/buttons/TrayIconMicrophone.vue';
 import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
 import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
@@ -138,6 +140,8 @@ useEventListener('battery-update', (event) => {
       </div>
       <TrayIconSound key="icon-sound" />
       <TrayIconBattery v-if="existBattery" key="icon-battery" />
+      <TrayIconCapsLock key="icon-capslock" />
+      <TrayIconMicrophone key="icon-micmute" />
       <TrayIconBluetooth key="icon-bluetooth" />
       <TrayIconNetwork key="icon-network" />
     </TransitionGroup>
