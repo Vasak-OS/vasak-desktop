@@ -12,7 +12,8 @@
     "applet_audio",
     "app_terminal",
     "app_search",
-    "systray_popup"
+    "systray_popup",
+    "session_popup"
   ],
   "permissions": [
     "core:default",
