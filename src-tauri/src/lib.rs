@@ -77,6 +77,7 @@ pub fn run() {
             get_windows,
             toggle_window,
             open_app,
+            toggle_session_popup,
             logout,
             shutdown,
             reboot,

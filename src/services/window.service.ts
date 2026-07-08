@@ -39,3 +39,7 @@ export const toggleMenu = <T = any>(args?: any): Promise<T> => {
 export const toggleConfigApp = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('toggle_config_app', args);
 };
+
+export const toggleSessionPopup = <T = any>(action: string): Promise<T> => {
+	return invoke<T>('toggle_session_popup', { action });
+};

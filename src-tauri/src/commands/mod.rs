@@ -13,6 +13,7 @@ mod runner;
 mod search;
 mod search_window;
 mod session;
+mod session_popup;
 mod tray;
 mod window_manager;
 
@@ -37,6 +38,7 @@ pub use runner::open_app;
 pub use search::{execute_search_result, global_search};
 pub use search_window::toggle_search;
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};
+pub use session_popup::toggle_session_popup;
 pub use tray::{
     get_tray_items, get_tray_menu, get_tray_popup_data, init_sni_watcher, open_tray_popup,
     tray_item_activate, tray_item_secondary_activate, tray_menu_item_click, tray_popup_click,
