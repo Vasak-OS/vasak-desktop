@@ -5,6 +5,7 @@ import type { Store } from 'pinia';
 import { onMounted } from 'vue';
 import { RouterView } from 'vue-router';
 import { useSharedEvent } from '@/tools/event.bus';
+import { viewTransitionGuard } from '@/tools/view.transition';
 import { logDebug, logError, logInfo } from '@/utils/logger';
 
 onMounted(async () => {
@@ -21,16 +22,23 @@ onMounted(async () => {
 	}
 });
 
-useSharedEvent('config-changed', () => {
+useSharedEvent('config-changed', (payload: any) => {
 	logInfo('Evento config-changed recibido, recargando configuración');
 	const configStore = useConfigStore() as Store<
 		'config',
 		{ config: any; loadConfig: () => Promise<void> }
 	>;
-	if (typeof document.startViewTransition === 'function') {
-		return document.startViewTransition(() => configStore.loadConfig());
+
+	// Only use View Transition for user-initiated theme switches
+	if (payload?.key === 'theme' || payload?.type === 'theme') {
+		viewTransitionGuard.startTransition(() => configStore.loadConfig());
+		return;
 	}
-	return configStore.loadConfig();
+
+	// Non-theme config changes: defer during active transition, otherwise execute immediately
+	viewTransitionGuard.deferUpdate(() => {
+		configStore.loadConfig();
+	});
 });
 </script>
 
