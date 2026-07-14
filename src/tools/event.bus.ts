@@ -31,6 +31,12 @@ class SharedEventBus {
 		const entry = this.listeners.get(event);
 
 		if (entry) {
+			if (options && (options.throttleMs !== entry.options.throttleMs || options.debounceMs !== entry.options.debounceMs)) {
+				console.warn(
+					`[SharedEventBus] Handler for "${event}" registered with conflicting timing options. ` +
+					`Using first subscriber's options (throttleMs=${entry.options.throttleMs}, debounceMs=${entry.options.debounceMs}).`,
+				);
+			}
 			entry.handlers.add(handler as unknown as (payload: unknown) => void);
 		} else {
 			const newEntry: ListenerEntry = {
@@ -65,10 +71,11 @@ class SharedEventBus {
 				});
 
 				const currentEntry = this.listeners.get(event);
-				if (currentEntry) {
-					currentEntry.unlisten = unlisten;
+				if (currentEntry === entry) {
+					entry.unlisten = unlisten;
 				} else {
-					// All subscribers left while we were registering
+					// The original entry was removed (and possibly replaced).
+					// Stale registration has no business assigning to the current entry.
 					unlisten();
 				}
 			} catch (error) {
@@ -81,14 +88,14 @@ class SharedEventBus {
 					// Retry once within 1 second
 					setTimeout(() => {
 						const retryEntry = this.listeners.get(event);
-						if (retryEntry?.unlisten === null && retryEntry.handlers.size > 0) {
+						if (retryEntry === entry && entry.unlisten === null && entry.handlers.size > 0) {
 							registerListener(true);
 						}
 					}, 1000);
 				} else {
 					// Notify subscribers of failure after retry exhausted
 					const failEntry = this.listeners.get(event);
-					if (failEntry) {
+					if (failEntry === entry && failEntry.handlers.size > 0) {
 						console.error(
 							`[SharedEventBus] Listener registration failed for "${event}" after retry. ` +
 								`${failEntry.handlers.size} subscriber(s) will not receive events.`,
