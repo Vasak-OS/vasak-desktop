@@ -8,7 +8,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use zbus::zvariant::OwnedValue;
-use zbus::{Connection, MessageStream};
+use zbus::{Connection, Message, MessageStream};
 
 pub struct BatteryApplet;
 
@@ -206,18 +206,110 @@ impl BatteryApplet {
                         if interface.as_str() == "org.freedesktop.DBus.Properties" &&
                            member.as_str() == "PropertiesChanged" &&
                            obj_path.as_str() == path {
-                               let info = get_battery_info_with_conn(&conn).await;
+                               let info = match Self::handle_properties_changed(&msg, &conn).await {
+                                   Some(i) => Some(i),
+                                   None => {
+                                       // Signal parsing failed or invalidated properties present,
+                                       // fall back to full GetAll
+                                       get_battery_info_with_conn(&conn).await
+                                   }
+                               };
                                Self::emit_if_changed(app_handle, &mut last_info, &info).await;
                         }
                     }
                 }
 
                 _ = tokio::time::sleep(Duration::from_secs(5)) => {
-                    let info = get_battery_info_with_conn(&conn).await;
+                    // On timeout: return cached state if available, otherwise do full fetch
+                    let cached = BATTERY_CACHE.lock().unwrap().clone();
+                    let info = if cached.is_some() {
+                        cached
+                    } else {
+                        // Initial timeout without cache: emit has_battery: false, retry in 5s
+                        Some(BatteryInfo {
+                            has_battery: false,
+                            percentage: 0.0,
+                            state: "Unknown".to_string(),
+                            time_to_empty: None,
+                            time_to_full: None,
+                            is_present: false,
+                            is_charging: false,
+                            vendor: None,
+                            model: None,
+                            technology: None,
+                            energy: None,
+                            energy_full: None,
+                            energy_full_design: None,
+                            voltage: None,
+                            temperature: None,
+                            serial: None,
+                        })
+                    };
                     Self::emit_if_changed(app_handle, &mut last_info, &info).await;
                 }
             }
         }
+    }
+
+    /// Handle a PropertiesChanged signal by merging changed properties into the cache.
+    /// Returns Some(BatteryInfo) if the merge was successful.
+    /// Returns None if:
+    ///   - The signal body couldn't be parsed
+    ///   - There are invalidated properties (requiring a full GetAll refresh)
+    ///   - No existing cache to merge into
+    async fn handle_properties_changed(
+        msg: &Message,
+        conn: &Connection,
+    ) -> Option<BatteryInfo> {
+        // Parse the PropertiesChanged signal body:
+        // (interface_name: String, changed_properties: HashMap<String, OwnedValue>, invalidated_properties: Vec<String>)
+        let body: (String, HashMap<String, OwnedValue>, Vec<String>) =
+            match msg.body().deserialize() {
+                Ok(b) => b,
+                Err(e) => {
+                    log::debug!("[battery] Failed to parse PropertiesChanged body: {}", e);
+                    return None;
+                }
+            };
+
+        let (_interface_name, changed_properties, invalidated_properties) = body;
+
+        // If any properties are invalidated (removed without new value), we need a full refresh
+        if !invalidated_properties.is_empty() {
+            log::debug!(
+                "[battery] Invalidated properties detected: {:?}, doing full refresh",
+                invalidated_properties
+            );
+            return None;
+        }
+
+        // If no changed properties, nothing to do
+        if changed_properties.is_empty() {
+            // Return current cache as-is
+            return BATTERY_CACHE.lock().unwrap().clone();
+        }
+
+        // Get the current cached state to merge into
+        let mut cached = match BATTERY_CACHE.lock().unwrap().clone() {
+            Some(info) => info,
+            None => {
+                // No cache exists yet, can't merge - need a full GetAll
+                log::debug!("[battery] No cache for signal merge, falling back to GetAll");
+                return None;
+            }
+        };
+
+        // Merge each changed property into the cached BatteryInfo
+        merge_properties_into_cache(&mut cached, &changed_properties);
+
+        // Update the cache with merged state
+        *BATTERY_CACHE.lock().unwrap() = Some(cached.clone());
+
+        // We don't need the connection for the merge itself, but it's available
+        // in case future logic needs it
+        let _ = conn;
+
+        Some(cached)
     }
 
     async fn emit_if_changed(
@@ -411,6 +503,85 @@ fn parse_battery_info_from_props(props: &HashMap<String, OwnedValue>) -> Battery
     }
 }
 
+/// Merge changed properties from a PropertiesChanged signal into a cached BatteryInfo.
+/// Reuses the existing prop_* helpers to parse individual OwnedValues.
+fn merge_properties_into_cache(cached: &mut BatteryInfo, changed: &HashMap<String, OwnedValue>) {
+    if let Some(val) = prop_bool(changed, "IsPresent") {
+        cached.is_present = val;
+        cached.has_battery = val;
+    }
+
+    if let Some(val) = prop_f64(changed, "Percentage") {
+        cached.percentage = val;
+    }
+
+    if let Some(val) = prop_u32(changed, "State") {
+        let state_str = match val {
+            1 => "Charging",
+            2 => "Discharging",
+            3 => "Empty",
+            4 => "FullyCharged",
+            5 => "PendingCharge",
+            6 => "PendingDischarge",
+            _ => "Unknown",
+        };
+        cached.state = state_str.to_string();
+        cached.is_charging = val == 1;
+    }
+
+    if let Some(val) = prop_i64(changed, "TimeToEmpty") {
+        cached.time_to_empty = Some(val as u64);
+    }
+
+    if let Some(val) = prop_i64(changed, "TimeToFull") {
+        cached.time_to_full = Some(val as u64);
+    }
+
+    if changed.contains_key("Vendor") {
+        cached.vendor = prop_string(changed, "Vendor");
+    }
+
+    if changed.contains_key("Model") {
+        cached.model = prop_string(changed, "Model");
+    }
+
+    if changed.contains_key("Technology") {
+        cached.technology = prop_u32(changed, "Technology").map(|t| match t {
+            1 => "Lithium ion".to_string(),
+            2 => "Lithium polymer".to_string(),
+            3 => "Lithium iron phosphate".to_string(),
+            4 => "Lead acid".to_string(),
+            5 => "Nickel cadmium".to_string(),
+            6 => "Nickel metal hydride".to_string(),
+            _ => "Unknown".to_string(),
+        });
+    }
+
+    if let Some(val) = prop_f64(changed, "Energy") {
+        cached.energy = Some(val);
+    }
+
+    if let Some(val) = prop_f64(changed, "EnergyFull") {
+        cached.energy_full = Some(val);
+    }
+
+    if let Some(val) = prop_f64(changed, "EnergyFullDesign") {
+        cached.energy_full_design = Some(val);
+    }
+
+    if let Some(val) = prop_f64(changed, "Voltage") {
+        cached.voltage = Some(val);
+    }
+
+    if let Some(val) = prop_f64(changed, "Temperature") {
+        cached.temperature = Some(val);
+    }
+
+    if changed.contains_key("Serial") {
+        cached.serial = prop_string(changed, "Serial");
+    }
+}
+
 // ---- Property extraction helpers ----
 
 fn prop_bool(props: &HashMap<String, OwnedValue>, key: &str) -> Option<bool> {
@@ -431,23 +602,14 @@ fn prop_i64(props: &HashMap<String, OwnedValue>, key: &str) -> Option<i64> {
 
 fn prop_string(props: &HashMap<String, OwnedValue>, key: &str) -> Option<String> {
     props.get(key).and_then(|v| {
-        // Try direct String conversion
-        if let Ok(s) = <String>::try_from(v) {
+        // In zbus v4, &str can be extracted from &OwnedValue via TryFrom
+        <&str>::try_from(v).ok().and_then(|s| {
             if s.is_empty() {
                 None
             } else {
-                Some(s)
+                Some(s.to_string())
             }
-        } else {
-            // Try &str conversion
-            <&str>::try_from(v).ok().and_then(|s| {
-                if s.is_empty() {
-                    None
-                } else {
-                    Some(s.to_string())
-                }
-            })
-        }
+        })
     })
 }
 
