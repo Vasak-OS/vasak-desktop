@@ -150,24 +150,10 @@ pub fn run() {
                 |_domain, _level, _message| {},
             );
 
-            // Initialize shared D-Bus connection pool before applets
-            let dbus_pool = tauri::async_runtime::block_on(async {
-                match DbusPool::init().await {
-                    Ok(pool) => pool,
-                    Err(e) => {
-                        logger::log_info(&format!(
-                            "DbusPool: error inicializando conexiones D-Bus: {}. Continuando sin pool.",
-                            e
-                        ));
-                        // Create a pool with empty connections as fallback
-                        DbusPool::init().await.unwrap_or_else(|_| {
-                            // This path should rarely happen; if it does, applets
-                            // will create their own connections as before.
-                            panic!("No se pudo establecer conexión D-Bus después de reintentar");
-                        })
-                    }
-                }
-            });
+            // Initialize shared D-Bus connection pool before applets.
+            // Each bus (session/system) is tried independently; failures are logged
+            // but stored as None so the pool is always available.
+            let dbus_pool = tauri::async_runtime::block_on(DbusPool::init());
             app.manage(dbus_pool);
 
             let _ = create_desktops(app);
