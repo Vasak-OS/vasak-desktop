@@ -3,7 +3,7 @@
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { onMounted, type Ref, ref } from 'vue';
 import { getAudioDevices, setAudioDevice } from '@/services/core.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 interface AudioDevice {
@@ -50,13 +50,13 @@ onMounted(async () => {
 	await loadDevices();
 });
 
-useEventListener<AudioDevice[]>('audio-devices-changed', (event) => {
-	devices.value = event.payload;
-	const defaultDevice = event.payload.find((d) => d.is_default);
+useSharedEvent<AudioDevice[]>('audio-devices-changed', (payload) => {
+	devices.value = payload;
+	const defaultDevice = payload.find((d) => d.is_default);
 	if (defaultDevice) {
 		selectedDeviceId.value = defaultDevice.id;
-	} else if (event.payload.length > 0) {
-		selectedDeviceId.value = event.payload[0].id;
+	} else if (payload.length > 0) {
+		selectedDeviceId.value = payload[0].id;
 	} else {
 		selectedDeviceId.value = '';
 	}

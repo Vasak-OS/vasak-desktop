@@ -7,7 +7,7 @@ import {
 	getBrightnessInfo as fetchBrightnessInfo,
 	setBrightnessInfo,
 } from '@/services/core.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 import SliderControl from '../forms/SliderControl.vue';
 
@@ -81,8 +81,7 @@ onUnmounted(() => {
 	}
 });
 
-useEventListener('brightness-changed', async (event: { payload: Record<string, number> }) => {
-	const p = event.payload;
+useSharedEvent<Record<string, number>>('brightness-changed', (p) => {
 	if (p.current !== undefined) {
 		brightnessInfo.value = p as unknown as BrightnessInfo;
 		currentBrightness.value = p.current;
@@ -91,7 +90,7 @@ useEventListener('brightness-changed', async (event: { payload: Record<string, n
 		brightnessInfo.value = { current, max: 100, min: 0 };
 		currentBrightness.value = current;
 	}
-});
+}, { throttleMs: 16 });
 </script>
 
 <template>

@@ -169,7 +169,7 @@ import {
 	type VpnStatus,
 } from '@/services/network.service';
 import { toggleNetworkApplet } from '@/services/window.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const wifiEnabled = ref(true);
@@ -332,11 +332,11 @@ onUnmounted(() => {
 	clearInterval(statsPollInterval);
 });
 
-useEventListener<any>('network-changed', async () => {
+useSharedEvent<any>('network-changed', async () => {
 	await checkWirelessStatus();
 	await refreshEthernetStatus();
 	await refreshNetworkStats();
 });
 
-useEventListener('vpn-changed', refreshVpnStatus);
+useSharedEvent('vpn-changed', refreshVpnStatus);
 </script>

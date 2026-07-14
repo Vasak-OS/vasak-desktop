@@ -4,7 +4,7 @@ import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { onMounted } from 'vue';
 import { RouterView } from 'vue-router';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logDebug, logError, logInfo } from '@/utils/logger';
 
 onMounted(async () => {
@@ -21,7 +21,7 @@ onMounted(async () => {
 	}
 });
 
-useEventListener('config-changed', () => {
+useSharedEvent('config-changed', () => {
 	logInfo('Evento config-changed recibido, recargando configuración');
 	const configStore = useConfigStore() as Store<
 		'config',

@@ -10,7 +10,7 @@ import {
 	toggleNetworkApplet,
 	type VpnStatus,
 } from '@/services/network.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
@@ -81,11 +81,11 @@ onMounted(async () => {
 	await refreshVpnStatus();
 });
 
-useEventListener<NetworkInfo>('network-changed', (event) => {
-	networkState.value = event.payload;
+useSharedEvent<NetworkInfo>('network-changed', (payload) => {
+	networkState.value = payload;
 });
 
-useEventListener('vpn-changed', refreshVpnStatus);
+useSharedEvent('vpn-changed', refreshVpnStatus);
 </script>
 
 <template>

@@ -9,7 +9,7 @@ import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import { getAllNotifications } from '@/services/notification.service';
 import { toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const notifications = ref<Notification[]>([]);
@@ -69,8 +69,7 @@ onMounted(async () => {
 	await loadNotifications();
 });
 
-useEventListener('notifications-updated', (event) => {
-	const newNotifications = event.payload as Notification[];
+useSharedEvent<Notification[]>('notifications-updated', (newNotifications) => {
 	hasNewNotifications.value = newNotifications.length > notifications.value.length;
 	notifications.value = newNotifications;
 
@@ -80,7 +79,7 @@ useEventListener('notifications-updated', (event) => {
 			hasNewNotifications.value = false;
 		}, 1000);
 	}
-});
+}, { debounceMs: 150 });
 </script>
 
 <template>

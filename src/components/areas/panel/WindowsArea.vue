@@ -6,7 +6,7 @@ import { onMounted, ref } from 'vue';
 import WindowPanelButton from '@/components/buttons/WindowPanelButton.vue';
 import type { WindowInfo } from '@/interfaces/window';
 import { getWindows } from '@/services/window.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const windows = ref<WindowInfo[]>([]);
@@ -23,7 +23,7 @@ onMounted(async () => {
 	await refreshWindows();
 });
 
-useEventListener('window-update', refreshWindows);
+useSharedEvent('window-update', refreshWindows);
 </script>
 
 <template>
