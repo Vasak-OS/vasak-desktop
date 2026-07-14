@@ -15,7 +15,7 @@ interface ViewTransition {
 
 class ViewTransitionGuard {
 	private transitioning = false;
-	private readonly deferredCallbacks: Array<() => void> = [];
+	private readonly deferredCallbacks: Array<() => void | Promise<void>> = [];
 	private transitionTimeout: ReturnType<typeof setTimeout> | null = null;
 	private currentTransition: ViewTransition | null = null;
 
@@ -37,8 +37,11 @@ class ViewTransitionGuard {
 
 		// Cancel any in-progress transition before starting a new one
 		if (this.currentTransition) {
-			this.currentTransition.skipTransition();
+			const oldTransition = this.currentTransition;
+			oldTransition.skipTransition();
 			this.clearTimeout();
+			// Wait for the old update callback to settle before proceeding
+			await oldTransition.updateCallbackDone.catch(() => {});
 			// Don't flush deferred here — the new transition takes over
 		}
 
@@ -54,8 +57,12 @@ class ViewTransitionGuard {
 
 		try {
 			await transition.finished;
-		} catch {
-			// Transition was skipped or cancelled — that's fine
+		} catch (error) {
+			if (error instanceof DOMException && error.name === 'AbortError') {
+				// Transition was skipped or cancelled via skipTransition() — expected.
+			} else {
+				console.error('[ViewTransitionGuard] Transition update failed:', error);
+			}
 		} finally {
 			// Only complete if this is still the active transition
 			// (a concurrent request may have replaced us)
@@ -69,11 +76,14 @@ class ViewTransitionGuard {
 	 * Defer a non-visual data update while a transition is in progress.
 	 * If no transition is active, executes the callback immediately.
 	 */
-	deferUpdate(callback: () => void): void {
+	deferUpdate(callback: () => void | Promise<void>): void {
 		if (this.transitioning) {
 			this.deferredCallbacks.push(callback);
 		} else {
-			callback();
+			const result = callback();
+			if (result) result.catch((error) => {
+				console.error('[ViewTransitionGuard] Deferred callback threw an error:', error);
+			});
 		}
 	}
 
@@ -97,11 +107,14 @@ class ViewTransitionGuard {
 
 	/**
 	 * Force completion after 500ms timeout.
-	 * Skips any remaining animation and flushes all deferred callbacks.
+	 * Cancels animation and flushes deferred callbacks only after the update
+	 * callback has settled.
 	 */
-	private forceComplete(): void {
-		if (this.currentTransition) {
-			this.currentTransition.skipTransition();
+	private async forceComplete(): Promise<void> {
+		const transition = this.currentTransition;
+		if (transition) {
+			transition.skipTransition();
+			await transition.updateCallbackDone.catch(() => {});
 		}
 		this.transitionTimeout = null;
 		this.transitioning = false;
@@ -116,7 +129,10 @@ class ViewTransitionGuard {
 		const callbacks = this.deferredCallbacks.splice(0);
 		for (const cb of callbacks) {
 			try {
-				cb();
+				const result = cb();
+				if (result) result.catch((error) => {
+					console.error('[ViewTransitionGuard] Deferred callback threw an error:', error);
+				});
 			} catch (error) {
 				console.error('[ViewTransitionGuard] Deferred callback threw an error:', error);
 			}
