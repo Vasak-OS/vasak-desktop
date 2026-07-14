@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 const vFocus = {
-	mounted: (el: HTMLElement) => el.focus(),
+	mounted: (el: HTMLElement) => setTimeout(() => el.focus(), 50),
 };
 
 defineProps({
