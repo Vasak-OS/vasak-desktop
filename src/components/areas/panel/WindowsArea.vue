@@ -9,6 +9,12 @@ import { getWindows } from '@/services/window.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
+interface WindowDelta {
+	added: WindowInfo[];
+	removed: string[];
+	modified: WindowInfo[];
+}
+
 const windows = ref<WindowInfo[]>([]);
 
 const refreshWindows = async (): Promise<void> => {
@@ -19,11 +25,37 @@ const refreshWindows = async (): Promise<void> => {
 	}
 };
 
+const applyDelta = (delta: WindowDelta): void => {
+	try {
+		// Remove windows by ID
+		if (delta.removed.length > 0) {
+			const removedSet = new Set(delta.removed);
+			windows.value = windows.value.filter((w) => !removedSet.has(w.id));
+		}
+
+		// Update modified windows in-place
+		for (const modified of delta.modified) {
+			const index = windows.value.findIndex((w) => w.id === modified.id);
+			if (index !== -1) {
+				windows.value[index] = modified;
+			}
+		}
+
+		// Add new windows
+		if (delta.added.length > 0) {
+			windows.value.push(...delta.added);
+		}
+	} catch (error) {
+		logError('[Windows] Error applying delta, falling back to full refetch:', error);
+		refreshWindows();
+	}
+};
+
 onMounted(async () => {
 	await refreshWindows();
 });
 
-useSharedEvent('window-update', refreshWindows);
+useSharedEvent<WindowDelta>('window-delta', applyDelta);
 </script>
 
 <template>
