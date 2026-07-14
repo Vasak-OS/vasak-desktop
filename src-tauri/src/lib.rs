@@ -57,8 +57,11 @@ pub fn run() {
         WindowManager::new().expect("Failed to initialize window manager"),
     ));
 
+    let cached_windows = Arc::new(parking_lot::RwLock::new(None));
+
     let wm_state = WMState {
         window_manager: window_manager.clone(),
+        cached_windows: Arc::clone(&cached_windows),
     };
 
     let tray_manager = create_tray_manager();
@@ -165,7 +168,7 @@ pub fn run() {
             let _ = create_desktops(app);
             let _ = create_panel(app);
 
-            setup_windows_monitoring(window_manager.clone(), app.handle().clone())?;
+            setup_windows_monitoring(window_manager.clone(), app.handle().clone(), cached_windows.clone())?;
             setup_dbus_service(app.handle().clone());
             
             // Initialize AppletManager with priority-based phased startup
