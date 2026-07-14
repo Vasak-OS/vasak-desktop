@@ -82,22 +82,26 @@ async fn perform_emit_deltas() {
     drop(pending);
 
     if let Some(app_handle) = APP_HANDLE.read().await.as_ref() {
-        // If there's a single delta, emit it directly; otherwise coalesce into BatchUpdate
-        let event_payload = if deltas.len() == 1 {
-            deltas.into_iter().next().unwrap()
+        let coalesced = if deltas.len() == 1 {
+            deltas
         } else {
             coalesce_deltas(deltas)
         };
 
-        log_debug(&format!("Emitiendo delta de notificaciones: {:?}", event_payload));
-        if let Err(e) = app_handle.emit("notification-delta", &event_payload) {
-            log_error(&format!("Error al emitir evento notification-delta: {}", e));
+        for event_payload in &coalesced {
+            log_debug(&format!("Emitiendo delta de notificaciones: {:?}", event_payload));
+            if let Err(e) = app_handle.emit("notification-delta", event_payload) {
+                log_error(&format!("Error al emitir evento notification-delta: {}", e));
+            }
         }
     }
 }
 
-// Coalesce multiple deltas into a single BatchUpdate
-fn coalesce_deltas(deltas: Vec<NotificationDelta>) -> NotificationDelta {
+// Coalesce multiple deltas into ordered non-lossy deltas.
+// - A Cleared boundary remains effective: if Cleared is followed by new additions,
+//   a separate Cleared delta is emitted first, then the post-clear additions as a BatchUpdate.
+// - Added items within each resulting delta are newest-first (reversed from arrival order).
+fn coalesce_deltas(deltas: Vec<NotificationDelta>) -> Vec<NotificationDelta> {
     let mut added: Vec<Notification> = Vec::new();
     let mut removed: Vec<u32> = Vec::new();
     let mut cleared = false;
@@ -105,7 +109,6 @@ fn coalesce_deltas(deltas: Vec<NotificationDelta>) -> NotificationDelta {
     for delta in deltas {
         match delta {
             NotificationDelta::Cleared => {
-                // Clear supersedes everything before it
                 added.clear();
                 removed.clear();
                 cleared = true;
@@ -126,11 +129,20 @@ fn coalesce_deltas(deltas: Vec<NotificationDelta>) -> NotificationDelta {
         }
     }
 
-    if cleared && added.is_empty() {
-        NotificationDelta::Cleared
-    } else {
-        NotificationDelta::BatchUpdate { added, removed }
+    let mut result = Vec::new();
+
+    // If we saw a Cleared, emit it first so the frontend resets before additions.
+    if cleared {
+        result.push(NotificationDelta::Cleared);
     }
+
+    // Emit accumulated adds/removes as a BatchUpdate (newest-first).
+    if !added.is_empty() || !removed.is_empty() {
+        added.reverse();
+        result.push(NotificationDelta::BatchUpdate { added, removed });
+    }
+
+    result
 }
 
 pub async fn get_notifications() -> Result<Vec<Notification>, String> {
