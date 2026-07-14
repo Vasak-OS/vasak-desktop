@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { emit } from '@tauri-apps/api/event';
 import { Command } from '@tauri-apps/plugin-shell';
 import { onMounted, ref } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
@@ -67,7 +68,12 @@ async function loadNotifications() {
 }
 
 onMounted(async () => {
+	performance.mark('panel-mounted');
 	await loadNotifications();
+	performance.mark('panel-ready');
+	performance.measure('panel-startup', 'panel-mounted', 'panel-ready');
+	// Signal backend that panel has painted - triggers deferred applets
+	emit('panel-ready', {});
 });
 
 useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
