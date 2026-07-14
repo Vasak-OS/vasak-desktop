@@ -84,61 +84,43 @@ async fn monitor_volume_changes(
 }
 
 /// Periodically attempts to upgrade from pactl fallback to event-driven monitoring.
-/// Tries every 30 seconds. On success, emits a new monitoring task and this task ends.
+/// Tries every 30 seconds. On success, runs event-driven monitoring inline.
+/// If the event-driven monitor dies, falls back to the reconnection loop.
 async fn attempt_reconnection_loop(app: AppHandle) {
     log_info("AudioApplet: fallback mode active, will attempt PipeWire reconnection every 30s");
 
     loop {
-        // Wait 30 seconds before each reconnection attempt
         tokio::time::sleep(Duration::from_secs(30)).await;
 
         log_debug("AudioApplet: attempting to reconnect to PipeWire (pw-dump)...");
 
-        // Try to connect to pw-dump (event-driven)
         match PwDumpMonitor::connect().await {
             Ok(pw_dump) => {
                 log_info("AudioApplet: successfully reconnected to pw-dump, switching to event-driven mode");
 
-                // Get the new state receiver
-                let mut new_state_rx = pw_dump.state_rx.clone();
+                let mut state_rx = pw_dump.state_rx.clone();
+                let _monitor = pw_dump;
 
-                // Spawn a new monitoring task with the upgraded monitor
-                let app_clone = app.clone();
-                tokio::spawn(async move {
-                    // Keep pw_dump alive
-                    let _monitor = pw_dump;
-
-                    // Resume event-driven monitoring (no reconnection loop needed)
-                    loop {
-                        if new_state_rx.changed().await.is_err() {
-                            log_error("AudioApplet: reconnected monitor channel closed");
-                            // If the reconnected monitor dies, start a new reconnection loop
-                            let app_re = app_clone.clone();
-                            tokio::spawn(async move {
-                                attempt_reconnection_loop(app_re).await;
-                            });
-                            break;
-                        }
-
-                        let volume_info = new_state_rx.borrow_and_update().clone();
-
-                        log_debug(&format!(
-                            "AudioApplet [reconnected]: volume update: {}% muted={}",
-                            volume_info.current, volume_info.is_muted
-                        ));
-
-                        if let Err(e) = app_clone.emit("volume-changed", &volume_info) {
-                            log_error(&format!(
-                                "AudioApplet: failed to emit volume-changed: {}", e
-                            ));
-                        }
+                // Run event-driven monitoring inline. When the monitor dies
+                // (channel closed), break out and retry reconnection.
+                loop {
+                    if state_rx.changed().await.is_err() {
+                        log_error("AudioApplet: reconnected monitor channel closed, retrying reconnection...");
+                        break;
                     }
-                });
 
-                // This reconnection loop is done - event-driven mode is active
-                // The transition completes well within the 2s requirement since
-                // PwDumpMonitor::connect() is fast (just checks `which pw-dump`)
-                return;
+                    let volume_info = state_rx.borrow_and_update().clone();
+
+                    log_debug(&format!(
+                        "AudioApplet [reconnected]: volume update: {}% muted={}",
+                        volume_info.current, volume_info.is_muted
+                    ));
+
+                    if let Err(e) = app.emit("volume-changed", &volume_info) {
+                        log_error(&format!("AudioApplet: failed to emit volume-changed: {}", e));
+                    }
+                }
+                // Fall through to outer loop → retry reconnection
             }
             Err(e) => {
                 log_debug(&format!(

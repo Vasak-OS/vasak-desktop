@@ -23,6 +23,7 @@ mod gtk_utils;
 mod window_manager;
 mod windows_apps;
 
+use tauri::Manager;
 use commands::*;
 use dbus_pool::DbusPool;
 use eventloops::{
