@@ -22,7 +22,7 @@ const setCategory = (category: string) => {
 
 <template>
   <button
-    class="w-full h-full flex items-center justify-center p-2 rounded-corner hover:scale-110 transition-transform duration-200"
+    class="theme-transition w-full h-full flex items-center justify-center p-2 rounded-corner hover:scale-110 transition-transform duration-200"
     @click="setCategory(category)"
 :class="[
     category === categorySelected

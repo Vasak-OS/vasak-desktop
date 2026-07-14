@@ -6,13 +6,14 @@ import { onMounted, ref } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
+import type { Notification as AppNotification, NotificationDelta } from '@/interfaces/notifications';
 import { getAllNotifications } from '@/services/notification.service';
 import { toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
-const notifications = ref<Notification[]>([]);
+const notifications = ref<AppNotification[]>([]);
 const hasNewNotifications = ref(false);
 let notificationResetTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -69,17 +70,43 @@ onMounted(async () => {
 	await loadNotifications();
 });
 
-useSharedEvent<Notification[]>('notifications-updated', (newNotifications) => {
-	hasNewNotifications.value = newNotifications.length > notifications.value.length;
-	notifications.value = newNotifications;
-
-	if (hasNewNotifications.value) {
-		clearTimeout(notificationResetTimer);
-		notificationResetTimer = setTimeout(() => {
-			hasNewNotifications.value = false;
-		}, 1000);
+useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
+	switch (delta.action) {
+		case 'added':
+			notifications.value.unshift(delta.notification);
+			if (delta.dropped_id != null) {
+				notifications.value = notifications.value.filter((n) => n.id !== delta.dropped_id);
+			}
+			hasNewNotifications.value = true;
+			clearTimeout(notificationResetTimer);
+			notificationResetTimer = setTimeout(() => {
+				hasNewNotifications.value = false;
+			}, 1000);
+			break;
+		case 'removed':
+			notifications.value = notifications.value.filter((n) => n.id !== delta.id);
+			break;
+		case 'batch_update':
+			if (delta.added.length > 0) {
+				notifications.value = [...delta.added, ...notifications.value];
+			}
+			if (delta.removed.length > 0) {
+				const removedSet = new Set(delta.removed);
+				notifications.value = notifications.value.filter((n) => !removedSet.has(n.id));
+			}
+			if (delta.added.length > 0) {
+				hasNewNotifications.value = true;
+				clearTimeout(notificationResetTimer);
+				notificationResetTimer = setTimeout(() => {
+					hasNewNotifications.value = false;
+				}, 1000);
+			}
+			break;
+		case 'cleared':
+			notifications.value = [];
+			break;
 	}
-}, { debounceMs: 150 });
+});
 </script>
 
 <template>
