@@ -12,6 +12,37 @@ use tauri::Emitter;
 /// Debounce window for coalescing rapid sequential changes (50ms).
 const DEBOUNCE_MS: u64 = 50;
 
+/// Shared state for unified delta computation — single source of truth
+/// for both the event-driven and polling threads.
+struct EmittedState {
+    snapshot: Vec<WindowInfo>,
+    last_emit: Instant,
+}
+
+/// Compute delta against the shared snapshot and emit if changed.
+/// Both threads (event and polling) call this — the shared snapshot
+/// guarantees each window change produces exactly one `window-delta`.
+fn emit_if_changed(
+    emitted: &RwLock<EmittedState>,
+    handle: &tauri::AppHandle,
+    windows: &[WindowInfo],
+) {
+    let mut state = emitted.write().unwrap_or_else(|e| e.into_inner());
+    if let Some(delta) = WindowDelta::compute(&state.snapshot, windows) {
+        // 50ms debounce from last emission (coalesces rapid changes)
+        let now = Instant::now();
+        let elapsed = now.duration_since(state.last_emit);
+        if elapsed < Duration::from_millis(DEBOUNCE_MS) {
+            let remaining = Duration::from_millis(DEBOUNCE_MS) - elapsed;
+            std::thread::sleep(remaining);
+        }
+
+        let _ = handle.emit("window-delta", &delta);
+        state.last_emit = Instant::now();
+        state.snapshot = windows.to_vec();
+    }
+}
+
 pub fn setup_windows_monitoring(
     window_manager: Arc<RwLock<WindowManager>>,
     app_handle: tauri::AppHandle,
@@ -26,36 +57,33 @@ pub fn setup_windows_monitoring(
         log_info("Monitoreo de eventos de ventanas establecido");
     }
 
-    // Event-driven thread: on Wayfire events, trigger a window list refresh with debounce.
+    // Shared emission state — single delta stream for both threads.
+    let emitted = Arc::new(RwLock::new(EmittedState {
+        snapshot: Vec::new(),
+        last_emit: Instant::now() - Duration::from_millis(DEBOUNCE_MS + 1),
+    }));
+
+    // Seed snapshot from cache if available (initial state).
+    if let Some(cached) = cached_windows.read().as_ref() {
+        if let Ok(mut state) = emitted.write() {
+            state.snapshot = cached.windows.clone();
+        }
+    }
+
+    // -- Event-driven thread ------------------------------------------------
+    // On Wayfire events, trigger a window list refresh with debounce/coalescing.
+    let event_emitted = Arc::clone(&emitted);
     let event_handle = app_handle.clone();
     let event_cached = Arc::clone(&cached_windows);
 
     std::thread::spawn(move || {
-        let mut last_emit_time = Instant::now() - Duration::from_millis(DEBOUNCE_MS + 1);
-        let mut last_snapshot: Vec<WindowInfo> = Vec::new();
-
-        // Initialize snapshot from cache if available
-        if let Some(cached) = event_cached.read().as_ref() {
-            last_snapshot = cached.windows.clone();
-        }
-
-        // Use recv() in a loop so we can also call try_recv() for draining
         while rx.recv().is_ok() {
-            let now = Instant::now();
-            let elapsed = now.duration_since(last_emit_time);
-
-            // Debounce: if last emission was <50ms ago, wait out the remaining time
-            // and drain any additional events that arrive during the wait (coalescing)
-            if elapsed < Duration::from_millis(DEBOUNCE_MS) {
-                let remaining = Duration::from_millis(DEBOUNCE_MS) - elapsed;
-                std::thread::sleep(remaining);
-            }
-            // Drain any additional events that arrived (coalesce rapid sequential changes)
+            // Drain any additional events that arrived (coalesce rapid sequences)
             while rx.try_recv().is_ok() {}
 
-            // Fetch windows without holding the main RwLock (Requirement 13.3).
-            // WaylandManager is stateless, so we create a fresh instance for the IPC call.
-            let windows = match window_manager::wayland::WaylandManager::default().get_window_list() {
+            // Fetch windows without holding the main RwLock (Req 13.3).
+            let windows = match window_manager::wayland::WaylandManager::default().get_window_list()
+            {
                 Ok(w) => w,
                 Err(e) => {
                     log_error(&format!("Error obteniendo ventanas (evento): {}", e));
@@ -63,7 +91,7 @@ pub fn setup_windows_monitoring(
                 }
             };
 
-            // Update the shared cached window list (brief lock <1ms, Requirement 13.2)
+            // Update shared cached window list (brief lock <1ms, Req 13.2)
             {
                 let mut cache = event_cached.write();
                 *cache = Some(CachedWindowList {
@@ -72,27 +100,21 @@ pub fn setup_windows_monitoring(
                 });
             }
 
-            // Compute delta and emit (Requirement 4.1)
-            if let Some(delta) = WindowDelta::compute(&last_snapshot, &windows) {
-                let _ = event_handle.emit("window-delta", &delta);
-                last_emit_time = Instant::now();
-            }
-            last_snapshot = windows;
+            // Compute delta against shared snapshot and emit (Req 4.1)
+            emit_if_changed(&event_emitted, &event_handle, &windows);
         }
     });
 
-    // Polling thread: periodic 1000ms poll with delta computation and 50ms debounce.
-    // Does NOT hold the main RwLock during the Wayfire IPC call (Requirement 13.3).
-    let polling_cached = Arc::clone(&cached_windows);
+    // -- Polling thread ------------------------------------------------------
+    // Periodic 1000ms reconciliation — does NOT maintain its own delta stream.
+    // Reuses the shared EmittedState, so it never duplicates an already-emitted change.
+    let polling_emitted = Arc::clone(&emitted);
     let polling_handle = app_handle.clone();
+    let polling_cached = Arc::clone(&cached_windows);
 
     std::thread::spawn(move || {
-        let mut last_snapshot: Vec<WindowInfo> = Vec::new();
-        let mut last_emit_time = Instant::now() - Duration::from_millis(DEBOUNCE_MS + 1);
-
         loop {
-            // Fetch windows OUTSIDE the lock (slow I/O via Wayfire IPC).
-            // WaylandManager is stateless, so a default instance works fine.
+            // Fetch windows outside the lock (slow I/O via Wayfire IPC).
             let windows = match window_manager::wayland::WaylandManager::default().get_window_list()
             {
                 Ok(w) => w,
@@ -103,7 +125,7 @@ pub fn setup_windows_monitoring(
                 }
             };
 
-            // Update the shared cached window list (brief write lock <1ms, Requirement 13.2)
+            // Update shared cached window list (brief write lock <1ms, Req 13.2)
             {
                 let mut cache = polling_cached.write();
                 *cache = Some(CachedWindowList {
@@ -112,20 +134,8 @@ pub fn setup_windows_monitoring(
                 });
             }
 
-            // Compute delta between previous snapshot and current
-            if let Some(delta) = WindowDelta::compute(&last_snapshot, &windows) {
-                // 50ms debounce/coalescing (Requirement 4.5)
-                let now = Instant::now();
-                let elapsed = now.duration_since(last_emit_time);
-                if elapsed < Duration::from_millis(DEBOUNCE_MS) {
-                    let remaining = Duration::from_millis(DEBOUNCE_MS) - elapsed;
-                    std::thread::sleep(remaining);
-                }
-
-                let _ = polling_handle.emit("window-delta", &delta);
-                last_emit_time = Instant::now();
-            }
-            last_snapshot = windows;
+            // Reconcile — may emit if event thread fell behind; otherwise no-op.
+            emit_if_changed(&polling_emitted, &polling_handle, &windows);
 
             std::thread::sleep(Duration::from_millis(1000));
         }
@@ -133,8 +143,6 @@ pub fn setup_windows_monitoring(
 
     Ok(())
 }
-
-// Battery, Music, Notifications moved to AppletManager/Applets
 
 pub fn setup_dbus_service(app_handle: tauri::AppHandle) {
     log_info("Iniciando servicio D-Bus");
