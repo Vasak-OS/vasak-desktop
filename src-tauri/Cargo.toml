@@ -55,7 +55,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 thiserror = "2.0"
 chrono = "0.4"
 shlex = "1.3"
-pipewire = "0.8"
+pipewire = { version = "0.8", optional = true }
 inotify = "0.10"
 parking_lot = "0.12"
 
@@ -68,6 +68,7 @@ tauri-plugin-single-instance = "2"
 
 [features]
 default = []
+pipewire-native = ["pipewire"]
 custom-protocol = ["tauri/custom-protocol"]
 
 [profile.dev]
