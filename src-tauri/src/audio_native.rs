@@ -19,6 +19,9 @@ use crate::logger::{log_debug, log_error, log_info};
 use crate::structs::VolumeInfo;
 use tokio::sync::watch;
 
+#[cfg(feature = "pipewire-native")]
+use std::sync::Arc;
+
 /// Error type for PipeWire connection failures.
 #[derive(Debug, thiserror::Error)]
 pub enum PipeWireError {
