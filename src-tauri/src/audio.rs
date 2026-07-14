@@ -139,34 +139,27 @@ pub fn get_volume() -> Result<VolumeInfo> {
 }
 
 /// Establece el volumen del sistema
-pub fn set_volume(volume: i64, app: AppHandle) -> Result<()> {
+pub fn set_volume(volume: i64, _app: AppHandle) -> Result<()> {
     log_info(&format!("Estableciendo volumen a: {}%", volume));
     let sink = get_default_sink_name()?;
     let volume_str = format!("{}%", volume);
 
     CommandExecutor::run(CMD_PACTL, &["set-sink-volume", &sink, &volume_str])?;
 
-    if let Ok(info) = get_volume() {
-        log_debug(&format!("Volumen actualizado: {}%", info.current));
-        let _ = app.emit("volume-changed", info.clone());
-    }
+    clear_sink_cache();
     Ok(())
 }
 
 /// Alterna el estado de silencio del audio
-pub fn toggle_mute(app: AppHandle) -> Result<bool> {
+pub fn toggle_mute(_app: AppHandle) -> Result<bool> {
     log_info("Alternando estado de mute");
     let sink = get_default_sink_name()?;
-    let current_info = get_volume()?;
 
     CommandExecutor::run(CMD_PACTL, &["set-sink-mute", &sink, "toggle"])?;
 
-    if let Ok(info) = get_volume() {
-        log_debug(&format!("Mute actualizado: {}", info.is_muted));
-        let _ = app.emit("volume-changed", info.clone());
-    }
-
-    Ok(!current_info.is_muted)
+    clear_sink_cache();
+    let info = get_volume()?;
+    Ok(info.is_muted)
 }
 
 /// Lista todos los dispositivos de salida de audio (sinks)
