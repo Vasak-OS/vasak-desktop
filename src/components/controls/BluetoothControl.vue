@@ -32,7 +32,7 @@ const toggleBT = async (): Promise<void> => {
 </script>
 
 <template>
-  <div class="relative inline-block">
+  <div class="theme-transition relative inline-block">
     <!-- Indicador de estado -->
     <div
       class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-300"

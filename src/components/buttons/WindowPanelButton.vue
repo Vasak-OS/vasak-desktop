@@ -21,7 +21,7 @@ const toggleWindow = async (): Promise<void> => {
 
 <template>
   <div
-    class="flex items-center justify-center w-7 h-7 cursor-pointer transform rounded-corner hover:bg-primary/30 hover:scale-110 active:scale-95 relative"
+    class="theme-transition flex items-center justify-center w-7 h-7 cursor-pointer transform rounded-corner hover:bg-primary/30 hover:scale-110 active:scale-95 relative"
     :class="{ 'opacity-50 hover:opacity-90': is_minimized }"
     @click="toggleWindow"
   >

@@ -1,5 +1,5 @@
 <template>
-  <div class="relative inline-block theme-toggle-wrapper" :class="{ 'theme-switching': isSwitching }">
+  <div class="theme-transition relative inline-block theme-toggle-wrapper" :class="{ 'theme-switching': isSwitching }">
     <!-- Sun/Moon indicator -->
     <div class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-500 z-20" :class="{
       'bg-yellow-400 animate-pulse': !(configStore?.config as any)?.style?.darkmode,
@@ -39,6 +39,7 @@ import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import { useReactiveSymbol } from '@/tools/composables/useReactiveIcon';
+import { cancelRunningThemeTransitions } from '@/tools/theme.utils';
 import { logError } from '@/utils/logger';
 import ToggleControl from '../forms/ToggleControl.vue';
 
@@ -64,6 +65,8 @@ const toggleTheme = async () => {
 	isSwitching.value = true;
 	try {
 		const currentDark = !!configStore.value?.config?.style?.darkmode;
+		// Cancel any in-progress theme transitions before applying new values
+		cancelRunningThemeTransitions();
 		// Toggle immediately so the UI responds instantly
 		document.documentElement.classList.toggle('dark', !currentDark);
 		await setDarkMode(!currentDark);
