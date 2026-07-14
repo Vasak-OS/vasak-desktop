@@ -181,15 +181,19 @@ class IconReloadScheduler {
 	 * Process a single batch of icon IDs by calling their refresh functions concurrently.
 	 */
 	private async processBatch(ids: number[], controller: ReloadController): Promise<void> {
-		const promises: Promise<void>[] = [];
+		const promises: Promise<{ id: number } | void>[] = [];
 		for (const id of ids) {
 			if (controller.aborted) return;
 			const entry = this.entries.get(id);
 			// Entry may have been unregistered (unmounted) since cycle started
 			if (!entry) continue;
-			promises.push(entry.refresh());
+			promises.push(
+				entry.refresh().catch((err) => {
+					console.error(`Icon refresh failed for entry ${id}:`, err);
+				}),
+			);
 		}
-		await Promise.all(promises);
+		await Promise.allSettled(promises);
 	}
 
 	/**
