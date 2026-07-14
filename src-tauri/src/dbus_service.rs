@@ -1,4 +1,4 @@
-use crate::commands::{toggle_control_center, toggle_menu, toggle_search};
+use crate::commands::{toggle_control_center, toggle_menu, toggle_search, toggle_session_popup};
 use crate::constants::DBUS_SERVICE_NAME;
 use crate::logger::{log_info, log_error, log_warning, log_debug};
 use futures_util::TryStreamExt;
@@ -35,6 +35,13 @@ impl DesktopService {
                 let app_handle = self.app_handle.clone();
                 tauri::async_runtime::spawn(async move {
                     let _ = toggle_search(app_handle).await;
+                });
+            }
+            "OpenSessionPopup" | "PowerButtonPressed" => {
+                log_info("D-Bus: Abriendo popup de sesión");
+                let app_handle = self.app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = toggle_session_popup("shutdown".to_string(), app_handle).await;
                 });
             }
             _ => {

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
 import MenuArea from '@/components/areas/menu/MenuArea.vue';
 import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
@@ -10,16 +11,9 @@ import SessionButton from '@/components/buttons/SessionButton.vue';
 import UserMenuCard from '@/components/cards/UserMenuCard.vue';
 import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getMenuItems, openApp } from '@/services/app.service';
-import {
-	detectDisplayServer as sysDetectDisplayServer,
-	logout as sysLogout,
-	reboot as sysReboot,
-	shutdown as sysShutdown,
-	suspend as sysSuspend,
-} from '@/services/system.service';
-import { openConfigurationWindow, toggleMenu } from '@/services/window.service';
+import { openConfigurationWindow, toggleMenu, toggleSessionPopup } from '@/services/window.service';
+import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const menuData: Ref<Record<string, any>> = ref({});
@@ -61,48 +55,8 @@ const setMenu = async () => {
 	}
 };
 
-const detectDisplayServer = async () => {
-	try {
-		const result = await sysDetectDisplayServer();
-		return result;
-	} catch (error) {
-		logError('Error detectando servidor de display:', error);
-		return 'unknown';
-	}
-};
-
-const logout = async () => {
-	try {
-		const displayServer = await detectDisplayServer();
-		await sysLogout({ displayServer });
-	} catch (error) {
-		logError('Error al hacer logout:', error);
-	}
-};
-
-const shutdown = async () => {
-	try {
-		await sysShutdown();
-	} catch (error) {
-		logError('Error al apagar:', error);
-	}
-};
-
-const reboot = async () => {
-	try {
-		await sysReboot();
-	} catch (error) {
-		logError('Error al reiniciar:', error);
-	}
-};
-
-const suspend = async () => {
-	try {
-		const displayServer = await detectDisplayServer();
-		await sysSuspend({ displayServer });
-	} catch (error) {
-		logError('Error al suspender:', error);
-	}
+const openSessionPopup = (action: string) => {
+	toggleSessionPopup(action);
 };
 
 const openConfiguration = async () => {
@@ -116,7 +70,11 @@ const openConfiguration = async () => {
 const closeAfterAnimation = () => {
 	leaving.value = true;
 	setTimeout(() => {
-		try { toggleMenu(); } catch { /* window already closed */ }
+		try {
+			toggleMenu();
+		} catch {
+			/* window already closed */
+		}
 	}, 200);
 };
 
@@ -124,7 +82,9 @@ const apps = computed(() => {
 	return (menuData.value as any)?.all?.apps ?? [];
 });
 
-const appsOfCategory = computed(() => (menuData.value as any)?.[categorySelected.value]?.apps ?? []);
+const appsOfCategory = computed(
+	() => (menuData.value as any)?.[categorySelected.value]?.apps ?? []
+);
 
 const appsFiltred = computed(() => {
 	const allApps = (menuData.value as any)?.all?.apps ?? [];
@@ -133,8 +93,7 @@ const appsFiltred = computed(() => {
 	// Data is pre-sorted on fetch, no re-sorting needed per keystroke
 	return allApps.filter(
 		(app: any) =>
-			app.name.toLowerCase().includes(query) ||
-			app.description.toLowerCase().includes(query)
+			app.name.toLowerCase().includes(query) || app.description.toLowerCase().includes(query)
 	);
 });
 
@@ -223,10 +182,10 @@ const onBlur = () => {
               img: settingsImg,
               handler: openConfiguration,
             },
-            { title: 'Shutdown', img: shutdownImg, handler: shutdown },
-            { title: 'Reboot', img: rebootImg, handler: reboot },
-            { title: 'Logout', img: logoutImg, handler: logout },
-            { title: 'Suspend', img: suspendImg, handler: suspend },
+            { title: 'Shutdown', img: shutdownImg, handler: () => openSessionPopup('shutdown') },
+            { title: 'Reboot', img: rebootImg, handler: () => openSessionPopup('reboot') },
+            { title: 'Logout', img: logoutImg, handler: () => openSessionPopup('logout') },
+            { title: 'Suspend', img: suspendImg, handler: () => openSessionPopup('suspend') },
           ]"
           :key="index"
           :title="action.title"
