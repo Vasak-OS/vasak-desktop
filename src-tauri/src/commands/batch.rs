@@ -51,12 +51,27 @@ async fn dispatch_command(app: &AppHandle, command: &str, _args: &Value) -> Batc
     match command {
         "get_windows" => {
             let state = app.state::<WMState>();
-            match state
-                .window_manager
-                .read()
-                .map_err(|e| e.to_string())
-                .and_then(|wm| wm.get_window_list().map_err(|e| e.to_string()))
-            {
+            // Try non-blocking read first; on contention, use cached state (Req 13.3, 13.4)
+            let result = match state.window_manager.try_read() {
+                Ok(wm) => wm.get_window_list().map_err(|e| e.to_string()),
+                Err(_) => {
+                    // Lock contended — return cached state if fresh
+                    if let Some(guard) = state.cached_windows.try_read_for(std::time::Duration::from_millis(50)) {
+                        if let Some(ref cached) = *guard {
+                            if cached.updated_at.elapsed() < std::time::Duration::from_secs(5) {
+                                Ok(cached.windows.clone())
+                            } else {
+                                Ok(Vec::new())
+                            }
+                        } else {
+                            Ok(Vec::new())
+                        }
+                    } else {
+                        Ok(Vec::new())
+                    }
+                }
+            };
+            match result {
                 Ok(windows) => match serde_json::to_value(&windows) {
                     Ok(val) => BatchResponse::ok(0, val),
                     Err(e) => BatchResponse::err(0, e.to_string()),

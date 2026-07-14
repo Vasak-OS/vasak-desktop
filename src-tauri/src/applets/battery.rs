@@ -1,16 +1,20 @@
 use super::Applet;
+use crate::dbus_pool::DbusPool;
 use crate::structs::BatteryInfo;
 use async_trait::async_trait;
 use futures_util::StreamExt;
-use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
+use zbus::zvariant::OwnedValue;
 use zbus::{Connection, MessageStream};
 
 pub struct BatteryApplet;
 
-// Keep this global for the static methods (used by commands)
-static BATTERY_CONN: Mutex<Option<Arc<Connection>>> = Mutex::new(None);
+// Cached battery state for timeout fallback
+static BATTERY_CACHE: Mutex<Option<BatteryInfo>> = Mutex::new(None);
+// Cached device path (discovered at startup)
 static BATTERY_DEVICE_PATH: Mutex<Option<String>> = Mutex::new(None);
 
 #[async_trait]
@@ -20,49 +24,43 @@ impl Applet for BatteryApplet {
     }
 
     async fn start(&self, app_handle: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        let conn = match Connection::system().await {
-            Ok(c) => Arc::new(c),
-            Err(e) => return Err(Box::new(e)),
-        };
-        *BATTERY_CONN.lock().unwrap() = Some(conn.clone());
+        // Use shared system bus connection from DbusPool
+        let conn = get_system_connection(&app_handle).await
+            .ok_or_else(|| "No system bus connection available from DbusPool".to_string())?;
 
         let battery_path = find_battery_path(&conn).await;
-        
+
         // Define paths for sysfs fallback
         let battery_sysfs_path = "/sys/class/power_supply/BAT0";
         let ac_sysfs_path = "/sys/class/power_supply/AC0";
-        let has_sysfs = std::path::Path::new(battery_sysfs_path).exists() || std::path::Path::new(ac_sysfs_path).exists();
+        let has_sysfs = std::path::Path::new(battery_sysfs_path).exists()
+            || std::path::Path::new(ac_sysfs_path).exists();
 
         // Emit initial state
-        if let Some(info) = get_battery_info().await {
+        if let Some(info) = get_battery_info_with_conn(&conn).await {
             let _ = app_handle.emit("battery-update", &info);
         }
 
         if let Some(path) = battery_path {
-             // Cache the path for future lookups
-             BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
-             
-             // Prefer DBus events if available
-             self.run_dbus_loop(app_handle, conn, path).await;
+            // Cache the path for future lookups
+            BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
+
+            // Prefer DBus events if available
+            self.run_dbus_loop(app_handle, conn, path).await;
         } else {
-             // Fallback to polling if UPower device not found
-             // If we have sysfs files, we assume battery exists and we should poll
-             // Note: get_battery_info currently relies on UPower, so if UPower is missing
-             // this might fail. Ideally we should have a pure sysfs reader here.
-             // For now, we reduce poll frequency to 2s to save CPU.
-             if has_sysfs {
-                 self.run_sysfs_loop(app_handle).await;
-             } else {
-                 // No battery found via UPower and no SysFS.
-                 // Monitor occasionally in case it appears (e.g. plugged in)
-                 loop {
-                     tokio::time::sleep(Duration::from_secs(60)).await;
-                     if let Some(info) = get_battery_info().await {
-                          let _ = app_handle.emit("battery-update", &info);
-                          // If we found it, we should probably switch mode, but simple periodic check is fine
-                     }
-                 }
-             }
+            // Fallback to polling if UPower device not found
+            if has_sysfs {
+                self.run_sysfs_loop(app_handle).await;
+            } else {
+                // No battery found via UPower and no SysFS.
+                // Monitor occasionally in case it appears (e.g. plugged in)
+                loop {
+                    tokio::time::sleep(Duration::from_secs(60)).await;
+                    if let Some(info) = get_battery_info().await {
+                        let _ = app_handle.emit("battery-update", &info);
+                    }
+                }
+            }
         }
 
         Ok(())
@@ -75,17 +73,17 @@ impl BatteryApplet {
         loop {
             // Increased polling interval to 2s for optimization
             tokio::time::sleep(Duration::from_secs(2)).await;
-            
+
             if let Some(current_info) = get_battery_info().await {
                 let should_emit = match &last_info {
                     None => true,
                     Some(last) => {
-                        (last.percentage - current_info.percentage).abs() > 0.1 || 
-                        last.is_charging != current_info.is_charging ||
-                        last.state != current_info.state
+                        (last.percentage - current_info.percentage).abs() > 0.1
+                            || last.is_charging != current_info.is_charging
+                            || last.state != current_info.state
                     }
                 };
-                
+
                 if should_emit {
                     let _ = app_handle.emit("battery-update", &current_info);
                     last_info = Some(current_info);
@@ -94,12 +92,25 @@ impl BatteryApplet {
         }
     }
 
-    async fn run_dbus_loop(&self, app_handle: AppHandle, mut conn: Arc<Connection>, mut path: String) {
+    async fn run_dbus_loop(
+        &self,
+        app_handle: AppHandle,
+        conn: Connection,
+        mut path: String,
+    ) {
         let mut reconnect_attempts = 0u32;
         let max_reconnects = 5;
-        
+
         loop {
-            match self.monitor_dbus_with_reconnect(&app_handle, conn.clone(), path.clone(), reconnect_attempts).await {
+            match self
+                .monitor_dbus_with_reconnect(
+                    &app_handle,
+                    conn.clone(),
+                    path.clone(),
+                    reconnect_attempts,
+                )
+                .await
+            {
                 Ok(_) => {
                     log::info!("[battery] D-Bus monitor ended normally");
                     break;
@@ -108,49 +119,71 @@ impl BatteryApplet {
                     reconnect_attempts += 1;
                     if reconnect_attempts >= max_reconnects {
                         log::error!("[battery] Max reconnection attempts reached: {}", e);
-                        let _ = app_handle.emit("dbus-status", serde_json::json!({
-                            "service": "battery",
-                            "status": "failed",
-                            "message": "No se pudo conectar a UPower"
-                        }));
+                        let _ = app_handle.emit(
+                            "dbus-status",
+                            serde_json::json!({
+                                "service": "battery",
+                                "status": "failed",
+                                "message": "No se pudo conectar a UPower"
+                            }),
+                        );
                         // Fallback to polling
                         self.run_sysfs_loop(app_handle).await;
                         break;
                     }
-                    log::warn!("[battery] Connection lost (attempt {}): {}. Reconnecting...", reconnect_attempts, e);
-                    let _ = app_handle.emit("dbus-status", serde_json::json!({
-                        "service": "battery",
-                        "status": "reconnecting",
-                        "attempt": reconnect_attempts
-                    }));
-                    tokio::time::sleep(std::time::Duration::from_secs(2u64.pow(reconnect_attempts.min(3)))).await;
+                    log::warn!(
+                        "[battery] Connection lost (attempt {}): {}. Reconnecting...",
+                        reconnect_attempts,
+                        e
+                    );
+                    let _ = app_handle.emit(
+                        "dbus-status",
+                        serde_json::json!({
+                            "service": "battery",
+                            "status": "reconnecting",
+                            "attempt": reconnect_attempts
+                        }),
+                    );
+                    tokio::time::sleep(std::time::Duration::from_secs(
+                        2u64.pow(reconnect_attempts.min(3)),
+                    ))
+                    .await;
 
-                    // Create fresh connection and update caches
-                    if let Ok(c) = Connection::system().await {
-                        let new_conn = Arc::new(c);
-                        *BATTERY_CONN.lock().unwrap() = Some(new_conn.clone());
-                        conn = new_conn;
-                    }
-                    if let Some(p) = find_battery_path(&conn).await {
-                        BATTERY_DEVICE_PATH.lock().unwrap().replace(p.clone());
-                        path = p;
+                    // Try to get a fresh connection from the pool
+                    if let Some(new_conn) = get_system_connection(&app_handle).await {
+                        if let Some(p) = find_battery_path(&new_conn).await {
+                            BATTERY_DEVICE_PATH.lock().unwrap().replace(p.clone());
+                            path = p;
+                        }
                     }
                 }
             }
         }
     }
 
-    async fn monitor_dbus_with_reconnect(&self, app_handle: &AppHandle, conn: Arc<Connection>, path: String, attempt: u32) -> Result<(), String> {
+    async fn monitor_dbus_with_reconnect(
+        &self,
+        app_handle: &AppHandle,
+        conn: Connection,
+        path: String,
+        attempt: u32,
+    ) -> Result<(), String> {
         if attempt > 0 {
-            log::info!("[battery] Reconnected successfully after {} attempts", attempt);
-            let _ = app_handle.emit("dbus-status", serde_json::json!({
-                "service": "battery",
-                "status": "connected"
-            }));
+            log::info!(
+                "[battery] Reconnected successfully after {} attempts",
+                attempt
+            );
+            let _ = app_handle.emit(
+                "dbus-status",
+                serde_json::json!({
+                    "service": "battery",
+                    "status": "connected"
+                }),
+            );
         }
 
         let mut last_info: Option<BatteryInfo> = None;
-        let mut stream = MessageStream::from(conn.as_ref());
+        let mut stream = MessageStream::from(&conn);
 
         loop {
             tokio::select! {
@@ -173,21 +206,25 @@ impl BatteryApplet {
                         if interface.as_str() == "org.freedesktop.DBus.Properties" &&
                            member.as_str() == "PropertiesChanged" &&
                            obj_path.as_str() == path {
-                               let info = get_battery_info().await;
+                               let info = get_battery_info_with_conn(&conn).await;
                                Self::emit_if_changed(app_handle, &mut last_info, &info).await;
                         }
                     }
                 }
 
                 _ = tokio::time::sleep(Duration::from_secs(5)) => {
-                    let info = get_battery_info().await;
+                    let info = get_battery_info_with_conn(&conn).await;
                     Self::emit_if_changed(app_handle, &mut last_info, &info).await;
                 }
             }
         }
     }
 
-    async fn emit_if_changed(app_handle: &AppHandle, last_info: &mut Option<BatteryInfo>, current: &Option<BatteryInfo>) {
+    async fn emit_if_changed(
+        app_handle: &AppHandle,
+        last_info: &mut Option<BatteryInfo>,
+        current: &Option<BatteryInfo>,
+    ) {
         let should_emit = match (last_info.as_ref(), current) {
             (_, None) => false,
             (None, Some(_)) => true,
@@ -205,6 +242,19 @@ impl BatteryApplet {
     }
 }
 
+/// Get system bus connection from DbusPool managed state.
+/// Falls back to creating a new connection if pool is unavailable.
+async fn get_system_connection(app_handle: &AppHandle) -> Option<Connection> {
+    // Try to get from DbusPool managed state
+    if let Some(pool) = app_handle.try_state::<DbusPool>() {
+        if let Some(conn) = pool.system().await {
+            return Some(conn);
+        }
+    }
+    // Fallback: create a new connection (shouldn't normally happen)
+    Connection::system().await.ok()
+}
+
 // Public Helpers (Commands)
 pub async fn has_battery() -> bool {
     match get_battery_info().await {
@@ -213,74 +263,112 @@ pub async fn has_battery() -> bool {
     }
 }
 
+/// Public function used by commands - attempts to get battery info.
+/// Creates its own system connection as a fallback if DbusPool is not accessible.
 pub async fn get_battery_info() -> Option<BatteryInfo> {
-    // Try cached connection, or create a new one
-    let (cached_conn, cached_path) = {
-        let conn_guard = BATTERY_CONN.lock().unwrap();
-        let path_guard = BATTERY_DEVICE_PATH.lock().unwrap();
-        (conn_guard.clone(), path_guard.clone())
-    };
-    let conn = match cached_conn {
-        Some(c) => c,
-        None => Connection::system().await.ok().map(Arc::new)?,
-    };
-
-    // Try cached path, or search for it
-    let device_path = match cached_path {
-        Some(p) => p,
-        None => find_battery_path(&conn).await
-            .unwrap_or_else(|| "/org/freedesktop/UPower/devices/battery_BAT0".to_string()),
-    };
-
-    let proxy = zbus::Proxy::new(
-        &conn,
-        "org.freedesktop.UPower",
-        device_path.as_str(),
-        "org.freedesktop.UPower.Device"
-    ).await.ok()?;
-
-    let result = get_battery_info_from_proxy(proxy).await;
-    if result.is_some() {
-        return result;
-    }
-
-    // Stale connection — create fresh one and update cache
-    if let Ok(new_conn) = Connection::system().await {
-        let new_conn = Arc::new(new_conn);
-        *BATTERY_CONN.lock().unwrap() = Some(new_conn.clone());
-
-        let new_path = find_battery_path(&new_conn).await
-            .unwrap_or_else(|| device_path.clone());
-        BATTERY_DEVICE_PATH.lock().unwrap().replace(new_path.clone());
-
-        let proxy = zbus::Proxy::new(
-            &new_conn,
-            "org.freedesktop.UPower",
-            new_path.as_str(),
-            "org.freedesktop.UPower.Device"
-        ).await.ok()?;
-        return get_battery_info_from_proxy(proxy).await;
-    }
-
-    None
+    let conn = Connection::system().await.ok()?;
+    get_battery_info_with_conn(&conn).await
 }
 
-async fn get_battery_info_from_proxy(proxy: zbus::Proxy<'_>) -> Option<BatteryInfo> {
-    let is_present: bool = tokio::time::timeout(Duration::from_millis(300), proxy.get_property("IsPresent"))
-        .await
-        .ok()?
-        .ok()?;
-    let percentage: f64 = tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Percentage"))
-        .await
-        .ok()
-        .and_then(|r| r.ok())
-        .unwrap_or(0.0);
-    let state: u32 = tokio::time::timeout(Duration::from_millis(300), proxy.get_property("State"))
-        .await
-        .ok()
-        .and_then(|r| r.ok())
-        .unwrap_or(0);
-    let state_str = match state {
+/// Public function used by batch commands that have access to AppHandle.
+/// Uses DbusPool for connection sharing.
+pub async fn get_battery_info_with_app(app_handle: &AppHandle) -> Option<BatteryInfo> {
+    let conn = get_system_connection(app_handle).await?;
+    get_battery_info_with_conn(&conn).await
+}
+
+/// Internal: fetch battery info using a provided connection.
+/// Uses GetAll for a single D-Bus round-trip with 300ms timeout.
+/// On timeout with cache: returns cached state.
+/// On initial timeout without cache: returns has_battery=false (caller should retry).
+async fn get_battery_info_with_conn(conn: &Connection) -> Option<BatteryInfo> {
+    // Get or discover device path
+    let device_path = {
+        let cached = BATTERY_DEVICE_PATH.lock().unwrap().clone();
+        match cached {
+            Some(p) => p,
+            None => {
+                let path = find_battery_path(conn).await
+                    .unwrap_or_else(|| "/org/freedesktop/UPower/devices/battery_BAT0".to_string());
+                BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
+                path
+            }
+        }
+    };
+
+    // Create a proxy on org.freedesktop.DBus.Properties interface for GetAll
+    let props_proxy = zbus::Proxy::new(
+        conn,
+        "org.freedesktop.UPower",
+        device_path.as_str(),
+        "org.freedesktop.DBus.Properties",
+    )
+    .await
+    .ok()?;
+
+    // Single GetAll call with 300ms timeout
+    let result = tokio::time::timeout(
+        Duration::from_millis(300),
+        props_proxy.call_method("GetAll", &("org.freedesktop.UPower.Device",)),
+    )
+    .await;
+
+    match result {
+        Ok(Ok(reply)) => {
+            // Parse the HashMap from the reply body
+            let props: HashMap<String, OwnedValue> = match reply.body().deserialize() {
+                Ok(p) => p,
+                Err(_) => {
+                    // Parse failure: return cache if available
+                    return BATTERY_CACHE.lock().unwrap().clone();
+                }
+            };
+
+            let info = parse_battery_info_from_props(&props);
+            // Update cache
+            *BATTERY_CACHE.lock().unwrap() = Some(info.clone());
+            Some(info)
+        }
+        Ok(Err(_dbus_err)) => {
+            // D-Bus method call error: return cache if available
+            BATTERY_CACHE.lock().unwrap().clone()
+        }
+        Err(_timeout) => {
+            // Timeout: return cached state if available
+            let cached = BATTERY_CACHE.lock().unwrap().clone();
+            if cached.is_some() {
+                return cached;
+            }
+            // Initial timeout without cache: emit has_battery: false
+            // The caller (applet loop) will retry in 5s
+            Some(BatteryInfo {
+                has_battery: false,
+                percentage: 0.0,
+                state: "Unknown".to_string(),
+                time_to_empty: None,
+                time_to_full: None,
+                is_present: false,
+                is_charging: false,
+                vendor: None,
+                model: None,
+                technology: None,
+                energy: None,
+                energy_full: None,
+                energy_full_design: None,
+                voltage: None,
+                temperature: None,
+                serial: None,
+            })
+        }
+    }
+}
+
+/// Parse BatteryInfo from a HashMap of properties returned by GetAll.
+fn parse_battery_info_from_props(props: &HashMap<String, OwnedValue>) -> BatteryInfo {
+    let is_present = prop_bool(props, "IsPresent").unwrap_or(false);
+    let percentage = prop_f64(props, "Percentage").unwrap_or(0.0);
+    let state_num = prop_u32(props, "State").unwrap_or(0);
+    let state_str = match state_num {
         1 => "Charging",
         2 => "Discharging",
         3 => "Empty",
@@ -288,65 +376,127 @@ async fn get_battery_info_from_proxy(proxy: zbus::Proxy<'_>) -> Option<BatteryIn
         5 => "PendingCharge",
         6 => "PendingDischarge",
         _ => "Unknown",
-    }.to_string();
-    
-    // Additional properties...
-    let is_charging = state == 1;
-    
-    Some(BatteryInfo {
+    }
+    .to_string();
+    let is_charging = state_num == 1;
+
+    let technology_num = prop_u32(props, "Technology");
+    let technology = technology_num.map(|t| match t {
+        1 => "Lithium ion".to_string(),
+        2 => "Lithium polymer".to_string(),
+        3 => "Lithium iron phosphate".to_string(),
+        4 => "Lead acid".to_string(),
+        5 => "Nickel cadmium".to_string(),
+        6 => "Nickel metal hydride".to_string(),
+        _ => "Unknown".to_string(),
+    });
+
+    BatteryInfo {
         has_battery: is_present,
         percentage,
         state: state_str,
-        time_to_empty: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("TimeToEmpty")).await.ok().and_then(|r| r.ok()),
-        time_to_full: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("TimeToFull")).await.ok().and_then(|r| r.ok()),
+        time_to_empty: prop_i64(props, "TimeToEmpty").map(|v| v as u64),
+        time_to_full: prop_i64(props, "TimeToFull").map(|v| v as u64),
         is_present,
         is_charging,
-        vendor: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Vendor")).await.ok().and_then(|r| r.ok()),
-        model: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Model")).await.ok().and_then(|r| r.ok()),
-        technology: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Technology")).await.ok().and_then(|r| r.ok()),
-        energy: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Energy")).await.ok().and_then(|r| r.ok()),
-        energy_full: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("EnergyFull")).await.ok().and_then(|r| r.ok()),
-        energy_full_design: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("EnergyFullDesign")).await.ok().and_then(|r| r.ok()),
-        voltage: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Voltage")).await.ok().and_then(|r| r.ok()),
-        temperature: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Temperature")).await.ok().and_then(|r| r.ok()),
-        serial: tokio::time::timeout(Duration::from_millis(300), proxy.get_property("Serial")).await.ok().and_then(|r| r.ok()),
+        vendor: prop_string(props, "Vendor"),
+        model: prop_string(props, "Model"),
+        technology,
+        energy: prop_f64(props, "Energy"),
+        energy_full: prop_f64(props, "EnergyFull"),
+        energy_full_design: prop_f64(props, "EnergyFullDesign"),
+        voltage: prop_f64(props, "Voltage"),
+        temperature: prop_f64(props, "Temperature"),
+        serial: prop_string(props, "Serial"),
+    }
+}
+
+// ---- Property extraction helpers ----
+
+fn prop_bool(props: &HashMap<String, OwnedValue>, key: &str) -> Option<bool> {
+    props.get(key).and_then(|v| <bool>::try_from(v).ok())
+}
+
+fn prop_f64(props: &HashMap<String, OwnedValue>, key: &str) -> Option<f64> {
+    props.get(key).and_then(|v| <f64>::try_from(v).ok())
+}
+
+fn prop_u32(props: &HashMap<String, OwnedValue>, key: &str) -> Option<u32> {
+    props.get(key).and_then(|v| <u32>::try_from(v).ok())
+}
+
+fn prop_i64(props: &HashMap<String, OwnedValue>, key: &str) -> Option<i64> {
+    props.get(key).and_then(|v| <i64>::try_from(v).ok())
+}
+
+fn prop_string(props: &HashMap<String, OwnedValue>, key: &str) -> Option<String> {
+    props.get(key).and_then(|v| {
+        // Try direct String conversion
+        if let Ok(s) = <String>::try_from(v) {
+            if s.is_empty() {
+                None
+            } else {
+                Some(s)
+            }
+        } else {
+            // Try &str conversion
+            <&str>::try_from(v).ok().and_then(|s| {
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(s.to_string())
+                }
+            })
+        }
     })
 }
 
+/// Find the battery device path from UPower's enumerated devices.
 async fn find_battery_path(conn: &Connection) -> Option<String> {
     let upower_proxy = zbus::Proxy::new(
         conn,
         "org.freedesktop.UPower",
         "/org/freedesktop/UPower",
-        "org.freedesktop.UPower"
-    ).await.ok()?;
-    
+        "org.freedesktop.UPower",
+    )
+    .await
+    .ok()?;
+
     let devices: Vec<zbus::zvariant::OwnedObjectPath> = tokio::time::timeout(
         Duration::from_millis(500),
-        upower_proxy.call_method("EnumerateDevices", &())
+        upower_proxy.call_method("EnumerateDevices", &()),
     )
-        .await
-        .ok()?
-        .ok()?
-        .body()
-        .deserialize()
-        .ok()?;
-    
+    .await
+    .ok()?
+    .ok()?
+    .body()
+    .deserialize()
+    .ok()?;
+
     for device_path in devices {
-        let device_proxy = zbus::Proxy::new(
+        // Use GetAll on each device to check the Type property efficiently
+        let props_proxy = zbus::Proxy::new(
             conn,
             "org.freedesktop.UPower",
             device_path.as_str(),
-            "org.freedesktop.UPower.Device"
-        ).await.ok()?;
-        
-        let device_type: u32 = tokio::time::timeout(Duration::from_millis(300), device_proxy.get_property("Type"))
-            .await
-            .ok()
-            .and_then(|r| r.ok())
-            .unwrap_or(0);
-        if device_type == 2 {
-            return Some(device_path.to_string());
+            "org.freedesktop.DBus.Properties",
+        )
+        .await
+        .ok()?;
+
+        let reply = tokio::time::timeout(
+            Duration::from_millis(300),
+            props_proxy.call_method("Get", &("org.freedesktop.UPower.Device", "Type")),
+        )
+        .await
+        .ok()?
+        .ok()?;
+
+        let device_type: zbus::zvariant::OwnedValue = reply.body().deserialize().ok()?;
+        if let Ok(t) = <u32>::try_from(&device_type) {
+            if t == 2 {
+                return Some(device_path.to_string());
+            }
         }
     }
     None
