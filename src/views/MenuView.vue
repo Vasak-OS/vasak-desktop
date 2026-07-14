@@ -153,6 +153,9 @@ onMounted(async () => {
 	setMenu();
 	document.addEventListener('keydown', onKeydown);
 	window.addEventListener('blur', onBlur);
+	menuWindow.onFocusChanged(({ focused }) => {
+		if (focused) setTimeout(() => document.getElementById('search')?.focus(), 50);
+	});
 });
 
 onBeforeUnmount(() => {
