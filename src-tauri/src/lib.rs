@@ -9,6 +9,7 @@ mod structs;
 // Feature modules
 mod applets;
 mod audio;
+mod audio_native;
 mod brightness;
 mod commands;
 mod dbus_service;

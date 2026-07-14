@@ -20,11 +20,22 @@ interface BatchResponse {
 	error?: string;
 }
 
+/**
+ * Route-to-commands mapping for view prefetching.
+ * Each route maps to the IPC commands needed for the target view to render.
+ */
+const PREFETCH_MAP: Record<string, string[]> = {
+	'/panel': ['get_windows', 'get_tray_items', 'get_all_notifications', 'get_audio_volume', 'battery_exists'],
+	'/menu': ['get_menu_items'],
+	'/control_center': ['get_all_notifications', 'get_audio_volume', 'get_brightness_info'],
+};
+
 class IPCBatchLayer {
 	private readonly queue: BatchedInvoke[] = [];
 	private scheduled = false;
 	private readonly MAX_BATCH_SIZE = 20;
 	private readonly TIMEOUT_MS = 500;
+	private readonly prefetchCache = new Map<string, unknown>();
 
 	/**
 	 * Queues an invoke call and returns a Promise that resolves with the result.
@@ -40,6 +51,37 @@ class IPCBatchLayer {
 			});
 			this.scheduleFlush();
 		});
+	}
+
+	/**
+	 * Pre-loads data needed by the target view route in a single batched request.
+	 * Results are cached in the prefetch cache for the component to consume on mount.
+	 */
+	async prefetch(routePath: string): Promise<void> {
+		const commands = PREFETCH_MAP[routePath];
+		if (!commands || commands.length === 0) return;
+
+		const promises = commands.map((command) =>
+			this.invoke(command).then((data) => {
+				this.prefetchCache.set(command, data);
+			}).catch(() => {
+				// Prefetch is best-effort; silently ignore failures
+			}),
+		);
+
+		await Promise.allSettled(promises);
+	}
+
+	/**
+	 * Retrieves prefetched data for a command. Returns undefined if not cached.
+	 * Consumes the cached entry (one-time read).
+	 */
+	getPrefetchedData<T>(command: string): T | undefined {
+		const data = this.prefetchCache.get(command) as T | undefined;
+		if (data !== undefined) {
+			this.prefetchCache.delete(command);
+		}
+		return data;
 	}
 
 	/**
