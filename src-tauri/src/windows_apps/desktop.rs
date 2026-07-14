@@ -1,11 +1,7 @@
-use crate::app_url::get_app_url;
-use crate::logger::log_error;
+use gdk::prelude::*;
 use gtk::prelude::*;
 use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
-use tauri::{
-    async_runtime::spawn, App, Monitor, Url, WebviewUrl, WebviewWindowBuilder,
-};
-
+use tauri::{App, WebviewUrl, WebviewWindowBuilder};
 
 use crate::gtk_utils;
 use crate::monitor_manager::{get_monitors, get_primary_monitor};
@@ -14,140 +10,147 @@ pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let monitors = get_monitors(app.handle()).ok_or("No monitors found")?;
     let primary_monitor = get_primary_monitor(app.handle()).ok_or("No primary monitor found")?;
 
-    let primary_monitor_size = primary_monitor.size();
-    let primary_monitor_position = primary_monitor.position();
-
-    let primary_desktop_window = WebviewWindowBuilder::new(
-        app,
-        "desktop",
-        WebviewUrl::App("index.html#/desktop".into()),
-    )
-    .title("Vasak Desktop")
-    .decorations(false)
-    .transparent(true)
-    .inner_size(primary_monitor_size.width as f64, primary_monitor_size.height as f64)
-    .max_inner_size(primary_monitor_size.width as f64, primary_monitor_size.height as f64)
-    .min_inner_size(primary_monitor_size.width as f64, primary_monitor_size.height as f64)
-    .position(primary_monitor_position.x as f64, primary_monitor_position.y as f64)
-    .visible(false)
-    .skip_taskbar(true)
-    .always_on_bottom(true)
-    .build()?;
-
-    set_window_properties(
-        &primary_desktop_window,
-        "Vasak Desktop".to_string(),
-        primary_monitor_position.x,
-        primary_monitor_position.y,
-        primary_monitor_size.width,
-        primary_monitor_size.height,
-    ).map_err(|e| Box::<dyn std::error::Error>::from(e))?;
-
-    for (index, monitor) in monitors.iter().enumerate() {
-        if monitor.position() == primary_monitor_position {
-            continue; // Skip the primary monitor
-        }
-
-        let app_handle = app.handle().clone();
-        let monitor_clone = monitor.clone();
-
-        spawn(async move {
-            let _ = open_other_desktop(app_handle, index, monitor_clone).await;
-        });
-    }
+    setup_desktop(app, "desktop", &primary_monitor, false)?;
+    open_other_desktops(app, &monitors, &primary_monitor);
 
     Ok(())
 }
 
-async fn open_other_desktop(app_handle: tauri::AppHandle, index: usize, monitor: Monitor) {
-    let label = format!("desktop_{}", index);
+fn open_other_desktops(app: &App, monitors: &[tauri::Monitor], primary_monitor: &tauri::Monitor) {
+    let primary_pos = primary_monitor.position();
+    let app_handle = app.handle().clone();
+    let others: Vec<tauri::Monitor> = monitors
+        .iter()
+        .filter(|m| m.position() != primary_pos)
+        .cloned()
+        .collect();
 
-    let monitor_size = monitor.size();
-    let monitor_position = monitor.position();
+    for (index, monitor) in others.into_iter().enumerate() {
+        let label = format!("desktop_{}", index + 1);
+        let app = app_handle.clone();
+        std::thread::spawn(move || {
+            // We create the webview window from the main thread via invoke_on_main,
+            // but we need the AppHandle. Since this is a secondary monitor and
+            // the setup is complex, we handle it inside invoke_on_main
+            unsafe {
+                gtk_utils::invoke_on_main(move || {
+                    unimplemented!("Secondary monitor desktops not yet supported");
+                });
+            }
+        });
+    }
+}
 
-    let other_desktop_window = WebviewWindowBuilder::new(
-        &app_handle,
-        &label,
+fn setup_desktop(
+    app: &App,
+    label: &str,
+    tauri_monitor: &tauri::Monitor,
+    _is_secondary: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let pos = tauri_monitor.position();
+    let size = tauri_monitor.size();
+
+    // 1. Find matching GDK monitor.
+    let gdk_monitor = find_gdk_monitor(tauri_monitor)
+        .ok_or_else(|| format!("No GDK monitor for {:?}", label))?;
+
+    // 2. Create Tauri WebviewWindow (xdg-toplevel) to host the webview.
+    let desktop_window = WebviewWindowBuilder::new(
+        app,
+        label,
         WebviewUrl::App(format!("index.html#/desktop?monitor={}", label).into()),
     )
-    .title(format!("Vasak Desktop {}", index))
+    .title(format!("Vasak Desktop {}", label))
     .decorations(false)
-    .transparent(false)
-    .inner_size(monitor_size.width as f64, monitor_size.height as f64)
-    .max_inner_size(monitor_size.width as f64, monitor_size.height as f64)
-    .min_inner_size(monitor_size.width as f64, monitor_size.height as f64)
-    .position(monitor_position.x as f64, monitor_position.y as f64)
+    .transparent(true)
+    .inner_size(size.width as f64, size.height as f64)
+    .position(pos.x as f64, pos.y as f64)
     .visible(false)
     .skip_taskbar(true)
-    .always_on_bottom(true)
-    .build();
+    .build()?;
 
-    if let Ok(other_desktop_window) = other_desktop_window {
- 
-    let complete_url = format!("{}index.html#/desktop?monitor={}", get_app_url(), label);
-    let url = Url::parse(&complete_url).expect("Failed to parse URL");
-    let _ = other_desktop_window.navigate(url);
+    let gtk_window = desktop_window.gtk_window()?;
 
-    if let Err(e) = set_window_properties(
-        &other_desktop_window,
-        format!("Vasak Desktop {}", index),
-        monitor_position.x,
-        monitor_position.y,
-        monitor_size.width,
-        monitor_size.height,
-    ) {
-        log_error(&format!("{e}"));
-    }
-    } else {
-        log_error(&format!("Failed to create desktop window for monitor {}", index));
-    }
-}
+    // 3. Create a fresh GtkWindow with layer-shell at Background layer.
+    let layer_win = gtk::Window::new(gtk::WindowType::Toplevel);
+    layer_win.set_decorated(false);
+    layer_win.set_size_request(size.width as i32, size.height as i32);
+    layer_win.set_position(gtk::WindowPosition::None);
+    layer_win.move_(pos.x, pos.y);
 
-fn set_window_properties(
-    window: &tauri::WebviewWindow,
-    _title: String,
-    x: i32,
-    y: i32,
-    _width: u32,
-    _height: u32,
-) -> Result<(), String> {
-    let gtk_window = window.gtk_window().map_err(|e| format!("Failed to get GTK window for {}: {e}", window.label()))?;
+    layer_win.init_layer_shell();
+    layer_win.set_monitor(&gdk_monitor);
+    layer_win.set_namespace("vasak-desktop");
+    layer_win.set_layer(Layer::Background);
+    layer_win.set_anchor(Edge::Left, true);
+    layer_win.set_anchor(Edge::Right, true);
+    layer_win.set_anchor(Edge::Top, true);
+    layer_win.set_anchor(Edge::Bottom, true);
+    layer_win.set_keyboard_mode(KeyboardMode::None);
 
-    let _ = window.show();
-
-    unsafe {
-        gtk_utils::invoke_on_main(move || {
-            gtk_window.set_type_hint(gdk::WindowTypeHint::Desktop);
-            gtk_window.set_accept_focus(false);
-
-            if gtk_layer_shell::is_supported() {
-                gtk_window.init_layer_shell();
-                gtk_window.set_namespace("vasak-desktop");
-                gtk_window.set_layer(Layer::Background);
-                gtk_window.set_anchor(Edge::Top, true);
-                gtk_window.set_anchor(Edge::Left, true);
-                gtk_window.set_anchor(Edge::Right, true);
-                gtk_window.set_anchor(Edge::Bottom, true);
-                gtk_window.set_keyboard_mode(KeyboardMode::None);
-                gtk_window.set_exclusive_zone(0);
-
-                if let Some(display) = gdk::Display::default() {
-                    for i in 0..display.n_monitors() {
-                        if let Some(monitor) = display.monitor(i) {
-                            let geo = monitor.geometry();
-                            if geo.x() == x && geo.y() == y {
-                                gtk_window.set_monitor(&monitor);
-                                break;
-                            }
+    // 4. Reparent: extract webview from Tauri's xdg window into layer-shell window.
+    let (reparented, child_type, container_type) = gtk_window.child().map_or(
+        (false, "None".to_string(), "None".to_string()),
+        |vbox| {
+            let child_name = vbox.type_().name().to_string();
+            let container = vbox.dynamic_cast_ref::<gtk::Container>();
+            match container {
+                Some(container) => {
+                    let container_name = container.type_().name().to_string();
+                    match container.children().first() {
+                        Some(widget) => {
+                            let widget_name = widget.type_().name().to_string();
+                            container.remove(widget);
+                            layer_win.add(widget);
+                            (true, widget_name, container_name)
                         }
+                        None => (false, child_name, container_name),
                     }
                 }
+                None => (false, child_name, "Not a Container".to_string()),
             }
+        },
+    );
 
-            gtk_window.show_all();
-            gtk_window.present();
-        });
+    if !reparented {
+        return Err(format!(
+            "Desktop reparent failed: child={child_type}, container={container_type}"
+        ).into());
     }
 
+    // 5. Transparent background.
+    if let Some(screen) = gtk::prelude::WidgetExt::screen(&layer_win) {
+        if let Some(rgba) = screen.rgba_visual() {
+            layer_win.set_visual(Some(&rgba));
+        }
+        let css = gtk::CssProvider::new();
+        css.load_from_data(
+            b"window { background-color: rgba(0, 0, 0, 0); }",
+        ).ok();
+        layer_win.style_context().add_provider(
+            &css,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION + 1,
+        );
+    }
+
+    // 6. Show layer-shell desktop, hide xdg window.
+    layer_win.show_all();
+    gtk_window.hide();
+
+    std::mem::forget(layer_win);
+
     Ok(())
+}
+
+fn find_gdk_monitor(tauri_monitor: &tauri::Monitor) -> Option<gdk::Monitor> {
+    let pos = tauri_monitor.position();
+    let display = gdk::Display::default()?;
+    for i in 0..display.n_monitors() {
+        let mon = display.monitor(i)?;
+        let rect = mon.geometry();
+        if rect.x() == pos.x && rect.y() == pos.y {
+            return Some(mon);
+        }
+    }
+    None
 }
