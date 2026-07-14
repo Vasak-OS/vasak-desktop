@@ -17,7 +17,6 @@
 use crate::audio;
 use crate::logger::{log_debug, log_error, log_info};
 use crate::structs::VolumeInfo;
-use std::sync::Arc;
 use tokio::sync::watch;
 
 /// Error type for PipeWire connection failures.
