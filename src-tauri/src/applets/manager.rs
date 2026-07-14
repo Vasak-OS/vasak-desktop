@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use tauri::{AppHandle, Listener};
+use tauri::{AppHandle, Listener, Manager};
 use tokio::sync::RwLock;
 use crate::logger::{log_info, log_error};
 use super::Applet;
@@ -112,32 +112,34 @@ impl AppletManager {
             let app_handle = app.clone();
             let deferred_applets = deferred;
 
-            // Use a oneshot channel to signal when panel-ready is received
-            let (tx, rx) = tokio::sync::oneshot::channel::<()>();
-            let tx = std::sync::Mutex::new(Some(tx));
-
-            // Listen for the panel-ready event from the frontend
-            app.listen("panel-ready", move |_event| {
-                if let Some(tx) = tx.lock().unwrap().take() {
-                    let _ = tx.send(());
-                }
-            });
+            // Reuse the pre-registered readiness signal from setup.
+            // The listener was installed before create_panel(), so no race.
+            let mut ready_rx = {
+                let latch = app.state::<crate::PanelReadyLatch>();
+                latch.0.subscribe()
+            };
 
             // Spawn a task that waits for panel-ready then starts deferred applets
             tokio::spawn(async move {
-                // Wait for panel-ready event (with a timeout fallback of 10s)
-                let received = tokio::time::timeout(
-                    std::time::Duration::from_secs(10),
-                    rx,
-                ).await;
+                // If already ready (panel-ready fired before we subscribed),
+                // skip the wait entirely.
+                if !*ready_rx.borrow_and_update() {
+                    // Wait for panel-ready event (with a timeout fallback of 10s)
+                    let received = tokio::time::timeout(
+                        std::time::Duration::from_secs(10),
+                        ready_rx.changed(),
+                    ).await;
 
-                match received {
-                    Ok(Ok(())) => {
-                        log_info("Evento panel-ready recibido, iniciando applets diferidos");
+                    match received {
+                        Ok(Ok(())) => {
+                            log_info("Evento panel-ready recibido, iniciando applets diferidos");
+                        }
+                        _ => {
+                            log_info("Timeout esperando panel-ready (10s), iniciando applets diferidos de todas formas");
+                        }
                     }
-                    _ => {
-                        log_info("Timeout esperando panel-ready (10s), iniciando applets diferidos de todas formas");
-                    }
+                } else {
+                    log_info("panel-ready ya recibido, iniciando applets diferidos inmediatamente");
                 }
 
                 for (name, applet) in deferred_applets {

@@ -23,7 +23,7 @@ mod gtk_utils;
 mod window_manager;
 mod windows_apps;
 
-use tauri::Manager;
+use tauri::{Listener, Manager};
 use commands::*;
 use dbus_pool::DbusPool;
 use eventloops::{
@@ -33,9 +33,14 @@ use eventloops::{
 use std::sync::{Arc, RwLock};
 use structs::SystrayPopupState;
 use structs::WMState;
+use tokio::sync::watch;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
 use windows_apps::*;
+
+/// Shared latch signaled by the frontend when the panel has painted.
+/// Registered *before* `create_panel` so no events are missed.
+pub(crate) struct PanelReadyLatch(pub(crate) watch::Sender<bool>);
 
 use applets::{
     manager::{AppletManager, AppletPriority},
@@ -155,6 +160,16 @@ pub fn run() {
             // but stored as None so the pool is always available.
             let dbus_pool = tauri::async_runtime::block_on(DbusPool::init());
             app.manage(dbus_pool);
+
+            // Register panel-ready listener BEFORE creating the panel, so the
+            // readiness signal is available even if the frontend emits before
+            // the deferred-applet task registers its own listener.
+            let (ready_tx, _) = watch::channel(false);
+            let ready_tx_clone = ready_tx.clone();
+            app.listen("panel-ready", move |_| {
+                let _ = ready_tx_clone.send(true);
+            });
+            app.manage(PanelReadyLatch(ready_tx));
 
             let _ = create_desktops(app);
             let _ = create_panel(app);
