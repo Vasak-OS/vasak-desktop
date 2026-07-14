@@ -101,12 +101,11 @@ class IPCBatchLayer {
 	 * Implements 500ms timeout per batch and per-command failure isolation.
 	 */
 	private async flush(): Promise<void> {
-		this.scheduled = false;
-
 		while (this.queue.length > 0) {
 			const batch = this.queue.splice(0, this.MAX_BATCH_SIZE);
 			await this.dispatchBatch(batch);
 		}
+		this.scheduled = false;
 	}
 
 	/**
