@@ -117,6 +117,8 @@ async fn dispatch_command(app: &AppHandle, command: &str, _args: &Value) -> Batc
     }
 }
 
+const MAX_BATCH_SIZE: usize = 20;
+
 #[tauri::command]
 pub async fn batch_invoke(
     app: AppHandle,
@@ -124,9 +126,24 @@ pub async fn batch_invoke(
 ) -> Vec<BatchResponse> {
     log_debug(&format!("batch_invoke: processing {} requests", requests.len()));
 
-    let futures: Vec<_> = requests
-        .iter()
-        .map(|req| {
+    let (valid, rejected): (Vec<_>, Vec<_>) = requests
+        .into_iter()
+        .enumerate()
+        .partition(|(i, _)| *i < MAX_BATCH_SIZE);
+
+    let mut responses: Vec<BatchResponse> = rejected
+        .into_iter()
+        .map(|(_, req)| {
+            BatchResponse::err(
+                req.id,
+                format!("Batch size exceeds maximum of {}", MAX_BATCH_SIZE),
+            )
+        })
+        .collect();
+
+    let futures: Vec<_> = valid
+        .into_iter()
+        .map(|(_, req)| {
             let app_clone = app.clone();
             let command = req.command.clone();
             let args = req.args.clone();
@@ -139,5 +156,6 @@ pub async fn batch_invoke(
         })
         .collect();
 
-    futures_util::future::join_all(futures).await
+    responses.extend(futures_util::future::join_all(futures).await);
+    responses
 }
