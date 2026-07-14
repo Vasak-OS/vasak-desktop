@@ -43,6 +43,7 @@ use applets::{
     battery::BatteryApplet,
     bluetooth::BluetoothApplet,
     brightness::BrightnessApplet,
+    keyboard_leds::KeyboardLedsApplet,
     music::MusicApplet,
     network::NetworkApplet,
     notifications::NotificationApplet, 
@@ -85,6 +86,8 @@ pub fn run() {
             get_windows,
             toggle_window,
             open_app,
+            show_osd,
+            toggle_session_popup,
             logout,
             shutdown,
             reboot,
@@ -184,6 +187,7 @@ pub fn run() {
 
                 // Normal: Spawned after critical are ready, without awaiting
                 manager.register(BatteryApplet, AppletPriority::Normal).await;
+                manager.register(KeyboardLedsApplet, AppletPriority::Normal).await;
                 manager.register(MusicApplet, AppletPriority::Normal).await;
                 manager.register(TrayApplet, AppletPriority::Normal).await;
                 manager.register(NotificationApplet, AppletPriority::Normal).await;

@@ -38,6 +38,11 @@ const routes = [
 				component: () => import('@/views/apps/TerminalView.vue'),
 			},
 			{ path: 'search', component: () => import('@/views/apps/SearchView.vue') },
+			{ path: 'osd-popup', component: () => import('@/views/apps/OsdPopupView.vue') },
+			{
+				path: 'session-popup',
+				component: () => import('@/views/apps/SessionPopupView.vue'),
+			},
 		],
 	},
 ];

@@ -4,6 +4,8 @@ use tauri::{AppHandle, Emitter};
 use std::error::Error;
 use std::path::PathBuf;
 
+use crate::commands::osd::show_osd_internal;
+
 pub struct BrightnessApplet;
 
 #[async_trait]
@@ -21,7 +23,6 @@ impl Applet for BrightnessApplet {
 
 fn monitor_brightness(app: AppHandle) {
     tokio::spawn(async move {
-        // Find device path once
         let device_path = match find_backlight_device() {
             Some(p) => p,
             None => {
@@ -33,14 +34,11 @@ fn monitor_brightness(app: AppHandle) {
         let brightness_path = device_path.join("actual_brightness");
         let max_path = device_path.join("max_brightness");
 
-        // Attempt inotify-based monitoring first
-        if try_inotify_monitor(app.clone(), brightness_path.clone(), max_path.clone()).await {
-            return; // inotify is running successfully
+        // Try inotify first; if it fails, fall back to adaptive polling
+        if !try_inotify_monitor(app.clone(), brightness_path.clone(), max_path.clone()).await {
+            log::warn!("inotify monitoring failed, falling back to adaptive polling for brightness");
+            adaptive_poll_monitor(app, brightness_path, max_path).await;
         }
-
-        // Fallback to adaptive polling
-        log::warn!("inotify monitoring failed, falling back to adaptive polling for brightness");
-        adaptive_poll_monitor(app, brightness_path, max_path).await;
     });
 }
 
@@ -86,7 +84,7 @@ async fn try_inotify_monitor(app: AppHandle, brightness_path: PathBuf, max_path:
 
     // Emit initial brightness
     if let Ok(max) = read_int_file(&max_path).await {
-        emit_brightness(&app, initial_value, max);
+        emit_brightness(&app, initial_value, max).await;
     }
 
     // Validate inotify works: wait for first event with a 5-second timeout.
@@ -99,7 +97,7 @@ async fn try_inotify_monitor(app: AppHandle, brightness_path: PathBuf, max_path:
             // inotify is working! Process this event and continue the loop
             if let Ok(current) = read_int_file(&brightness_path).await {
                 if let Ok(max) = read_int_file(&max_path).await {
-                    emit_brightness(&app, current, max);
+                    emit_brightness(&app, current, max).await;
                 }
             }
         }
@@ -140,7 +138,7 @@ async fn try_inotify_monitor(app: AppHandle, brightness_path: PathBuf, max_path:
                         if current != last_value {
                             last_value = current;
                             if let Ok(max) = read_int_file(&max_path).await {
-                                emit_brightness(&app, current, max);
+                                emit_brightness(&app, current, max).await;
                             }
                         }
                     }
@@ -187,7 +185,7 @@ async fn adaptive_poll_monitor(app: AppHandle, brightness_path: PathBuf, max_pat
                 interval_ms = 200;
                 no_change_count = 0;
 
-                emit_brightness(&app, current, max);
+                emit_brightness(&app, current, max).await;
             } else {
                 // No change
                 no_change_count += 1;
@@ -205,7 +203,7 @@ async fn adaptive_poll_monitor(app: AppHandle, brightness_path: PathBuf, max_pat
 }
 
 /// Emit a brightness-changed event to the frontend.
-fn emit_brightness(app: &AppHandle, current: i32, max: i32) {
+async fn emit_brightness(app: &AppHandle, current: i32, max: i32) {
     let percentage = if max > 0 {
         (current as f64 / max as f64 * 100.0).round() as u8
     } else {
@@ -220,6 +218,14 @@ fn emit_brightness(app: &AppHandle, current: i32, max: i32) {
             "min": 0
         }),
     );
+
+    let _ = show_osd_internal(
+        "display-brightness",
+        percentage as f64,
+        100.0,
+        &format!("Brillo: {}%", percentage),
+        app,
+    ).await;
 }
 
 fn find_backlight_device() -> Option<PathBuf> {
