@@ -14,14 +14,33 @@ pub struct DbusPool {
 
 impl DbusPool {
     /// Initialize the pool by establishing both session and system bus connections.
-    pub async fn init() -> Result<Self, zbus::Error> {
-        let session = Connection::session().await?;
-        let system = Connection::system().await?;
-        logger::log_info("DbusPool: conexiones session y system establecidas");
-        Ok(Self {
-            session: Arc::new(RwLock::new(Some(session))),
-            system: Arc::new(RwLock::new(Some(system))),
-        })
+    /// Each bus is attempted independently; if one fails, it is stored as `None`
+    /// and the pool is still returned so callers never need to retry or panic.
+    pub async fn init() -> Self {
+        let session = match Connection::session().await {
+            Ok(c) => {
+                logger::log_info("DbusPool: conexión session establecida");
+                Some(c)
+            }
+            Err(e) => {
+                logger::log_info(&format!("DbusPool: no se pudo conectar a session bus: {e}"));
+                None
+            }
+        };
+        let system = match Connection::system().await {
+            Ok(c) => {
+                logger::log_info("DbusPool: conexión system establecida");
+                Some(c)
+            }
+            Err(e) => {
+                logger::log_info(&format!("DbusPool: no se pudo conectar a system bus: {e}"));
+                None
+            }
+        };
+        Self {
+            session: Arc::new(RwLock::new(session)),
+            system: Arc::new(RwLock::new(system)),
+        }
     }
 
     /// Get a clone of the shared session bus connection.
