@@ -43,7 +43,8 @@ class IconReloadScheduler {
 	private observer: IntersectionObserver | null = null;
 	private currentCycle: ReloadController | null = null;
 	private debounceTimer: ReturnType<typeof setTimeout> | null = null;
-	private isListening = false;
+	private unlisten: (() => void) | null = null;
+	private listenPromise: Promise<void> | null = null;
 
 	private static readonly DEBOUNCE_MS = 100;
 	private static readonly BATCH_SIZE = 10;
@@ -217,12 +218,27 @@ class IconReloadScheduler {
 	/**
 	 * Set up the Tauri event listener for theme changes (once).
 	 */
-	private ensureListening(): void {
-		if (this.isListening) return;
-		this.isListening = true;
-		listen('vicons:theme-changed', () => {
-			this.onThemeChanged();
-		});
+	private async ensureListening(): Promise<void> {
+		if (this.unlisten) return;
+		if (this.listenPromise) {
+			await this.listenPromise;
+			return;
+		}
+		this.listenPromise = this.doListen();
+		await this.listenPromise;
+	}
+
+	private async doListen(): Promise<void> {
+		try {
+			const unlisten = await listen('vicons:theme-changed', () => {
+				this.onThemeChanged();
+			});
+			this.unlisten = unlisten;
+		} catch (error) {
+			console.error('[IconReloadScheduler] Failed to listen for theme-changed:', error);
+		} finally {
+			this.listenPromise = null;
+		}
 	}
 }
 
