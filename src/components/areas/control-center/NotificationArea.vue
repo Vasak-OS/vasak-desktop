@@ -56,7 +56,7 @@ import {
 	getAllNotifications,
 } from '@/services/notification.service';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 
 const notifications = ref<Notification[]>([]);
 const emptyIcon = useSymbol('preferences-desktop-notification');
@@ -119,8 +119,8 @@ onMounted(async () => {
 	await loadNotifications();
 });
 
-useEventListener('notifications-updated', (event) => {
-	notifications.value = event.payload as Notification[];
-});
+useSharedEvent<Notification[]>('notifications-updated', (payload) => {
+	notifications.value = payload;
+}, { debounceMs: 150 });
 </script>
 

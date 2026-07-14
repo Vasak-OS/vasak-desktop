@@ -17,7 +17,7 @@ import {
 	trayItemActivate,
 	trayItemSecondaryActivate,
 } from '@/services/tray.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError, logWarning } from '@/utils/logger';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
@@ -91,11 +91,10 @@ onMounted(async () => {
 	}
 });
 
-useEventListener('tray-update', refreshTrayItems);
+useSharedEvent('tray-update', refreshTrayItems);
 
-useEventListener('battery-update', (event) => {
-	const payload: any = event.payload || {};
-	if (typeof payload.has_battery === 'boolean') {
+useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
+	if (typeof payload?.has_battery === 'boolean') {
 		existBattery.value = payload.has_battery;
 	}
 });

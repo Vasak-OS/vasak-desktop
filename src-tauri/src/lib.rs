@@ -36,7 +36,7 @@ use window_manager::WindowManager;
 use windows_apps::*;
 
 use applets::{
-    manager::AppletManager, 
+    manager::{AppletManager, AppletPriority},
     audio::AudioApplet,
     battery::BatteryApplet,
     bluetooth::BluetoothApplet,
@@ -76,6 +76,7 @@ pub fn run() {
         .plugin(tauri_plugin_vicons::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            batch_invoke,
             get_windows,
             toggle_window,
             open_app,
@@ -166,20 +167,26 @@ pub fn run() {
             setup_windows_monitoring(window_manager.clone(), app.handle().clone())?;
             setup_dbus_service(app.handle().clone());
             
-            // Initialize AppletManager
+            // Initialize AppletManager with priority-based phased startup
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                let manager = AppletManager::new();
-                manager.register(AudioApplet).await;
-                manager.register(BatteryApplet).await;
-                manager.register(BluetoothApplet).await;
-                manager.register(BrightnessApplet).await;
-                manager.register(MusicApplet).await;
-                manager.register(NetworkApplet).await;
-                manager.register(TrayApplet).await;
-                manager.register(NotificationApplet).await;
+                let manager = Arc::new(AppletManager::new());
+
+                // Critical: Audio and Brightness must be ready before others
+                manager.register(AudioApplet, AppletPriority::Critical).await;
+                manager.register(BrightnessApplet, AppletPriority::Critical).await;
+
+                // Normal: Spawned after critical are ready, without awaiting
+                manager.register(BatteryApplet, AppletPriority::Normal).await;
+                manager.register(MusicApplet, AppletPriority::Normal).await;
+                manager.register(TrayApplet, AppletPriority::Normal).await;
+                manager.register(NotificationApplet, AppletPriority::Normal).await;
+
+                // Deferred: Started after panel-ready event from frontend
+                manager.register(BluetoothApplet, AppletPriority::Deferred).await;
+                manager.register(NetworkApplet, AppletPriority::Deferred).await;
                 
-                manager.start_all(app_handle).await;
+                manager.start_phased(app_handle).await;
                 logger::log_info("Todos los applets iniciados correctamente");
             });
 

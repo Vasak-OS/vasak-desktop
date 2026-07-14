@@ -7,7 +7,7 @@ import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { VolumeInfo } from '@/interfaces/volume';
 import { getAudioVolume } from '@/services/core.service';
 import { toggleAudioApplet } from '@/services/window.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
 
@@ -47,10 +47,10 @@ onMounted(async () => {
 	await getVolumeInfo();
 });
 
-useEventListener<VolumeInfo>('volume-changed', (event) => {
-	volumeInfo.value = event.payload;
-	currentVolume.value = event.payload.current;
-});
+useSharedEvent<VolumeInfo>('volume-changed', (payload) => {
+	volumeInfo.value = payload;
+	currentVolume.value = payload.current;
+}, { throttleMs: 16 });
 </script>
 <template>
   <TrayIconButton

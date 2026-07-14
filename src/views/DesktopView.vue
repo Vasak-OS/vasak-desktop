@@ -12,7 +12,7 @@ import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from '
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import type { FileEntry } from '@/interfaces/file';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
 
@@ -119,7 +119,7 @@ onUnmounted(() => {
 	unlistenTheme?.();
 });
 
-useEventListener('config-changed', async () => {
+useSharedEvent('config-changed', async () => {
 	await (configStore as any).loadConfig();
 	await loadDesktopFiles();
 });

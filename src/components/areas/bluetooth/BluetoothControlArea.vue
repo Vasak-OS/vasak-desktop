@@ -17,7 +17,7 @@ import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const connectedDevices = ref<any[]>([]);
@@ -44,8 +44,8 @@ const toggleBT = async () => {
 
 const isBluetoothOn = computed(() => defaultAdapter.value?.powered);
 
-const handleBluetoothChange = async (event: any) => {
-	applyBluetoothChange(event.payload, {
+const handleBluetoothChange = async (payload: any) => {
+	applyBluetoothChange(payload, {
 		availableDevices,
 		connectedDevices,
 		defaultAdapter,
@@ -89,7 +89,7 @@ onMounted(async () => {
 	await refreshDevices();
 });
 
-useEventListener('bluetooth-change', handleBluetoothChange);
+useSharedEvent('bluetooth-change', handleBluetoothChange);
 
 const connect = async (device: any) => {
 	connectingPath.value = device.path;
