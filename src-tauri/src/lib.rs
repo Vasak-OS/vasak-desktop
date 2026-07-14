@@ -133,6 +133,7 @@ pub fn run() {
             get_last_log_lines
         ])
         .setup(move |app| {
+            let setup_start = std::time::Instant::now();
             logger::log_info("Configurando aplicación Tauri...");
 
             // Suprimir Gdk-CRITICAL de inicialización Wayland (internos de GDK,
@@ -194,6 +195,7 @@ pub fn run() {
                 logger::log_info("Todos los applets iniciados correctamente");
             });
 
+            logger::log_info(&format!("Setup callback completed in {:?}", setup_start.elapsed()));
             logger::log_info("Aplicación Tauri configurada correctamente");
             Ok(())
         })
