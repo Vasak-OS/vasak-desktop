@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
-import { nextTick, onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
+import { onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
 import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
 import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue';
 import BluetoothControl from '@/components/controls/BluetoothControl.vue';
@@ -14,32 +14,25 @@ import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import { toggleControlCenter } from '@/services/window.service';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
-const animationKey = ref(0);
+const hasPlayedEntrance = ref(false);
 const leaving = ref(false);
 
+/** Track timeout handles for cleanup */
+let closeTimeout: ReturnType<typeof setTimeout> | null = null;
+
 const closeAfterAnimation = () => {
+	if (leaving.value) return; // Prevent double-close
 	leaving.value = true;
-	setTimeout(() => {
+
+	// Cancel entrance animation if still running
+	const main = document.querySelector('main');
+	main?.getAnimations().forEach(a => a.cancel());
+
+	// Play exit animation, then close window
+	closeTimeout = setTimeout(() => {
 		try { toggleControlCenter(); } catch { /* window already closed */ }
 	}, 200);
 };
-
-const replayAnimation = () => {
-	animationKey.value++;
-};
-
-onMounted(async () => {
-	bluetoothInitialized.value = await isBluetoothPluginInitialized();
-	document.addEventListener('keydown', onKeydown);
-	window.addEventListener('blur', onBlur);
-	document.addEventListener('visibilitychange', onVisibilityChange);
-});
-
-onBeforeUnmount(() => {
-	document.removeEventListener('keydown', onKeydown);
-	window.removeEventListener('blur', onBlur);
-	document.removeEventListener('visibilitychange', onVisibilityChange);
-});
 
 const onKeydown = (event: KeyboardEvent) => {
 	if (event.key === 'Escape') {
@@ -51,15 +44,27 @@ const onBlur = () => {
 	closeAfterAnimation();
 };
 
-const onVisibilityChange = () => {
-	if (document.visibilityState === 'visible') {
-		nextTick(() => replayAnimation());
+onMounted(async () => {
+	hasPlayedEntrance.value = true;
+	bluetoothInitialized.value = await isBluetoothPluginInitialized();
+	document.addEventListener('keydown', onKeydown);
+	window.addEventListener('blur', onBlur);
+});
+
+onBeforeUnmount(() => {
+	// Clear all timeouts
+	if (closeTimeout !== null) {
+		clearTimeout(closeTimeout);
+		closeTimeout = null;
 	}
-};
+	// Remove all event listeners registered during mount
+	document.removeEventListener('keydown', onKeydown);
+	window.removeEventListener('blur', onBlur);
+});
 </script>
 
 <template>
-  <Transition appear :key="animationKey" enter-active-class="enter-active">
+  <Transition appear enter-active-class="enter-active">
     <main
       :class="['bg-ui-bg/80 h-screen w-screen rounded-corner flex flex-row flex-wrap justify-between p-1 border border-ui-border', { 'leave-active': leaving }]"
     >
