@@ -4,6 +4,8 @@ use crate::structs::BatteryInfo;
 use async_trait::async_trait;
 use futures_util::StreamExt;
 use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
@@ -24,41 +26,43 @@ impl Applet for BatteryApplet {
     }
 
     async fn start(&self, app_handle: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        // Use shared system bus connection from DbusPool
-        let conn = get_system_connection(&app_handle).await
-            .ok_or_else(|| "No system bus connection available from DbusPool".to_string())?;
+        // Check SysFS availability first (cheap, no D-Bus)
+        let sysfs_battery = "/sys/class/power_supply/BAT0";
+        let has_sysfs_battery = Path::new(sysfs_battery).exists();
+        let has_sysfs = has_sysfs_battery
+            || Path::new("/sys/class/power_supply/AC0").exists();
 
-        let battery_path = find_battery_path(&conn).await;
+        // Try D-Bus path
+        if let Some(conn) = get_system_connection(&app_handle).await {
+            if let Some(path) = find_battery_path(&conn).await {
+                // Cache the path and use D-Bus monitoring
+                BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
 
-        // Define paths for sysfs fallback
-        let battery_sysfs_path = "/sys/class/power_supply/BAT0";
-        let ac_sysfs_path = "/sys/class/power_supply/AC0";
-        let has_sysfs = std::path::Path::new(battery_sysfs_path).exists()
-            || std::path::Path::new(ac_sysfs_path).exists();
+                // Emit initial state
+                if let Some(info) = get_battery_info_with_conn(&conn).await {
+                    let _ = app_handle.emit("battery-update", &info);
+                }
 
-        // Emit initial state
-        if let Some(info) = get_battery_info_with_conn(&conn).await {
-            let _ = app_handle.emit("battery-update", &info);
+                self.run_dbus_loop(app_handle, conn, path).await;
+                return Ok(());
+            }
         }
 
-        if let Some(path) = battery_path {
-            // Cache the path for future lookups
-            BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
+        // D-Bus unavailable or no UPower battery — fall back to SysFS
+        if has_sysfs {
+            // Emit initial state from SysFS
+            if let Some(info) = read_sysfs_battery_info() {
+                let _ = app_handle.emit("battery-update", &info);
+            }
 
-            // Prefer DBus events if available
-            self.run_dbus_loop(app_handle, conn, path).await;
+            self.run_sysfs_loop(app_handle).await;
         } else {
-            // Fallback to polling if UPower device not found
-            if has_sysfs {
-                self.run_sysfs_loop(app_handle).await;
-            } else {
-                // No battery found via UPower and no SysFS.
-                // Monitor occasionally in case it appears (e.g. plugged in)
-                loop {
-                    tokio::time::sleep(Duration::from_secs(60)).await;
-                    if let Some(info) = get_battery_info().await {
-                        let _ = app_handle.emit("battery-update", &info);
-                    }
+            // No battery found at all — monitor occasionally in case one appears
+            loop {
+                tokio::time::sleep(Duration::from_secs(60)).await;
+
+                if let Some(info) = read_sysfs_battery_info() {
+                    let _ = app_handle.emit("battery-update", &info);
                 }
             }
         }
@@ -71,10 +75,9 @@ impl BatteryApplet {
     async fn run_sysfs_loop(&self, app_handle: AppHandle) {
         let mut last_info: Option<BatteryInfo> = None;
         loop {
-            // Increased polling interval to 2s for optimization
             tokio::time::sleep(Duration::from_secs(2)).await;
 
-            if let Some(current_info) = get_battery_info().await {
+            if let Some(current_info) = read_sysfs_battery_info() {
                 let should_emit = match &last_info {
                     None => true,
                     Some(last) => {
@@ -95,7 +98,7 @@ impl BatteryApplet {
     async fn run_dbus_loop(
         &self,
         app_handle: AppHandle,
-        conn: Connection,
+        mut conn: Connection,
         mut path: String,
     ) {
         let mut reconnect_attempts = 0u32;
@@ -155,6 +158,7 @@ impl BatteryApplet {
                             BATTERY_DEVICE_PATH.lock().unwrap().replace(p.clone());
                             path = p;
                         }
+                        conn = new_conn;
                     }
                 }
             }
@@ -334,6 +338,86 @@ impl BatteryApplet {
     }
 }
 
+/// Read battery info from SysFS without any D-Bus dependency.
+/// Used as fallback when UPower or system bus is unavailable.
+fn read_sysfs_battery_info() -> Option<BatteryInfo> {
+    let bat_path = Path::new("/sys/class/power_supply/BAT0");
+    if !bat_path.exists() {
+        return None;
+    }
+
+    let read_str = |file: &str| -> Option<String> {
+        fs::read_to_string(bat_path.join(file)).ok().map(|s| s.trim().to_string())
+    };
+
+    let capacity: f64 = read_str("capacity")?.parse().ok()?;
+    let status = read_str("status")?.to_lowercase();
+    let present_str = read_str("present").unwrap_or_default();
+
+    let is_present = present_str == "1";
+    let is_charging = status == "charging";
+    let state = match status.as_str() {
+        "charging" => "Charging",
+        "discharging" => "Discharging",
+        "full" => "FullyCharged",
+        _ => "Unknown",
+    }.to_string();
+
+    // Time estimates (seconds in sysfs, or 0 if unavailable)
+    let time_to_empty = read_str("time_to_empty_now")
+        .and_then(|s| s.parse::<u64>().ok())
+        .filter(|&v| v > 0);
+    let time_to_full = read_str("time_to_full_now")
+        .and_then(|s| s.parse::<u64>().ok())
+        .filter(|&v| v > 0);
+
+    // Optional metadata
+    let vendor = read_str("manufacturer");
+    let model = read_str("model_name");
+    let technology = read_str("technology");
+    let serial = read_str("serial_number");
+
+    // Energy (sysfs: µWh → Wh)
+    let energy = read_str("energy_now")
+        .and_then(|s| s.parse::<f64>().ok())
+        .map(|v| v / 1_000_000.0);
+    let energy_full = read_str("energy_full")
+        .and_then(|s| s.parse::<f64>().ok())
+        .map(|v| v / 1_000_000.0);
+    let energy_full_design = read_str("energy_full_design")
+        .and_then(|s| s.parse::<f64>().ok())
+        .map(|v| v / 1_000_000.0);
+
+    // Voltage (sysfs: µV → V)
+    let voltage = read_str("voltage_now")
+        .and_then(|s| s.parse::<f64>().ok())
+        .map(|v| v / 1_000_000.0);
+
+    // Temperature (sysfs: tenths of °C → °C)
+    let temperature = read_str("temp")
+        .and_then(|s| s.parse::<f64>().ok())
+        .map(|v| v / 10.0);
+
+    Some(BatteryInfo {
+        has_battery: true,
+        percentage: capacity,
+        state,
+        time_to_empty,
+        time_to_full,
+        is_present,
+        is_charging,
+        vendor,
+        model,
+        technology,
+        energy,
+        energy_full,
+        energy_full_design,
+        voltage,
+        temperature,
+        serial,
+    })
+}
+
 /// Get system bus connection from DbusPool managed state.
 /// Falls back to creating a new connection if pool is unavailable.
 async fn get_system_connection(app_handle: &AppHandle) -> Option<Connection> {
@@ -380,10 +464,18 @@ async fn get_battery_info_with_conn(conn: &Connection) -> Option<BatteryInfo> {
         match cached {
             Some(p) => p,
             None => {
-                let path = find_battery_path(conn).await
-                    .unwrap_or_else(|| "/org/freedesktop/UPower/devices/battery_BAT0".to_string());
-                BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
-                path
+                match find_battery_path(conn).await {
+                    Some(path) => {
+                        BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
+                        path
+                    }
+                    None => {
+                        // Fallback path for THIS call only; do NOT cache it so
+                        // subsequent calls retry discovery and can detect
+                        // hot-plugged or differently named batteries.
+                        "/org/freedesktop/UPower/devices/battery_BAT0".to_string()
+                    }
+                }
             }
         }
     };
