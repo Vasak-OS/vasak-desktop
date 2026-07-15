@@ -353,21 +353,36 @@ impl PwDumpMonitor {
 
         for obj in objects {
             // Check if this is a Node with Audio/Sink media class
-            let obj_type = obj.get("type")?.as_str()?;
+            let obj_type = match obj.get("type").and_then(|v| v.as_str()) {
+                Some(t) => t,
+                None => continue,
+            };
             if obj_type != "PipeWire:Interface:Node" {
                 continue;
             }
 
-            let info = obj.get("info")?;
-            let props = info.get("props")?;
+            let info = match obj.get("info") {
+                Some(i) => i,
+                None => continue,
+            };
+            let props = match info.get("props") {
+                Some(p) => p,
+                None => continue,
+            };
 
-            let media_class = props.get("media.class").and_then(|v| v.as_str())?;
+            let media_class = match props.get("media.class").and_then(|v| v.as_str()) {
+                Some(mc) => mc,
+                None => continue,
+            };
             if media_class != "Audio/Sink" {
                 continue;
             }
 
             // Look for volume parameters in the params section
-            let params = info.get("params")?;
+            let params = match info.get("params") {
+                Some(p) => p,
+                None => continue,
+            };
 
             // Check Props params for volume info
             if let Some(props_array) = params.get("Props").and_then(|v| v.as_array()) {

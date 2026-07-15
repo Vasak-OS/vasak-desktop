@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use tauri::{AppHandle, Emitter};
 use std::error::Error;
 use tokio::time::Duration;
-use crate::audio_native::{AudioMonitor, PwDumpMonitor};
+use crate::audio_native::AudioMonitor;
 use crate::commands::osd::show_osd_internal;
 use crate::logger::{log_info, log_error, log_debug};
 use crate::structs::VolumeInfo;
@@ -19,53 +19,78 @@ impl Applet for AudioApplet {
     async fn start(&self, app: AppHandle) -> Result<(), Box<dyn Error>> {
         log_info("AudioApplet: starting with native monitor integration");
 
-        let monitor = AudioMonitor::new().await;
-        let backend_name = monitor.backend_name();
-        log_info(&format!("AudioApplet: active backend = {}", backend_name));
-
-        let mut state_rx = monitor.state_rx();
-        let is_event_driven = monitor.is_event_driven();
-
-        let app_clone = app.clone();
         tokio::spawn(async move {
-            let _monitor = monitor;
-            monitor_volume_changes(app_clone, &mut state_rx, is_event_driven).await;
+            run_audio_monitor_loop(app).await;
         });
 
         Ok(())
     }
 }
 
-async fn monitor_volume_changes(
-    app: AppHandle,
-    state_rx: &mut tokio::sync::watch::Receiver<VolumeInfo>,
-    initially_event_driven: bool,
-) {
-    if !initially_event_driven {
-        let app_reconnect = app.clone();
-        tokio::spawn(async move {
-            attempt_reconnection_loop(app_reconnect).await;
-        });
-    }
+/// Single-owner audio monitor loop. One task, one active monitor at a time.
+/// When the monitor's channel closes (backend failed), the old monitor is
+/// dropped and a fresh one is created — no duplicate backends, no separate
+/// reconnection task.
+async fn run_audio_monitor_loop(app: AppHandle) {
+    let mut monitor = AudioMonitor::new().await;
 
     loop {
-        if state_rx.changed().await.is_err() {
-            log_error("AudioApplet: monitor state channel closed, stopping");
-            break;
+        let is_event_driven = monitor.is_event_driven();
+        let mut state_rx = monitor.state_rx();
+
+        log_info(&format!("AudioApplet: active backend = {}", monitor.backend_name()));
+
+        // Polling-fallback upgrade timer: periodically try event-driven backends.
+        let mut upgrade_timer = tokio::time::interval(Duration::from_secs(30));
+
+        // Inner monitor loop — awaits state changes.
+        loop {
+            let result = if is_event_driven {
+                state_rx.changed().await
+            } else {
+                tokio::select! {
+                    biased;
+                    result = state_rx.changed() => result,
+                    _ = upgrade_timer.tick() => {
+                        // Polling fallback: try to upgrade to event-driven.
+                        let new_monitor = AudioMonitor::new().await;
+                        if new_monitor.is_event_driven() {
+                            log_info("AudioApplet: upgrading from polling to event-driven backend");
+                            drop(monitor);
+                            monitor = new_monitor;
+                            break; // restart outer loop with upgraded monitor
+                        }
+                        // Still only polling available — keep the old one.
+                        continue;
+                    }
+                }
+            };
+
+            match result {
+                Ok(()) => {
+                    let volume_info = state_rx.borrow_and_update().clone();
+
+                    log_debug(&format!(
+                        "AudioApplet: volume update: {}% muted={}",
+                        volume_info.current, volume_info.is_muted
+                    ));
+
+                    if let Err(e) = app.emit("volume-changed", &volume_info) {
+                        log_error(&format!("AudioApplet: failed to emit volume-changed: {}", e));
+                    }
+
+                    show_volume_osd(&app, &volume_info).await;
+                }
+                Err(_) => {
+                    log_error("AudioApplet: monitor channel closed — reconnecting");
+                    break;
+                }
+            }
         }
 
-        let volume_info = state_rx.borrow_and_update().clone();
-
-        log_debug(&format!(
-            "AudioApplet: volume update received: {}% muted={}",
-            volume_info.current, volume_info.is_muted
-        ));
-
-        if let Err(e) = app.emit("volume-changed", &volume_info) {
-            log_error(&format!("AudioApplet: failed to emit volume-changed: {}", e));
-        }
-
-        show_volume_osd(&app, &volume_info).await;
+        // Monitor is dead. Drop it and create a replacement.
+        drop(monitor);
+        monitor = AudioMonitor::new().await;
     }
 }
 
@@ -98,49 +123,4 @@ async fn show_volume_osd(app: &AppHandle, volume_info: &VolumeInfo) {
         format!("Volumen: {}%", percentage)
     };
     let _ = show_osd_internal(icon, volume_info.current as f64, volume_info.max as f64, &label, app).await;
-}
-
-async fn attempt_reconnection_loop(app: AppHandle) {
-    log_info("AudioApplet: fallback mode active, will attempt PipeWire reconnection every 30s");
-
-    loop {
-        tokio::time::sleep(Duration::from_secs(30)).await;
-
-        log_debug("AudioApplet: attempting to reconnect to PipeWire (pw-dump)...");
-
-        match PwDumpMonitor::connect().await {
-            Ok(pw_dump) => {
-                log_info("AudioApplet: successfully reconnected to pw-dump, switching to event-driven mode");
-
-                let mut state_rx = pw_dump.state_rx.clone();
-                let _monitor = pw_dump;
-
-                loop {
-                    if state_rx.changed().await.is_err() {
-                        log_error("AudioApplet: reconnected monitor channel closed, retrying reconnection...");
-                        break;
-                    }
-
-                    let volume_info = state_rx.borrow_and_update().clone();
-
-                    log_debug(&format!(
-                        "AudioApplet [reconnected]: volume update: {}% muted={}",
-                        volume_info.current, volume_info.is_muted
-                    ));
-
-                    if let Err(e) = app.emit("volume-changed", &volume_info) {
-                        log_error(&format!("AudioApplet: failed to emit volume-changed: {}", e));
-                    }
-
-                    show_volume_osd(&app, &volume_info).await;
-                }
-            }
-            Err(e) => {
-                log_debug(&format!(
-                    "AudioApplet: PipeWire reconnection failed ({}), will retry in 30s",
-                    e
-                ));
-            }
-        }
-    }
 }
