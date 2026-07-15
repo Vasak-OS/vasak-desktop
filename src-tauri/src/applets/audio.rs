@@ -40,6 +40,9 @@ async fn run_audio_monitor_loop(app: AppHandle) {
 
         log_info(&format!("AudioApplet: active backend = {}", monitor.backend_name()));
 
+        // Track last emitted state to avoid redundant JS events
+        let mut last_volume: Option<VolumeInfo> = None;
+
         // Polling-fallback upgrade timer: periodically try event-driven backends.
         let mut upgrade_timer = tokio::time::interval(Duration::from_secs(30));
 
@@ -69,6 +72,12 @@ async fn run_audio_monitor_loop(app: AppHandle) {
             match result {
                 Ok(()) => {
                     let volume_info = state_rx.borrow_and_update().clone();
+
+                    // Only emit if the state actually changed
+                    if last_volume.as_ref() == Some(&volume_info) {
+                        continue;
+                    }
+                    last_volume = Some(volume_info.clone());
 
                     log_debug(&format!(
                         "AudioApplet: volume update: {}% muted={}",
