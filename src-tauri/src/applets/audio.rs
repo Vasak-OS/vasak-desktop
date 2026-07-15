@@ -19,8 +19,10 @@ impl Applet for AudioApplet {
     async fn start(&self, app: AppHandle) -> Result<(), Box<dyn Error>> {
         log_info("AudioApplet: starting with native monitor integration");
 
+        let monitor = AudioMonitor::new().await;
+
         tokio::spawn(async move {
-            run_audio_monitor_loop(app).await;
+            run_audio_monitor_loop(app, monitor).await;
         });
 
         Ok(())
@@ -31,9 +33,7 @@ impl Applet for AudioApplet {
 /// When the monitor's channel closes (backend failed), the old monitor is
 /// dropped and a fresh one is created — no duplicate backends, no separate
 /// reconnection task.
-async fn run_audio_monitor_loop(app: AppHandle) {
-    let mut monitor = AudioMonitor::new().await;
-
+async fn run_audio_monitor_loop(app: AppHandle, mut monitor: AudioMonitor) {
     loop {
         let is_event_driven = monitor.is_event_driven();
         let mut state_rx = monitor.state_rx();
