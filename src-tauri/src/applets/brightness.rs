@@ -68,7 +68,13 @@ async fn try_inotify_monitor(app: AppHandle, brightness_path: PathBuf, max_path:
 
     // Create the async event stream
     let buffer = [0; 1024];
-    let mut stream = inotify.into_event_stream(buffer).expect("Failed to create inotify event stream");
+    let mut stream = match inotify.into_event_stream(buffer) {
+        Ok(s) => s,
+        Err(e) => {
+            log::warn!("Failed to create inotify event stream: {}", e);
+            return false;
+        }
+    };
 
     // Perform an initial read to check if the file is accessible, and to validate inotify is working.
     // Some sysfs backlight drivers don't trigger inotify events properly.
@@ -87,48 +93,53 @@ async fn try_inotify_monitor(app: AppHandle, brightness_path: PathBuf, max_path:
         emit_brightness(&app, initial_value, max).await;
     }
 
-    // Validate inotify works: wait for first event with a 5-second timeout.
-    // If no event arrives but value has changed, inotify is broken for this driver.
+    // Validate inotify works: retry until a real inotify event confirms the driver
+    // works, or a brightness change without an event triggers polling fallback.
     let validation_timeout = tokio::time::Duration::from_secs(5);
-    let first_event = tokio::time::timeout(validation_timeout, stream.next()).await;
+    let mut last_value = initial_value;
 
-    match first_event {
-        Ok(Some(Ok(_event))) => {
-            // inotify is working! Process this event and continue the loop
-            if let Ok(current) = read_int_file(&brightness_path).await {
-                if let Ok(max) = read_int_file(&max_path).await {
-                    emit_brightness(&app, current, max).await;
+    loop {
+        match tokio::time::timeout(validation_timeout, stream.next()).await {
+            Ok(Some(Ok(_event))) => {
+                // inotify is working! Process this event and enter the main loop
+                if let Ok(current) = read_int_file(&brightness_path).await {
+                    last_value = current;
+                    if let Ok(max) = read_int_file(&max_path).await {
+                        emit_brightness(&app, current, max).await;
+                    }
                 }
+                break;
             }
-        }
-        Ok(Some(Err(e))) => {
-            log::warn!("inotify stream error during validation: {}. Falling back.", e);
-            return false;
-        }
-        Ok(None) => {
-            log::warn!("inotify stream ended unexpectedly. Falling back.");
-            return false;
-        }
-        Err(_timeout) => {
-            // Timeout - check if value actually changed (would mean inotify missed it)
-            if let Ok(current) = read_int_file(&brightness_path).await {
-                if current != initial_value {
-                    log::warn!(
-                        "Brightness value changed ({} -> {}) but no inotify event received. \
-                         This backlight driver doesn't support inotify. Falling back to polling.",
-                        initial_value, current
-                    );
-                    return false;
+            Ok(Some(Err(e))) => {
+                log::warn!("inotify stream error during validation: {}. Falling back.", e);
+                return false;
+            }
+            Ok(None) => {
+                log::warn!("inotify stream ended unexpectedly. Falling back.");
+                return false;
+            }
+            Err(_timeout) => {
+                // Timeout - check if value actually changed (would mean inotify missed it)
+                if let Ok(current) = read_int_file(&brightness_path).await {
+                    if current != last_value {
+                        log::warn!(
+                            "Brightness value changed ({} -> {}) but no inotify event received. \
+                             This backlight driver doesn't support inotify. Falling back to polling.",
+                            last_value, current
+                        );
+                        return false;
+                    }
                 }
+                // No event and no change - driver may yet support inotify, retry
+                log::info!(
+                    "No inotify event in {}s and no value change. Retrying validation...",
+                    validation_timeout.as_secs()
+                );
             }
-            // No change and no event - inotify might still work, just no brightness change happened.
-            // Continue with inotify loop.
-            log::info!("inotify validation passed (no changes detected in 5s window, inotify assumed functional).");
         }
     }
 
-    // Main inotify event loop - read brightness exactly once per MODIFY event
-    let mut last_value = initial_value;
+    // Main inotify event loop
     loop {
         match stream.next().await {
             Some(Ok(_event)) => {

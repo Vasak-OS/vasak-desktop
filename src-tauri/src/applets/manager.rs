@@ -63,6 +63,14 @@ impl AppletManager {
         }
         drop(applets); // Release read lock
 
+        // Subscribe to panel-ready BEFORE Phase 1, so the receiver is ready
+        // before any applet startup runs. The sender (PanelReadyLatch) was
+        // registered in setup before create_panel(), so there's no race.
+        let mut ready_rx = {
+            let latch = app.state::<crate::PanelReadyLatch>();
+            latch.0.subscribe()
+        };
+
         // Phase 1: Start Critical applets concurrently and await all of them
         log_info(&format!("Fase 1: Iniciando {} applets críticos", critical.len()));
         let mut critical_handles = Vec::new();
@@ -112,32 +120,14 @@ impl AppletManager {
             let app_handle = app.clone();
             let deferred_applets = deferred;
 
-            // Reuse the pre-registered readiness signal from setup.
-            // The listener was installed before create_panel(), so no race.
-            let mut ready_rx = {
-                let latch = app.state::<crate::PanelReadyLatch>();
-                latch.0.subscribe()
-            };
-
             // Spawn a task that waits for panel-ready then starts deferred applets
             tokio::spawn(async move {
                 // If already ready (panel-ready fired before we subscribed),
                 // skip the wait entirely.
                 if !*ready_rx.borrow_and_update() {
-                    // Wait for panel-ready event (with a timeout fallback of 10s)
-                    let received = tokio::time::timeout(
-                        std::time::Duration::from_secs(10),
-                        ready_rx.changed(),
-                    ).await;
-
-                    match received {
-                        Ok(Ok(())) => {
-                            log_info("Evento panel-ready recibido, iniciando applets diferidos");
-                        }
-                        _ => {
-                            log_info("Timeout esperando panel-ready (10s), iniciando applets diferidos de todas formas");
-                        }
-                    }
+                    log_info("Esperando evento panel-ready para iniciar applets diferidos");
+                    let _ = ready_rx.changed().await;
+                    log_info("Evento panel-ready recibido, iniciando applets diferidos");
                 } else {
                     log_info("panel-ready ya recibido, iniciando applets diferidos inmediatamente");
                 }

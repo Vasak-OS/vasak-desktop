@@ -67,7 +67,7 @@ pub async fn toggle_window(window_id: String, state: tauri::State<'_, WMState>) 
     log_debug("toggle_window: lock contended, retrying with timeout");
     let start = std::time::Instant::now();
     loop {
-        std::thread::sleep(LOCK_RETRY_INTERVAL);
+        tokio::time::sleep(LOCK_RETRY_INTERVAL).await;
 
         if let Ok(wm) = state.window_manager.try_read() {
             return wm.toggle_window(&window_id).map_err(|e| {

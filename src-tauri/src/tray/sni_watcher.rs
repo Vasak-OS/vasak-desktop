@@ -31,7 +31,10 @@ impl SniWatcher {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         // Use shared session bus from DbusPool if available, otherwise create own connection
         let connection = if let Some(pool) = app_handle.try_state::<DbusPool>() {
-            pool.session().await.unwrap_or(Connection::session().await?)
+            match pool.session().await {
+                Some(conn) => conn,
+                None => Connection::session().await?,
+            }
         } else {
             Connection::session().await?
         };
