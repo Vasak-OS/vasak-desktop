@@ -17,7 +17,7 @@
 use crate::audio;
 use crate::logger::{log_debug, log_error, log_info};
 use crate::structs::VolumeInfo;
-use tokio::sync::watch;
+use tokio::sync::{oneshot, watch};
 
 #[cfg(feature = "pipewire-native")]
 use std::sync::Arc;
@@ -158,7 +158,16 @@ impl PipeWireMonitor {
 
         let state_tx_clone = state_tx.clone();
 
-        // Listen for registry global events to find audio sinks
+        // Store bound node proxies and param listeners so they stay alive.
+        let bound_nodes = std::sync::Mutex::new(Vec::new());
+
+        // Raw pointer for registry access inside the 'static closure.
+        // SAFETY: registry lives on run_loop's stack and is dropped after the
+        // main loop exits. The closure only fires during mainloop.iterate()
+        // which is called inside run_loop().
+        let registry_ptr: *const pipewire::registry::Registry = &registry;
+
+        // Listen for registry global events to find and bind audio sinks
         let _registry_listener = registry
             .add_listener_local()
             .global(move |global| {
@@ -167,28 +176,76 @@ impl PipeWireMonitor {
 
                     if media_class == "Audio/Sink" {
                         log_debug(&format!(
-                            "PipeWireMonitor: found sink node id={}",
+                            "PipeWireMonitor: found and binding sink node id={}",
                             global.id
                         ));
 
-                        // Extract volume info from properties if available
-                        if let Some(vol_str) = props.get("volume.level") {
-                            if let Ok(vol_f) = vol_str.parse::<f64>() {
-                                let volume_pct = (vol_f * 100.0).round() as i64;
-                                let is_muted = props
-                                    .get("volume.mute")
-                                    .map(|v| v == "1" || v == "true")
-                                    .unwrap_or(false);
+                        // SAFETY: registry lives on run_loop's stack, outlives this closure.
+                        let registry = unsafe { &*registry_ptr };
 
-                                let info = VolumeInfo {
-                                    current: volume_pct.clamp(0, 100),
-                                    min: 0,
-                                    max: 100,
-                                    is_muted,
-                                };
+                        if let Ok(node) = registry.bind::<pipewire::node::Node>(global) {
+                            use pipewire::spa::{param::ParamType, pod::Value, pod::deserialize::PodDeserializer, sys};
 
-                                let _ = state_tx_clone.send(info);
-                            }
+                            let tx = state_tx_clone.clone();
+
+                            // Subscribe to Props parameter updates on this node
+                            node.subscribe_params(&[ParamType::Props]);
+
+                            // Listen for Props param events containing volume/mute
+                            let listener = node
+                                .add_listener_local()
+                                .param(move |_seq, id, _index, _next, param| {
+                                    if id == ParamType::Props {
+                                        if let Some(pod) = param {
+                                            if let Ok((_, Value::Object(obj))) =
+                                                PodDeserializer::deserialize_any_from(
+                                                    pod.as_bytes(),
+                                                )
+                                            {
+                                                let mut volume: Option<f64> = None;
+                                                let mut muted: Option<bool> = None;
+
+                                                for prop in &obj.properties {
+                                                    match prop.key {
+                                                        sys::SPA_PROP_volume => {
+                                                            if let Value::Float(vol) =
+                                                                prop.value
+                                                            {
+                                                                volume = Some(vol as f64);
+                                                            }
+                                                        }
+                                                        sys::SPA_PROP_mute => {
+                                                            if let Value::Bool(m) = prop.value {
+                                                                muted = Some(m);
+                                                            }
+                                                        }
+                                                        _ => {}
+                                                    }
+                                                }
+
+                                                if let Some(vol) = volume {
+                                                    let pct = (vol * 100.0).round() as i64;
+                                                    let info = VolumeInfo {
+                                                        current: pct.clamp(0, 100),
+                                                        min: 0,
+                                                        max: 100,
+                                                        is_muted: muted.unwrap_or(false),
+                                                    };
+                                                    let _ = tx.send(info);
+                                                }
+                                            }
+                                        }
+                                    }
+                                })
+                                .register();
+
+                            // Keep node and listener alive for the duration of the loop
+                            bound_nodes.lock().unwrap().push((node, listener));
+                        } else {
+                            log_error(&format!(
+                                "PipeWireMonitor: failed to bind sink node id={}",
+                                global.id
+                            ));
                         }
                     }
                 }
@@ -235,6 +292,7 @@ impl PwDumpMonitor {
     /// Attempts to start monitoring via `pw-dump --monitor`.
     ///
     /// Returns an error if pw-dump is not found or fails to start.
+    /// Only returns `Ok` after the first pw-dump process has spawned successfully.
     pub async fn connect() -> Result<Self, PipeWireError> {
         // First, check if pw-dump is available
         let check = tokio::process::Command::new("which")
@@ -257,21 +315,34 @@ impl PwDumpMonitor {
         };
 
         let (state_tx, state_rx) = watch::channel(initial_volume);
+        let (ready_tx, ready_rx) = oneshot::channel();
 
         let task = tokio::spawn(async move {
-            Self::monitor_loop(state_tx).await;
+            Self::monitor_loop(state_tx, Some(ready_tx)).await;
         });
 
-        log_info("PwDumpMonitor: started event-driven monitoring via pw-dump");
-
-        Ok(Self {
-            state_rx,
-            _task: task,
-        })
+        // Wait for the first pw-dump spawn to succeed or fail
+        match ready_rx.await {
+            Ok(Ok(())) => {
+                log_info("PwDumpMonitor: started event-driven monitoring via pw-dump");
+                Ok(Self {
+                    state_rx,
+                    _task: task,
+                })
+            }
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err(PipeWireError::PwDumpNotAvailable(
+                "pw-dump monitor task panicked".into(),
+            )),
+        }
     }
 
     /// Main monitoring loop that reads pw-dump JSON output.
-    async fn monitor_loop(state_tx: watch::Sender<VolumeInfo>) {
+    /// `ready` signals the first spawn result back to `connect()`.
+    async fn monitor_loop(
+        state_tx: watch::Sender<VolumeInfo>,
+        mut ready: Option<oneshot::Sender<Result<(), PipeWireError>>>,
+    ) {
         use tokio::io::{AsyncBufReadExt, BufReader};
         use tokio::process::Command;
 
@@ -285,10 +356,20 @@ impl PwDumpMonitor {
                 .spawn();
 
             let mut child = match child {
-                Ok(c) => c,
+                Ok(c) => {
+                    // Signal first successful spawn
+                    if let Some(ready) = ready.take() {
+                        let _ = ready.send(Ok(()));
+                    }
+                    c
+                }
                 Err(e) => {
                     log_error(&format!("PwDumpMonitor: failed to spawn pw-dump: {}", e));
-                    // Wait before retry
+                    // Signal first spawn failure
+                    if let Some(ready) = ready.take() {
+                        let _ =
+                            ready.send(Err(PipeWireError::PwDumpNotAvailable(e.to_string())));
+                    }
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     continue;
                 }
@@ -298,6 +379,11 @@ impl PwDumpMonitor {
                 Some(s) => s,
                 None => {
                     log_error("PwDumpMonitor: no stdout from pw-dump");
+                    if let Some(ready) = ready.take() {
+                        let _ = ready.send(Err(PipeWireError::PwDumpNotAvailable(
+                            "no stdout from pw-dump".into(),
+                        )));
+                    }
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     continue;
                 }
