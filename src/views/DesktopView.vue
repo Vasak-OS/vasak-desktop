@@ -122,20 +122,32 @@ watch(showHiddenFiles, () => {
 });
 
 let unlistenTheme: (() => void) | null = null;
+let isMounted = false;
 
 onMounted(async () => {
+	isMounted = true;
 	await (configStore as any).loadConfig();
+	if (!isMounted) return;
 
 	// Secondary monitors only need wallpaper — skip file loading and theme listeners
 	if (!isSecondaryMonitor.value) {
 		await loadDesktopFiles();
-		unlistenTheme = await listen('vicons:theme-changed', () => {
+		if (!isMounted) return;
+
+		const unlisten = await listen('vicons:theme-changed', () => {
 			loadDesktopFiles();
 		});
+
+		if (isMounted) {
+			unlistenTheme = unlisten;
+		} else {
+			unlisten();
+		}
 	}
 });
 
 onUnmounted(() => {
+	isMounted = false;
 	unlistenTheme?.();
 });
 

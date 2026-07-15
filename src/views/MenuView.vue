@@ -23,6 +23,7 @@ const leaving = ref(false);
 const selectedIndex = ref(0);
 const menuLoadFailed = ref(false);
 const menuWindow = getCurrentWindow();
+let unlistenFocus: (() => void) | null = null;
 
 const { logoutImg, shutdownImg, rebootImg, suspendImg, settingsImg } = useIcons({
 	logoutImg: 'system-log-out',
@@ -108,18 +109,19 @@ const isMenuEmpty = computed(() => {
 	return menuLoadFailed.value || Object.keys(menuData.value).length === 0;
 });
 
-onMounted(async () => {
+onMounted(() => {
 	setMenu();
 	document.addEventListener('keydown', onKeydown);
 	window.addEventListener('blur', onBlur);
-	menuWindow.onFocusChanged(({ focused }) => {
+	menuWindow.onFocusChanged(({ payload: focused }) => {
 		if (focused) setTimeout(() => document.getElementById('search')?.focus(), 50);
-	});
+	}).then(fn => { unlistenFocus = fn; });
 });
 
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onKeydown);
 	window.removeEventListener('blur', onBlur);
+	unlistenFocus?.();
 });
 
 watch(filter, () => {

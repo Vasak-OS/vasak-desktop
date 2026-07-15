@@ -61,14 +61,26 @@ class AnimationBudgetManager {
 	/**
 	 * Manage will-change property on elements with running animations/transitions.
 	 * Adds will-change on start, removes within 100ms of completion.
+	 * Uses a WeakMap to track pending reset timeouts per element, preventing stale
+	 * callbacks from resetting will-change after an animation restart.
 	 */
+	private resetTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
+
 	manageWillChange(element: HTMLElement, running: boolean): void {
+		const existing = this.resetTimers.get(element);
+		if (existing !== undefined) {
+			clearTimeout(existing);
+			this.resetTimers.delete(element);
+		}
+
 		if (running) {
 			element.style.willChange = 'transform, opacity';
 		} else {
-			setTimeout(() => {
+			const timer = setTimeout(() => {
 				element.style.willChange = 'auto';
+				this.resetTimers.delete(element);
 			}, 100);
+			this.resetTimers.set(element, timer);
 		}
 	}
 

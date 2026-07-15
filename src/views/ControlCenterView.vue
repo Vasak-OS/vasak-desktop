@@ -14,7 +14,6 @@ import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import { toggleControlCenter } from '@/services/window.service';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
-const hasPlayedEntrance = ref(false);
 const leaving = ref(false);
 
 /** Track timeout handles for cleanup */
@@ -45,7 +44,6 @@ const onBlur = () => {
 };
 
 onMounted(async () => {
-	hasPlayedEntrance.value = true;
 	bluetoothInitialized.value = await isBluetoothPluginInitialized();
 	document.addEventListener('keydown', onKeydown);
 	window.addEventListener('blur', onBlur);
