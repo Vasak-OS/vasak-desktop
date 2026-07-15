@@ -74,10 +74,6 @@ fn setup_desktop(
     // 3. Create a fresh GtkWindow with layer-shell at Background layer.
     let layer_win = gtk::Window::new(gtk::WindowType::Toplevel);
     layer_win.set_decorated(false);
-    layer_win.set_size_request(size.width as i32, size.height as i32);
-    layer_win.set_position(gtk::WindowPosition::None);
-    layer_win.move_(pos.x, pos.y);
-
     layer_win.init_layer_shell();
     layer_win.set_monitor(&gdk_monitor);
     layer_win.set_namespace("vasak-desktop");
@@ -86,6 +82,7 @@ fn setup_desktop(
     layer_win.set_anchor(Edge::Right, true);
     layer_win.set_anchor(Edge::Top, true);
     layer_win.set_anchor(Edge::Bottom, true);
+    layer_win.set_exclusive_zone(-1);
     layer_win.set_keyboard_mode(KeyboardMode::None);
 
     // 4. Reparent: extract webview from Tauri's xdg window into layer-shell window.
