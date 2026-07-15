@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tauri::{AppHandle, Listener, Manager};
 use tokio::sync::RwLock;
 use crate::logger::{log_info, log_error};
@@ -126,8 +127,17 @@ impl AppletManager {
                 // skip the wait entirely.
                 if !*ready_rx.borrow_and_update() {
                     log_info("Esperando evento panel-ready para iniciar applets diferidos");
-                    let _ = ready_rx.changed().await;
-                    log_info("Evento panel-ready recibido, iniciando applets diferidos");
+                    match tokio::time::timeout(Duration::from_secs(30), ready_rx.changed()).await {
+                        Ok(Ok(())) => {
+                            log_info("Evento panel-ready recibido, iniciando applets diferidos");
+                        }
+                        Ok(Err(_)) => {
+                            log_error("Canal panel-ready cerrado, iniciando applets diferidos de todas formas");
+                        }
+                        Err(_) => {
+                            log_error("Timeout esperando panel-ready (30s), iniciando applets diferidos de todas formas");
+                        }
+                    }
                 } else {
                     log_info("panel-ready ya recibido, iniciando applets diferidos inmediatamente");
                 }
