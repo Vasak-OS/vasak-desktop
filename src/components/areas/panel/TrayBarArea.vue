@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
-import { onMounted, type Ref, ref } from 'vue';
+import { computed, onMounted, type Ref, ref } from 'vue';
 import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
 import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
 import TrayIconCapsLock from '@/components/buttons/TrayIconCapsLock.vue';
@@ -19,12 +19,43 @@ import {
 	trayItemActivate,
 	trayItemSecondaryActivate,
 } from '@/services/tray.service';
-import { useEventListener } from '@/tools/event.listener';
+import { animationBudget } from '@/tools/animation.budget';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError, logWarning } from '@/utils/logger';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
 const trayItems = ref<TrayItem[]>([]);
+
+/**
+ * When more than 8 tray items are present, disable per-item entrance
+ * animations to avoid frame drops. Items render in a single paint instead.
+ * @requirements 15.3
+ */
+const shouldAnimate = computed(() => trayItems.value.length <= 8);
+
+/** Animation event handlers wired to AnimationBudgetManager */
+const onAnimationStart = (event: AnimationEvent) => {
+	const el = event.target as HTMLElement;
+	animationBudget.manageWillChange(el, true);
+};
+
+const onAnimationEnd = (event: AnimationEvent) => {
+	const el = event.target as HTMLElement;
+	animationBudget.manageWillChange(el, false);
+	animationBudget.releaseSlot();
+};
+
+const onTransitionStart = (event: TransitionEvent) => {
+	const el = event.target as HTMLElement;
+	animationBudget.manageWillChange(el, true);
+};
+
+const onTransitionEnd = (event: TransitionEvent) => {
+	const el = event.target as HTMLElement;
+	animationBudget.manageWillChange(el, false);
+	animationBudget.releaseSlot();
+};
 
 const refreshTrayItems = async (): Promise<void> => {
 	try {
@@ -93,11 +124,10 @@ onMounted(async () => {
 	}
 });
 
-useEventListener('tray-update', refreshTrayItems);
+useSharedEvent('tray-update', refreshTrayItems);
 
-useEventListener('battery-update', (event) => {
-	const payload: any = event.payload || {};
-	if (typeof payload.has_battery === 'boolean') {
+useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
+	if (typeof payload?.has_battery === 'boolean') {
 		existBattery.value = payload.has_battery;
 	}
 });
@@ -105,7 +135,15 @@ useEventListener('battery-update', (event) => {
 
 <template>
   <div class="flex items-center gap-1 px-2 h-full">
-    <TransitionGroup move-class="transition-transform duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]" enter-active-class="transition-all duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.55,0,0.45,1)]" enter-from-class="opacity-0 -translate-x-5 scale-80 -rotate-12" leave-to-class="opacity-0 translate-x-5 scale-80 rotate-12" tag="div" class="flex items-center gap-1">
+    <TransitionGroup
+      :move-class="shouldAnimate ? 'transition-transform duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
+      :enter-active-class="shouldAnimate ? 'transition-all duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
+      :leave-active-class="shouldAnimate ? 'transition-all duration-300 ease-[cubic-bezier(0.55,0,0.45,1)]' : ''"
+      :enter-from-class="shouldAnimate ? 'opacity-0 -translate-x-5 scale-80 -rotate-12' : ''"
+      :leave-to-class="shouldAnimate ? 'opacity-0 translate-x-5 scale-80 rotate-12' : ''"
+      tag="div"
+      class="flex items-center gap-1"
+    >
       <TrayMusicControl key="music-control" />
       <div
         v-for="item in trayItems"
@@ -117,6 +155,10 @@ useEventListener('battery-update', (event) => {
         ]"
         @mousedown.prevent="(e) => handleTrayClick(item, e)"
         @contextmenu.prevent
+        @animationstart="onAnimationStart"
+        @animationend="onAnimationEnd"
+        @transitionstart="onTransitionStart"
+        @transitionend="onTransitionEnd"
         :title="item.tooltip || item.title"
       >
         <!-- Icon with loading state -->

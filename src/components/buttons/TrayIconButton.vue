@@ -1,6 +1,6 @@
 <template>
   <div
-    class="p-1 rounded-corner relative hover:bg-primary group transition-all duration-300"
+    class="theme-transition p-1 rounded-corner relative hover:bg-primary group transition-all duration-300"
     :class="customClass"
     :title="tooltip"
     @click="handleClick"

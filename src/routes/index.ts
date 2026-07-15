@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
+import { ipcBatch } from '@/tools/ipc.batch';
 
 const routes = [
 	{ path: '/desktop', component: () => import('@/views/DesktopView.vue') },
@@ -49,4 +50,14 @@ const routes = [
 export const router = createRouter({
 	history: createWebHashHistory(),
 	routes,
+});
+
+/**
+ * Prefetch data for the target view before navigation completes.
+ * This fires a single batched IPC request with all commands the target view needs,
+ * warming the cache so the component can render faster on mount.
+ */
+router.beforeEach((to, _from, next) => {
+	ipcBatch.prefetch(to.path);
+	next();
 });

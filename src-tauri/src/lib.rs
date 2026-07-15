@@ -1,6 +1,7 @@
 // Core modules
 mod app_url;
 mod constants;
+mod dbus_pool;
 mod error;
 mod logger;
 mod structs;
@@ -8,6 +9,7 @@ mod structs;
 // Feature modules
 mod applets;
 mod audio;
+mod audio_native;
 mod brightness;
 mod commands;
 mod dbus_service;
@@ -21,7 +23,9 @@ mod gtk_utils;
 mod window_manager;
 mod windows_apps;
 
+use tauri::{Listener, Manager};
 use commands::*;
+use dbus_pool::DbusPool;
 use eventloops::{
     setup_dbus_service,
     setup_windows_monitoring,
@@ -29,12 +33,17 @@ use eventloops::{
 use std::sync::{Arc, RwLock};
 use structs::SystrayPopupState;
 use structs::WMState;
+use tokio::sync::watch;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
 use windows_apps::*;
 
+/// Shared latch signaled by the frontend when the panel has painted.
+/// Registered *before* `create_panel` so no events are missed.
+pub(crate) struct PanelReadyLatch(pub(crate) watch::Sender<bool>);
+
 use applets::{
-    manager::AppletManager, 
+    manager::{AppletManager, AppletPriority},
     audio::AudioApplet,
     battery::BatteryApplet,
     bluetooth::BluetoothApplet,
@@ -55,8 +64,11 @@ pub fn run() {
         WindowManager::new().expect("Failed to initialize window manager"),
     ));
 
+    let cached_windows = Arc::new(parking_lot::RwLock::new(None));
+
     let wm_state = WMState {
         window_manager: window_manager.clone(),
+        cached_windows: Arc::clone(&cached_windows),
     };
 
     let tray_manager = create_tray_manager();
@@ -75,6 +87,7 @@ pub fn run() {
         .plugin(tauri_plugin_vicons::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
+            batch_invoke,
             get_windows,
             toggle_window,
             open_app,
@@ -129,6 +142,7 @@ pub fn run() {
             get_last_log_lines
         ])
         .setup(move |app| {
+            let setup_start = std::time::Instant::now();
             logger::log_info("Configurando aplicación Tauri...");
 
             // Suprimir Gdk-CRITICAL de inicialización Wayland (internos de GDK,
@@ -141,30 +155,53 @@ pub fn run() {
                 |_domain, _level, _message| {},
             );
 
+            // Initialize shared D-Bus connection pool before applets.
+            // Each bus (session/system) is tried independently; failures are logged
+            // but stored as None so the pool is always available.
+            let dbus_pool = tauri::async_runtime::block_on(DbusPool::init());
+            app.manage(dbus_pool);
+
+            // Register panel-ready listener BEFORE creating the panel, so the
+            // readiness signal is available even if the frontend emits before
+            // the deferred-applet task registers its own listener.
+            let (ready_tx, _) = watch::channel(false);
+            let ready_tx_clone = ready_tx.clone();
+            app.listen("panel-ready", move |_| {
+                let _ = ready_tx_clone.send(true);
+            });
+            app.manage(PanelReadyLatch(ready_tx));
+
             let _ = create_desktops(app);
             let _ = create_panel(app);
 
-            setup_windows_monitoring(window_manager.clone(), app.handle().clone())?;
+            setup_windows_monitoring(window_manager.clone(), app.handle().clone(), cached_windows.clone())?;
             setup_dbus_service(app.handle().clone());
             
-            // Initialize AppletManager
+            // Initialize AppletManager with priority-based phased startup
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                let manager = AppletManager::new();
-                manager.register(AudioApplet).await;
-                manager.register(BatteryApplet).await;
-                manager.register(BluetoothApplet).await;
-                manager.register(BrightnessApplet).await;
-                manager.register(KeyboardLedsApplet).await;
-                manager.register(MusicApplet).await;
-                manager.register(NetworkApplet).await;
-                manager.register(TrayApplet).await;
-                manager.register(NotificationApplet).await;
+                let manager = Arc::new(AppletManager::new());
+
+                // Critical: Audio and Brightness must be ready before others
+                manager.register(AudioApplet, AppletPriority::Critical).await;
+                manager.register(BrightnessApplet, AppletPriority::Critical).await;
+
+                // Normal: Spawned after critical are ready, without awaiting
+                manager.register(BatteryApplet, AppletPriority::Normal).await;
+                manager.register(KeyboardLedsApplet, AppletPriority::Normal).await;
+                manager.register(MusicApplet, AppletPriority::Normal).await;
+                manager.register(TrayApplet, AppletPriority::Normal).await;
+                manager.register(NotificationApplet, AppletPriority::Normal).await;
+
+                // Deferred: Started after panel-ready event from frontend
+                manager.register(BluetoothApplet, AppletPriority::Deferred).await;
+                manager.register(NetworkApplet, AppletPriority::Deferred).await;
                 
-                manager.start_all(app_handle).await;
+                manager.start_phased(app_handle).await;
                 logger::log_info("Todos los applets iniciados correctamente");
             });
 
+            logger::log_info(&format!("Setup callback completed in {:?}", setup_start.elapsed()));
             logger::log_info("Aplicación Tauri configurada correctamente");
             Ok(())
         })

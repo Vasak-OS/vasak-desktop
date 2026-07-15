@@ -1,14 +1,22 @@
 use super::{emit_tray_update, TrayManager};
+use crate::dbus_pool::DbusPool;
 use crate::logger::{log_error, log_info, log_debug};
 use crate::structs::{TrayCategory, TrayItem, TrayStatus};
 use crate::tray::sni_item::SniItemProxy;
 use base64::{engine::general_purpose, Engine as _};
 use futures_util::stream::StreamExt;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use zbus::{Connection, MatchRule, MessageStream, MessageType};
+use std::time::Duration;
 
 const SNI_WATCHER_SERVICE: &str = "org.kde.StatusNotifierWatcher";
 const SNI_WATCHER_INTERFACE: &str = "org.kde.StatusNotifierWatcher";
+
+/// Interval for periodic reconciliation of tray items against active D-Bus names.
+const RECONCILIATION_INTERVAL: Duration = Duration::from_secs(30);
+
+/// Timeout for the ListNames D-Bus call during reconciliation.
+const LIST_NAMES_TIMEOUT: Duration = Duration::from_secs(5);
 
 pub struct SniWatcher {
     connection: Connection,
@@ -21,7 +29,15 @@ impl SniWatcher {
         tray_manager: TrayManager,
         app_handle: AppHandle,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let connection = Connection::session().await?;
+        // Use shared session bus from DbusPool if available, otherwise create own connection
+        let connection = if let Some(pool) = app_handle.try_state::<DbusPool>() {
+            match pool.session().await {
+                Some(conn) => conn,
+                None => Connection::session().await?,
+            }
+        } else {
+            Connection::session().await?
+        };
 
         // Register as StatusNotifierWatcher
         connection.request_name(SNI_WATCHER_SERVICE).await?;
@@ -103,10 +119,102 @@ impl SniWatcher {
             }
         });
 
+        // Spawn periodic reconciliation task (every 30s)
+        self.start_periodic_reconciliation();
+
         // Discover existing StatusNotifierItems
         self.discover_existing_items().await?;
 
         Ok(())
+    }
+
+    /// Spawns a background task that periodically reconciles tray items against
+    /// active D-Bus names. Removes stale entries whose bus_name no longer has
+    /// an active D-Bus owner. On ListNames failure/timeout (5s), skips the cycle.
+    fn start_periodic_reconciliation(&self) {
+        let tray_manager = self.tray_manager.clone();
+        let app_handle = self.app_handle.clone();
+        let connection = self.connection.clone();
+
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(RECONCILIATION_INTERVAL);
+            // The first tick completes immediately; skip it since we just discovered items
+            interval.tick().await;
+
+            loop {
+                interval.tick().await;
+
+                // Call ListNames with a 5s timeout
+                let active_names = match tokio::time::timeout(
+                    LIST_NAMES_TIMEOUT,
+                    Self::call_list_names(&connection),
+                )
+                .await
+                {
+                    Ok(Ok(names)) => names,
+                    Ok(Err(e)) => {
+                        log_debug(&format!(
+                            "[SNI] Reconciliation: ListNames failed: {}. Skipping cycle.",
+                            e
+                        ));
+                        continue;
+                    }
+                    Err(_) => {
+                        log_debug("[SNI] Reconciliation: ListNames timed out (5s). Skipping cycle.");
+                        continue;
+                    }
+                };
+
+                // Compare stored items against active names and prune stale entries
+                let removed_any = {
+                    let mut manager = tray_manager.write().await;
+                    let before_count = manager.len();
+
+                    manager.retain(|key, item| {
+                        // Check if the item's bus_name or the map key is still active
+                        let bus_name_active = item
+                            .bus_name
+                            .as_ref()
+                            .map(|bn| active_names.contains(bn))
+                            .unwrap_or(true); // If no bus_name, keep it (can't verify)
+
+                        let key_active = active_names.contains(key);
+
+                        // Keep if either the key or bus_name is still active
+                        let keep = key_active || bus_name_active;
+                        if !keep {
+                            log_info(&format!(
+                                "[SNI] Reconciliation: pruning stale tray item: {} (bus_name: {:?})",
+                                key,
+                                item.bus_name
+                            ));
+                        }
+                        keep
+                    });
+
+                    manager.len() < before_count
+                };
+
+                // Emit tray-update if any items were removed
+                if removed_any {
+                    emit_tray_update(&app_handle).await;
+                }
+            }
+        });
+    }
+
+    /// Calls org.freedesktop.DBus.ListNames() and returns the list of active bus names.
+    async fn call_list_names(connection: &Connection) -> Result<Vec<String>, zbus::Error> {
+        let proxy = zbus::Proxy::new(
+            connection,
+            "org.freedesktop.DBus",
+            "/org/freedesktop/DBus",
+            "org.freedesktop.DBus",
+        )
+        .await?;
+
+        let names: Vec<String> = proxy.call("ListNames", &()).await?;
+        Ok(names)
     }
 
     async fn register_item(

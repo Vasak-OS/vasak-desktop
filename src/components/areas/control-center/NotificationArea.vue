@@ -49,14 +49,14 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { computed, onMounted, ref } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
-import type { Notification, NotificationGroupData } from '@/interfaces/notifications';
+import type { Notification, NotificationDelta, NotificationGroupData } from '@/interfaces/notifications';
 import {
 	clearNotifications,
 	deleteNotification,
 	getAllNotifications,
 } from '@/services/notification.service';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 
 const notifications = ref<Notification[]>([]);
 const emptyIcon = useSymbol('preferences-desktop-notification');
@@ -119,8 +119,30 @@ onMounted(async () => {
 	await loadNotifications();
 });
 
-useEventListener('notifications-updated', (event) => {
-	notifications.value = event.payload as Notification[];
+useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
+	switch (delta.action) {
+		case 'added':
+			notifications.value.unshift(delta.notification);
+			if (delta.dropped_id != null) {
+				notifications.value = notifications.value.filter((n) => n.id !== delta.dropped_id);
+			}
+			break;
+		case 'removed':
+			notifications.value = notifications.value.filter((n) => n.id !== delta.id);
+			break;
+		case 'batch_update':
+			if (delta.added.length > 0) {
+				notifications.value = [...delta.added, ...notifications.value];
+			}
+			if (delta.removed.length > 0) {
+				const removedSet = new Set(delta.removed);
+				notifications.value = notifications.value.filter((n) => !removedSet.has(n.id));
+			}
+			break;
+		case 'cleared':
+			notifications.value = [];
+			break;
+	}
 });
 </script>
 

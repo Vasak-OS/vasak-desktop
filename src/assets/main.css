@@ -168,7 +168,11 @@ body {
 }
 
 body * {
-  @apply text-tx-main transition-colors duration-300;
+  @apply text-tx-main;
+}
+
+.theme-transition {
+  transition: color 300ms ease, background-color 300ms ease, border-color 300ms ease;
 }
 
 .background {

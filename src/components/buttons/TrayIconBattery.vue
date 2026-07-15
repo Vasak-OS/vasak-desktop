@@ -6,7 +6,7 @@ import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { getBatteryInfo } from '@/services/core.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const batteryInfo = ref<BatteryInfo>({
@@ -89,8 +89,8 @@ onMounted(async () => {
 	await getBatteryInfoComp();
 });
 
-useEventListener('battery-update', (event) => {
-	batteryInfo.value = event.payload as BatteryInfo;
+useSharedEvent<BatteryInfo>('battery-update', (payload) => {
+	batteryInfo.value = payload;
 });
 </script>
 

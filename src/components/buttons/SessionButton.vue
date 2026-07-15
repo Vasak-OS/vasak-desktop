@@ -6,7 +6,7 @@ defineProps({
 </script>
 
 <template>
-  <a :title="title" href="#">
+  <a :title="title" href="#" class="theme-transition">
     <img :src="img" :alt="title" />
   </a>
 </template>

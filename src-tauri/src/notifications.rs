@@ -1,5 +1,6 @@
 use crate::structs::{Notification, NotificationUrgency};
 use crate::logger::{log_debug, log_error, log_info, log_warning};
+use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 use tauri::{AppHandle, Emitter};
@@ -7,9 +8,21 @@ use tokio::sync::{RwLock, Notify};
 use zbus::{interface, Connection};
 use zbus::zvariant::Value;
 
+// Delta event types for efficient notification emission
+#[derive(Serialize, Clone, Debug)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum NotificationDelta {
+    Added { notification: Notification, dropped_id: Option<u32> },
+    Removed { id: u32 },
+    BatchUpdate { added: Vec<Notification>, removed: Vec<u32> },
+    Cleared,
+}
+
 // Global stores
 static APP_HANDLE: LazyLock<Arc<RwLock<Option<AppHandle>>>> = LazyLock::new(|| Arc::new(RwLock::new(None)));
 static NOTIFICATIONS: LazyLock<Arc<RwLock<Vec<Notification>>>> = LazyLock::new(|| Arc::new(RwLock::new(Vec::new())));
+// Pending deltas accumulated during debounce window
+static PENDING_DELTAS: LazyLock<Arc<RwLock<Vec<NotificationDelta>>>> = LazyLock::new(|| Arc::new(RwLock::new(Vec::new())));
 // Debounce notifier
 static NOTIFY_UPDATE: LazyLock<Arc<Notify>> = LazyLock::new(|| Arc::new(Notify::new()));
 
@@ -20,15 +33,14 @@ pub async fn initialize_app_handle(app_handle: AppHandle) {
     let mut handle = APP_HANDLE.write().await;
     *handle = Some(app_handle);
 
-    // Spawn the debouncer loop
+    // Spawn the debouncer loop with delta coalescing
     tokio::spawn(async {
         let notify = NOTIFY_UPDATE.clone();
         loop {
             // Wait for a notification trigger
             notify.notified().await;
 
-            // Debounce logic: Wait until there is a 100ms period of silence
-            // Or just debounce trailing edge with 100ms delay
+            // Trailing-edge debounce: wait 100ms of silence before emitting
             let mut deadline = tokio::time::Instant::now() + tokio::time::Duration::from_millis(100);
             
             loop {
@@ -44,32 +56,100 @@ pub async fn initialize_app_handle(app_handle: AppHandle) {
                 }
             }
 
-            // Emit the update
-            perform_emit_notifications().await;
+            // Emit coalesced deltas
+            perform_emit_deltas().await;
         }
     });
 
 }
 
-// This function triggers the update process (debounced)
-async fn emit_notifications_updated() {
+// Queue a delta and trigger the debounced emission
+async fn queue_delta(delta: NotificationDelta) {
+    let mut pending = PENDING_DELTAS.write().await;
+    pending.push(delta);
+    drop(pending);
     NOTIFY_UPDATE.notify_one();
 }
 
-// The actual emission logic (private)
-async fn perform_emit_notifications() {
+// The actual emission logic: coalesce pending deltas and emit
+async fn perform_emit_deltas() {
+    let mut pending = PENDING_DELTAS.write().await;
+    if pending.is_empty() {
+        return;
+    }
+
+    let deltas: Vec<NotificationDelta> = pending.drain(..).collect();
+    drop(pending);
+
     if let Some(app_handle) = APP_HANDLE.read().await.as_ref() {
-        let notifications = NOTIFICATIONS.read().await;
-        log_debug(&format!("Emitiendo actualización de notificaciones ({} total)", notifications.len()));
-        if let Err(e) = app_handle.emit("notifications-updated", &*notifications) {
-            log_error(&format!("Error al emitir evento notifications-updated: {}", e));
+        let coalesced = if deltas.len() == 1 {
+            deltas
+        } else {
+            coalesce_deltas(deltas)
+        };
+
+        for event_payload in &coalesced {
+            log_debug(&format!("Emitiendo delta de notificaciones: {:?}", event_payload));
+            if let Err(e) = app_handle.emit("notification-delta", event_payload) {
+                log_error(&format!("Error al emitir evento notification-delta: {}", e));
+            }
         }
     }
 }
 
+// Coalesce multiple deltas into ordered non-lossy deltas.
+// - A Cleared boundary remains effective: if Cleared is followed by new additions,
+//   a separate Cleared delta is emitted first, then the post-clear additions as a BatchUpdate.
+// - Added items within each resulting delta are newest-first (reversed from arrival order).
+fn coalesce_deltas(deltas: Vec<NotificationDelta>) -> Vec<NotificationDelta> {
+    let mut added: Vec<Notification> = Vec::new();
+    let mut removed: Vec<u32> = Vec::new();
+    let mut cleared = false;
+
+    for delta in deltas {
+        match delta {
+            NotificationDelta::Cleared => {
+                added.clear();
+                removed.clear();
+                cleared = true;
+            }
+            NotificationDelta::Added { notification, dropped_id } => {
+                added.push(notification);
+                if let Some(id) = dropped_id {
+                    removed.push(id);
+                }
+            }
+            NotificationDelta::Removed { id } => {
+                removed.push(id);
+            }
+            NotificationDelta::BatchUpdate { added: batch_added, removed: batch_removed } => {
+                added.extend(batch_added);
+                removed.extend(batch_removed);
+            }
+        }
+    }
+
+    let mut result = Vec::new();
+
+    // If we saw a Cleared, emit it first so the frontend resets before additions.
+    if cleared {
+        result.push(NotificationDelta::Cleared);
+    }
+
+    // Emit accumulated adds/removes as a BatchUpdate (newest-first).
+    if !added.is_empty() || !removed.is_empty() {
+        added.reverse();
+        result.push(NotificationDelta::BatchUpdate { added, removed });
+    }
+
+    result
+}
+
 pub async fn get_notifications() -> Result<Vec<Notification>, String> {
     let notifications = NOTIFICATIONS.read().await;
-    Ok(notifications.clone())
+    // Cap at MAX_NOTIFICATIONS (50) without cloning the entire Vec
+    let count = notifications.len().min(MAX_NOTIFICATIONS);
+    Ok(notifications[..count].to_vec())
 }
 
 pub async fn remove_notification(id: u32) -> Result<bool, String> {
@@ -81,7 +161,7 @@ pub async fn remove_notification(id: u32) -> Result<bool, String> {
     if notifications.len() < initial_len {
         log_debug(&format!("Notificación {} eliminada correctamente", id));
         drop(notifications);
-        emit_notifications_updated().await;
+        queue_delta(NotificationDelta::Removed { id }).await;
         Ok(true)
     } else {
         Ok(false)
@@ -93,7 +173,7 @@ pub async fn clear_all_notifications() -> Result<u32, String> {
     let count = notifications.len() as u32;
     notifications.clear();
     drop(notifications);
-    emit_notifications_updated().await;
+    queue_delta(NotificationDelta::Cleared).await;
     Ok(count)
 }
 
@@ -237,16 +317,22 @@ impl NotificationServer {
         };
 
         let id = notification.id;
+        let notification_clone = notification.clone();
 
-        {
+        let dropped_id = {
             let mut store = NOTIFICATIONS.write().await;
             store.insert(0, notification);
             if store.len() > MAX_NOTIFICATIONS {
+                // Capture the ID of the evicted (oldest) entry before truncating
+                let dropped = store.last().map(|n| n.id);
                 store.truncate(MAX_NOTIFICATIONS);
+                dropped
+            } else {
+                None
             }
-        }
+        };
         
-        emit_notifications_updated().await;
+        queue_delta(NotificationDelta::Added { notification: notification_clone, dropped_id }).await;
         id
     }
 }

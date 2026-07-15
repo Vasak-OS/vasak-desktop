@@ -6,7 +6,7 @@ import {
 	type NetworkInfo,
 	type VpnStatus,
 } from '@/services/network.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 export function useNetworkState() {
@@ -55,11 +55,11 @@ export function useNetworkState() {
 		}
 	};
 
-	useEventListener<NetworkInfo>('network-changed', (event) => {
-		networkState.value = event.payload;
+	useSharedEvent<NetworkInfo>('network-changed', (payload) => {
+		networkState.value = payload;
 	});
 
-	useEventListener('vpn-changed', refreshVpnStatus);
+	useSharedEvent('vpn-changed', refreshVpnStatus);
 
 	return {
 		networkState,

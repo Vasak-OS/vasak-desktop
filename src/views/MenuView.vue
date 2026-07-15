@@ -16,12 +16,14 @@ import { openConfigurationWindow, toggleMenu, toggleSessionPopup } from '@/servi
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
-const menuData: Ref<Array<any>> = ref([]);
+const menuData: Ref<Record<string, any>> = ref({});
 const categorySelected: Ref<any> = ref('all');
 const filter: Ref<string> = ref('');
 const leaving = ref(false);
 const selectedIndex = ref(0);
+const menuLoadFailed = ref(false);
 const menuWindow = getCurrentWindow();
+let unlistenFocus: (() => void) | null = null;
 
 const { logoutImg, shutdownImg, rebootImg, suspendImg, settingsImg } = useIcons({
 	logoutImg: 'system-log-out',
@@ -33,9 +35,24 @@ const { logoutImg, shutdownImg, rebootImg, suspendImg, settingsImg } = useIcons(
 
 const setMenu = async () => {
 	try {
-		menuData.value = await getMenuItems();
+		const data = await getMenuItems();
+		if (!data || Object.keys(data).length === 0) {
+			menuLoadFailed.value = true;
+			menuData.value = {};
+			return;
+		}
+		// Pre-sort all apps within each category alphabetically by name
+		for (const key of Object.keys(data)) {
+			if (data[key]?.apps) {
+				data[key].apps.sort((a: any, b: any) => a.name.localeCompare(b.name));
+			}
+		}
+		menuData.value = data;
+		menuLoadFailed.value = false;
 	} catch (error) {
 		logError('Error al cargar el menú:', error);
+		menuLoadFailed.value = true;
+		menuData.value = {};
 	}
 };
 
@@ -74,6 +91,7 @@ const appsFiltred = computed(() => {
 	const allApps = (menuData.value as any)?.all?.apps ?? [];
 	const query = filter.value.toLowerCase();
 	if (!query) return [];
+	// Data is pre-sorted on fetch, no re-sorting needed per keystroke
 	return allApps.filter(
 		(app: any) =>
 			app.name.toLowerCase().includes(query) || app.description.toLowerCase().includes(query)
@@ -87,15 +105,23 @@ const categoryEntries = computed(() => {
 	return { all, others: entries };
 });
 
-onMounted(async () => {
+const isMenuEmpty = computed(() => {
+	return menuLoadFailed.value || Object.keys(menuData.value).length === 0;
+});
+
+onMounted(() => {
 	setMenu();
 	document.addEventListener('keydown', onKeydown);
 	window.addEventListener('blur', onBlur);
+	menuWindow.onFocusChanged(({ payload: focused }) => {
+		if (focused) setTimeout(() => document.getElementById('search')?.focus(), 50);
+	}).then(fn => { unlistenFocus = fn; });
 });
 
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onKeydown);
 	window.removeEventListener('blur', onBlur);
+	unlistenFocus?.();
 });
 
 watch(filter, () => {
@@ -148,7 +174,7 @@ const onBlur = () => {
     >
       <UserMenuCard />
 
-      <SearchMenuComponent v-model:filter="filter" class="search-component" />
+      <SearchMenuComponent v-model:filter="filter" :disabled="isMenuEmpty" class="search-component" />
 
       <div class="flex items-center gap-2">
         <SessionButton
@@ -173,7 +199,10 @@ const onBlur = () => {
     </div>
 
     <transition enter-active-class="transition-opacity duration-300 ease-out" leave-active-class="transition-opacity duration-300 ease-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
-      <div v-if="filter !== ''" key="filter-view">
+      <div v-if="isMenuEmpty" key="empty-state" class="flex items-center justify-center h-[calc(100vh-88px)]">
+        <p class="text-tx-main/60 text-lg">No applications available</p>
+      </div>
+      <div v-else-if="filter !== ''" key="filter-view">
         <FilterArea v-model:apps="apps" v-model:filter="filter" :selected-index="selectedIndex" />
       </div>
       <div

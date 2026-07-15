@@ -19,3 +19,9 @@ export interface NotificationGroupData {
 	latest_timestamp: number;
 	has_unread: boolean;
 }
+
+export type NotificationDelta =
+	| { action: 'added'; notification: Notification; dropped_id: number | null }
+	| { action: 'removed'; id: number }
+	| { action: 'batch_update'; added: Notification[]; removed: number[] }
+	| { action: 'cleared' };

@@ -9,12 +9,24 @@ import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
 import type { Store } from 'pinia';
 import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import type { FileEntry } from '@/interfaces/file';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
+
+const route = useRoute();
+
+/**
+ * Secondary monitors get a lightweight view: wallpaper only, no widgets or file grid.
+ * The backend passes ?monitor=desktop_N for secondary monitors.
+ */
+const isSecondaryMonitor = computed(() => {
+	const monitorParam = route.query.monitor as string | undefined;
+	return !!monitorParam && monitorParam !== 'desktop' && monitorParam.startsWith('desktop_');
+});
 
 const configStore = useConfigStore() as Store<
 	'config',
@@ -98,30 +110,52 @@ const handleFileClick = async (file: FileEntry) => {
 
 // Ver cambios en showFiles para recargar archivos
 watch(showFiles, () => {
-	loadDesktopFiles();
+	if (!isSecondaryMonitor.value) {
+		loadDesktopFiles();
+	}
 });
 
 watch(showHiddenFiles, () => {
-	loadDesktopFiles();
+	if (!isSecondaryMonitor.value) {
+		loadDesktopFiles();
+	}
 });
 
 let unlistenTheme: (() => void) | null = null;
+let isMounted = false;
 
 onMounted(async () => {
+	isMounted = true;
 	await (configStore as any).loadConfig();
-	await loadDesktopFiles();
-	unlistenTheme = await listen('vicons:theme-changed', () => {
-		loadDesktopFiles();
-	});
+	if (!isMounted) return;
+
+	// Secondary monitors only need wallpaper — skip file loading and theme listeners
+	if (!isSecondaryMonitor.value) {
+		await loadDesktopFiles();
+		if (!isMounted) return;
+
+		const unlisten = await listen('vicons:theme-changed', () => {
+			loadDesktopFiles();
+		});
+
+		if (isMounted) {
+			unlistenTheme = unlisten;
+		} else {
+			unlisten();
+		}
+	}
 });
 
 onUnmounted(() => {
+	isMounted = false;
 	unlistenTheme?.();
 });
 
-useEventListener('config-changed', async () => {
+useSharedEvent('config-changed', async () => {
 	await (configStore as any).loadConfig();
-	await loadDesktopFiles();
+	if (!isSecondaryMonitor.value) {
+		await loadDesktopFiles();
+	}
 });
 </script>
 
@@ -131,8 +165,8 @@ useEventListener('config-changed', async () => {
   <img v-else :src="background" alt="Background" class="w-screen h-screen object-cover absolute z-10"
     style="border-radius: 0px" />
 
-  <!-- Grid de archivos del escritorio -->
-  <div v-if="showFiles && desktopFiles.length > 0" class="absolute z-15 w-full h-full overflow-auto px-4 py-14">
+  <!-- Grid de archivos del escritorio (primary monitor only) -->
+  <div v-if="!isSecondaryMonitor && showFiles && desktopFiles.length > 0" class="absolute z-15 w-full h-full overflow-auto px-4 py-14">
     <div class="grid gap-4 content-start" :style="{
       gridTemplateColumns: `repeat(auto-fill, minmax(${40 + iconSize}px, 1fr))`
     }">
@@ -150,7 +184,8 @@ useEventListener('config-changed', async () => {
     </div>
   </div>
 
-  <main class="w-screen h-screen flex flex-col items-center justify-center absolute z-20 pointer-events-none">
+  <!-- Widgets (primary monitor only) -->
+  <main v-if="!isSecondaryMonitor" class="w-screen h-screen flex flex-col items-center justify-center absolute z-20 pointer-events-none">
     <MusicWidget class="pointer-events-auto" />
     <DesktopClockWidget class="pointer-events-auto" />
   </main>

@@ -1,12 +1,23 @@
-use crate::window_manager::WindowManager;
+use crate::window_manager::{WindowInfo, WindowManager};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use std::time::Instant;
 use tauri::async_runtime::RwLock as AsyncRwLock;
+
+/// Cached window list snapshot with timestamp for lock-timeout fallback.
+/// Updated by the polling thread after each successful Wayfire IPC call.
+pub struct CachedWindowList {
+    pub windows: Vec<WindowInfo>,
+    pub updated_at: Instant,
+}
 
 /// Estado global del gestor de ventanas
 pub struct WMState {
     pub(crate) window_manager: Arc<RwLock<WindowManager>>,
+    /// Cached window list protected by parking_lot RwLock for timeout support.
+    /// IPC handlers can read this on lock timeout instead of blocking.
+    pub(crate) cached_windows: Arc<parking_lot::RwLock<Option<CachedWindowList>>>,
 }
 
 /// Representa una notificación del sistema

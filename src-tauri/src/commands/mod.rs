@@ -1,4 +1,5 @@
 mod audio;
+mod batch;
 mod battery;
 mod bluetooth;
 mod brightness;
@@ -18,6 +19,7 @@ mod session_popup;
 mod tray;
 mod window_manager;
 
+pub use batch::batch_invoke;
 pub use audio::{
     get_audio_devices, get_audio_volume, set_audio_device, set_audio_volume, toggle_audio_applet,
     toggle_audio_mute,

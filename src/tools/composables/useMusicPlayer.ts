@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import type { MusicInfo } from '@/interfaces/music';
 import { musicNowPlaying } from '@/services/core.service';
-import { useEventListener } from '@/tools/event.listener';
+import { useSharedEvent } from '@/tools/event.bus';
 import { processImageUrl } from '@/utils/image';
 import { logError } from '@/utils/logger';
 
@@ -84,9 +84,8 @@ export function useMusicPlayer() {
 		{ immediate: true }
 	);
 
-	useEventListener<Partial<MusicInfo>>('music-playing-update', (event) => {
-		const payload = event.payload || {};
-		Object.assign(musicInfo.value, payload);
+	useSharedEvent<Partial<MusicInfo>>('music-playing-update', (payload) => {
+		Object.assign(musicInfo.value, payload || {});
 	});
 
 	return {
