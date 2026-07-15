@@ -34,7 +34,7 @@ impl Applet for AudioApplet {
 /// dropped and a fresh one is created — no duplicate backends, no separate
 /// reconnection task.
 async fn run_audio_monitor_loop(app: AppHandle, mut monitor: AudioMonitor) {
-    loop {
+    'outer: loop {
         let is_event_driven = monitor.is_event_driven();
         let mut state_rx = monitor.state_rx();
 
@@ -61,7 +61,7 @@ async fn run_audio_monitor_loop(app: AppHandle, mut monitor: AudioMonitor) {
                             log_info("AudioApplet: upgrading from polling to event-driven backend");
                             drop(monitor);
                             monitor = new_monitor;
-                            break; // restart outer loop with upgraded monitor
+                            continue 'outer; // skip reconnect, re-enter outer loop with upgraded monitor
                         }
                         // Still only polling available — keep the old one.
                         continue;

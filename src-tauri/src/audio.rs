@@ -146,7 +146,6 @@ pub fn set_volume(volume: i64, _app: AppHandle) -> Result<()> {
 
     CommandExecutor::run(CMD_PACTL, &["set-sink-volume", &sink, &volume_str])?;
 
-    clear_sink_cache();
     Ok(())
 }
 
@@ -157,7 +156,6 @@ pub fn toggle_mute(_app: AppHandle) -> Result<bool> {
 
     CommandExecutor::run(CMD_PACTL, &["set-sink-mute", &sink, "toggle"])?;
 
-    clear_sink_cache();
     let info = get_volume()?;
     Ok(info.is_muted)
 }
