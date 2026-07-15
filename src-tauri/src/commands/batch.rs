@@ -61,13 +61,13 @@ async fn dispatch_command(app: &AppHandle, command: &str, _args: &Value) -> Batc
                             if cached.updated_at.elapsed() < std::time::Duration::from_secs(5) {
                                 Ok(cached.windows.clone())
                             } else {
-                                Ok(Vec::new())
+                                Err("Window cache stale".to_string())
                             }
                         } else {
-                            Ok(Vec::new())
+                            Err("Window cache unavailable".to_string())
                         }
                     } else {
-                        Ok(Vec::new())
+                        Err("Window manager lock contended".to_string())
                     }
                 }
             };
@@ -126,14 +126,16 @@ pub async fn batch_invoke(
 ) -> Vec<BatchResponse> {
     log_debug(&format!("batch_invoke: processing {} requests", requests.len()));
 
-    let (valid, rejected): (Vec<_>, Vec<_>) = requests
-        .into_iter()
-        .enumerate()
-        .partition(|(i, _)| *i < MAX_BATCH_SIZE);
+    let mut requests = requests;
+    let rejected = if requests.len() > MAX_BATCH_SIZE {
+        requests.split_off(MAX_BATCH_SIZE)
+    } else {
+        Vec::new()
+    };
 
     let mut responses: Vec<BatchResponse> = rejected
         .into_iter()
-        .map(|(_, req)| {
+        .map(|req| {
             BatchResponse::err(
                 req.id,
                 format!("Batch size exceeds maximum of {}", MAX_BATCH_SIZE),
@@ -141,15 +143,13 @@ pub async fn batch_invoke(
         })
         .collect();
 
-    let futures: Vec<_> = valid
+    let futures: Vec<_> = requests
         .into_iter()
-        .map(|(_, req)| {
+        .map(|req| {
             let app_clone = app.clone();
-            let command = req.command.clone();
-            let args = req.args.clone();
             let id = req.id;
             async move {
-                let mut response = dispatch_command(&app_clone, &command, &args).await;
+                let mut response = dispatch_command(&app_clone, &req.command, &req.args).await;
                 response.id = id;
                 response
             }
