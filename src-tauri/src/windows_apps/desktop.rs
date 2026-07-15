@@ -3,7 +3,6 @@ use gtk::prelude::*;
 use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use tauri::{App, WebviewUrl, WebviewWindowBuilder};
 
-use crate::gtk_utils;
 use crate::monitor_manager::{get_monitors, get_primary_monitor};
 
 pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
@@ -18,26 +17,16 @@ pub fn create_desktops(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
 fn open_other_desktops(app: &App, monitors: &[tauri::Monitor], primary_monitor: &tauri::Monitor) {
     let primary_pos = primary_monitor.position();
-    let app_handle = app.handle().clone();
-    let others: Vec<tauri::Monitor> = monitors
+    let others: Vec<&tauri::Monitor> = monitors
         .iter()
         .filter(|m| m.position() != primary_pos)
-        .cloned()
         .collect();
 
-    for (index, monitor) in others.into_iter().enumerate() {
+    for (index, monitor) in others.iter().enumerate() {
         let label = format!("desktop_{}", index + 1);
-        let app = app_handle.clone();
-        std::thread::spawn(move || {
-            // We create the webview window from the main thread via invoke_on_main,
-            // but we need the AppHandle. Since this is a secondary monitor and
-            // the setup is complex, we handle it inside invoke_on_main
-            unsafe {
-                gtk_utils::invoke_on_main(move || {
-                    unimplemented!("Secondary monitor desktops not yet supported");
-                });
-            }
-        });
+        if let Err(e) = setup_desktop(app, &label, monitor, true) {
+            log::error!("Secondary desktop {} failed: {}", label, e);
+        }
     }
 }
 
@@ -49,12 +38,20 @@ fn setup_desktop(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let pos = tauri_monitor.position();
     let size = tauri_monitor.size();
+    let scale = tauri_monitor.scale_factor();
 
-    // 1. Find matching GDK monitor.
+    // Convert Tauri physical pixels → logical (dip) for GDK-compatible coordinates
+    let logical_x = pos.x as f64 / scale;
+    let logical_y = pos.y as f64 / scale;
+    let logical_w = size.width as f64 / scale;
+    let logical_h = size.height as f64 / scale;
+
+    // 1. Find matching GDK monitor (GDK geometry is in logical pixels).
     let gdk_monitor = find_gdk_monitor(tauri_monitor)
         .ok_or_else(|| format!("No GDK monitor for {:?}", label))?;
 
     // 2. Create Tauri WebviewWindow (xdg-toplevel) to host the webview.
+    //    inner_size / position take logical pixels in Tauri v2.
     let desktop_window = WebviewWindowBuilder::new(
         app,
         label,
@@ -63,8 +60,8 @@ fn setup_desktop(
     .title(format!("Vasak Desktop {}", label))
     .decorations(false)
     .transparent(true)
-    .inner_size(size.width as f64, size.height as f64)
-    .position(pos.x as f64, pos.y as f64)
+    .inner_size(logical_w, logical_h)
+    .position(logical_x, logical_y)
     .visible(false)
     .skip_taskbar(true)
     .build()?;
@@ -141,11 +138,15 @@ fn setup_desktop(
 
 fn find_gdk_monitor(tauri_monitor: &tauri::Monitor) -> Option<gdk::Monitor> {
     let pos = tauri_monitor.position();
+    let scale = tauri_monitor.scale_factor();
+    // GDK geometry is in logical pixels; convert Tauri physical position.
+    let logical_x = (pos.x as f64 / scale) as i32;
+    let logical_y = (pos.y as f64 / scale) as i32;
     let display = gdk::Display::default()?;
     for i in 0..display.n_monitors() {
         let mon = display.monitor(i)?;
         let rect = mon.geometry();
-        if rect.x() == pos.x && rect.y() == pos.y {
+        if rect.x() == logical_x && rect.y() == logical_y {
             return Some(mon);
         }
     }
