@@ -5,132 +5,116 @@ use std::error::Error;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::{fs, io};
+use std::os::unix::io::AsRawFd;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::window_manager::wayfire_ipc::get_wayfire_client;
 use crate::windows_apps::create_osd_window;
 
-// ─── F I F O   p a t h ───────────────────────────────────────────────────────
+// ─── e v d e v   C a p s   L o c k   m o n i t o r ───────────────────────────
+// Uses udev uaccess — no input group, no Wayfire IPC, no FIFO.
 
-fn fifo_path() -> String {
-    let runtime = std::env::var("XDG_RUNTIME_DIR")
-        .unwrap_or_else(|_| format!("/run/user/{}", unsafe { libc::getuid() }));
-    format!("{}/vasak-hotkey.fifo", runtime)
+const EV_KEY: u16 = 0x01;
+const EV_LED: u16 = 0x11;
+const KEY_CAPSLOCK: u16 = 58;
+const LED_CAPSL: u16 = 0;
+// EVIOCGLED = _IOR('E', 0x19, int) = 0x80044519 (64-bit)
+const EVIOCGLED: libc::c_ulong = 0x8004_4519;
+
+#[repr(C)]
+struct InputEvent {
+    _tv_sec: i64,
+    _tv_usec: i64,
+    type_: u16,
+    code: u16,
+    value: i32,
 }
 
-// ─── W a y f i r e   b i n d i n g   r e g i s t r a t i o n ─────────────────
-
-async fn register_wayfire_binding(
-    _app: AppHandle,
-    fifo: String,
-) {
-    let client = match get_wayfire_client().await {
-        Some(c) => c,
-        None => {
-            log::warn!("Cannot connect to Wayfire IPC — Caps Lock hotkey binding not registered");
-            return;
+fn find_keyboard_evdev() -> Option<String> {
+    if let Ok(dir) = fs::read_dir("/dev/input/by-path") {
+        for entry in dir.flatten() {
+            let path = entry.path();
+            if let Some(name) = path.file_name()?.to_str() {
+                if name.ends_with("-event-kbd") {
+                    return Some(path.to_string_lossy().to_string());
+                }
+            }
         }
+    }
+    log::warn!("No keyboard evdev device found — Caps Lock monitoring unavailable");
+    None
+}
+
+fn caps_led_state(fd: std::os::unix::io::RawFd) -> bool {
+    let mut leds: u32 = 0;
+    unsafe {
+        libc::ioctl(fd, EVIOCGLED, &mut leds as *mut u32 as *mut libc::c_void);
+    }
+    (leds & 1) != 0
+}
+
+fn spawn_evdev_caps_monitor(app: AppHandle, running: Arc<AtomicBool>) {
+    let device_path = match find_keyboard_evdev() {
+        Some(p) => p,
+        None => return,
     };
 
-    let command = format!("bash -c 'echo capslock > {}'", fifo);
-
-    match client
-        .send_and_wait(
-            "command/register-binding",
-            json!({
-                "binding": "KEY_CAPSLOCK",
-                "command": command,
-            }),
-        )
-        .await
-    {
-        Ok(resp) => log::info!("Wayfire KEY_CAPSLOCK binding registered: {}", resp),
-        Err(e) => log::error!("Failed to register KEY_CAPSLOCK binding: {}", e),
-    }
-}
-
-// ─── F I F O   r e a d e r ───────────────────────────────────────────────────
-
-fn spawn_fifo_reader(fifo: String, app: AppHandle, running: Arc<AtomicBool>, mut caps_state: bool) {
     std::thread::spawn(move || {
-        // Remove stale FIFO if present
-        let _ = fs::remove_file(&fifo);
-        // Create the FIFO (named pipe)
-        if let Err(e) = nix::unistd::mkfifo(fifo.as_str(), nix::sys::stat::Mode::S_IRWXU) {
-            log::error!("Failed to create FIFO at {}: {}", fifo, e);
-            return;
-        }
-        log::info!("FIFO reader listening on {}", fifo);
+        log::info!("Caps Lock evdev monitor on {}", device_path);
 
-        let mut last_event = std::time::Instant::now()
-            - std::time::Duration::from_secs(1); // ensure first event fires
+        let mut file = match fs::File::open(&device_path) {
+            Ok(f) => f,
+            Err(e) => {
+                log::error!("Cannot open evdev device {}: {}", device_path, e);
+                log::warn!("Ensure udev uaccess grants access to input devices");
+                return;
+            }
+        };
+
+        let fd = file.as_raw_fd();
+
+        // Read initial Caps Lock LED state from kernel
+        let mut caps_state = caps_led_state(fd);
+        log::info!("Initial Caps Lock state: {}", caps_state);
+
+        let _ = app.emit("caps-lock-changed", json!({ "active": caps_state }));
+        if caps_state {
+            show_osd_sync("capslock-enabled-symbolic", 1.0, 1.0, "Bloq Mayús: Activado", &app);
+        }
+
+        let mut buf = [0u8; 24];
 
         loop {
             if !running.load(Ordering::Relaxed) {
                 break;
             }
 
-            // Open FIFO (blocks until a writer connects)
-            let file = match fs::File::open(&fifo) {
-                Ok(f) => f,
-                Err(e) => {
-                    log::error!("Cannot open FIFO {}: {}", fifo, e);
-                    break;
-                }
+            if let Err(e) = io::Read::read_exact(&mut file, &mut buf) {
+                log::error!("evdev read error: {}", e);
+                break;
+            }
+
+            let event: InputEvent = unsafe { std::mem::transmute(buf) };
+
+            let new_state = match (event.type_, event.code, event.value) {
+                (EV_LED, LED_CAPSL, v) => Some(v != 0),
+                (EV_KEY, KEY_CAPSLOCK, 1) => Some(caps_led_state(fd)),
+                _ => None,
             };
 
-            use std::io::BufRead;
-            let reader = io::BufReader::new(file);
-            for line in reader.lines() {
-                let line = match line {
-                    Ok(l) => l,
-                    Err(e) => {
-                        log::error!("FIFO read error: {}", e);
-                        break;
-                    }
-                };
-
-                let trimmed = line.trim();
-                match trimmed {
-                    "capslock" => {
-                        // Debounce: ignore events within 400ms of the last one,
-                        // because Wayfire may fire the binding on both press AND release.
-                        let now = std::time::Instant::now();
-                        if now.duration_since(last_event).as_millis() < 400 {
-                            log::debug!("Caps Lock event debounced");
-                            continue;
-                        }
-                        last_event = now;
-
-                        caps_state = !caps_state;
-                        let label = if caps_state {
-                            "Bloq Mayús: Activado"
-                        } else {
-                            "Bloq Mayús: Desactivado"
-                        };
-                        let icon = if caps_state {
-                            "capslock-enabled-symbolic"
-                        } else {
-                            "capslock-disabled-symbolic"
-                        };
-                        let _ = app.emit("caps-lock-changed", json!({ "active": caps_state }));
-                        show_osd_sync(
-                            icon,
-                            if caps_state { 1.0 } else { 0.0 },
-                            1.0,
-                            label,
-                            &app,
-                        );
-                        log::info!("Caps Lock toggled via hotkey: {}", caps_state);
-                    }
-                    _ => {
-                        log::warn!("Unknown FIFO message: {}", trimmed);
-                    }
+            if let Some(new) = new_state {
+                if new == caps_state {
+                    continue;
                 }
+                caps_state = new;
+
+                let label = if caps_state { "Bloq Mayús: Activado" } else { "Bloq Mayús: Desactivado" };
+                let icon = if caps_state { "capslock-enabled-symbolic" } else { "capslock-disabled-symbolic" };
+
+                let _ = app.emit("caps-lock-changed", json!({ "active": caps_state }));
+                show_osd_sync(icon, if caps_state { 1.0 } else { 0.0 }, 1.0, label, &app);
+                log::info!("Caps Lock state changed: {}", caps_state);
             }
         }
-
-        let _ = fs::remove_file(&fifo);
     });
 }
 
@@ -210,16 +194,14 @@ impl Applet for KeyboardLedsApplet {
     }
 
     async fn start(&self, app: AppHandle) -> Result<(), Box<dyn Error>> {
-        log::info!("Keyboard LEDs applet starting (Wayfire hotkey + FIFO + PulseAudio)");
+        log::info!("Keyboard LEDs applet starting (evdev uaccess + PulseAudio)");
 
         // Pre-create OSD window so sync dispatch can use it
         let _ = create_osd_window(&app, "capslock-disabled-symbolic", 0.0, 1.0, "").await;
 
         let running = Arc::new(AtomicBool::new(true));
 
-        let fifo = fifo_path();
-        spawn_fifo_reader(fifo.clone(), app.clone(), running.clone(), false);
-        register_wayfire_binding(app.clone(), fifo).await;
+        spawn_evdev_caps_monitor(app.clone(), running.clone());
         spawn_mic_monitor(app, running);
 
         Ok(())

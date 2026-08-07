@@ -5715,7 +5715,6 @@ dependencies = [
  "inotify 0.10.2",
  "libc",
  "log",
- "nix 0.29.0",
  "parking_lot",
  "pipewire",
  "proptest",
