@@ -12,7 +12,9 @@ impl Applet for NotificationApplet {
     }
 
     async fn start(&self, app: AppHandle) -> Result<(), Box<dyn Error>> {
-        crate::notifications::initialize_app_handle(app.clone()).await;
-        crate::notifications::start_notification_server().await
+        // The freedesktop server now lives in vasak-flare-daemon; here we only
+        // start the client (reads history, follows the daemon's Changed signal).
+        crate::notifications::initialize_app_handle(app).await;
+        Ok(())
     }
 }
