@@ -24,7 +24,24 @@ pub fn detect_display_server() -> String {
 #[tauri::command]
 pub async fn logout(_display_server: String) -> Result<(), String> {
     log_info("Cerrando sesión de usuario");
-    // Usar D-Bus para terminar la sesión del usuario actual
+
+    // The graphical session is managed by uwsm as a systemd user unit hierarchy.
+    // `uwsm stop` tears down graphical-session.target and its daemons in order.
+    // Spawn without waiting: uwsm ends the session (and this process) itself.
+    match std::process::Command::new("uwsm").arg("stop").spawn() {
+        Ok(_) => {
+            log_info("Cierre de sesión iniciado vía uwsm stop");
+            return Ok(());
+        }
+        Err(e) => {
+            log_error(&format!(
+                "uwsm no disponible ({}); usando logind TerminateUser como fallback",
+                e
+            ));
+        }
+    }
+
+    // Fallback (sin uwsm, p. ej. en dev): terminar la sesión vía logind.
     let connection = Connection::system()
         .await
         .map_err(|e| {
