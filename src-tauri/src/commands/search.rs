@@ -87,7 +87,9 @@ pub async fn execute_search_result(id: String, category: String, exec: Option<St
                 }
                 "settings" => {
                     log_info("Acción de búsqueda: Abrir configuración");
-                    // TODO: Open VasakOS settings app
+                    // Used to return success without doing anything, so the
+                    // search window closed and nothing opened.
+                    crate::commands::runner::spawn_settings()?;
                     Ok("Opening settings...".to_string())
                 }
                 _ => {

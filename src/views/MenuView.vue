@@ -12,7 +12,7 @@ import UserMenuCard from '@/components/cards/UserMenuCard.vue';
 import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import { getMenuItems, openApp } from '@/services/app.service';
-import { openConfigurationWindow, toggleMenu, toggleSessionPopup } from '@/services/window.service';
+import { openSettings, toggleMenu, toggleSessionPopup } from '@/services/window.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
@@ -62,7 +62,7 @@ const openSessionPopup = (action: string) => {
 
 const openConfiguration = async () => {
 	try {
-		await openConfigurationWindow();
+		await openSettings();
 	} catch (error) {
 		logError('Error al abrir configuración:', error);
 	}

@@ -32,10 +32,6 @@ export const batteryExists = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('battery_exists', args);
 };
 
-export const readDirectory = <T = any>(args: any): Promise<T> => {
-	return invoke<T>('read_directory', args);
-};
-
 export const logFromFrontend = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('log_from_frontend', args);
 };

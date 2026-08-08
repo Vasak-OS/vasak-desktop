@@ -3,7 +3,6 @@ import { join } from '@tauri-apps/api/path';
 import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
 import { getIconSource } from '@vasakgroup/plugin-vicons';
 import type { FileEntry, FileIconMapping, UserDirectory } from '@/interfaces/file';
-import { readDirectory } from '@/services/core.service';
 
 const iconMappings: FileIconMapping[] = [
 	// Images
@@ -144,36 +143,6 @@ export async function loadDirectory(
 	}
 }
 
-export async function loadDirectoryBackend(
-	dirPath: string,
-	showHidden: boolean = false
-): Promise<FileEntry[]> {
-	try {
-		const entries = await readDirectory({
-			path: dirPath,
-			showHidden,
-		});
-
-		const processedFiles = await Promise.all(
-			entries.map(async (entry: any) => {
-				const fileEntry: FileEntry = {
-					name: entry.name,
-					path: entry.path,
-					isDirectory: entry.is_dir,
-					isHidden: entry.name.startsWith('.'),
-					size: entry.size,
-				};
-
-				return enrichFileEntry(fileEntry);
-			})
-		);
-
-		return processedFiles;
-	} catch (err: any) {
-		console.error('Error reading directory:', err);
-		throw err;
-	}
-}
 
 /**
  * Reads and parses the XDG user-dirs.dirs configuration file

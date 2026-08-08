@@ -52,3 +52,33 @@ pub async fn open_app(path: &str) -> Result<(), String> {
     log_error(&format!("No se encontró comando ejecutable en: {}", path));
     Err("No se encontró el comando ejecutable".to_string())
 }
+
+/// Binary shipped by the vasak-settings package.
+const SETTINGS_BINARY: &str = "vasak-settings";
+
+/// Launches the VasakOS settings application.
+///
+/// The menu's gear button invoked `open_configuration_window`, a command that
+/// was never implemented on the Rust side: the call rejected, the error was
+/// swallowed by the caller's catch, and the button silently did nothing. The
+/// shell has no settings UI of its own — vasak-settings is a separate app — so
+/// the button's job is simply to launch it.
+pub fn spawn_settings() -> Result<(), String> {
+    log_info("Abriendo la aplicación de configuración");
+
+    Command::new(SETTINGS_BINARY).spawn().map_err(|error| {
+        let message = format!(
+            "No se pudo abrir {}: {}. ¿Está instalado el paquete vasak-settings?",
+            SETTINGS_BINARY, error
+        );
+        log_error(&message);
+        message
+    })?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn open_settings() -> Result<(), String> {
+    spawn_settings()
+}

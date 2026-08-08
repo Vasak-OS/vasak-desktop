@@ -92,6 +92,7 @@ pub fn run() {
             get_windows,
             toggle_window,
             open_app,
+            open_settings,
             show_osd,
             toggle_session_popup,
             logout,

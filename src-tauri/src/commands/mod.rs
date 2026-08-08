@@ -11,7 +11,7 @@ mod panel;
 mod music;
 mod network;
 mod notifications;
-mod runner;
+pub mod runner;
 mod search;
 mod search_window;
 mod session;
@@ -38,7 +38,7 @@ pub use notifications::{
     clear_notifications, delete_notification, get_all_notifications, invoke_notification_action,
     send_notify,
 };
-pub use runner::open_app;
+pub use runner::{open_app, open_settings};
 pub use search::{execute_search_result, global_search};
 pub use search_window::toggle_search;
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};

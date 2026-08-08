@@ -28,16 +28,13 @@ export const toggleControlCenter = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('toggle_control_center', args);
 };
 
-export const openConfigurationWindow = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('open_configuration_window', args);
+/** Launches the separate vasak-settings application. */
+export const openSettings = <T = any>(): Promise<T> => {
+	return invoke<T>('open_settings');
 };
 
 export const toggleMenu = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('toggle_menu', args);
-};
-
-export const toggleConfigApp = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('toggle_config_app', args);
 };
 
 export const toggleSessionPopup = <T = any>(action: string): Promise<T> => {
