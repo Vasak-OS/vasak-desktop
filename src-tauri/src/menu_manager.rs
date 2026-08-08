@@ -3,8 +3,48 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::RwLock;
 use crate::logger::log_info;
 use crate::structs::{AppEntry, CategoryInfo};
+
+/// Parsed menu, kept until something changes on disk.
+///
+/// Scanning is not cheap: it reads and parses every .desktop file in every XDG
+/// applications directory. Doing that each time the menu opens blocked the UI
+/// thread for the whole scan; the cache plus the watcher in `menu_watcher`
+/// means it happens once at startup and again only when an app is installed or
+/// removed.
+static MENU_CACHE: RwLock<Option<HashMap<String, CategoryInfo>>> = RwLock::new(None);
+
+/// Directories whose contents decide what the menu shows.
+pub fn applications_dirs() -> Vec<PathBuf> {
+    get_applications_dirs()
+}
+
+/// The menu, from cache when it is warm.
+pub fn get_menu_cached() -> HashMap<String, CategoryInfo> {
+    if let Ok(cache) = MENU_CACHE.read() {
+        if let Some(menu) = cache.as_ref() {
+            return menu.clone();
+        }
+    }
+
+    let menu = get_menu();
+
+    if let Ok(mut cache) = MENU_CACHE.write() {
+        *cache = Some(menu.clone());
+    }
+
+    menu
+}
+
+/// Drops the cache so the next read rescans. Called when the watcher sees a
+/// .desktop file appear, change or disappear.
+pub fn invalidate_menu_cache() {
+    if let Ok(mut cache) = MENU_CACHE.write() {
+        *cache = None;
+    }
+}
 
 fn get_applications_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();

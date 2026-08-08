@@ -2,6 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
@@ -105,8 +106,16 @@ const isMenuEmpty = computed(() => {
 	return menuLoadFailed.value || Object.keys(menuData.value).length === 0;
 });
 
+let unlistenMenuChanged: UnlistenFn | undefined;
+
 onMounted(() => {
 	setMenu();
+	// The window is hidden rather than destroyed now, so it is no longer
+	// rebuilt — and re-fetched — on every open. The backend watches the
+	// application directories and tells us when an app is installed or removed.
+	listen('menu-items-changed', () => setMenu()).then((fn) => {
+		unlistenMenuChanged = fn;
+	});
 	document.addEventListener('keydown', onKeydown);
 	window.addEventListener('blur', onBlur);
 	menuWindow.onFocusChanged(({ payload: focused }) => {
@@ -118,6 +127,7 @@ onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onKeydown);
 	window.removeEventListener('blur', onBlur);
 	unlistenFocus?.();
+	unlistenMenuChanged?.();
 });
 
 watch(filter, () => {

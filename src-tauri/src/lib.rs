@@ -15,6 +15,7 @@ mod commands;
 mod dbus_service;
 mod eventloops;
 mod menu_manager;
+mod menu_watcher;
 mod monitor_manager;
 mod notifications;
 mod tray;
@@ -177,6 +178,7 @@ pub fn run() {
             let _ = create_desktops(&handle);
             let _ = create_panels(&handle);
             watch_monitor_changes(&handle);
+            menu_watcher::watch_application_dirs(&handle);
 
             setup_windows_monitoring(window_manager.clone(), app.handle().clone(), cached_windows.clone())?;
             setup_dbus_service(app.handle().clone());
