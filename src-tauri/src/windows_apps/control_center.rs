@@ -1,6 +1,6 @@
 use gtk::prelude::*;
 use tauri::{
-    AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder,
+    AppHandle, LogicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder,
 };
 use tokio::time::{sleep, Duration};
 
@@ -32,11 +32,18 @@ pub async fn create_control_center_window(
     app: AppHandle,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
-    let primary_monitor_size = primary_monitor.size();
-    let app_height = primary_monitor_size.height.saturating_sub(60) as f64;
+
+    // Tauri reports monitors in physical pixels, but Wayfire's output geometry
+    // is logical. Feeding physical coordinates to configure_wayland_layer means
+    // that on a scaled screen they fall outside every output, the lookup finds
+    // no match and falls back to the first output — putting the control centre
+    // on the wrong monitor. Work in logical pixels throughout.
+    let scale = primary_monitor.scale_factor();
+    let monitor_position = primary_monitor.position().to_logical::<i32>(scale);
+    let monitor_size = primary_monitor.size().to_logical::<u32>(scale);
+
+    let app_height = monitor_size.height.saturating_sub(60) as f64;
     let panel_width = 350;
-    let monitor_position = primary_monitor.position();
-    let monitor_size = primary_monitor_size;
     let right_x = monitor_position.x + monitor_size.width as i32 - panel_width - 10;
     let bottom_y = monitor_position.y + monitor_size.height as i32 - app_height as i32 - 10;
 
@@ -72,9 +79,9 @@ pub async fn create_control_center_window(
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
     let _ = control_center_window.navigate(url);
 
-    control_center_window.set_position(Position::Physical(PhysicalPosition {
-        x: right_x,
-        y: bottom_y,
+    control_center_window.set_position(Position::Logical(LogicalPosition {
+        x: right_x as f64,
+        y: bottom_y as f64,
     }))?;
 
     let _ = control_center_window.show();

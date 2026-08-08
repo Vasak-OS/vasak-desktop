@@ -2,6 +2,7 @@ pub mod applets;
 pub mod applications;
 pub mod control_center;
 pub mod desktop;
+pub mod shell_layer;
 pub mod menu;
 pub mod panel;
 pub mod wayland_layer;
@@ -11,4 +12,4 @@ pub use applications::{create_osd_window, create_search_window, create_session_p
 pub use control_center::create_control_center_window;
 pub use desktop::create_desktops;
 pub use menu::create_menu_window;
-pub use panel::create_panel;
+pub use panel::create_panels;

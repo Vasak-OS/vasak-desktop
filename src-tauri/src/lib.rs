@@ -36,10 +36,11 @@ use structs::WMState;
 use tokio::sync::watch;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
+use monitor_manager::watch_monitor_changes;
 use windows_apps::*;
 
 /// Shared latch signaled by the frontend when the panel has painted.
-/// Registered *before* `create_panel` so no events are missed.
+/// Registered *before* `create_panels` so no events are missed.
 pub(crate) struct PanelReadyLatch(pub(crate) watch::Sender<bool>);
 
 use applets::{
@@ -171,8 +172,10 @@ pub fn run() {
             });
             app.manage(PanelReadyLatch(ready_tx));
 
-            let _ = create_desktops(app);
-            let _ = create_panel(app);
+            let handle = app.handle().clone();
+            let _ = create_desktops(&handle);
+            let _ = create_panels(&handle);
+            watch_monitor_changes(&handle);
 
             setup_windows_monitoring(window_manager.clone(), app.handle().clone(), cached_windows.clone())?;
             setup_dbus_service(app.handle().clone());
