@@ -32,9 +32,14 @@ const props = defineProps({
 });
 
 const formattedDate = computed(() => {
-	const dateObj = new Date(props.date);
-	dateObj.setDate(dateObj.getDate() + 1);
-	return dateObj.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' });
+	// `2026-08-08` parses as UTC midnight, which renders as the previous day
+	// anywhere behind UTC; the old +1 day compensated for that but overshot for
+	// anyone ahead of UTC. Building from the parts keeps it local everywhere.
+	const [year, month, day] = props.date.split('-').map(Number);
+	return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+		month: 'numeric',
+		day: 'numeric',
+	});
 });
 
 const dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');

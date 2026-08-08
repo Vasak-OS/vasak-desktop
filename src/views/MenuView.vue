@@ -79,10 +79,6 @@ const closeAfterAnimation = () => {
 	}, 200);
 };
 
-const apps = computed(() => {
-	return (menuData.value as any)?.all?.apps ?? [];
-});
-
 const appsOfCategory = computed(
 	() => (menuData.value as any)?.[categorySelected.value]?.apps ?? []
 );
@@ -203,7 +199,7 @@ const onBlur = () => {
         <p class="text-tx-main/60 text-lg">No applications available</p>
       </div>
       <div v-else-if="filter !== ''" key="filter-view">
-        <FilterArea v-model:apps="apps" v-model:filter="filter" :selected-index="selectedIndex" />
+        <FilterArea :apps="appsFiltred" :selected-index="selectedIndex" />
       </div>
       <div
         v-else
@@ -213,7 +209,7 @@ const onBlur = () => {
         <div
           class="bg-ui-bg/80 border border-ui-border rounded-corner p-4 h-full overflow-y-auto"
         >
-          <MenuArea v-model:apps="appsOfCategory" />
+          <MenuArea :apps="appsOfCategory" />
         </div>
 
         <div
