@@ -6,8 +6,12 @@ use crate::structs::{VolumeInfo, AudioDevice};
 use crate::windows_apps::applets::create_applet_audio_window;
 use tauri::{async_runtime::spawn, Manager};
 
+// These are `async` so Tauri runs them on a worker instead of the main thread.
+// Each one shells out to pactl through CommandExecutor, which spawns a thread
+// and blocks the caller on it for up to three seconds — done on the main thread
+// that stalls the panel, the clock and every animation while it waits.
 #[tauri::command]
-pub fn get_audio_volume() -> Result<VolumeInfo, String> {
+pub async fn get_audio_volume() -> Result<VolumeInfo, String> {
     log_debug("Comando: get_audio_volume");
     get_volume().map_err(|e| {
         log_error(&format!("Error al obtener volumen: {}", e));
@@ -16,7 +20,7 @@ pub fn get_audio_volume() -> Result<VolumeInfo, String> {
 }
 
 #[tauri::command]
-pub fn set_audio_volume(volume: i64, app: AppHandle) -> Result<(), String> {
+pub async fn set_audio_volume(volume: i64, app: AppHandle) -> Result<(), String> {
     log_info(&format!("Estableciendo volumen a: {}%", volume));
     set_volume(volume, app).map_err(|e| {
         log_error(&format!("Error al establecer volumen: {}", e));
@@ -25,7 +29,7 @@ pub fn set_audio_volume(volume: i64, app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn toggle_audio_mute(app: AppHandle) -> Result<bool, String> {
+pub async fn toggle_audio_mute(app: AppHandle) -> Result<bool, String> {
     log_info("Alternando estado de mute");
     toggle_mute(app).map_err(|e| {
         log_error(&format!("Error al alternar mute: {}", e));
@@ -34,12 +38,12 @@ pub fn toggle_audio_mute(app: AppHandle) -> Result<bool, String> {
 }
 
 #[tauri::command]
-pub fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
+pub async fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
     list_audio_devices().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn set_audio_device(device_id: String, app: AppHandle) -> Result<bool, String> {
+pub async fn set_audio_device(device_id: String, app: AppHandle) -> Result<bool, String> {
     log_info(&format!("Cambiando dispositivo de audio a: {}", device_id));
     set_default_audio_device(&device_id, app)
         .map(|_| {

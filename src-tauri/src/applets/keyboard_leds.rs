@@ -136,51 +136,105 @@ fn show_osd_sync(icon: &str, value: f64, maximum: f64, label: &str, app: &AppHan
 
 // ─── M i c   m u t e   v i a   P u l s e A u d i o ───────────────────────────
 
+/// Reads the current microphone mute state.
+async fn read_mic_muted() -> Option<bool> {
+    let output = tokio::process::Command::new("pactl")
+        .args(["get-source-mute", "@DEFAULT_SOURCE@"])
+        .output()
+        .await
+        .ok()?;
+
+    String::from_utf8(output.stdout)
+        .ok()
+        .map(|text| text.trim().contains("yes"))
+}
+
+async fn announce_mic_state(app: &AppHandle, muted: bool) {
+    let (label, icon) = if muted {
+        ("Micrófono: Silenciado", "microphone-sensitivity-muted")
+    } else {
+        ("Micrófono: Activado", "microphone-sensitivity-high")
+    };
+
+    let _ = app.emit("mic-mute-changed", json!({ "active": muted }));
+    let _ = crate::commands::osd::show_osd_internal(
+        icon,
+        if muted { 1.0 } else { 0.0 },
+        1.0,
+        label,
+        app,
+    )
+    .await;
+}
+
+/// Follows the microphone mute state through `pactl subscribe`.
+///
+/// This used to fork a `pactl get-source-mute` process **every second** for the
+/// whole session — around 86,000 processes a day — to notice a change that
+/// happens a handful of times. `pactl subscribe` is a single long-lived process
+/// that prints a line when audio state changes, so the state is only queried
+/// when something actually happened.
 fn spawn_mic_monitor(app: AppHandle, running: Arc<AtomicBool>) {
     tokio::spawn(async move {
-        let mut last_muted: Option<bool> = None;
+        use tokio::io::{AsyncBufReadExt, BufReader};
+        use tokio::process::Command;
+        use std::process::Stdio;
 
-        loop {
-            if !running.load(Ordering::Relaxed) {
-                break;
-            }
+        let mut last_muted: Option<bool> = read_mic_muted().await;
+        let mut backoff = std::time::Duration::from_secs(1);
 
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        while running.load(Ordering::Relaxed) {
+            let child = Command::new("pactl")
+                .arg("subscribe")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .spawn();
 
-            let muted = tokio::process::Command::new("pactl")
-                .args(["get-source-mute", "@DEFAULT_SOURCE@"])
-                .output()
-                .await
-                .ok()
-                .and_then(|o| String::from_utf8(o.stdout).ok())
-                .map(|s| s.trim().contains("yes"))
-                .unwrap_or(false);
+            let mut child = match child {
+                Ok(child) => child,
+                Err(error) => {
+                    log::error!("No se pudo iniciar `pactl subscribe`: {error}");
+                    tokio::time::sleep(backoff).await;
+                    // Back off so a missing PulseAudio doesn't become a spin loop.
+                    backoff = (backoff * 2).min(std::time::Duration::from_secs(30));
+                    continue;
+                }
+            };
 
-            if last_muted.map(|m| m == muted).unwrap_or(false) {
+            backoff = std::time::Duration::from_secs(1);
+
+            let Some(stdout) = child.stdout.take() else {
+                let _ = child.kill().await;
                 continue;
+            };
+
+            let mut lines = BufReader::new(stdout).lines();
+
+            while running.load(Ordering::Relaxed) {
+                match lines.next_line().await {
+                    Ok(Some(line)) => {
+                        // Only source events can change the microphone.
+                        if !line.contains("source") {
+                            continue;
+                        }
+
+                        let Some(muted) = read_mic_muted().await else {
+                            continue;
+                        };
+
+                        if last_muted == Some(muted) {
+                            continue;
+                        }
+                        last_muted = Some(muted);
+
+                        announce_mic_state(&app, muted).await;
+                    }
+                    // PulseAudio went away; reconnect rather than going deaf.
+                    Ok(None) | Err(_) => break,
+                }
             }
-            last_muted = Some(muted);
 
-            let label = if muted {
-                "Micrófono: Silenciado"
-            } else {
-                "Micrófono: Activado"
-            };
-            let icon = if muted {
-                "microphone-sensitivity-muted"
-            } else {
-                "microphone-sensitivity-high"
-            };
-
-            let _ = app.emit("mic-mute-changed", json!({ "active": muted }));
-            let _ = crate::commands::osd::show_osd_internal(
-                icon,
-                if muted { 1.0 } else { 0.0 },
-                1.0,
-                label,
-                &app,
-            )
-            .await;
+            let _ = child.kill().await;
         }
     });
 }

@@ -33,12 +33,26 @@ export function useVolumeState() {
 		}
 	}
 
-	async function updateVolume(): Promise<void> {
+	// The slider emits on every input event, and each call forks a pactl
+	// process. Dragging used to fire dozens of them; coalescing to the last
+	// value keeps the volume responsive without the process storm.
+	let volumeCommitTimer: ReturnType<typeof setTimeout> | undefined;
+	const VOLUME_COMMIT_DELAY = 60;
+
+	async function commitVolume(): Promise<void> {
 		try {
 			await setAudioVolume({ volume: currentVolume.value });
 		} catch (error) {
 			logError('Error setting volume:', error);
 		}
+	}
+
+	function updateVolume(): void {
+		if (volumeCommitTimer !== undefined) clearTimeout(volumeCommitTimer);
+		volumeCommitTimer = setTimeout(() => {
+			volumeCommitTimer = undefined;
+			void commitVolume();
+		}, VOLUME_COMMIT_DELAY);
 	}
 
 	async function toggleMute(): Promise<void> {
