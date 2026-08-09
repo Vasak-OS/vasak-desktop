@@ -180,7 +180,41 @@ pub fn run() {
             watch_monitor_changes(&handle);
             menu_watcher::watch_application_dirs(&handle);
 
-            setup_windows_monitoring(window_manager.clone(), app.handle().clone(), cached_windows.clone())?;
+            // Retry in the background instead of aborting startup.
+            //
+            // This used to propagate with `?`, so if the Wayfire IPC socket was
+            // not answering within its five second connect deadline — starting
+            // a moment too early, or Wayfire still coming up — the entire shell
+            // failed to launch. A compositor that is slow to appear should cost
+            // a late taskbar, not the whole desktop.
+            {
+                let wm = window_manager.clone();
+                let handle = app.handle().clone();
+                let cached = cached_windows.clone();
+
+                if let Err(error) = setup_windows_monitoring(wm.clone(), handle.clone(), cached.clone()) {
+                    log::warn!("Wayfire IPC no disponible todavía ({error}); reintentando en segundo plano");
+
+                    std::thread::spawn(move || {
+                        let mut delay = std::time::Duration::from_secs(2);
+
+                        loop {
+                            std::thread::sleep(delay);
+
+                            match setup_windows_monitoring(wm.clone(), handle.clone(), cached.clone()) {
+                                Ok(()) => {
+                                    log::info!("Wayfire IPC conectado; monitoreo de ventanas activo");
+                                    break;
+                                }
+                                Err(error) => {
+                                    log::debug!("Wayfire IPC sigue sin responder: {error}");
+                                    delay = (delay * 2).min(std::time::Duration::from_secs(30));
+                                }
+                            }
+                        }
+                    });
+                }
+            }
             setup_dbus_service(app.handle().clone());
             
             // Initialize AppletManager with priority-based phased startup

@@ -7,7 +7,7 @@
 //! `notification-delta` event to the frontend whenever the daemon signals a
 //! change (no polling).
 
-use crate::logger::log_error;
+use crate::logger::{log_error, log_info};
 use crate::structs::{Notification, NotificationUrgency};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -201,14 +201,41 @@ async fn listen_for_changes() -> Result<(), String> {
     Ok(())
 }
 
+/// Drops the cached D-Bus connection so the next use reconnects.
+async fn reset_connection() {
+    *CONNECTION.write().await = None;
+}
+
 pub async fn initialize_app_handle(app_handle: AppHandle) {
     *APP_HANDLE.write().await = Some(app_handle);
 
     tokio::spawn(async {
-        // Initial population, then follow the daemon's Changed signal.
-        emit_current().await;
-        if let Err(e) = listen_for_changes().await {
-            log_error(&format!("Suscripción a notificaciones de flare falló: {e}"));
+        // Follows the daemon's Changed signal, reconnecting when it goes away.
+        //
+        // The stream used to be awaited in a bare `while let`: when the daemon
+        // restarted the stream simply ended, the loop returned Ok(()), and
+        // notifications silently froze for the rest of the session — with the
+        // D-Bus connection cached forever, nothing would have recovered even if
+        // something had retried.
+        let mut delay = std::time::Duration::from_secs(1);
+
+        loop {
+            emit_current().await;
+
+            match listen_for_changes().await {
+                Ok(()) => {
+                    log_info("El demonio de notificaciones cerró la suscripción; reconectando");
+                    delay = std::time::Duration::from_secs(1);
+                }
+                Err(e) => {
+                    log_error(&format!("Suscripción a notificaciones de flare falló: {e}"));
+                    // Back off so a daemon that is down doesn't become a spin loop.
+                    delay = (delay * 2).min(std::time::Duration::from_secs(30));
+                }
+            }
+
+            reset_connection().await;
+            tokio::time::sleep(delay).await;
         }
     });
 }

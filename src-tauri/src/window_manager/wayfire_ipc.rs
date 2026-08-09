@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::sync::OnceLock;
+use std::sync::RwLock;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::UnixStream;
@@ -233,6 +234,11 @@ impl WayfireClient {
         self.event_tx.subscribe()
     }
 
+    /// True once the socket has dropped and this client can no longer be used.
+    pub fn is_closed(&self) -> bool {
+        self.closed.load(Ordering::SeqCst)
+    }
+
     pub async fn send_and_wait(&self, method: &str, data: Value) -> Result<Value, Box<dyn Error + Send + Sync>> {
         if self.closed.load(Ordering::SeqCst) {
             return Err("Wayfire IPC connection closed".into());
@@ -362,27 +368,54 @@ impl WayfireClient {
     }
 }
 
-static GLOBAL_WAYFIRE_CLIENT: OnceLock<Arc<WayfireClient>> = OnceLock::new();
+/// The live client, replaceable.
+///
+/// This was a `OnceLock`, which by definition can never be reset: once the
+/// socket dropped, `closed` was set and every call returned "Wayfire IPC
+/// connection closed" for the rest of the session. If Wayfire restarted — or
+/// the socket blipped — the taskbar stayed dead until the shell itself was
+/// restarted. A replaceable slot lets a dead client be dropped and a new
+/// connection take its place.
+static GLOBAL_WAYFIRE_CLIENT: RwLock<Option<Arc<WayfireClient>>> = RwLock::new(None);
 static GLOBAL_WAYFIRE_CLIENT_INIT: OnceLock<AsyncMutex<()>> = OnceLock::new();
 
+/// The cached client, unless it has already closed.
+fn live_client() -> Option<Arc<WayfireClient>> {
+    let guard = GLOBAL_WAYFIRE_CLIENT.read().ok()?;
+    guard
+        .as_ref()
+        .filter(|client| !client.is_closed())
+        .cloned()
+}
+
 pub async fn get_wayfire_client() -> Option<Arc<WayfireClient>> {
-    if let Some(client) = GLOBAL_WAYFIRE_CLIENT.get() {
-        return Some(client.clone());
+    if let Some(client) = live_client() {
+        return Some(client);
     }
 
     let init_lock = GLOBAL_WAYFIRE_CLIENT_INIT.get_or_init(|| AsyncMutex::new(()));
     let _guard = init_lock.lock().await;
 
-    if let Some(client) = GLOBAL_WAYFIRE_CLIENT.get() {
-        return Some(client.clone());
+    // Another task may have reconnected while we waited for the lock.
+    if let Some(client) = live_client() {
+        return Some(client);
     }
 
     match WayfireClient::connect().await {
         Ok(client) => {
-            let arc = Arc::new(client);
-            let _ = GLOBAL_WAYFIRE_CLIENT.set(arc.clone());
-            GLOBAL_WAYFIRE_CLIENT.get().cloned()
+            let client = Arc::new(client);
+            if let Ok(mut slot) = GLOBAL_WAYFIRE_CLIENT.write() {
+                *slot = Some(client.clone());
+            }
+            Some(client)
         }
-        Err(_) => None,
+        Err(_) => {
+            // Drop the dead client so the next caller retries instead of
+            // handing out a connection that can never work again.
+            if let Ok(mut slot) = GLOBAL_WAYFIRE_CLIENT.write() {
+                *slot = None;
+            }
+            None
+        }
     }
 }
