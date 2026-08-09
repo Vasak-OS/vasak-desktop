@@ -7,6 +7,7 @@ import { listen } from '@tauri-apps/api/event';
 import { homeDir } from '@tauri-apps/api/path';
 import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { Store } from 'pinia';
 import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
@@ -18,6 +19,7 @@ import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
 
 const route = useRoute();
+const { t } = useI18n();
 
 /**
  * Secondary monitors get a lightweight view: wallpaper only, no widgets or file grid.
@@ -162,7 +164,7 @@ useSharedEvent('config-changed', async () => {
 <template>
   <video v-if="backgroundType.includes('video')" style="border-radius: 0px" :type="backgroundType" :src="background"
     class="w-screen h-screen object-cover absolute z-10" loop autoplay muted></video>
-  <img v-else :src="background" alt="Background" class="w-screen h-screen object-cover absolute z-10"
+  <img v-else :src="background" :alt="t('views.desktop.backgroundAlt')" class="w-screen h-screen object-cover absolute z-10"
     style="border-radius: 0px" />
 
   <!-- Grid de archivos del escritorio (primary monitor only) -->

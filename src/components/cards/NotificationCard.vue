@@ -11,7 +11,7 @@
         <h3 class="font-medium truncate">{{ notification.summary }}</h3>
         <button @click="$emit('seen', notification.id)"
           class="close-button group/close active:scale-95 flex items-center justify-center w-6 h-6 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400 dark:hover:text-red-400 transition-all duration-200 transform hover:scale-110">
-          <img :src="closeIconSrc" alt="Cerrar" class="w-3 h-3 transition-transform duration-200" />
+          <img :src="closeIconSrc" :alt="t('common.close')" class="w-3 h-3 transition-transform duration-200" />
         </button>
       </div>
       <p class="text-sm text-tx-main line-clamp-2">
@@ -41,11 +41,14 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { invokeNotificationAction } from '@/services/notification.service';
 import { logError } from '@/utils/logger';
 import ActionButton from '../buttons/ActionButton.vue';
+
+const { t } = useI18n();
 
 const props = defineProps<{
 	notification: {

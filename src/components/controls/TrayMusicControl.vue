@@ -1,8 +1,11 @@
 
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { onMounted, ref } from 'vue';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
+
+const { t } = useI18n();
 
 const {
 	musicInfo,
@@ -84,29 +87,33 @@ onMounted(async () => {
       <button
         @click.prevent="onPrev"
         class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-        title="Anterior"
+        :title="t('components.TrayMusicControl.previous')"
       >
-        <img :src="prevIcon" alt="Anterior" class="w-4 h-4" />
+        <img :src="prevIcon" :alt="t('components.TrayMusicControl.previous')" class="w-4 h-4" />
       </button>
 
       <button
         @click.prevent="onPlayPause"
         class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-        :title="isPlaying ? 'Pausa' : 'Reproducir'"
+        :title="isPlaying
+          ? t('components.TrayMusicControl.pause')
+          : t('components.TrayMusicControl.play')"
       >
-        <img 
-          :src="isPlaying ? pauseIcon : playIcon" 
-          :alt="isPlaying ? 'Pausa' : 'Reproducir'" 
-          class="w-4 h-4" 
+        <img
+          :src="isPlaying ? pauseIcon : playIcon"
+          :alt="isPlaying
+            ? t('components.TrayMusicControl.pause')
+            : t('components.TrayMusicControl.play')"
+          class="w-4 h-4"
         />
       </button>
 
       <button
         @click.prevent="onNext"
         class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-        title="Siguiente"
+        :title="t('components.TrayMusicControl.next')"
       >
-        <img :src="nextIcon" alt="Siguiente" class="w-4 h-4" />
+        <img :src="nextIcon" :alt="t('components.TrayMusicControl.next')" class="w-4 h-4" />
       </button>
     </div>
   </div>

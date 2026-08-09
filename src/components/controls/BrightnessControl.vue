@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
@@ -17,6 +18,8 @@ interface BrightnessInfo {
 	max: number;
 }
 
+const { t } = useI18n();
+
 const brightnessInfo = ref<BrightnessInfo>({
 	current: 100,
 	min: 0,
@@ -32,6 +35,10 @@ const brightnessPercentage = computed(() => {
 	const loading = currentBrightness.value - brightnessInfo.value.min;
 	return Math.round((loading / range) * 100);
 });
+
+const brightnessLabel = computed(() =>
+	t('components.BrightnessControl.brightness').replace('{0}', String(brightnessPercentage.value))
+);
 
 const currentIcon = useSymbol(computed(() => {
 	if (brightnessPercentage.value > 66) return 'display-brightness-high-symbolic';
@@ -96,8 +103,8 @@ useSharedEvent<Record<string, number>>('brightness-changed', (p) => {
 <template>
   <SliderControl
     :icon="currentIcon"
-    :alt="'Brillo: ' + brightnessPercentage + '%'"
-    :tooltip="'Brillo: ' + brightnessPercentage + '%'"
+    :alt="brightnessLabel"
+    :tooltip="brightnessLabel"
     v-model="currentBrightness"
     :min="brightnessInfo.min"
     :max="brightnessInfo.max"

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import {
@@ -22,6 +23,8 @@ const props = withDefaults(defineProps<Props>(), {
 	showProfileName: true,
 });
 
+const { t } = useI18n();
+
 const networkState = ref<NetworkInfo>({
 	name: 'Unknown',
 	ssid: 'Unknown',
@@ -39,21 +42,23 @@ const networkIconSrc = useSymbol(computed(() => networkState.value.icon));
 const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 
 const vpnLabel = computed(() => {
-	if (!vpnConnected.value) return 'VPN desconectada';
+	if (!vpnConnected.value) return t('components.TrayIconNetwork.vpnDisconnected');
 	return vpnStatus.value?.active_profile_name
 		? `VPN: ${vpnStatus.value.active_profile_name}`
-		: 'VPN conectada';
+		: t('components.TrayIconNetwork.vpnConnected');
 });
 
 const activeVpnProfileName = computed(() => {
 	if (!vpnConnected.value) return '';
-	return vpnStatus.value?.active_profile_name || 'Perfil VPN activo';
+	return vpnStatus.value?.active_profile_name || t('components.TrayIconNetwork.vpnProfileActive');
 });
 
 const networkAlt = computed(() => {
 	const networkLabel = networkState.value.is_connected
-		? `Conectado: ${networkState.value.connection_type} ${networkState.value.ssid}`
-		: 'Red desconectada';
+		? t('components.TrayIconNetwork.connectedTo')
+				.replace('{0}', String(networkState.value.connection_type))
+				.replace('{1}', String(networkState.value.ssid))
+		: t('components.TrayIconNetwork.networkDisconnected');
 	return `${networkLabel} · ${vpnLabel.value}`;
 });
 
@@ -106,7 +111,7 @@ useSharedEvent('vpn-changed', refreshVpnStatus);
 		<div
 			v-if="vpnConnected"
 			class="absolute -top-0.5 -left-0.5 rounded-full bg-primary text-tx-on-primary text-[8px] leading-none px-1 py-0.5 font-bold border border-ui-bg"
-			title="VPN activa"
+			:title="t('components.TrayIconNetwork.vpnBadge')"
 		>
 			VPN
 		</div>
@@ -115,7 +120,7 @@ useSharedEvent('vpn-changed', refreshVpnStatus);
 	<div
 		v-if="props.showProfileName && activeVpnProfileName"
 		class="hidden lg:inline-flex items-center gap-1 max-w-44 truncate text-xs font-medium text-tx-muted rounded-corner border border-ui-border bg-ui-surface/40 px-2 py-1"
-		:title="`Perfil VPN activo: ${activeVpnProfileName}`"
+		:title="t('components.TrayIconNetwork.vpnProfileTitle').replace('{0}', activeVpnProfileName)"
 	>
 		<svg class="w-3.5 h-3.5 shrink-0 text-primary" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
 			<path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1M12 7C13.4 7 14.8 8.6 14.8 10V11H16V18H8V11H9.2V10C9.2 8.6 10.6 7 12 7M12 8.2C11.2 8.2 10.4 8.7 10.4 10V11H13.6V10C13.6 8.7 12.8 8.2 12 8.2Z" />

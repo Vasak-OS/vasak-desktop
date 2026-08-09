@@ -1,7 +1,10 @@
 <script lang="ts" setup>
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import DailyWeatherCard from '@/components/cards/DailyWeatherCard.vue';
 import WeatherIcon from '@/components/icon/WeatherIcon.vue';
+
+const { t } = useI18n();
 
 // Starts empty so the "unavailable" state can actually render.
 //
@@ -112,7 +115,7 @@ onMounted(async () => {
     </template>
     <template v-else>
       <div class="col-span-2 flex items-center justify-center text-tx-main/60">
-        {{ failed ? 'No se pudo obtener el clima' : 'Cargando el clima…' }}
+        {{ failed ? t('components.WeatherWidget.failed') : t('components.WeatherWidget.loading') }}
       </div>
     </template>
   </div>

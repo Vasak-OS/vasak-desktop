@@ -2,6 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, nextTick, ref } from 'vue';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import {
@@ -13,6 +14,7 @@ import ActionButton from '../buttons/ActionButton.vue';
 import ListCard from './ListCard.vue';
 
 const props = defineProps<NetworkInfo>();
+const { t } = useI18n();
 const netIcon = useSymbol(computed(() => props.icon));
 
 const showModal = ref(false);
@@ -34,14 +36,16 @@ const confirmConnect = async () => {
 		showModal.value = false;
 		password.value = '';
 	} catch (error) {
-		errorMsg.value = `Error al conectar: ${(error as any)?.message}`;
+		errorMsg.value = t('components.NetworkWiFiCard.connectError').replace(
+			'{0}',
+			String((error as any)?.message)
+		);
 	} finally {
 		connecting.value = false;
 	}
 };
 
 const securityLabelMap: Record<string, string> = {
-	none: 'Abierta',
 	wep: 'WEP',
 	'wpa-psk': 'WPA-PSK',
 	'wpa-eap': 'WPA-EAP',
@@ -49,7 +53,11 @@ const securityLabelMap: Record<string, string> = {
 	'wpa3-psk': 'WPA3-PSK',
 };
 
-const securityLabel = securityLabelMap[String(props.security_type)] || String(props.security_type);
+const securityLabel = computed(() => {
+	const type = String(props.security_type);
+	if (type === 'none') return t('components.NetworkWiFiCard.securityOpen');
+	return securityLabelMap[type] || type;
+});
 
 const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 0) / 25)));
 </script>
@@ -69,13 +77,16 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         <div class="font-medium text-vsk-text truncate">{{ props.ssid || props.name }}</div>
         <div class="text-xs text-vsk-text/70 flex items-center gap-1.5">
           <span>{{ securityLabel }}</span>
-          <span v-if="props.is_connected">• Conectada</span>
+          <span v-if="props.is_connected">• {{ t('components.NetworkWiFiCard.connected') }}</span>
         </div>
       </div>
     </div>
 
     <div class="flex items-center gap-2">
-      <div class="flex items-end gap-0.5" :title="`Señal: ${props.signal_strength || 0}%`">
+      <div
+        class="flex items-end gap-0.5"
+        :title="t('components.NetworkWiFiCard.signal').replace('{0}', String(props.signal_strength || 0))"
+      >
         <div
           v-for="i in 4"
           :key="i"
@@ -106,18 +117,25 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
   <!-- Modal para pedir contraseña -->
   <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
     <div class="w-full max-w-sm rounded-corner border border-ui-border bg-ui-bg p-4 shadow-xl flex flex-col gap-3">
-      <h3 class="text-base font-semibold text-vsk-text">Conectar a {{ props.ssid }}</h3>
+      <h3 class="text-base font-semibold text-vsk-text">
+        {{ t('components.NetworkWiFiCard.connectTo').replace('{0}', String(props.ssid)) }}
+      </h3>
       <input
         v-model="password"
         type="password"
-        placeholder="Contraseña WiFi"
+        :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
         class="border border-ui-border rounded-corner p-2 text-vsk-text outline-none bg-ui-surface/50 focus:border-primary/40"
         :disabled="connecting"
       />
       <div v-if="errorMsg" class="text-status-danger text-sm">{{ errorMsg }}</div>
       <div class="flex gap-2 justify-end mt-2">
-        <ActionButton label="Cancelar" variant="secondary" @click="showModal = false" />
-        <ActionButton label="Conectar" :loading="connecting" :disabled="!password" @click="confirmConnect" />
+        <ActionButton :label="t('common.cancel')" variant="secondary" @click="showModal = false" />
+        <ActionButton
+          :label="t('components.NetworkWiFiCard.connectAction')"
+          :loading="connecting"
+          :disabled="!password"
+          @click="confirmConnect"
+        />
       </div>
     </div>
   </div>

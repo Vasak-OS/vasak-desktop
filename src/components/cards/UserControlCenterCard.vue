@@ -51,9 +51,12 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { logError } from '@/utils/logger';
+
+const { locale } = useI18n();
 
 const userInfo = ref<UserInfo>({
 	username: '',
@@ -70,11 +73,11 @@ const updateDateTime = () => {
 	isTimeUpdating.value = true;
 
 	const now = new Date();
-	const newTime = now.toLocaleTimeString('es-ES', {
+	const newTime = now.toLocaleTimeString(locale.value, {
 		hour: '2-digit',
 		minute: '2-digit',
 	});
-	const newDate = now.toLocaleDateString('es-ES', {
+	const newDate = now.toLocaleDateString(locale.value, {
 		weekday: 'long',
 		day: 'numeric',
 		month: 'long',
@@ -119,5 +122,6 @@ onUnmounted(() => {
 		clearInterval(timeInterval);
 	}
 });
+
 </script>
 

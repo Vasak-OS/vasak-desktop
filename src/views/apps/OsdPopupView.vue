@@ -2,8 +2,9 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useReactiveIcon } from '@/tools/composables/useReactiveIcon';
 
 const currentWindow = getCurrentWindow();
@@ -12,6 +13,24 @@ const iconName = ref('dialog-information');
 const currentValue = ref(0);
 const maximum = ref(100);
 const label = ref('');
+
+const { t } = useI18n();
+
+/**
+ * The backend sends a locale key, not text — it has no notion of the user's
+ * language. Keys that carry a percentage use `{0}`, which we can fill from the
+ * value and maximum that arrive alongside.
+ */
+const displayLabel = computed(() => {
+	if (!label.value) return '';
+
+	const translated = t(label.value);
+	if (!translated.includes('{0}')) return translated;
+
+	const max = maximum.value || 100;
+	const percent = Math.round((currentValue.value / max) * 100);
+	return translated.replace('{0}', String(percent));
+});
 const visible = ref(false);
 const iconSrc = useReactiveIcon(iconName);
 
@@ -85,9 +104,9 @@ onUnmounted(() => {
 			class="w-screen h-screen flex flex-col items-center justify-center gap-3 bg-ui-bg/80 border border-ui-border rounded-corner-window overflow-hidden px-8 py-6"
 		>
 			<div class="w-16 h-16 flex items-center justify-center">
-				<img :src="iconSrc" :alt="label" class="w-14 h-14" />
+				<img :src="iconSrc" :alt="displayLabel" class="w-14 h-14" />
 			</div>
-			<span class="text-sm font-medium text-tx-main text-center whitespace-nowrap">{{ label }}</span>
+			<span class="text-sm font-medium text-tx-main text-center whitespace-nowrap">{{ displayLabel }}</span>
 			<div
 				v-if="maximum > 1"
 				class="w-full h-1 bg-ui-surface rounded-corner overflow-hidden"

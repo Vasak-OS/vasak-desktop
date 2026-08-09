@@ -2,7 +2,7 @@
   <div class="flex flex-col h-full p-2">
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold text-vsk-text">Redes</h2>
+      <h2 class="text-xl font-semibold text-vsk-text">{{ t('components.NetworkControlArea.title') }}</h2>
       <button
         v-if="!hideX"
         @click="closeApplet"
@@ -60,14 +60,14 @@
       v-else
       class="mb-4 p-3 rounded-corner border border-ui-border bg-ui-surface/45 flex items-center justify-center"
     >
-      <span class="text-sm text-tx-muted"
-        >Wi-Fi no disponible en este dispositivo</span
-      >
+      <span class="text-sm text-tx-muted">{{
+        t('components.NetworkControlArea.wifiUnavailable')
+      }}</span>
     </div>
 
     <div v-if="wifiAvailable && wifiEnabled" class="flex-1 overflow-hidden">
       <h3 class="text-sm font-medium text-vsk-text/80 mb-3">
-        Redes disponibles
+        {{ t('components.NetworkControlArea.availableNetworks') }}
       </h3>
 
       <div v-if="loading" class="flex items-center justify-center py-8">
@@ -88,7 +88,7 @@
         @click="refreshNetworks"
         class="w-full mt-4 p-2 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors text-sm text-vsk-text"
       >
-        Actualizar redes
+        {{ t('components.NetworkControlArea.refresh') }}
       </button>
     </div>
 
@@ -108,16 +108,16 @@
   <div class="mt-4">
     <div class="rounded-corner border border-ui-border bg-ui-surface/45 p-3">
       <div class="flex items-center justify-between">
-        <h3 class="font-medium text-vsk-text">Tráfico en tiempo real</h3>
+        <h3 class="font-medium text-vsk-text">{{ t('components.NetworkControlArea.realtimeTraffic') }}</h3>
         <span class="text-xs text-vsk-text/60 truncate max-w-32 text-right">{{ statsInterfaceLabel }}</span>
       </div>
       <div class="mt-3 grid grid-cols-2 gap-3">
         <div class="rounded-corner bg-ui-surface/60 border border-ui-border p-2">
-          <p class="text-xs text-vsk-text/70">Descarga</p>
+          <p class="text-xs text-vsk-text/70">{{ t('components.NetworkControlArea.download') }}</p>
           <p class="text-sm font-semibold text-vsk-text">{{ downloadSpeedLabel }}</p>
         </div>
         <div class="rounded-corner bg-ui-surface/60 border border-ui-border p-2">
-          <p class="text-xs text-vsk-text/70">Subida</p>
+          <p class="text-xs text-vsk-text/70">{{ t('components.NetworkControlArea.upload') }}</p>
           <p class="text-sm font-semibold text-vsk-text">{{ uploadSpeedLabel }}</p>
         </div>
       </div>
@@ -153,6 +153,7 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
@@ -172,6 +173,8 @@ import { toggleNetworkApplet } from '@/services/window.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
+const { t } = useI18n();
+
 const wifiEnabled = ref(true);
 const wifiAvailable = ref(true);
 const loading = ref(false);
@@ -179,15 +182,18 @@ const availableNetworks = ref<NetworkInfo[]>([]);
 const networkStats = ref<NetworkStats | null>(null);
 const vpnStatus = ref<VpnStatus | null>(null);
 let statsPollInterval: ReturnType<typeof setInterval> | undefined;
-const wifiStatus = ref('Checking...');
-const ethernetStatus = ref('Checking...');
+const wifiStatus = ref(t('components.NetworkControlArea.checking'));
+const ethernetStatus = ref(t('components.NetworkControlArea.checking'));
 
 const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 const vpnLabel = computed(() => {
-	if (!vpnConnected.value) return 'Sin conexión VPN activa';
+	if (!vpnConnected.value) return t('components.NetworkControlArea.vpnInactive');
 	return vpnStatus.value?.active_profile_name
-		? `Conectada: ${vpnStatus.value.active_profile_name}`
-		: 'Conexión VPN activa';
+		? t('components.NetworkControlArea.vpnConnectedTo').replace(
+				'{0}',
+				vpnStatus.value.active_profile_name
+			)
+		: t('components.NetworkControlArea.vpnActive');
 });
 
 const formatBytesPerSecond = (value?: number) => {
@@ -200,7 +206,9 @@ const formatBytesPerSecond = (value?: number) => {
 
 const downloadSpeedLabel = computed(() => formatBytesPerSecond(networkStats.value?.download_speed));
 const uploadSpeedLabel = computed(() => formatBytesPerSecond(networkStats.value?.upload_speed));
-const statsInterfaceLabel = computed(() => networkStats.value?.interface || 'Sin interfaz');
+const statsInterfaceLabel = computed(
+	() => networkStats.value?.interface || t('components.NetworkControlArea.noInterface')
+);
 
 defineProps({
 	hideX: {
@@ -217,13 +225,15 @@ const checkWirelessStatus = async () => {
 		if (available) {
 			const enabled = await getWirelessEnabled();
 			wifiEnabled.value = enabled;
-			wifiStatus.value = enabled ? 'Activado' : 'Desactivado';
+			wifiStatus.value = enabled
+				? t('components.NetworkControlArea.wifiOn')
+				: t('components.NetworkControlArea.wifiOff');
 
 			if (enabled) {
 				await refreshNetworks();
 			}
 		} else {
-			wifiStatus.value = 'No disponible';
+			wifiStatus.value = t('components.NetworkControlArea.wifiNotAvailable');
 			wifiEnabled.value = false;
 		}
 	} catch (e) {
@@ -239,7 +249,9 @@ const toggleWifi = async () => {
 		await setWirelessEnabled(newState);
 
 		wifiEnabled.value = newState;
-		wifiStatus.value = newState ? 'Activado' : 'Desactivado';
+		wifiStatus.value = newState
+			? t('components.NetworkControlArea.wifiOn')
+			: t('components.NetworkControlArea.wifiOff');
 
 		if (wifiEnabled.value) {
 			await refreshNetworks();
@@ -270,22 +282,22 @@ const refreshNetworkStats = async () => {
 
 const updateEthernetStatus = (state: NetworkInfo | null) => {
 	if (!state) {
-		ethernetStatus.value = 'Desconocido';
+		ethernetStatus.value = t('components.NetworkControlArea.ethernetUnknown');
 		return;
 	}
 
 	const isEthernet = state.connection_type?.toLowerCase() === 'ethernet';
 	if (isEthernet && state.is_connected) {
-		ethernetStatus.value = 'Conectado';
+		ethernetStatus.value = t('components.NetworkControlArea.ethernetConnected');
 		return;
 	}
 
 	if (isEthernet && !state.is_connected) {
-		ethernetStatus.value = 'Desconectado';
+		ethernetStatus.value = t('components.NetworkControlArea.ethernetDisconnected');
 		return;
 	}
 
-	ethernetStatus.value = 'Sin enlace';
+	ethernetStatus.value = t('components.NetworkControlArea.ethernetNoLink');
 };
 
 const refreshEthernetStatus = async () => {
@@ -294,7 +306,7 @@ const refreshEthernetStatus = async () => {
 		updateEthernetStatus(state);
 	} catch (error) {
 		logError('Error fetching ethernet status:', error);
-		ethernetStatus.value = 'Desconocido';
+		ethernetStatus.value = t('components.NetworkControlArea.ethernetUnknown');
 	}
 };
 

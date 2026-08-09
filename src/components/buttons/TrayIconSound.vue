@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
@@ -10,6 +11,8 @@ import { toggleAudioApplet } from '@/services/window.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
+
+const { t } = useI18n();
 
 const volumeInfo = ref<VolumeInfo>({
 	current: 0,
@@ -55,8 +58,12 @@ useSharedEvent<VolumeInfo>('volume-changed', (payload) => {
 <template>
   <TrayIconButton
     :icon="currentIcon"
-    :tooltip="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
-    :alt="volumeInfo.is_muted ? 'Unmute' : 'Mute'"
+    :tooltip="volumeInfo.is_muted
+      ? t('components.TrayIconSound.unmute')
+      : t('components.TrayIconSound.mute')"
+    :alt="volumeInfo.is_muted
+      ? t('components.TrayIconSound.unmute')
+      : t('components.TrayIconSound.mute')"
     :icon-class="{ 'opacity-60': volumeInfo.is_muted }"
     @click="toggleApplet"
   />

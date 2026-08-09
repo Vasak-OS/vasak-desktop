@@ -89,6 +89,10 @@
     "bluetooth-manager:allow-disconnect-device",
     "bluetooth-manager:allow-get-device-info",
     "bluetooth-manager:allow-get-adapter-state",
-    "bluetooth-manager:allow-list-paired-devices"
+    "bluetooth-manager:allow-list-paired-devices",
+    "i18n:allow-load-translations",
+    "i18n:allow-get-available-locales",
+    "i18n:allow-get-locale",
+    "i18n:allow-set-locale"
   ]
 }

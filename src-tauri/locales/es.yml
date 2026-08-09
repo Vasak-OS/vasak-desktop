@@ -1,0 +1,228 @@
+_version: 1
+
+osd:
+  volume: "Volumen: {0}%"
+  muted: Silenciado
+  brightness: "Brillo: {0}%"
+  capsLockOn: "Bloq Mayús: Activado"
+  capsLockOff: "Bloq Mayús: Desactivado"
+  micMuted: "Micrófono: Silenciado"
+  micActive: "Micrófono: Activado"
+
+menu:
+  categories:
+    all: Todas las aplicaciones
+    develop: Herramientas de desarrollo
+    network: Internet y redes
+    settings: Configuración del sistema
+    media: Aplicaciones multimedia
+    games: Juegos
+    utility: Utilidades
+    other: Otras aplicaciones
+
+search:
+  actions:
+    shutdown:
+      title: Apagar
+      description: Apagar el sistema
+    reboot:
+      title: Reiniciar
+      description: Reiniciar el sistema
+    suspend:
+      title: Suspender
+      description: Suspender el sistema
+    lock:
+      title: Bloquear
+      description: Bloquear la pantalla
+    logout:
+      title: Cerrar sesión
+      description: Cerrar la sesión actual
+    settings:
+      title: Configuración
+      description: Abrir configuración del sistema
+
+common:
+  save: Guardar cambios
+  saving: Guardando…
+  cancel: Cancelar
+  delete: Eliminar
+  close: Cerrar
+  loading: Cargando…
+  noResults: Sin resultados
+  retry: Reintentar
+
+views:
+  menu:
+    configuration: Configuración
+    shutdown: Apagar
+    reboot: Reiniciar
+    logout: Cerrar sesión
+    suspend: Suspender
+    noApps: No hay aplicaciones disponibles
+  panel:
+    menuAlt: Menú
+    settingsAlt: Configuración
+    filesAlt: Archivos
+    notificationsAlt: Notificaciones
+  desktop:
+    backgroundAlt: Fondo de pantalla
+  search:
+    iconAlt: Buscar
+    placeholder: Buscar aplicaciones, archivos y acciones...
+    hint: Escribe para buscar aplicaciones, archivos o acciones
+    categoryApplication: App
+    categoryFile: Archivo
+    categoryAction: Acción
+    keyNavigate: Navegar
+    keyExecute: Ejecutar
+    keyClose: Cerrar
+  sessionPopup:
+    shutdownTitle: Apagar el sistema
+    rebootTitle: Reiniciar el sistema
+    logoutTitle: Cerrar sesión
+    suspendTitle: Suspender el sistema
+    shutdownConfirm: Apagar
+    rebootConfirm: Reiniciar
+    logoutConfirm: Cerrar sesión
+    suspendConfirm: Suspender
+    shutdownDescription: Se apagarán todos los programas y el sistema se detendrá.
+    rebootDescription: El sistema se reiniciará. Asegúrate de guardar tu trabajo.
+    logoutDescription: Se cerrará tu sesión actual.
+    suspendDescription: El sistema entrará en estado de suspensión de bajo consumo.
+  applets:
+    tray:
+      fallbackTitle: Tray
+      iconAlt: Icono del tray
+      itemCount: "{0} elementos"
+      statusFallback: Tray activo
+      actionsTitle: Acciones del tray
+      actionsHint: Click derecho del tray
+      noItems: No hay elementos disponibles para este tray.
+      submenu: Submenú
+      disabled: Deshabilitado
+
+components:
+  AudioDeviceSelector:
+    title: Dispositivo de audio
+    speakerAlt: Altavoz
+    volume: "Vol: {0}%"
+    default: Predeterminado
+    loadingDevices: Cargando dispositivos...
+    noDevices: No hay dispositivos disponibles
+  BluetoothControl:
+    iconAlt: Icono de Bluetooth
+    toggle: Alternar Bluetooth
+  BluetoothControlArea:
+    scanAlt: Buscar dispositivos Bluetooth
+    available: Disponibles
+    noneAvailable: No hay dispositivos disponibles
+    connect: Conectar
+    connectedDevices: Dispositivos conectados
+    noneConnected: Ningún dispositivo conectado
+    disconnect: Desconectar
+  BrightnessControl:
+    brightness: "Brillo: {0}%"
+  DeviceCard:
+    connecting: Conectando...
+    connect: Conectar
+  MusicWidget:
+    reconnecting: Reconectando (intento {0})...
+    connectionError: Error de conexión
+    unknownTitle: Desconocido
+    previous: Anterior
+    play: Reproducir
+    pause: Pausa
+    next: Siguiente
+  NetworkControlArea:
+    title: Redes
+    wifiUnavailable: Wi-Fi no disponible en este dispositivo
+    availableNetworks: Redes disponibles
+    refresh: Actualizar redes
+    realtimeTraffic: Tráfico en tiempo real
+    download: Descarga
+    upload: Subida
+    checking: Comprobando...
+    wifiOn: Activado
+    wifiOff: Desactivado
+    wifiNotAvailable: No disponible
+    vpnInactive: Sin conexión VPN activa
+    vpnActive: Conexión VPN activa
+    vpnConnectedTo: "Conectada: {0}"
+    noInterface: Sin interfaz
+    ethernetUnknown: Desconocido
+    ethernetConnected: Conectado
+    ethernetDisconnected: Desconectado
+    ethernetNoLink: Sin enlace
+  NetworkWiFiCard:
+    securityOpen: Abierta
+    connected: Conectada
+    signal: "Señal: {0}%"
+    connectTo: Conectar a {0}
+    passwordPlaceholder: Contraseña WiFi
+    connectAction: Conectar
+    connectError: "Error al conectar: {0}"
+  NotificationArea:
+    notificationOne: Notificación
+    notificationMany: Notificaciones
+    appOne: App
+    appMany: Apps
+    clearAll: Limpiar todo
+    empty: No hay notificaciones
+  NotificationGroupCard:
+    removeGroup: Eliminar grupo
+    unreadOne: "{0} nueva"
+    unreadMany: "{0} nuevas"
+    empty: Sin notificaciones
+    now: ahora
+  SearchButtonControl:
+    openSearch: Abrir búsqueda global
+    searchAlt: Buscar
+  SearchMenuComponent:
+    placeholder: Buscar
+  SystemAudioArea:
+    title: Configuración de audio
+    volumeControl: Control de volumen
+    deviceSelector: Selector de dispositivo de audio
+  ThemeToggle:
+    toLight: Cambiar a tema claro
+    toDark: Cambiar a tema oscuro
+  TrayIconBattery:
+    noBattery: No se detectó batería
+    status: "Batería {0}% - {1}"
+  TrayIconBluetooth:
+    statusOn: Bluetooth activado
+    statusOff: Bluetooth desactivado
+    iconAlt: Icono de Bluetooth
+  TrayIconCapsLock:
+    capsLock: Bloq Mayús
+  TrayIconMicrophone:
+    muted: Micrófono silenciado
+  TrayIconNetwork:
+    connectedTo: "Conectado: {0} {1}"
+    networkDisconnected: Red desconectada
+    vpnConnected: VPN conectada
+    vpnDisconnected: VPN desconectada
+    vpnProfileActive: Perfil VPN activo
+    vpnProfileTitle: "Perfil VPN activo: {0}"
+    vpnBadge: VPN activa
+  TrayIconSound:
+    mute: Silenciar
+    unmute: Activar sonido
+  TrayMusicControl:
+    previous: Anterior
+    play: Reproducir
+    pause: Pausa
+    next: Siguiente
+  VolumeControl:
+    mute: Silenciar
+    unmute: Activar sonido
+  WeatherIcon:
+    unknown: Condición meteorológica desconocida
+  WeatherWidget:
+    failed: No se pudo obtener el clima
+    loading: Cargando el clima…
+  useNetworkState:
+    connectedTo: Conectado a {0} {1}
+    disconnected: Desconectado
+    vpnOn: activa
+    vpnOff: VPN inactiva

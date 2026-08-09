@@ -177,15 +177,19 @@ fn get_category_icon(category: &str) -> String {
     }
 }
 
+/// Locale key for a category's description.
+///
+/// The backend returns a key rather than text: it has no notion of the user's
+/// language, and the shell is translated on the frontend.
 fn get_category_description(category: &str) -> String {
-    match category {
-        "all" => "Todas las aplicaciones".to_string(),
-        "develop" => "Herramientas de desarrollo".to_string(),
-        "network" => "Internet y redes".to_string(),
-        "settings" => "Configuración del sistema".to_string(),
-        "media" => "Aplicaciones multimedia".to_string(),
-        "games" => "Juegos".to_string(),
-        "utility" => "Utilidades".to_string(),
-        _ => "Otras aplicaciones".to_string(),
+    let known = matches!(
+        category,
+        "all" | "develop" | "network" | "settings" | "media" | "games" | "utility"
+    );
+
+    if known {
+        format!("menu.categories.{}", category)
+    } else {
+        "menu.categories.other".to_string()
     }
 }

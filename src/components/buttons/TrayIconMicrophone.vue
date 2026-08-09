@@ -1,10 +1,13 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ref } from 'vue';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import { useEventListener } from '@/tools/event.listener';
+
+const { t } = useI18n();
 
 const micMuted = ref(false);
 
@@ -19,7 +22,7 @@ useEventListener<{ active: boolean }>('mic-mute-changed', (event) => {
   <TrayIconButton
     v-if="micMuted"
     :icon="micIcon"
-    tooltip="Micrófono silenciado"
-    alt="Mic Muted"
+    :tooltip="t('components.TrayIconMicrophone.muted')"
+    :alt="t('components.TrayIconMicrophone.muted')"
   />
 </template>

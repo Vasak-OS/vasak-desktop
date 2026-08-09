@@ -17,11 +17,11 @@
       }"></div>
 
     <ToggleControl :icon="themeIcon" :alt="(configStore?.config as any)?.style?.darkmode
-        ? 'Toggle light theme'
-        : 'Toggle dark theme'
+        ? t('components.ThemeToggle.toLight')
+        : t('components.ThemeToggle.toDark')
       " :tooltip="(configStore?.config as any)?.style?.darkmode
-          ? 'Toggle light theme'
-          : 'Toggle dark theme'
+          ? t('components.ThemeToggle.toLight')
+          : t('components.ThemeToggle.toDark')
         " :is-active="true" :is-loading="isSwitching" :custom-class="{
         'h-[70px] w-[70px] p-2': true,
         'ring-2 ring-primary': true,
@@ -36,12 +36,15 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { Store } from 'pinia';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import { useReactiveSymbol } from '@/tools/composables/useReactiveIcon';
 import { cancelRunningThemeTransitions } from '@/tools/theme.utils';
 import { logError } from '@/utils/logger';
 import ToggleControl from '../forms/ToggleControl.vue';
+
+const { t } = useI18n();
 
 const configStore = ref<any>(null);
 const isSwitching: Ref<boolean> = ref(false);

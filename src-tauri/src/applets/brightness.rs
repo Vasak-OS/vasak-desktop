@@ -234,7 +234,7 @@ async fn emit_brightness(app: &AppHandle, current: i32, max: i32) {
         "display-brightness",
         percentage as f64,
         100.0,
-        &format!("Brillo: {}%", percentage),
+        "osd.brightness",
         app,
     ).await;
 }

@@ -14,6 +14,38 @@ mod brightness;
 mod commands;
 mod dbus_service;
 mod eventloops;
+/// Where the translations live.
+///
+/// The i18n plugin resolves them at runtime and only probes paths relative to
+/// the executable and the working directory, none of which exist once the
+/// binary is installed in /usr/bin — a packaged build would render raw keys.
+fn locales_dir() -> Option<String> {
+    let candidates = [
+        std::path::PathBuf::from("locales"),
+        std::path::PathBuf::from("src-tauri/locales"),
+        std::path::PathBuf::from("/usr/share/vasak-desktop/locales"),
+    ];
+
+    candidates
+        .into_iter()
+        .find(|path| path.is_dir())
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
+/// Startup language from the session locale, falling back to Spanish, which is
+/// what the shell shipped with before it was translatable.
+fn default_locale() -> String {
+    let raw = std::env::var("LC_ALL")
+        .or_else(|_| std::env::var("LC_MESSAGES"))
+        .or_else(|_| std::env::var("LANG"))
+        .unwrap_or_default();
+
+    match raw.split(['_', '.', '@']).next().unwrap_or("") {
+        "en" => "en".to_string(),
+        _ => "es".to_string(),
+    }
+}
+
 mod menu_manager;
 mod menu_watcher;
 mod monitor_manager;
@@ -87,6 +119,10 @@ pub fn run() {
         .plugin(tauri_plugin_bluetooth_manager::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_vicons::init())
+        .plugin(tauri_plugin_i18n_vsk::init_with_path(
+            Some(default_locale()),
+            locales_dir(),
+        ))
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             batch_invoke,

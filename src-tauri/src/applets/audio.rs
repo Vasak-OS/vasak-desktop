@@ -126,10 +126,12 @@ fn get_volume_percentage(current: i64, min: i64, max: i64) -> u8 {
 async fn show_volume_osd(app: &AppHandle, volume_info: &VolumeInfo) {
     let percentage = get_volume_percentage(volume_info.current, volume_info.min, volume_info.max);
     let icon = get_volume_icon_name(volume_info.is_muted, percentage);
+    // A locale key: the OSD view translates it and fills in the percentage,
+    // which it can derive from the value and maximum it already receives.
     let label = if volume_info.is_muted {
-        "Silenciado".to_string()
+        "osd.muted"
     } else {
-        format!("Volumen: {}%", percentage)
+        "osd.volume"
     };
-    let _ = show_osd_internal(icon, volume_info.current as f64, volume_info.max as f64, &label, app).await;
+    let _ = show_osd_internal(icon, volume_info.current as f64, volume_info.max as f64, label, app).await;
 }

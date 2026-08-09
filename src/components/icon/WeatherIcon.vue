@@ -1,8 +1,11 @@
 <script lang="ts" setup>
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, type Ref, ref } from 'vue';
 import { useIcon } from '@/tools/composables/useReactiveIcon';
 import weatherCodesData from '@/data/weatherCodes.json';
 import type { CodeDataType, WeatherInfo } from '@/interfaces/weather';
+
+const { t } = useI18n();
 
 const codeData: CodeDataType = weatherCodesData as CodeDataType;
 
@@ -26,8 +29,8 @@ const iconPath = useIcon(computed(() => {
 	<img
 	  v-if="iconPath"
 	  :src="iconPath"
-	  :alt="weatherInfo ? weatherInfo[dayOrNight].description : 'Unknown weather condition'"
-	  :title="weatherInfo ? weatherInfo[dayOrNight].description : 'Unknown weather condition'"
+	  :alt="weatherInfo ? weatherInfo[dayOrNight].description : t('components.WeatherIcon.unknown')"
+	  :title="weatherInfo ? weatherInfo[dayOrNight].description : t('components.WeatherIcon.unknown')"
 	  class="img-fluid h-16 w-16"
 	/>
   </transition>

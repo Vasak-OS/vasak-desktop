@@ -4,6 +4,7 @@
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
 import MenuArea from '@/components/areas/menu/MenuArea.vue';
@@ -16,6 +17,8 @@ import { getMenuItems, openApp } from '@/services/app.service';
 import { openSettings, toggleMenu, toggleSessionPopup } from '@/services/window.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
+
+const { t } = useI18n();
 
 const menuData: Ref<Record<string, any>> = ref({});
 const categorySelected: Ref<any> = ref('all');
@@ -186,14 +189,14 @@ const onBlur = () => {
         <SessionButton
           v-for="(action, index) in [
             {
-              title: 'Configuration',
+              title: t('views.menu.configuration'),
               img: settingsImg,
               handler: openConfiguration,
             },
-            { title: 'Shutdown', img: shutdownImg, handler: () => openSessionPopup('shutdown') },
-            { title: 'Reboot', img: rebootImg, handler: () => openSessionPopup('reboot') },
-            { title: 'Logout', img: logoutImg, handler: () => openSessionPopup('logout') },
-            { title: 'Suspend', img: suspendImg, handler: () => openSessionPopup('suspend') },
+            { title: t('views.menu.shutdown'), img: shutdownImg, handler: () => openSessionPopup('shutdown') },
+            { title: t('views.menu.reboot'), img: rebootImg, handler: () => openSessionPopup('reboot') },
+            { title: t('views.menu.logout'), img: logoutImg, handler: () => openSessionPopup('logout') },
+            { title: t('views.menu.suspend'), img: suspendImg, handler: () => openSessionPopup('suspend') },
           ]"
           :key="index"
           :title="action.title"
@@ -206,7 +209,7 @@ const onBlur = () => {
 
     <transition enter-active-class="transition-opacity duration-300 ease-out" leave-active-class="transition-opacity duration-300 ease-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
       <div v-if="isMenuEmpty" key="empty-state" class="flex items-center justify-center h-[calc(100vh-88px)]">
-        <p class="text-tx-main/60 text-lg">No applications available</p>
+        <p class="text-tx-main/60 text-lg">{{ t('views.menu.noApps') }}</p>
       </div>
       <div v-else-if="filter !== ''" key="filter-view">
         <FilterArea :apps="appsFiltred" :selected-index="selectedIndex" />
@@ -232,7 +235,7 @@ const onBlur = () => {
                 <CategoryMenuPill
                   :category="categoryEntries.all[0]"
                   :image="categoryEntries.all[1].icon"
-                  :description="categoryEntries.all[1].description"
+                  :description="t(categoryEntries.all[1].description)"
                   v-model:categorySelected="categorySelected"
                   large
                   class="w-full h-full"
@@ -250,7 +253,7 @@ const onBlur = () => {
                   :key="key"
                   :category="key"
                   :image="value.icon"
-                  :description="value.description"
+                  :description="t(value.description)"
                   v-model:categorySelected="categorySelected"
                 />
               </transition-group>

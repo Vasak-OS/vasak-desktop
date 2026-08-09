@@ -1,0 +1,228 @@
+_version: 1
+
+osd:
+  volume: "Volume: {0}%"
+  muted: Muted
+  brightness: "Brightness: {0}%"
+  capsLockOn: "Caps Lock: On"
+  capsLockOff: "Caps Lock: Off"
+  micMuted: "Microphone: Muted"
+  micActive: "Microphone: On"
+
+menu:
+  categories:
+    all: All applications
+    develop: Development tools
+    network: Internet and networks
+    settings: System settings
+    media: Multimedia applications
+    games: Games
+    utility: Utilities
+    other: Other applications
+
+search:
+  actions:
+    shutdown:
+      title: Shut down
+      description: Shut down the system
+    reboot:
+      title: Restart
+      description: Restart the system
+    suspend:
+      title: Suspend
+      description: Suspend the system
+    lock:
+      title: Lock
+      description: Lock the screen
+    logout:
+      title: Log out
+      description: Log out of the current session
+    settings:
+      title: Settings
+      description: Open system settings
+
+common:
+  save: Save changes
+  saving: Saving…
+  cancel: Cancel
+  delete: Delete
+  close: Close
+  loading: Loading…
+  noResults: No results
+  retry: Retry
+
+views:
+  menu:
+    configuration: Settings
+    shutdown: Shut down
+    reboot: Restart
+    logout: Log out
+    suspend: Suspend
+    noApps: No applications available
+  panel:
+    menuAlt: Menu
+    settingsAlt: Settings
+    filesAlt: Files
+    notificationsAlt: Notifications
+  desktop:
+    backgroundAlt: Wallpaper
+  search:
+    iconAlt: Search
+    placeholder: Search apps, files and actions...
+    hint: Type to search apps, files or actions
+    categoryApplication: App
+    categoryFile: File
+    categoryAction: Action
+    keyNavigate: Navigate
+    keyExecute: Run
+    keyClose: Close
+  sessionPopup:
+    shutdownTitle: Shut down the system
+    rebootTitle: Restart the system
+    logoutTitle: Log out
+    suspendTitle: Suspend the system
+    shutdownConfirm: Shut down
+    rebootConfirm: Restart
+    logoutConfirm: Log out
+    suspendConfirm: Suspend
+    shutdownDescription: All programs will close and the system will power off.
+    rebootDescription: The system will restart. Make sure to save your work.
+    logoutDescription: Your current session will be closed.
+    suspendDescription: The system will enter a low-power suspend state.
+  applets:
+    tray:
+      fallbackTitle: Tray
+      iconAlt: Tray icon
+      itemCount: "{0} items"
+      statusFallback: Tray active
+      actionsTitle: Tray actions
+      actionsHint: Tray right click
+      noItems: No items available for this tray.
+      submenu: Submenu
+      disabled: Disabled
+
+components:
+  AudioDeviceSelector:
+    title: Audio device
+    speakerAlt: Speaker
+    volume: "Vol: {0}%"
+    default: Default
+    loadingDevices: Loading devices...
+    noDevices: No devices available
+  BluetoothControl:
+    iconAlt: Bluetooth icon
+    toggle: Toggle Bluetooth
+  BluetoothControlArea:
+    scanAlt: Scan for Bluetooth devices
+    available: Available
+    noneAvailable: No devices available
+    connect: Connect
+    connectedDevices: Connected devices
+    noneConnected: No device connected
+    disconnect: Disconnect
+  BrightnessControl:
+    brightness: "Brightness: {0}%"
+  DeviceCard:
+    connecting: Connecting...
+    connect: Connect
+  MusicWidget:
+    reconnecting: Reconnecting (attempt {0})...
+    connectionError: Connection error
+    unknownTitle: Unknown
+    previous: Previous
+    play: Play
+    pause: Pause
+    next: Next
+  NetworkControlArea:
+    title: Networks
+    wifiUnavailable: Wi-Fi not available on this device
+    availableNetworks: Available networks
+    refresh: Refresh networks
+    realtimeTraffic: Real-time traffic
+    download: Download
+    upload: Upload
+    checking: Checking…
+    wifiOn: "On"
+    wifiOff: "Off"
+    wifiNotAvailable: Not available
+    vpnInactive: No active VPN connection
+    vpnActive: VPN connection active
+    vpnConnectedTo: "Connected: {0}"
+    noInterface: No interface
+    ethernetUnknown: Unknown
+    ethernetConnected: Connected
+    ethernetDisconnected: Disconnected
+    ethernetNoLink: No link
+  NetworkWiFiCard:
+    securityOpen: Open
+    connected: Connected
+    signal: "Signal: {0}%"
+    connectTo: Connect to {0}
+    passwordPlaceholder: WiFi password
+    connectAction: Connect
+    connectError: "Connection error: {0}"
+  NotificationArea:
+    notificationOne: Notification
+    notificationMany: Notifications
+    appOne: App
+    appMany: Apps
+    clearAll: Clear all
+    empty: No notifications
+  NotificationGroupCard:
+    removeGroup: Remove group
+    unreadOne: "{0} new"
+    unreadMany: "{0} new"
+    empty: No notifications
+    now: now
+  SearchButtonControl:
+    openSearch: Open global search
+    searchAlt: Search
+  SearchMenuComponent:
+    placeholder: Search
+  SystemAudioArea:
+    title: Audio settings
+    volumeControl: Volume control
+    deviceSelector: Audio device selector
+  ThemeToggle:
+    toLight: Switch to light theme
+    toDark: Switch to dark theme
+  TrayIconBattery:
+    noBattery: No battery detected
+    status: "Battery {0}% - {1}"
+  TrayIconBluetooth:
+    statusOn: Bluetooth on
+    statusOff: Bluetooth off
+    iconAlt: Bluetooth icon
+  TrayIconCapsLock:
+    capsLock: Caps Lock
+  TrayIconMicrophone:
+    muted: Microphone muted
+  TrayIconNetwork:
+    connectedTo: "Connected: {0} {1}"
+    networkDisconnected: Network disconnected
+    vpnConnected: VPN connected
+    vpnDisconnected: VPN disconnected
+    vpnProfileActive: VPN profile active
+    vpnProfileTitle: "Active VPN profile: {0}"
+    vpnBadge: VPN active
+  TrayIconSound:
+    mute: Mute
+    unmute: Unmute
+  TrayMusicControl:
+    previous: Previous
+    play: Play
+    pause: Pause
+    next: Next
+  VolumeControl:
+    mute: Mute
+    unmute: Unmute
+  WeatherIcon:
+    unknown: Unknown weather condition
+  WeatherWidget:
+    failed: Could not get the weather
+    loading: Loading weather…
+  useNetworkState:
+    connectedTo: Connected to {0} {1}
+    disconnected: Disconnected
+    vpnOn: active
+    vpnOff: VPN inactive

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
@@ -8,6 +9,8 @@ import type { BatteryInfo } from '@/interfaces/battery';
 import { getBatteryInfo } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
+
+const { t } = useI18n();
 
 const batteryInfo = ref<BatteryInfo>({
 	has_battery: false,
@@ -18,8 +21,10 @@ const batteryInfo = ref<BatteryInfo>({
 });
 
 const batteryAltText = computed(() => {
-	if (!batteryInfo.value.has_battery) return 'No battery detected';
-	return `Battery ${Math.round(batteryInfo.value.percentage)}% - ${batteryInfo.value.state}`;
+	if (!batteryInfo.value.has_battery) return t('components.TrayIconBattery.noBattery');
+	return t('components.TrayIconBattery.status')
+		.replace('{0}', String(Math.round(batteryInfo.value.percentage)))
+		.replace('{1}', String(batteryInfo.value.state));
 });
 
 const tooltipClass = computed(() => ({

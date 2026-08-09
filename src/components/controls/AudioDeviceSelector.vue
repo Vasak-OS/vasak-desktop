@@ -1,10 +1,13 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { onMounted, type Ref, ref } from 'vue';
 import { getAudioDevices, setAudioDevice } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
+
+const { t } = useI18n();
 
 interface AudioDevice {
 	id: string;
@@ -74,8 +77,8 @@ function getDeviceName(device: AudioDevice): string {
 <template>
   <div class="space-y-2">
     <div class="flex items-center gap-2 text-sm font-medium text-muted">
-      <img v-if="speakerIcon" :src="speakerIcon" alt="Speaker" class="w-4 h-4" />
-      <span>Dispositivo de audio</span>
+      <img v-if="speakerIcon" :src="speakerIcon" :alt="t('components.AudioDeviceSelector.speakerAlt')" class="w-4 h-4" />
+      <span>{{ t('components.AudioDeviceSelector.title') }}</span>
     </div>
 
     <div v-if="!isLoading && devices.length > 0" class="space-y-1">
@@ -102,23 +105,23 @@ function getDeviceName(device: AudioDevice): string {
             {{ getDeviceName(device) }}
           </div>
           <div class="text-xs text-muted/70">
-            Vol: {{ Math.round(device.volume * 100) }}%
+            {{ t('components.AudioDeviceSelector.volume').replace('{0}', String(Math.round(device.volume * 100))) }}
           </div>
         </div>
 
         <div v-if="device.is_default"
           class="px-2 py-0.5 bg-primary rounded-corner text-xs font-medium text-primary">
-          Default
+          {{ t('components.AudioDeviceSelector.default') }}
         </div>
       </div>
     </div>
 
     <div v-else-if="isLoading" class="text-xs text-muted">
-      Cargando dispositivos...
+      {{ t('components.AudioDeviceSelector.loadingDevices') }}
     </div>
 
     <div v-else class="text-xs text-tx-muted">
-      No hay dispositivos disponibles
+      {{ t('components.AudioDeviceSelector.noDevices') }}
     </div>
   </div>
 </template>

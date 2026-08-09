@@ -2,11 +2,14 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, type Ref, ref } from 'vue';
 import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
 import ToggleControl from '../forms/ToggleControl.vue';
+
+const { t } = useI18n();
 
 const isTogglingBluetooth: Ref<boolean> = ref(false);
 
@@ -53,8 +56,8 @@ const toggleBT = async (): Promise<void> => {
 
     <ToggleControl
       :icon="bluetoothIcon"
-      alt="Bluetooth Icon"
-      tooltip="Toggle Bluetooth"
+      :alt="t('components.BluetoothControl.iconAlt')"
+      :tooltip="t('components.BluetoothControl.toggle')"
       :is-active="isBluetoothOn"
       :is-loading="isTogglingBluetooth"
       :custom-class="{

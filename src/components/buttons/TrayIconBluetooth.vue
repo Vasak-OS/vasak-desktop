@@ -2,12 +2,15 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import { toggleBluetoothApplet } from '@/services/window.service';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
+
+const { t } = useI18n();
 
 const { isBluetoothOn, connectedDevicesCount } = useBluetoothState({
 	getIcon: async () => '',
@@ -30,8 +33,10 @@ const toggleBluetooth = async (): Promise<void> => {
 <template>
   <TrayIconButton
     :icon="bluetoothIcon"
-    :tooltip="isBluetoothOn ? 'Bluetooth On' : 'Bluetooth Off'"
-    alt="Bluetooth Icon"
+    :tooltip="isBluetoothOn
+      ? t('components.TrayIconBluetooth.statusOn')
+      : t('components.TrayIconBluetooth.statusOff')"
+    :alt="t('components.TrayIconBluetooth.iconAlt')"
     :badge="isBluetoothOn && connectedDevicesCount > 0 ? connectedDevicesCount : null"
     :icon-class="{ 'filter brightness-75': !isBluetoothOn }"
     @click="toggleBluetooth"

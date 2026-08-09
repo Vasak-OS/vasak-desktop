@@ -34,6 +34,7 @@ gtk-layer-shell = { version = "0.8", features = ["v0_6"] }
 base64 = "0.22"
 #tauri-plugin-vicons = {path = "../../tauri-plugin-vicons"}
 tauri-plugin-vicons = "2"
+tauri-plugin-i18n-vsk = "2.1.1"
 #tauri-plugin-config-manager = {path = "../../tauri-plugin-config-manager"}
 tauri-plugin-config-manager = "2"
 tauri-plugin-user-data = "2"

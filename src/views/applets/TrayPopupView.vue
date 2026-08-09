@@ -2,12 +2,15 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppletFrame from '@/components/layouts/AppletFrame.vue';
 import type { SystrayPopupPayload, TrayMenu } from '@/interfaces/tray';
 import { getTrayPopupData, trayPopupClick } from '@/services/tray.service';
 import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
+
+const { t } = useI18n();
 
 const currentWindow = getCurrentWindow();
 const data = ref<SystrayPopupPayload | null>(null);
@@ -21,7 +24,7 @@ const popupIcon = computed(() => {
 });
 
 const popupSubtitle = computed(() => {
-	return data.value?.tooltip || data.value?.service_name || 'Tray';
+	return data.value?.tooltip || data.value?.service_name || t('views.applets.tray.fallbackTitle');
 });
 
 const itemCount = computed(() => data.value?.items?.length ?? 0);
@@ -107,23 +110,23 @@ onBeforeUnmount(() => {
               v-if="popupIcon"
               :src="popupIcon"
               class="w-full h-full object-contain p-2"
-              alt="Tray icon"
+              :alt="t('views.applets.tray.iconAlt')"
             />
             <img
               v-else
               :src="fallbackIcon"
               class="w-full h-full object-contain p-2"
-              alt="Tray icon"
+              :alt="t('views.applets.tray.iconAlt')"
             />
           </div>
 
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 min-w-0">
               <h2 class="text-lg font-semibold text-vsk-text truncate">
-                {{ data?.title || 'Tray' }}
+                {{ data?.title || t('views.applets.tray.fallbackTitle') }}
               </h2>
               <span class="text-[10px] uppercase tracking-[0.18em] text-vsk-text/45 whitespace-nowrap">
-                {{ itemCount }} items
+                {{ t('views.applets.tray.itemCount').replace('{0}', String(itemCount)) }}
               </span>
             </div>
             <p class="text-sm text-vsk-text/70 truncate mt-1">
@@ -131,7 +134,7 @@ onBeforeUnmount(() => {
             </p>
             <div class="mt-3 flex flex-wrap gap-2 text-xs">
               <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-vsk-text/75">
-                {{ data?.status || 'Tray activo' }}
+                {{ data?.status || t('views.applets.tray.statusFallback') }}
               </span>
               <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-vsk-text/65 truncate max-w-[280px]">
                 {{ data?.service_name || 'service' }}
@@ -143,8 +146,8 @@ onBeforeUnmount(() => {
 
       <section class="flex-1 min-h-0 rounded-corner border border-ui-border bg-ui-surface/35 p-4 overflow-hidden">
         <div class="flex items-center justify-between gap-2 mb-3">
-          <h3 class="text-sm font-semibold text-vsk-text">Acciones del tray</h3>
-          <span class="text-xs text-vsk-text/50">Click derecho del tray</span>
+          <h3 class="text-sm font-semibold text-vsk-text">{{ t('views.applets.tray.actionsTitle') }}</h3>
+          <span class="text-xs text-vsk-text/50">{{ t('views.applets.tray.actionsHint') }}</span>
         </div>
 
         <div class="h-full overflow-y-auto pr-1 space-y-2">
@@ -152,7 +155,7 @@ onBeforeUnmount(() => {
             v-if="!data?.items?.length"
             class="rounded-corner border border-ui-border bg-ui-surface/50 px-4 py-6 text-center text-sm text-vsk-text/60"
           >
-            No hay elementos disponibles para este tray.
+            {{ t('views.applets.tray.noItems') }}
           </div>
 
           <template v-for="item in renderItems" :key="item.id">
@@ -187,8 +190,8 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="shrink-0 flex items-center gap-2 text-[10px] text-vsk-text/55 uppercase tracking-[0.14em]">
-                  <span v-if="item.children?.length">submenu</span>
-                  <span v-if="!item.enabled">disabled</span>
+                  <span v-if="item.children?.length">{{ t('views.applets.tray.submenu') }}</span>
+                  <span v-if="!item.enabled">{{ t('views.applets.tray.disabled') }}</span>
                 </div>
               </div>
             </button>

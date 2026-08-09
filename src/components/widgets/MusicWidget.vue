@@ -2,8 +2,11 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { nextTick, onMounted, ref, watch } from 'vue';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
+
+const { t } = useI18n();
 
 const {
 	musicInfo,
@@ -35,9 +38,12 @@ onMounted(async () => {
 		if (payload.service === 'music') {
 			dbusStatus.value = payload.status;
 			if (payload.status === 'reconnecting') {
-				dbusMessage.value = `Reconectando (intento ${payload.attempt})...`;
+				dbusMessage.value = t('components.MusicWidget.reconnecting').replace(
+					'{0}',
+					String(payload.attempt)
+				);
 			} else if (payload.status === 'failed') {
-				dbusMessage.value = payload.message || 'Error de conexión';
+				dbusMessage.value = payload.message || t('components.MusicWidget.connectionError');
 			} else if (payload.status === 'connected') {
 				dbusMessage.value = '';
 			}
@@ -117,7 +123,7 @@ watch(
                 : {}
             "
           >
-            {{ musicInfo.title || "Unknown" }}
+            {{ musicInfo.title || t('components.MusicWidget.unknownTitle') }}
           </span>
         </div>
         <div
@@ -135,29 +141,33 @@ watch(
         <button
           @click.prevent="onPrev"
           class="w-12 h-12 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-          title="Anterior"
+          :title="t('components.MusicWidget.previous')"
         >
-          <img :src="prevIcon" alt="Anterior" class="w-4 h-4" />
+          <img :src="prevIcon" :alt="t('components.MusicWidget.previous')" class="w-4 h-4" />
         </button>
 
         <button
           @click.prevent="onPlayPause"
           class="w-12 h-12 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-          :title="isPlaying ? 'Pausa' : 'Reproducir'"
+          :title="isPlaying
+            ? t('components.MusicWidget.pause')
+            : t('components.MusicWidget.play')"
         >
-          <img 
-            :src="isPlaying ? pauseIcon : playIcon" 
-            :alt="isPlaying ? 'Pausa' : 'Reproducir'" 
-            class="w-4 h-4" 
+          <img
+            :src="isPlaying ? pauseIcon : playIcon"
+            :alt="isPlaying
+              ? t('components.MusicWidget.pause')
+              : t('components.MusicWidget.play')"
+            class="w-4 h-4"
           />
         </button>
 
         <button
           @click.prevent="onNext"
           class="w-12 h-12 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-          title="Siguiente"
+          :title="t('components.MusicWidget.next')"
         >
-          <img :src="nextIcon" alt="Siguiente" class="w-4 h-4" />
+          <img :src="nextIcon" :alt="t('components.MusicWidget.next')" class="w-4 h-4" />
         </button>
       </div>
 

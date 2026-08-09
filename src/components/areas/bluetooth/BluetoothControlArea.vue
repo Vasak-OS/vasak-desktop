@@ -12,6 +12,7 @@ import {
 	scanForDevices,
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
@@ -19,6 +20,8 @@ import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
+
+const { t } = useI18n();
 
 const connectedDevices = ref<any[]>([]);
 const availableDevices = ref<any[]>([]);
@@ -141,28 +144,28 @@ const disconnect = async (device: any) => {
       >
         <img
           :src="syncIcon"
-          alt="Sync Bluetooth"
+          :alt="t('components.BluetoothControlArea.scanAlt')"
           class="h-6 w-6"
           :class="{ 'animate-spin': isScanning }"
         />
       </button>
     </div>
-    <div v-if="loading" class="text-center px-6 flex-1">Cargando...</div>
+    <div v-if="loading" class="text-center px-6 flex-1">{{ t('common.loading') }}</div>
     <div v-else class="flex-1 flex gap-4 flex-col">
       <div class="flex-1 flex flex-col overflow-hidden">
-        <div class="mb-4 font-semibold text-xl">Disponibles</div>
+        <div class="mb-4 font-semibold text-xl">{{ t('components.BluetoothControlArea.available') }}</div>
         <div class="flex-1 overflow-y-auto">
           <div
             v-if="availableDevices.length === 0"
             class="text-tx-muted text-sm px-1.5 text-center"
           >
-            No hay dispositivos disponibles
+            {{ t('components.BluetoothControlArea.noneAvailable') }}
           </div>
           <ul v-else class="list-none p-0 m-0">
             <li v-for="dev in availableDevices" :key="dev.path">
               <BluetoothDeviceCard
                 :device="dev"
-                action-label="Conectar"
+                :action-label="t('components.BluetoothControlArea.connect')"
                 :is-connecting="connectingPath === dev.path"
                 @action="connect(dev)"
               />
@@ -171,19 +174,19 @@ const disconnect = async (device: any) => {
         </div>
       </div>
       <div class="flex-1 flex flex-col overflow-hidden">
-        <div class="mb-4 font-semibold text-xl">Dispositivos conectados</div>
+        <div class="mb-4 font-semibold text-xl">{{ t('components.BluetoothControlArea.connectedDevices') }}</div>
         <div class="flex-1 overflow-y-auto">
           <div
             v-if="connectedDevices.length === 0"
             class="text-tx-muted text-sm px-1.5 text-center"
           >
-            Ningún dispositivo conectado
+            {{ t('components.BluetoothControlArea.noneConnected') }}
           </div>
           <ul v-else class="list-none p-0 m-0">
             <li v-for="dev in connectedDevices" :key="dev.path">
               <BluetoothDeviceCard
                 :device="dev"
-                action-label="Desconectar"
+                :action-label="t('components.BluetoothControlArea.disconnect')"
                 connected
                 @action="disconnect(dev)"
               />

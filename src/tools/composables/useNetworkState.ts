@@ -1,3 +1,4 @@
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, ref } from 'vue';
 import { useIcon } from '@/tools/composables/useReactiveIcon';
 import {
@@ -10,6 +11,7 @@ import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 export function useNetworkState() {
+	const { t } = useI18n();
 	const networkState = ref<NetworkInfo>({
 		name: 'Unknown',
 		ssid: 'Unknown',
@@ -28,11 +30,13 @@ export function useNetworkState() {
 
 	const networkAlt = computed(() => {
 		const net = networkState.value.is_connected
-			? `Conectado a ${networkState.value.connection_type} ${networkState.value.ssid}`
-			: 'Desconectado';
+			? t('components.useNetworkState.connectedTo')
+					.replace('{0}', String(networkState.value.connection_type))
+					.replace('{1}', String(networkState.value.ssid))
+			: t('components.useNetworkState.disconnected');
 		const vpn = vpnConnected.value
-			? `VPN: ${vpnStatus.value?.active_profile_name || 'activa'}`
-			: 'VPN inactiva';
+			? `VPN: ${vpnStatus.value?.active_profile_name || t('components.useNetworkState.vpnOn')}`
+			: t('components.useNetworkState.vpnOff');
 		return `${net} · ${vpn}`;
 	});
 

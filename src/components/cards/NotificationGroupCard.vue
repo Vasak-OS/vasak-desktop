@@ -37,7 +37,7 @@
         <ActionButton
           label=""
           :iconSrc="closeIconSrc"
-          iconAlt="Eliminar grupo"
+          :iconAlt="t('components.NotificationGroupCard.removeGroup')"
           size="sm"
           variant="secondary"
           :stopPropagation="true"
@@ -72,10 +72,13 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
 import ActionButton from '../buttons/ActionButton.vue';
+
+const { t } = useI18n();
 
 interface Notification {
 	id: number;
@@ -125,9 +128,13 @@ function toggleExpanded() {
 function formatGroupSummary() {
 	const unreadCount = props.group.notifications.filter((n) => !n.seen).length;
 	if (unreadCount > 0) {
-		return `${unreadCount} nueva${unreadCount === 1 ? '' : 's'}`;
+		const label =
+			unreadCount === 1
+				? t('components.NotificationGroupCard.unreadOne')
+				: t('components.NotificationGroupCard.unreadMany');
+		return label.replace('{0}', String(unreadCount));
 	}
-	return props.group.notifications[0]?.summary || 'Sin notificaciones';
+	return props.group.notifications[0]?.summary || t('components.NotificationGroupCard.empty');
 }
 
 function formatTime(timestamp: number) {
@@ -135,7 +142,7 @@ function formatTime(timestamp: number) {
 	const now = new Date();
 	const diffMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
-	if (diffMinutes < 1) return 'ahora';
+	if (diffMinutes < 1) return t('components.NotificationGroupCard.now');
 	if (diffMinutes < 60) return `${diffMinutes}m`;
 	if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h`;
 	return date.toLocaleDateString();

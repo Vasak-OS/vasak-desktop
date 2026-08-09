@@ -2,6 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import {
@@ -16,6 +17,7 @@ import { logError } from '@/utils/logger';
 
 const currentWindow = getCurrentWindow();
 const route = useRoute();
+const { t } = useI18n();
 const action = ref<'shutdown' | 'reboot' | 'logout' | 'suspend'>('shutdown');
 const leaving = ref(false);
 const confirming = ref(false);
@@ -39,39 +41,39 @@ const actionImg = useReactiveIcon(
 const titleText = computed(() => {
 	switch (action.value) {
 		case 'shutdown':
-			return 'Apagar el sistema';
+			return t('views.sessionPopup.shutdownTitle');
 		case 'reboot':
-			return 'Reiniciar el sistema';
+			return t('views.sessionPopup.rebootTitle');
 		case 'logout':
-			return 'Cerrar sesión';
+			return t('views.sessionPopup.logoutTitle');
 		case 'suspend':
-			return 'Suspender el sistema';
+			return t('views.sessionPopup.suspendTitle');
 	}
 });
 
 const confirmText = computed(() => {
 	switch (action.value) {
 		case 'shutdown':
-			return 'Apagar';
+			return t('views.sessionPopup.shutdownConfirm');
 		case 'reboot':
-			return 'Reiniciar';
+			return t('views.sessionPopup.rebootConfirm');
 		case 'logout':
-			return 'Cerrar sesión';
+			return t('views.sessionPopup.logoutConfirm');
 		case 'suspend':
-			return 'Suspender';
+			return t('views.sessionPopup.suspendConfirm');
 	}
 });
 
 const descriptionText = computed(() => {
 	switch (action.value) {
 		case 'shutdown':
-			return 'Se apagarán todos los programas y el sistema se detendrá.';
+			return t('views.sessionPopup.shutdownDescription');
 		case 'reboot':
-			return 'El sistema se reiniciará. Asegúrate de guardar tu trabajo.';
+			return t('views.sessionPopup.rebootDescription');
 		case 'logout':
-			return 'Se cerrará tu sesión actual.';
+			return t('views.sessionPopup.logoutDescription');
 		case 'suspend':
-			return 'El sistema entrará en estado de suspensión de bajo consumo.';
+			return t('views.sessionPopup.suspendDescription');
 	}
 });
 
@@ -167,7 +169,7 @@ onUnmounted(() => {
             @click="closeAfterAnimation"
             :disabled="confirming"
           >
-            Cancelar
+            {{ t('common.cancel') }}
           </button>
           <button
             class="flex-1 px-5 py-3 rounded-corner bg-primary hover:bg-primary/90 transition-colors text-sm font-bold text-tx-on-primary flex items-center justify-center gap-2"

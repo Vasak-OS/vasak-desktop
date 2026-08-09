@@ -1,5 +1,9 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+
+const { t } = useI18n();
+
 const vFocus = {
 	mounted: (el: HTMLElement) => setTimeout(() => el.focus(), 50),
 };
@@ -22,8 +26,8 @@ const emit = defineEmits(['update:filter']);
   <input
     type="text"
     class="form-control border border-ui-border rounded-corner grow bg-ui-bg/80 shadow-none focus:outline-none focus:ring-0 p-2 disabled:opacity-50 disabled:cursor-not-allowed"
-    placeholder="Search"
-    aria-label="Search"
+    :placeholder="t('components.SearchMenuComponent.placeholder')"
+    :aria-label="t('components.SearchMenuComponent.placeholder')"
     id="search"
     v-focus
     :value="filter"

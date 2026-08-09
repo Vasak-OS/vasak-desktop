@@ -7,12 +7,18 @@
       v-if="groupedNotifications.length > 0"
     >
       <span class="text-sm text-tx-main font-medium">
-        {{ notifications.length }} Notification{{
-          notifications.length !== 1 ? "s" : ""
+        {{ notifications.length }}
+        {{
+          notifications.length === 1
+            ? t('components.NotificationArea.notificationOne')
+            : t('components.NotificationArea.notificationMany')
         }}
         <span class="text-xs opacity-75">
-          ({{ groupedNotifications.length }} App{{
-            groupedNotifications.length !== 1 ? "s" : ""
+          ({{ groupedNotifications.length }}
+          {{
+            groupedNotifications.length === 1
+              ? t('components.NotificationArea.appOne')
+              : t('components.NotificationArea.appMany')
           }})
         </span>
       </span>
@@ -20,7 +26,7 @@
         @click="clearAllNotifications"
         class="text-xs px-4 py-2 bg-primary rounded-corner hover:bg-primary/80 transition-colors"
       >
-        Limpiar todo
+        {{ t('components.NotificationArea.clearAll') }}
       </button>
     </div>
 
@@ -29,7 +35,7 @@
       class="text-center transition-opacity duration-300 ease-in-out text-tx-muted py-8"
     >
       <img :src="emptyIcon" alt="" class="w-8 h-8 opacity-60 mx-auto" />
-      <p class="mt-2">No hay notificaciones</p>
+      <p class="mt-2">{{ t('components.NotificationArea.empty') }}</p>
     </div>
 
     <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-active-class="transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)] [&>.notification-item]:animate-pulse-notification" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-from-class="opacity-0 translate-x-full scale-90" leave-to-class="opacity-0 translate-x-[-30%] scale-95" tag="div" class="flex flex-col gap-3">
@@ -47,6 +53,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
 import type { Notification, NotificationDelta, NotificationGroupData } from '@/interfaces/notifications';
@@ -57,6 +64,8 @@ import {
 } from '@/services/notification.service';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
+
+const { t } = useI18n();
 
 const notifications = ref<Notification[]>([]);
 const emptyIcon = useSymbol('preferences-desktop-notification');

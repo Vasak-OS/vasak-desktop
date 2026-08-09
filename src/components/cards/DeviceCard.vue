@@ -31,7 +31,7 @@
       :disabled="isConnecting"
       @click.stop="handleAction"
     >
-      {{ isConnecting ? 'Conectando...' : actionLabel }}
+      {{ isConnecting ? t('components.DeviceCard.connecting') : (actionLabel || t('components.DeviceCard.connect')) }}
     </button>
 
     <!-- Status indicator for connected state -->
@@ -43,6 +43,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+
+const { t } = useI18n();
+
 interface ExtraInfoItem {
 	icon: string;
 	text: string;
@@ -70,7 +74,7 @@ withDefaults(defineProps<Props>(), {
 	isConnected: false,
 	isConnecting: false,
 	showActionButton: true,
-	actionLabel: 'Conectar',
+	actionLabel: '',
 	showStatusIndicator: false,
 	customClass: '',
 	clickable: false,

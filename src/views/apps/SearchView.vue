@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { globalSearch } from '@/services/core.service';
 import { executeSearchResult } from '@/services/search.service';
@@ -17,6 +18,8 @@ interface SearchResult {
 	path: string | null;
 	score: number;
 }
+
+const { t } = useI18n();
 
 const query = ref('');
 const results = ref<SearchResult[]>([]);
@@ -146,6 +149,16 @@ onUnmounted(() => {
 	window.removeEventListener('blur', closeAfterAnimation);
 });
 
+/**
+ * Action results carry locale keys instead of text — the backend has no notion
+ * of the user's language. Applications and files carry real names, which must
+ * be shown as they are.
+ */
+function resultText(result: { category: string }, value: string): string {
+	if (!value) return '';
+	return result.category === 'action' ? t(value) : value;
+}
+
 function getCategoryIcon(category: string): string {
 	switch (category) {
 		case 'application':
@@ -162,11 +175,11 @@ function getCategoryIcon(category: string): string {
 function getCategoryLabel(category: string): string {
 	switch (category) {
 		case 'application':
-			return 'App';
+			return t('views.search.categoryApplication');
 		case 'file':
-			return 'Archivo';
+			return t('views.search.categoryFile');
 		case 'action':
-			return 'Acción';
+			return t('views.search.categoryAction');
 		default:
 			return '';
 	}
@@ -189,12 +202,12 @@ function getCategoryLabel(category: string): string {
         <div
           class="flex items-center gap-4 px-6 py-5 border-b border-primary/10 relative z-10"
         >
-          <img :src="searchIconSrc" alt="Search" class="w-7 h-7 shrink-0" />
+          <img :src="searchIconSrc" :alt="t('views.search.iconAlt')" class="w-7 h-7 shrink-0" />
           <input
             v-model="query"
             type="text"
             class="search-input flex-1 bg-transparent border-none outline-none text-xl text-vsk-text font-medium placeholder:text-vsk-text/30"
-            placeholder="Buscar aplicaciones, archivos y acciones..."
+            :placeholder="t('views.search.placeholder')"
             autofocus
           />
           <div v-if="loading" class="text-2xl animate-spin">⏳</div>
@@ -228,13 +241,13 @@ function getCategoryLabel(category: string): string {
             </div>
             <div class="flex-1 min-w-0">
               <div class="text-lg font-bold text-vsk-text">
-                {{ result.title }}
+                {{ resultText(result, result.title) }}
               </div>
               <div
                 v-if="result.description"
                 class="text-sm text-vsk-text/60 truncate"
               >
-                {{ result.description }}
+                {{ resultText(result, result.description) }}
               </div>
             </div>
             <div
@@ -255,7 +268,7 @@ function getCategoryLabel(category: string): string {
           class="flex-1 flex items-center justify-center px-6 py-12 relative z-10"
         >
           <p class="text-center text-vsk-text/40 text-base">
-            No se encontraron resultados
+            {{ t('common.noResults') }}
           </p>
         </div>
 
@@ -264,7 +277,7 @@ function getCategoryLabel(category: string): string {
           class="flex-1 flex items-center justify-center px-6 py-12 relative z-10"
         >
           <p class="text-center text-vsk-text/40 text-base">
-            Escribe para buscar aplicaciones, archivos o acciones
+            {{ t('views.search.hint') }}
           </p>
         </div>
 
@@ -280,21 +293,21 @@ function getCategoryLabel(category: string): string {
                 class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
                 >↑↓</kbd
               >
-              Navegar
+              {{ t('views.search.keyNavigate') }}
             </span>
             <span class="flex items-center gap-1">
               <kbd
                 class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
                 >Enter</kbd
               >
-              Ejecutar
+              {{ t('views.search.keyExecute') }}
             </span>
             <span class="flex items-center gap-1">
               <kbd
                 class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
                 >Esc</kbd
               >
-              Cerrar
+              {{ t('views.search.keyClose') }}
             </span>
           </div>
         </div>

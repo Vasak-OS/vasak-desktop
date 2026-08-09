@@ -78,7 +78,7 @@ fn spawn_evdev_caps_monitor(app: AppHandle, running: Arc<AtomicBool>) {
 
         let _ = app.emit("caps-lock-changed", json!({ "active": caps_state }));
         if caps_state {
-            show_osd_sync("capslock-enabled-symbolic", 1.0, 1.0, "Bloq Mayús: Activado", &app);
+            show_osd_sync("capslock-enabled-symbolic", 1.0, 1.0, "osd.capsLockOn", &app);
         }
 
         let mut buf = [0u8; 24];
@@ -107,7 +107,7 @@ fn spawn_evdev_caps_monitor(app: AppHandle, running: Arc<AtomicBool>) {
                 }
                 caps_state = new;
 
-                let label = if caps_state { "Bloq Mayús: Activado" } else { "Bloq Mayús: Desactivado" };
+                let label = if caps_state { "osd.capsLockOn" } else { "osd.capsLockOff" };
                 let icon = if caps_state { "capslock-enabled-symbolic" } else { "capslock-disabled-symbolic" };
 
                 let _ = app.emit("caps-lock-changed", json!({ "active": caps_state }));
@@ -151,9 +151,9 @@ async fn read_mic_muted() -> Option<bool> {
 
 async fn announce_mic_state(app: &AppHandle, muted: bool) {
     let (label, icon) = if muted {
-        ("Micrófono: Silenciado", "microphone-sensitivity-muted")
+        ("osd.micMuted", "microphone-sensitivity-muted")
     } else {
-        ("Micrófono: Activado", "microphone-sensitivity-high")
+        ("osd.micActive", "microphone-sensitivity-high")
     };
 
     let _ = app.emit("mic-mute-changed", json!({ "active": muted }));

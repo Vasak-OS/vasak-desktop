@@ -3,6 +3,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { emit } from '@tauri-apps/api/event';
 import { Command } from '@tauri-apps/plugin-shell';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { onMounted, ref } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
@@ -13,6 +14,8 @@ import { toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
+
+const { t } = useI18n();
 
 const notifications = ref<AppNotification[]>([]);
 const hasNewNotifications = ref(false);
@@ -118,17 +121,17 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 <template>
 	<nav class="relative z-20 flex w-[calc(100%-8px)] justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80 px-3">
     <div class="flex items-center gap-1">
-      <img :src="menuIcon" alt="Menu" @click="openMenu" class="h-7 w-7 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out" />
+      <img :src="menuIcon" :alt="t('views.panel.menuAlt')" @click="openMenu" class="h-7 w-7 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out" />
 			<div class="w-1 h-7 bg-ui-bg/80"></div>
       <img
         :src="configIcon"
-        alt="Config"
+        :alt="t('views.panel.settingsAlt')"
         @click="openConfig"
         class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
       />
       <img
         :src="fileManagerIcon"
-        alt="Files"
+        :alt="t('views.panel.filesAlt')"
         @click="openFileManager"
         class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
       />
@@ -140,7 +143,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       <div class="relative cursor-pointer" @click="openNotificationCenter">
         <img
           :src="notifyIcon"
-          alt="Notifications"
+          :alt="t('views.panel.notificationsAlt')"
           class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
           :class="{ 'animate-bell-shake': hasNewNotifications }"
         />

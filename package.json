@@ -24,6 +24,7 @@
     "@vasakgroup/plugin-network-manager": "^2.1.3",
     "@vasakgroup/plugin-user-data": "^2.0.0",
     "@vasakgroup/plugin-vicons": "^2.1.2",
+    "@vasakgroup/tauri-plugin-i18n": "^2.1.0",
     "@vasakgroup/vue-libvasak": "~0.2.3",
     "pinia": "^3.0.4",
     "vue": "^3.5.39",
