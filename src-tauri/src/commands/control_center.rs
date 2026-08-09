@@ -1,4 +1,4 @@
-use tauri::{async_runtime::spawn, AppHandle, Manager};
+use tauri::{async_runtime::spawn, AppHandle, Manager, Emitter};
 
 use crate::logger::{log_info, log_warning};
 use crate::windows_apps::create_control_center_window;
@@ -10,9 +10,13 @@ pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
         log_info("[control_center] toggle requested for existing window");
         if control_center_window.is_visible().unwrap_or(false) {
             log_info("[control_center] closing visible control center window");
-            let _ = control_center_window.close();
+            // hide(), not close(): closing destroys the webview so the next open
+            // reloads the page and re-runs Vue. The view refreshes on
+            // "window-shown" instead.
+            let _ = control_center_window.hide();
         } else {
             log_info("[control_center] showing hidden control center window");
+            let _ = control_center_window.emit("window-shown", ());
             let _ = control_center_window.show();
             let _ = control_center_window.set_focus();
         }

@@ -67,16 +67,22 @@ class VasakLogger {
 			}
 		};
 
+		// console.log and console.debug are only intercepted in development.
+		// In production they were shipped to the backend as INFO — one IPC round
+		// trip and a disk write per call — for output nobody reads. Errors and
+		// warnings are always captured, which is what a log is for.
+		if (!this.isDevelopment) {
+			return;
+		}
+
 		console.log = (...args: any[]) => {
 			this.info(this.formatArgs(args));
-			if (this.isDevelopment) {
-				originalLog.apply(console, args);
-			}
+			originalLog.apply(console, args);
 		};
 
 		console.debug = (...args: any[]) => {
 			this.debug(this.formatArgs(args));
-			if (this.isDevelopment) {
+			{
 				originalDebug.apply(console, args);
 			}
 		};

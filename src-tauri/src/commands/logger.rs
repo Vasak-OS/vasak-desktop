@@ -1,8 +1,10 @@
 use crate::logger;
 
 /// Comando para registrar mensajes desde JavaScript
+// Async: these touch the log file, and a sync command runs on the main thread.
+// log_from_frontend in particular sits behind every patched console call.
 #[tauri::command]
-pub fn log_from_frontend(level: String, message: String) {
+pub async fn log_from_frontend(level: String, message: String) {
     logger::log_from_js(&level, &message);
 }
 
@@ -14,7 +16,7 @@ pub fn get_log_file_path() -> String {
 
 /// Comando para leer el contenido del archivo de log
 #[tauri::command]
-pub fn read_log_file() -> Result<String, String> {
+pub async fn read_log_file() -> Result<String, String> {
     use std::fs;
     
     let log_path = logger::get_log_file_path();
@@ -25,7 +27,7 @@ pub fn read_log_file() -> Result<String, String> {
 
 /// Comando para obtener las últimas N líneas del log
 #[tauri::command]
-pub fn get_last_log_lines(lines: usize) -> Result<Vec<String>, String> {
+pub async fn get_last_log_lines(lines: usize) -> Result<Vec<String>, String> {
     use std::fs;
     
     let log_path = logger::get_log_file_path();

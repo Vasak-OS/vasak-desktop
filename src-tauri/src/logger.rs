@@ -1,4 +1,5 @@
 use std::fs::{File, OpenOptions};
+use std::io::BufWriter;
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -49,7 +50,9 @@ pub static LOGGER: LazyLock<Mutex<VasakLogger>> = LazyLock::new(|| {
 
 /// Logger principal de Vasak Desktop
 pub struct VasakLogger {
-    log_file: Option<File>,
+    /// Buffered: the log used to be flushed after every single line, which
+    /// turned each frontend console call into a synchronous disk write.
+    log_file: Option<BufWriter<File>>,
     log_path: PathBuf,
     is_dev_mode: bool,
 }
@@ -68,11 +71,14 @@ impl VasakLogger {
         }
         
         // Abrir o crear el archivo de log
+        Self::prune_old_logs(&log_path);
+
         let log_file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&log_path)
-            .ok();
+            .ok()
+            .map(BufWriter::new);
         
         if log_file.is_none() {
             eprintln!("⚠️ No se pudo crear el archivo de log en: {:?}", log_path);
@@ -111,18 +117,54 @@ impl VasakLogger {
         let mode = if self.is_dev_mode { "DESARROLLO" } else { "PRODUCCIÓN" };
         let separator = "=".repeat(80);
         
-        self.write_to_file(&format!("\n{}\n", separator));
-        self.write_to_file(&format!("Nueva sesión iniciada: {}\n", Local::now().format("%Y-%m-%d %H:%M:%S")));
-        self.write_to_file(&format!("Modo: {}\n", mode));
-        self.write_to_file(&format!("Archivo de log: {:?}\n", self.log_path));
-        self.write_to_file(&format!("{}\n\n", separator));
+        self.write_to_file(&format!("\n{}\n", separator), false);
+        self.write_to_file(&format!("Nueva sesión iniciada: {}\n", Local::now().format("%Y-%m-%d %H:%M:%S")), false);
+        self.write_to_file(&format!("Modo: {}\n", mode), false);
+        self.write_to_file(&format!("Archivo de log: {:?}\n", self.log_path), false);
+        self.write_to_file(&format!("{}\n\n", separator), true);
     }
     
-    /// Escribe un mensaje en el archivo
-    fn write_to_file(&mut self, message: &str) {
+    /// Escribe un mensaje en el archivo.
+    ///
+    /// Only errors and warnings are flushed immediately; anything else rides in
+    /// the buffer. Flushing per line meant every frontend `console.log` became a
+    /// synchronous disk write on the main thread, and the interesting lines are
+    /// exactly the ones we still flush, so a crash does not lose them.
+    fn write_to_file(&mut self, message: &str, flush: bool) {
         if let Some(ref mut file) = self.log_file {
             let _ = file.write_all(message.as_bytes());
-            let _ = file.flush();
+            if flush {
+                let _ = file.flush();
+            }
+        }
+    }
+
+    /// Deletes log files older than a week.
+    ///
+    /// One file per day was created and never removed, so the directory grew
+    /// without bound for the life of the install.
+    fn prune_old_logs(log_path: &PathBuf) {
+        const MAX_AGE: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 60 * 60);
+
+        let Some(dir) = log_path.parent() else { return };
+        let Ok(entries) = std::fs::read_dir(dir) else { return };
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+
+            if path.extension().and_then(|ext| ext.to_str()) != Some("log") {
+                continue;
+            }
+
+            let too_old = entry
+                .metadata()
+                .and_then(|meta| meta.modified())
+                .map(|modified| modified.elapsed().map(|age| age > MAX_AGE).unwrap_or(false))
+                .unwrap_or(false);
+
+            if too_old {
+                let _ = std::fs::remove_file(&path);
+            }
         }
     }
     
@@ -142,8 +184,9 @@ impl VasakLogger {
             message
         );
         
-        // Escribir al archivo
-        self.write_to_file(&formatted_message);
+        // Escribir al archivo (errores y avisos se vuelcan al instante)
+        let urgent = matches!(level, LogLevel::Error | LogLevel::Warning);
+        self.write_to_file(&formatted_message, urgent);
         
         // En modo desarrollo, también imprimir en consola
         if self.is_dev_mode {

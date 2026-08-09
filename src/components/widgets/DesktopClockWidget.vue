@@ -1,11 +1,24 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
 const time = ref(new Date().toLocaleTimeString());
 
-setInterval(() => {
+// The timer used to be created at setup scope and never cleared, so it kept
+// running — and kept the component alive — after the widget was gone.
+let tick: ReturnType<typeof setInterval> | undefined;
+
+const updateTime = () => {
 	time.value = new Date().toLocaleTimeString();
-}, 1000);
+};
+
+onMounted(() => {
+	updateTime();
+	tick = setInterval(updateTime, 1000);
+});
+
+onUnmounted(() => {
+	if (tick !== undefined) clearInterval(tick);
+});
 </script>
 
 <template>

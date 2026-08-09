@@ -323,9 +323,32 @@ onMounted(async () => {
 	await refreshEthernetStatus();
 	await refreshVpnStatus();
 	await refreshNetworkStats();
-	statsPollInterval = setInterval(() => {
-		void refreshNetworkStats();
-	}, 2000);
+	// Only poll while the window is actually on screen. The control center is
+	// hidden rather than destroyed now, so an unconditional timer would keep
+	// querying NetworkManager every two seconds for a panel nobody is looking
+	// at, for the whole session.
+	const startPolling = () => {
+		if (statsPollInterval !== undefined) return;
+		statsPollInterval = setInterval(() => {
+			void refreshNetworkStats();
+		}, 2000);
+	};
+
+	const stopPolling = () => {
+		if (statsPollInterval === undefined) return;
+		clearInterval(statsPollInterval);
+		statsPollInterval = undefined;
+	};
+
+	document.addEventListener('visibilitychange', () => {
+		if (document.hidden) stopPolling();
+		else {
+			void refreshNetworkStats();
+			startPolling();
+		}
+	});
+
+	startPolling();
 });
 
 onUnmounted(() => {

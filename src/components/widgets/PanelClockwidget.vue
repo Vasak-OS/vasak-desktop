@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 
 interface TimeData {
 	day: string;
@@ -30,9 +30,31 @@ const updateTime = () => {
 	};
 };
 
+/**
+ * Wakes up on the minute instead of every five seconds.
+ *
+ * The old timer fired 12 times a minute for a clock that only shows HH:MM, and
+ * because it was not aligned to the minute the displayed time could be up to
+ * five seconds stale. Scheduling to the next minute boundary is both accurate
+ * and ~12x fewer wakeups. The interval was also never cleared.
+ */
+let tickTimer: ReturnType<typeof setTimeout> | undefined;
+
+const scheduleNextTick = () => {
+	const msUntilNextMinute = 60_000 - (Date.now() % 60_000);
+	tickTimer = setTimeout(() => {
+		updateTime();
+		scheduleNextTick();
+	}, msUntilNextMinute);
+};
+
 onMounted(() => {
 	updateTime();
-	setInterval(updateTime, 5000);
+	scheduleNextTick();
+});
+
+onUnmounted(() => {
+	if (tickTimer !== undefined) clearTimeout(tickTimer);
 });
 </script>
 
@@ -40,7 +62,7 @@ onMounted(() => {
   <div class="flex items-center p-1 font-mono text-sm">
     <span 
       :title="`${timeData.day}/${timeData.month}/${timeData.year}`"
-      class="cursor-default animate-pulse"
+      class="cursor-default"
     >
       {{ timeData.hour }}:{{ timeData.minute }}
     </span>

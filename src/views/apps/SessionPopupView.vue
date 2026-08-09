@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import {
@@ -119,7 +120,18 @@ const onKeydown = (event: KeyboardEvent) => {
 	}
 };
 
+let unlistenAction: UnlistenFn | undefined;
+
 onMounted(async () => {
+	// The window is hidden rather than destroyed now, so the action can no
+	// longer come only from the URL it was created with — it would keep showing
+	// whatever was asked for the first time.
+	listen<string>('session-action', (event) => {
+		action.value = event.payload as 'shutdown' | 'reboot' | 'logout' | 'suspend';
+	}).then((fn) => {
+		unlistenAction = fn;
+	});
+
 	const queryAction = route.query.action as string;
 	if (['shutdown', 'reboot', 'logout', 'suspend'].includes(queryAction)) {
 		action.value = queryAction as 'shutdown' | 'reboot' | 'logout' | 'suspend';
@@ -129,6 +141,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
 	document.removeEventListener('keydown', onKeydown);
+	unlistenAction?.();
 });
 </script>
 

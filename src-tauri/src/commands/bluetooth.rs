@@ -1,4 +1,4 @@
-use tauri::{async_runtime::spawn, AppHandle, Manager};
+use tauri::{async_runtime::spawn, AppHandle, Manager, Emitter};
 use crate::windows_apps::create_applet_bluetooth_window;
 use crate::logger::log_info;
 
@@ -7,9 +7,13 @@ pub fn toggle_bluetooth_applet(app: AppHandle) -> Result<(), ()> {
     if let Some(bluetooth_window) = app.get_webview_window("applet_bluetooth") {
         if bluetooth_window.is_visible().unwrap_or(false) {
             log_info("Cerrando applet de Bluetooth");
-            let _ = bluetooth_window.close();
+            // hide(), not close(): closing destroys the webview so the next open
+            // reloads the page and re-runs Vue. The view refreshes on
+            // "window-shown" instead.
+            let _ = bluetooth_window.hide();
         } else {
             log_info("Mostrando applet de Bluetooth");
+            let _ = bluetooth_window.emit("window-shown", ());
             let _ = bluetooth_window.show();
             let _ = bluetooth_window.set_focus();
         }

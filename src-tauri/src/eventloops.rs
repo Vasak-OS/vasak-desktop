@@ -27,20 +27,40 @@ fn emit_if_changed(
     handle: &tauri::AppHandle,
     windows: &[WindowInfo],
 ) {
-    let mut state = emitted.write().unwrap_or_else(|e| e.into_inner());
-    if let Some(delta) = WindowDelta::compute(&state.snapshot, windows) {
-        // 50ms debounce from last emission (coalesces rapid changes)
-        let now = Instant::now();
-        let elapsed = now.duration_since(state.last_emit);
-        if elapsed < Duration::from_millis(DEBOUNCE_MS) {
-            let remaining = Duration::from_millis(DEBOUNCE_MS) - elapsed;
-            std::thread::sleep(remaining);
-        }
+    // Claim the change under the lock, then release it before sleeping or
+    // emitting. The debounce used to be a sleep held *inside* the write lock,
+    // so the event thread and the polling thread blocked each other for up to
+    // 50 ms on every window change.
+    //
+    // Updating the snapshot before releasing still guarantees exactly one
+    // emission per change: whoever claims it first leaves the other computing
+    // against the new snapshot, which yields no delta.
+    let claimed = {
+        let mut state = emitted.write().unwrap_or_else(|e| e.into_inner());
 
-        let _ = handle.emit("window-delta", &delta);
-        state.last_emit = Instant::now();
+        let Some(delta) = WindowDelta::compute(&state.snapshot, windows) else {
+            return;
+        };
+
+        let debounce = Duration::from_millis(DEBOUNCE_MS);
+        let wait = debounce
+            .checked_sub(Instant::now().duration_since(state.last_emit))
+            .unwrap_or_default();
+
+        // Record when the emission will actually happen, not now.
+        state.last_emit = Instant::now() + wait;
         state.snapshot = windows.to_vec();
+
+        (delta, wait)
+    };
+
+    let (delta, wait) = claimed;
+
+    if !wait.is_zero() {
+        std::thread::sleep(wait);
     }
+
+    let _ = handle.emit("window-delta", &delta);
 }
 
 pub fn setup_windows_monitoring(
