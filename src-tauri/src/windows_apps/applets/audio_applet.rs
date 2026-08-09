@@ -1,11 +1,10 @@
-use gtk::prelude::*;
 use std::sync::Arc;
 use tauri::{
     AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
 
-use crate::{app_url::get_app_url, gtk_utils, monitor_manager::get_primary_monitor};
+use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
 pub async fn create_applet_audio_window(
     app: AppHandle,
@@ -52,16 +51,6 @@ pub async fn create_applet_audio_window(
 
     applet_audio_window.set_focus()?;
 
-    set_window_properties(&applet_audio_window);
-
     Ok(())
 }
 
-fn set_window_properties(window: &tauri::WebviewWindow) {
-    let gtk_window = window.gtk_window().expect("Failed to get GTK window");
-    unsafe {
-        gtk_utils::invoke_on_main(move || {
-            gtk_window.set_type_hint(gdk::WindowTypeHint::Utility);
-        });
-    }
-}

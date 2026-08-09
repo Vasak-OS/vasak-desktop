@@ -1,8 +1,7 @@
-use gtk::prelude::*;
 use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
 
 
-use crate::{app_url::get_app_url, gtk_utils, monitor_manager::get_primary_monitor};
+use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
 pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
@@ -17,7 +16,6 @@ pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error
             .min_inner_size(900.0, 620.0)
             .visible(true)
             .skip_taskbar(true)
-            .always_on_top(true)
             .build()?;
 
     let complete_url = format!("{}/index.html#/menu", get_app_url());
@@ -37,17 +35,6 @@ pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error
 
     menu_window.set_focus()?;
 
-    set_window_properties(&menu_window);
-
     Ok(())
 }
 
-fn set_window_properties(window: &tauri::WebviewWindow) {
-    let gtk_window = window.gtk_window().expect("Failed to get GTK window");
-    unsafe {
-        gtk_utils::invoke_on_main(move || {
-            gtk_window.set_type_hint(gdk::WindowTypeHint::Menu);
-            gtk_window.set_skip_taskbar_hint(true);
-        });
-    }
-}

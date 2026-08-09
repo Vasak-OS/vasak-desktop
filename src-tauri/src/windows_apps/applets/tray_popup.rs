@@ -1,8 +1,7 @@
-use gtk::prelude::*;
 use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindowBuilder};
 
 
-use crate::{app_url::get_app_url, gtk_utils, monitor_manager::get_primary_monitor};
+use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
 pub async fn create_systray_popup_window(
     app: AppHandle,
@@ -24,7 +23,6 @@ pub async fn create_systray_popup_window(
     .min_inner_size(width, height)
     .visible(false)
     .skip_taskbar(true)
-    .always_on_top(true)
     .build()?;
 
     let complete_url = format!("{}/index.html#/applets/tray-popup", get_app_url());
@@ -42,21 +40,9 @@ pub async fn create_systray_popup_window(
         y: center_y,
     }))?;
 
-    set_window_properties(&window);
-
     let _ = window.show();
     window.set_focus()?;
 
     Ok(())
 }
 
-fn set_window_properties(window: &tauri::WebviewWindow) {
-    if let Ok(gtk_window) = window.gtk_window() {
-        unsafe {
-            gtk_utils::invoke_on_main(move || {
-                gtk_window.set_type_hint(gdk::WindowTypeHint::Utility);
-                gtk_window.set_skip_taskbar_hint(true);
-            });
-        }
-    }
-}

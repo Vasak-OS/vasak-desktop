@@ -7,6 +7,13 @@ pub enum WaylandLayerMode {
     Panel,
 }
 
+/// Places a popup where the compositor will actually honour it.
+///
+/// Wayland gives an xdg-toplevel no say over its own position, and none of the
+/// X11-era hints (`set_type_hint`, `set_keep_above`, `stick`, `skip_taskbar`)
+/// or Tauri's `set_position` / `center` / `always_on_top` do anything under
+/// Wayfire. Everything has to go through the compositor, which is what this
+/// does over Wayfire's IPC.
 pub fn configure_wayland_layer(
     title: String,
     mode: WaylandLayerMode,
@@ -15,6 +22,14 @@ pub fn configure_wayland_layer(
     width: u32,
     height: u32,
 ) {
+    if title.trim().is_empty() {
+        // The view lookup below matches on a title substring, and every title
+        // contains "" — an empty one would grab the first toplevel it found and
+        // forcibly move, resize and pin a window belonging to the user.
+        log_warning("[wayland_layer] refusing to place a view with an empty title");
+        return;
+    }
+
     tauri::async_runtime::spawn(async move {
         if let Err(err) = apply_wayfire_geometry(&title, mode, x, y, width, height).await {
             log_warning(&format!("[wayland_layer] unable to apply Wayfire geometry for {title}: {err}"));

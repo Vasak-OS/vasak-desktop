@@ -17,11 +17,6 @@ fn set_window_properties(window: &tauri::WebviewWindow) -> Result<(), Box<dyn st
     unsafe {
         gtk_utils::invoke_on_main(move || {
             gtk_window.set_resizable(false);
-            gtk_window.set_type_hint(gtk::gdk::WindowTypeHint::Utility);
-            gtk_window.set_urgency_hint(true);
-            gtk_window.set_skip_taskbar_hint(true);
-            gtk_window.set_skip_pager_hint(true);
-            gtk_window.stick();
         });
     }
 
@@ -72,7 +67,6 @@ pub async fn create_control_center_window(
         .min_inner_size(panel_width as f64, app_height)
         .visible(false)
         .skip_taskbar(true)
-        .always_on_top(true)
         .build()?;
 
     let complete_url = format!("{}/index.html#/control_center", get_app_url());
