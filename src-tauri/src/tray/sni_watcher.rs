@@ -1,22 +1,249 @@
 use super::{emit_tray_update, TrayManager};
 use crate::dbus_pool::DbusPool;
-use crate::logger::{log_error, log_info, log_debug};
+use crate::logger::{log_debug, log_error, log_info, log_warning};
 use crate::structs::{TrayCategory, TrayItem, TrayStatus};
 use crate::tray::sni_item::SniItemProxy;
 use base64::{engine::general_purpose, Engine as _};
 use futures_util::stream::StreamExt;
-use tauri::{AppHandle, Manager};
-use zbus::{Connection, MatchRule, MessageStream, MessageType};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
+use tauri::{AppHandle, Manager};
+use zbus::fdo::RequestNameFlags;
+use zbus::message::Header;
+use zbus::object_server::SignalContext;
+use zbus::{fdo, interface, Connection, MatchRule, MessageStream, MessageType};
 
 const SNI_WATCHER_SERVICE: &str = "org.kde.StatusNotifierWatcher";
-const SNI_WATCHER_INTERFACE: &str = "org.kde.StatusNotifierWatcher";
+const SNI_WATCHER_PATH: &str = "/StatusNotifierWatcher";
 
 /// Interval for periodic reconciliation of tray items against active D-Bus names.
 const RECONCILIATION_INTERVAL: Duration = Duration::from_secs(30);
 
 /// Timeout for the ListNames D-Bus call during reconciliation.
 const LIST_NAMES_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Only one watcher may run per process: the tray applet starts one at boot and
+/// the panel webview calls `init_sni_watcher` again on every reload. A second
+/// watcher would duplicate every stream, reconciliation loop and bus name request.
+static WATCHER_STARTED: AtomicBool = AtomicBool::new(false);
+
+/// Normalises the argument of `RegisterStatusNotifierItem`. The spec lets a client
+/// pass either its bus name (`:1.42`) or the object path of the item, in which case
+/// the service is the caller's own bus name. Both forms are stored as
+/// `<bus name><object path>`, which is what `commands::tray` splits back into a
+/// destination and a path; a bare bus name is kept verbatim because the default
+/// `/StatusNotifierItem` path is implied there.
+fn normalise_service(service: &str, sender: Option<&str>) -> Option<String> {
+    if service.starts_with('/') {
+        sender.map(|sender| format!("{}{}", sender, service))
+    } else {
+        Some(service.to_string())
+    }
+}
+
+/// True when `id` (a normalised item identifier) belongs to `bus_name`.
+fn is_owned_by(id: &str, bus_name: &str) -> bool {
+    id == bus_name || id.starts_with(&format!("{}/", bus_name))
+}
+
+/// The `org.kde.StatusNotifierWatcher` service exported at [`SNI_WATCHER_PATH`].
+///
+/// Registration handlers must reply immediately: a tray client blocks on the call
+/// and gives up on its D-Bus timeout, so reading the item properties (several
+/// round trips to the client itself) is deferred to a spawned task.
+struct StatusNotifierWatcher {
+    connection: Connection,
+    tray_manager: TrayManager,
+    app_handle: AppHandle,
+    items: Vec<String>,
+    hosts: Vec<String>,
+}
+
+#[interface(name = "org.kde.StatusNotifierWatcher")]
+impl StatusNotifierWatcher {
+    async fn register_status_notifier_item(
+        &mut self,
+        service: &str,
+        #[zbus(header)] header: Header<'_>,
+        #[zbus(signal_context)] ctxt: SignalContext<'_>,
+    ) -> fdo::Result<()> {
+        let sender = header.sender().map(|sender| sender.as_str());
+        let id = normalise_service(service, sender).ok_or_else(|| {
+            fdo::Error::InvalidArgs(format!(
+                "RegisterStatusNotifierItem con object path '{}' y sin sender",
+                service
+            ))
+        })?;
+
+        log_info(&format!("[SNI] Registrando item: {}", id));
+
+        if !self.items.iter().any(|known| known == &id) {
+            self.items.push(id.clone());
+            StatusNotifierWatcher::status_notifier_item_registered(&ctxt, &id).await?;
+            self.registered_status_notifier_items_changed(&ctxt).await?;
+        }
+
+        // Fetching the item properties needs the caller to answer us in turn, so it
+        // cannot happen before this method returns. It is spawned on Tauri's runtime
+        // because zbus dispatches this call on its own executor thread, where
+        // `tokio::spawn` would panic for lack of a runtime context.
+        let connection = self.connection.clone();
+        let tray_manager = self.tray_manager.clone();
+        let app_handle = self.app_handle.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) =
+                SniWatcher::register_item(&connection, &tray_manager, &app_handle, &id).await
+            {
+                log_error(&format!("[SNI] Error registrando item {}: {}", id, e));
+            }
+        });
+
+        Ok(())
+    }
+
+    async fn register_status_notifier_host(
+        &mut self,
+        service: String,
+        #[zbus(signal_context)] ctxt: SignalContext<'_>,
+    ) -> fdo::Result<()> {
+        log_info(&format!("[SNI] Registrando host: {}", service));
+
+        if !self.hosts.iter().any(|known| known == &service) {
+            self.hosts.push(service);
+        }
+
+        // IsStatusNotifierHostRegistered never flips, so only the signal is emitted.
+        StatusNotifierWatcher::status_notifier_host_registered(&ctxt).await?;
+        Ok(())
+    }
+
+    #[zbus(property)]
+    fn registered_status_notifier_items(&self) -> Vec<String> {
+        self.items.clone()
+    }
+
+    /// The panel is itself the host, so this is true from the moment the interface
+    /// is served. Clients that gate their icon on this property would otherwise
+    /// never show up.
+    #[zbus(property)]
+    fn is_status_notifier_host_registered(&self) -> bool {
+        true
+    }
+
+    #[zbus(property)]
+    fn protocol_version(&self) -> i32 {
+        0
+    }
+
+    #[zbus(signal)]
+    async fn status_notifier_item_registered(
+        ctxt: &SignalContext<'_>,
+        service: &str,
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn status_notifier_item_unregistered(
+        ctxt: &SignalContext<'_>,
+        service: &str,
+    ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn status_notifier_host_registered(ctxt: &SignalContext<'_>) -> zbus::Result<()>;
+}
+
+/// Adds `id` to the watcher's registered list and announces it, unless it is
+/// already known. Used for items discovered on the bus rather than registered
+/// through the interface.
+async fn remember_item(connection: &Connection, id: &str) {
+    let object_server = connection.object_server();
+    let iface_ref = match object_server
+        .interface::<_, StatusNotifierWatcher>(SNI_WATCHER_PATH)
+        .await
+    {
+        Ok(iface_ref) => iface_ref,
+        Err(e) => {
+            log_debug(&format!("[SNI] Interfaz del watcher no disponible: {}", e));
+            return;
+        }
+    };
+
+    let ctxt = iface_ref.signal_context();
+    {
+        let mut iface = iface_ref.get_mut().await;
+        if iface.items.iter().any(|known| known == id) {
+            return;
+        }
+        iface.items.push(id.to_string());
+        if let Err(e) = iface.registered_status_notifier_items_changed(ctxt).await {
+            log_debug(&format!(
+                "[SNI] Error notificando cambio de RegisteredStatusNotifierItems: {}",
+                e
+            ));
+        }
+    }
+
+    if let Err(e) = StatusNotifierWatcher::status_notifier_item_registered(ctxt, id).await {
+        log_debug(&format!(
+            "[SNI] Error emitiendo StatusNotifierItemRegistered para {}: {}",
+            id, e
+        ));
+    }
+}
+
+/// Drops every registered identifier matching `matches` from the watcher and tells
+/// clients about it. Takes the write lock only when there is something to remove,
+/// since this runs on every name that disappears from the bus.
+async fn forget_items<F>(connection: &Connection, matches: F)
+where
+    F: Fn(&str) -> bool,
+{
+    let object_server = connection.object_server();
+    let iface_ref = match object_server
+        .interface::<_, StatusNotifierWatcher>(SNI_WATCHER_PATH)
+        .await
+    {
+        Ok(iface_ref) => iface_ref,
+        Err(e) => {
+            log_debug(&format!("[SNI] Interfaz del watcher no disponible: {}", e));
+            return;
+        }
+    };
+
+    let gone: Vec<String> = {
+        let iface = iface_ref.get().await;
+        iface
+            .items
+            .iter()
+            .filter(|id| matches(id.as_str()))
+            .cloned()
+            .collect()
+    };
+
+    if gone.is_empty() {
+        return;
+    }
+
+    let ctxt = iface_ref.signal_context();
+    {
+        let mut iface = iface_ref.get_mut().await;
+        iface.items.retain(|id| !gone.contains(id));
+        if let Err(e) = iface.registered_status_notifier_items_changed(ctxt).await {
+            log_debug(&format!(
+                "[SNI] Error notificando cambio de RegisteredStatusNotifierItems: {}",
+                e
+            ));
+        }
+    }
+
+    for id in gone {
+        if let Err(e) = StatusNotifierWatcher::status_notifier_item_unregistered(ctxt, &id).await {
+            log_debug(&format!(
+                "[SNI] Error emitiendo StatusNotifierItemUnregistered para {}: {}",
+                id, e
+            ));
+        }
+    }
+}
 
 pub struct SniWatcher {
     connection: Connection,
@@ -25,7 +252,35 @@ pub struct SniWatcher {
 }
 
 impl SniWatcher {
-    pub async fn new(
+    /// Starts the watcher unless this process already runs one, in which case it is
+    /// a no-op so both the applet and the `init_sni_watcher` command can call it.
+    pub async fn ensure_started(
+        tray_manager: TrayManager,
+        app_handle: AppHandle,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if WATCHER_STARTED.swap(true, Ordering::SeqCst) {
+            log_debug("[SNI] Watcher ya iniciado en este proceso, omitiendo");
+            return Ok(());
+        }
+
+        // Release the slot on failure so a later call can try again.
+        let watcher = match Self::new(tray_manager, app_handle).await {
+            Ok(watcher) => watcher,
+            Err(e) => {
+                WATCHER_STARTED.store(false, Ordering::SeqCst);
+                return Err(e);
+            }
+        };
+
+        let result = watcher.start_watching().await;
+        if result.is_err() {
+            WATCHER_STARTED.store(false, Ordering::SeqCst);
+        }
+
+        result
+    }
+
+    async fn new(
         tray_manager: TrayManager,
         app_handle: AppHandle,
     ) -> Result<Self, Box<dyn std::error::Error>> {
@@ -39,9 +294,6 @@ impl SniWatcher {
             Connection::session().await?
         };
 
-        // Register as StatusNotifierWatcher
-        connection.request_name(SNI_WATCHER_SERVICE).await?;
-
         Ok(Self {
             connection,
             tray_manager,
@@ -49,17 +301,38 @@ impl SniWatcher {
         })
     }
 
-    pub async fn start_watching(&self) -> Result<(), Box<dyn std::error::Error>> {
-        // Listen for StatusNotifierItem registrations
-        let rule = MatchRule::builder()
-            .msg_type(MessageType::MethodCall)
-            .interface(SNI_WATCHER_INTERFACE)?
-            .member("RegisterStatusNotifierItem")?
-            .build();
+    async fn start_watching(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // Serve the interface before taking the name: clients watch for the name to
+        // appear and call straight away, and would otherwise hit an unserved path.
+        self.connection
+            .object_server()
+            .at(
+                SNI_WATCHER_PATH,
+                StatusNotifierWatcher {
+                    connection: self.connection.clone(),
+                    tray_manager: self.tray_manager.clone(),
+                    app_handle: self.app_handle.clone(),
+                    items: Vec::new(),
+                    hosts: Vec::new(),
+                },
+            )
+            .await?;
 
-        let mut stream = MessageStream::for_match_rule(rule, &self.connection, None).await?;
+        // DoNotQueue without ReplaceExisting: a watcher already on the bus keeps its
+        // items and its clients, and we do not want to steal them halfway.
+        match self
+            .connection
+            .request_name_with_flags(SNI_WATCHER_SERVICE, RequestNameFlags::DoNotQueue.into())
+            .await
+        {
+            Ok(_) => log_info("[SNI] Nombre org.kde.StatusNotifierWatcher adquirido"),
+            Err(zbus::Error::NameTaken) => log_warning(
+                "[SNI] Otro StatusNotifierWatcher posee el nombre, no se reemplaza",
+            ),
+            Err(e) => return Err(e.into()),
+        }
 
-        // Also listen for service name changes
+        // Watch for services leaving the bus so their items do not linger.
         let name_owner_rule = MatchRule::builder()
             .msg_type(MessageType::Signal)
             .interface("org.freedesktop.DBus")?
@@ -75,46 +348,32 @@ impl SniWatcher {
             let connection = self.connection.clone();
 
             async move {
-                loop {
-                    tokio::select! {
-                        Some(msg) = stream.next() => {
-                            if let Ok(message) = msg {
-                                if let Ok(service_name) = message.body().deserialize::<&str>() {
-                                    let sender_bus = message
-                                        .header()
-                                        .sender()
-                                        .map(|s| s.as_str().to_string());
+                while let Some(msg) = name_stream.next().await {
+                    let Ok(message) = msg else { continue };
+                    // The body must outlive the borrowed names deserialised from it.
+                    let body = message.body();
+                    let Ok((name, _old_owner, new_owner)) =
+                        body.deserialize::<(&str, &str, &str)>()
+                    else {
+                        continue;
+                    };
 
-                                    if let Err(e) = Self::register_item(
-                                        &connection,
-                                        &tray_manager,
-                                        &app_handle,
-                                        service_name,
-                                        sender_bus.as_deref(),
-                                    ).await {
-                                        log_error(&format!("[SNI] Error registrando item {}: {}", service_name, e));
-                                    }
-                                }
-                            }
-                        }
-                        Some(msg) = name_stream.next() => {
-                            if let Ok(message) = msg {
-                                if let Ok((name, _old_owner, new_owner)) = message.body().deserialize::<(&str, &str, &str)>() {
-                                    if new_owner.is_empty() {
-                                        // Check if the disconnected name is tracked directly or via bus_name
-                                        let is_tracked = {
-                                            let manager = tray_manager.read().await;
-                                            manager.contains_key(name) || manager.values().any(|v| v.bus_name.as_deref() == Some(name))
-                                        };
-                                        if is_tracked {
-                                            log_debug(&format!("[SNI] Name owner changed, removing: {}", name));
-                                            Self::unregister_item(&tray_manager, &app_handle, name).await;
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    if !new_owner.is_empty() {
+                        continue;
                     }
+
+                    // Check if the disconnected name is tracked directly or via bus_name
+                    let is_tracked = {
+                        let manager = tray_manager.read().await;
+                        manager.contains_key(name)
+                            || manager.values().any(|v| v.bus_name.as_deref() == Some(name))
+                    };
+                    if is_tracked {
+                        log_debug(&format!("[SNI] Name owner changed, removing: {}", name));
+                        Self::unregister_item(&tray_manager, &app_handle, name).await;
+                    }
+
+                    forget_items(&connection, |id| is_owned_by(id, name)).await;
                 }
             }
         });
@@ -166,9 +425,9 @@ impl SniWatcher {
                 };
 
                 // Compare stored items against active names and prune stale entries
-                let removed_any = {
+                let removed = {
                     let mut manager = tray_manager.write().await;
-                    let before_count = manager.len();
+                    let mut removed: Vec<String> = Vec::new();
 
                     manager.retain(|key, item| {
                         // Check if the item's bus_name or the map key is still active
@@ -188,15 +447,17 @@ impl SniWatcher {
                                 key,
                                 item.bus_name
                             ));
+                            removed.push(key.clone());
                         }
                         keep
                     });
 
-                    manager.len() < before_count
+                    removed
                 };
 
                 // Emit tray-update if any items were removed
-                if removed_any {
+                if !removed.is_empty() {
+                    forget_items(&connection, |id| removed.iter().any(|gone| gone == id)).await;
                     emit_tray_update(&app_handle).await;
                 }
             }
@@ -217,23 +478,19 @@ impl SniWatcher {
         Ok(names)
     }
 
+    /// Reads the item properties and publishes it. `service_name` must already be
+    /// normalised by [`normalise_service`].
     async fn register_item(
         connection: &Connection,
         tray_manager: &TrayManager,
         app_handle: &AppHandle,
         service_name: &str,
-        sender_bus: Option<&str>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        log_info(&format!("[SNI] Registrando item: {}", service_name));
-
-        let (bus_name, object_path, map_key) = if service_name.starts_with('/') {
-            let sender = sender_bus.ok_or("Registro SNI sin sender para object path")?;
-            (sender, service_name.to_string(), sender.to_string())
-        } else if service_name.contains('/') {
+        let (bus_name, object_path) = if service_name.contains('/') {
             let parts: Vec<&str> = service_name.splitn(2, '/').collect();
-            (parts[0], format!("/{}", parts[1]), service_name.to_string())
+            (parts[0], format!("/{}", parts[1]))
         } else {
-            (service_name, "/StatusNotifierItem".to_string(), service_name.to_string())
+            (service_name, "/StatusNotifierItem".to_string())
         };
 
         let proxy = SniItemProxy::builder(connection)
@@ -246,7 +503,7 @@ impl SniWatcher {
 
         {
             let mut manager = tray_manager.write().await;
-            manager.insert(map_key, item);
+            manager.insert(service_name.to_string(), item);
         }
 
         emit_tray_update(app_handle).await;
@@ -384,7 +641,7 @@ impl SniWatcher {
             format!("/usr/share/pixmaps/{}.png", icon_name),
              // Add more paths or sizes as needed
             format!("/usr/share/icons/hicolor/48x48/apps/{}.png", icon_name),
-            format!("/usr/share/icons/hicolor/scalable/apps/{}.svg", icon_name), 
+            format!("/usr/share/icons/hicolor/scalable/apps/{}.svg", icon_name),
         ];
 
         for path in &common_paths {
@@ -413,16 +670,23 @@ impl SniWatcher {
 
         for name in names {
             if name.starts_with("org.kde.StatusNotifierItem") {
-                if let Err(e) = Self::register_item(
+                // The error is flattened to a String right away: `Box<dyn Error>` is
+                // not `Send` and would poison this future for the applet runtime.
+                let registered = Self::register_item(
                     &self.connection,
                     &self.tray_manager,
                     &self.app_handle,
                     &name,
-                    None,
                 )
                 .await
-                {
-                    log_error(&format!("[SNI] Error registrando item existente {}: {}", name, e));
+                .map_err(|e| e.to_string());
+
+                match registered {
+                    Ok(()) => remember_item(&self.connection, &name).await,
+                    Err(e) => log_error(&format!(
+                        "[SNI] Error registrando item existente {}: {}",
+                        name, e
+                    )),
                 }
             }
         }

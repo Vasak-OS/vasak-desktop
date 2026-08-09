@@ -14,14 +14,9 @@ impl Applet for TrayApplet {
 
     async fn start(&self, app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         let tray_manager = app.state::<TrayManager>();
-        
-        let watcher = SniWatcher::new(
-            (*tray_manager).clone(),
-            app.clone()
-        ).await?;
-        
-        watcher.start_watching().await?;
-        
+
+        SniWatcher::ensure_started((*tray_manager).clone(), app.clone()).await?;
+
         Ok(())
     }
 }

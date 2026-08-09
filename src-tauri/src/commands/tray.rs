@@ -48,19 +48,14 @@ pub async fn init_sni_watcher(
 ) -> Result<(), String> {
     log_info("Inicializando SNI watcher para sistema de bandeja");
     let manager = tray_manager.inner().clone();
-    let watcher = SniWatcher::new(manager, app_handle)
+
+    // No-op when the tray applet already started the watcher at boot; the panel
+    // webview calls this again on every reload.
+    SniWatcher::ensure_started(manager, app_handle)
         .await
         .map_err(|e| {
             log_error(&format!("Error inicializando SNI watcher: {}", e));
             format!("Error inicializando SNI watcher: {}", e)
-        })?;
-
-    watcher
-        .start_watching()
-        .await
-        .map_err(|e| {
-            log_error(&format!("Error iniciando watcher: {}", e));
-            format!("Error iniciando watcher: {}", e)
         })?;
 
     log_info("SNI watcher iniciado correctamente");
