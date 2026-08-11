@@ -50,6 +50,7 @@ fn setup_desktop(
             // windows around, and everything else draws on top of it.
             exclusive_zone: Some(-1),
             height_request: None,
+            ..Default::default()
         },
     )
 }

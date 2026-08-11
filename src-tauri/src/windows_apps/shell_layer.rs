@@ -25,6 +25,35 @@ pub struct LayerSpec {
     /// so other surfaces can overlap (wallpaper).
     pub exclusive_zone: Option<i32>,
     pub height_request: Option<i32>,
+    /// Gap from each anchored edge, in the same order as `anchors`.
+    pub margins: (i32, i32, i32, i32),
+    /// Whether the surface takes keyboard focus. A popup needs it so Escape
+    /// reaches it and so losing focus is something it can notice; a panel or a
+    /// wallpaper must never steal it.
+    pub keyboard: KeyboardMode,
+    /// Popups are built once and shown on demand, so they start hidden: the
+    /// alternative is the control centre flashing onto the screen at login.
+    pub start_hidden: bool,
+    /// Hide as soon as the surface loses focus or Escape is pressed. This is
+    /// what makes a popup behave like a popup — it used to stay open until it
+    /// was toggled again, over whatever the person clicked next.
+    pub dismiss_on_unfocus: bool,
+}
+
+impl Default for LayerSpec {
+    fn default() -> Self {
+        Self {
+            namespace: "vasak",
+            layer: Layer::Top,
+            anchors: (false, false, false, false),
+            exclusive_zone: None,
+            height_request: None,
+            margins: (0, 0, 0, 0),
+            keyboard: KeyboardMode::None,
+            start_hidden: false,
+            dismiss_on_unfocus: false,
+        }
+    }
 }
 
 /// Builds a Tauri webview, moves it into a layer-shell window pinned to
@@ -73,17 +102,44 @@ pub fn spawn_layer_window(
     layer_win.set_anchor(Edge::Top, top);
     layer_win.set_anchor(Edge::Bottom, bottom);
 
+    let (margin_left, margin_right, margin_top, margin_bottom) = spec.margins;
+    layer_win.set_layer_shell_margin(Edge::Left, margin_left);
+    layer_win.set_layer_shell_margin(Edge::Right, margin_right);
+    layer_win.set_layer_shell_margin(Edge::Top, margin_top);
+    layer_win.set_layer_shell_margin(Edge::Bottom, margin_bottom);
+
     match spec.exclusive_zone {
         Some(zone) => layer_win.set_exclusive_zone(zone),
         None => layer_win.auto_exclusive_zone_enable(),
     }
-    layer_win.set_keyboard_mode(KeyboardMode::None);
+    layer_win.set_keyboard_mode(spec.keyboard);
 
     reparent_webview(&gtk_window, &layer_win)?;
     apply_transparency(&layer_win);
     let _ = webview.set_background_color(Some(tauri::webview::Color(0, 0, 0, 0)));
 
+    if spec.dismiss_on_unfocus {
+        // Escape and focus loss are handled here rather than in the page: the
+        // surface owns the keyboard, and a click that lands on another window
+        // never reaches the webview at all.
+        layer_win.connect_key_press_event(|window, event| {
+            if event.keyval() == gdk::keys::constants::Escape {
+                window.hide();
+                return glib::Propagation::Stop;
+            }
+            glib::Propagation::Proceed
+        });
+
+        layer_win.connect_focus_out_event(|window, _| {
+            window.hide();
+            glib::Propagation::Proceed
+        });
+    }
+
     layer_win.show_all();
+    if spec.start_hidden {
+        layer_win.hide();
+    }
     gtk_window.hide();
 
     LAYER_WINDOWS.with(|windows| {
@@ -164,4 +220,55 @@ pub fn destroy_layer_windows(app: &AppHandle, prefixes: &[&str]) {
             let _ = window.close();
         }
     }
+}
+
+/// Shows a layer-shell surface that was built hidden, and takes focus so it can
+/// be dismissed again.
+pub fn show_layer_window(label: &str) {
+    let label = label.to_string();
+    unsafe {
+        crate::gtk_utils::invoke_on_main(move || {
+            LAYER_WINDOWS.with(|windows| {
+                if let Some(window) = windows.borrow().get(&label) {
+                    window.show_all();
+                    window.present();
+                }
+            });
+        });
+    }
+}
+
+pub fn hide_layer_window(label: &str) {
+    let label = label.to_string();
+    unsafe {
+        crate::gtk_utils::invoke_on_main(move || {
+            LAYER_WINDOWS.with(|windows| {
+                if let Some(window) = windows.borrow().get(&label) {
+                    window.hide();
+                }
+            });
+        });
+    }
+}
+
+/// Whether the surface is on screen.
+///
+/// Only meaningful on the GTK main thread, which is where the registry lives;
+/// callers on another thread get `None` and should toggle blind rather than
+/// guess.
+pub fn layer_window_visible(label: &str) -> Option<bool> {
+    LAYER_WINDOWS.try_with(|windows| {
+        windows
+            .borrow()
+            .get(label)
+            .map(gtk::prelude::WidgetExt::is_visible)
+    })
+    .ok()
+    .flatten()
+}
+
+pub fn layer_window_exists(label: &str) -> bool {
+    LAYER_WINDOWS
+        .try_with(|windows| windows.borrow().contains_key(label))
+        .unwrap_or(false)
 }

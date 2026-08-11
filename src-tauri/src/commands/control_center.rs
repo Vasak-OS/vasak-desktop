@@ -1,30 +1,42 @@
-use tauri::{async_runtime::spawn, AppHandle, Manager, Emitter};
+use tauri::{async_runtime::spawn, AppHandle, Emitter, Manager};
 
 use crate::logger::{log_info, log_warning};
+use crate::windows_apps::control_center::CONTROL_CENTER_LABEL;
 use crate::windows_apps::create_control_center_window;
-
+use crate::windows_apps::shell_layer::{
+    hide_layer_window, layer_window_exists, layer_window_visible, show_layer_window,
+};
 
 #[tauri::command]
 pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
-    if let Some(control_center_window) = app.get_webview_window("control_center") {
-        log_info("[control_center] toggle requested for existing window");
-        if control_center_window.is_visible().unwrap_or(false) {
-            log_info("[control_center] closing visible control center window");
-            // hide(), not close(): closing destroys the webview so the next open
-            // reloads the page and re-runs Vue. The view refreshes on
-            // "window-shown" instead.
-            let _ = control_center_window.hide();
-        } else {
-            log_info("[control_center] showing hidden control center window");
-            let _ = control_center_window.emit("window-shown", ());
-            let _ = control_center_window.show();
-            let _ = control_center_window.set_focus();
-        }
-    } else {
-        log_warning("[control_center] window not found, creating a new one");
+    if !layer_window_exists(CONTROL_CENTER_LABEL) {
+        log_warning("[control_center] no existe todavía; se crea");
         spawn(async move {
-            let _ = create_control_center_window(app).await;
+            if let Err(error) = create_control_center_window(app).await {
+                log_warning(&format!("[control_center] no se pudo crear: {error}"));
+                return;
+            }
+            show_layer_window(CONTROL_CENTER_LABEL);
         });
+        return Ok(());
+    }
+
+    // Visibility is a property of the layer surface, not of Tauri's window: the
+    // webview was reparented into it, and the toplevel Tauri built is hidden
+    // for good. Asking the wrong one is how the toggle got out of step with
+    // what was on screen.
+    if layer_window_visible(CONTROL_CENTER_LABEL).unwrap_or(false) {
+        log_info("[control_center] ocultando");
+        hide_layer_window(CONTROL_CENTER_LABEL);
+    } else {
+        log_info("[control_center] mostrando");
+        // The view refreshes on this rather than on being rebuilt: the window is
+        // hidden, never destroyed, so the page is not reloaded and Vue does not
+        // re-run.
+        if let Some(webview) = app.get_webview_window(CONTROL_CENTER_LABEL) {
+            let _ = webview.emit("window-shown", ());
+        }
+        show_layer_window(CONTROL_CENTER_LABEL);
     }
 
     Ok(())
