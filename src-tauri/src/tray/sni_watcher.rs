@@ -583,7 +583,7 @@ impl SniWatcher {
     async fn get_icon_data(proxy: &SniItemProxy<'_>) -> Option<String> {
         // Try to get icon pixmap first
         if let Ok(pixmaps) = proxy.icon_pixmap().await {
-            if let Some(pixmap) = pixmaps.first() {
+            if let Some(pixmap) = Self::pick_pixmap(&pixmaps) {
                 if let Ok(base64_data) = Self::convert_pixmap_to_base64(pixmap) {
                     return Some(base64_data);
                 }
@@ -598,16 +598,35 @@ impl SniWatcher {
         None
     }
 
+    /// Las aplicaciones publican el mismo icono en varios tamanos. El panel lo
+    /// dibuja a 16 px logicos, que en pantallas con escala son 32 o mas, asi que
+    /// tomar el primero (normalmente 16x16) daba un icono borroso al ampliarlo.
+    /// Se elige el mas chico que llegue a 48 px, y si ninguno llega, el mayor.
+    fn pick_pixmap(pixmaps: &[(i32, i32, Vec<u8>)]) -> Option<&(i32, i32, Vec<u8>)> {
+        let valido = |p: &&(i32, i32, Vec<u8>)| {
+            p.0 > 0 && p.1 > 0 && p.2.len() == (p.0 as usize) * (p.1 as usize) * 4
+        };
+        pixmaps
+            .iter()
+            .filter(valido)
+            .filter(|p| p.0.min(p.1) >= 48)
+            .min_by_key(|p| p.0.min(p.1))
+            .or_else(|| pixmaps.iter().filter(valido).max_by_key(|p| p.0.min(p.1)))
+    }
+
     fn convert_pixmap_to_base64(
         pixmap: &(i32, i32, Vec<u8>),
     ) -> Result<String, Box<dyn std::error::Error>> {
         let (width, height, data) = pixmap;
 
-        // Convert ARGB to RGBA
+        // IconPixmap viene en ARGB32 con orden de red (big-endian), o sea que
+        // cada pixel son los bytes [A, R, G, B]. Antes se reordenaba como
+        // [G, R, A, B], que rotaba los canales: el azul de Telegram salia
+        // violeta y su insignia roja quedaba como un halo semitransparente.
         let mut rgba_data = Vec::with_capacity(data.len());
         for chunk in data.chunks(4) {
             if chunk.len() == 4 {
-                rgba_data.extend_from_slice(&[chunk[2], chunk[1], chunk[0], chunk[3]]);
+                rgba_data.extend_from_slice(&[chunk[1], chunk[2], chunk[3], chunk[0]]);
             }
         }
 
