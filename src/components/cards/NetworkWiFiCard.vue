@@ -109,7 +109,7 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
 
       <div
         class="w-2.5 h-2.5 rounded-full"
-        :class="props.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-danger/70'"
+        :class="props.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-error/70'"
       ></div>
     </div>
   </ListCard>
@@ -127,7 +127,7 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         class="border border-ui-border rounded-corner p-2 text-vsk-text outline-none bg-ui-surface/50 focus:border-primary/40"
         :disabled="connecting"
       />
-      <div v-if="errorMsg" class="text-status-danger text-sm">{{ errorMsg }}</div>
+      <div v-if="errorMsg" class="text-status-error text-sm">{{ errorMsg }}</div>
       <div class="flex gap-2 justify-end mt-2">
         <ActionButton :label="t('common.cancel')" variant="secondary" @click="showModal = false" />
         <ActionButton

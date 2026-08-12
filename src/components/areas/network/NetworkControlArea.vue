@@ -1,8 +1,8 @@
 <template>
   <div class="flex flex-col h-full p-2">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-6">
-      <h2 class="text-xl font-semibold text-vsk-text">{{ t('components.NetworkControlArea.title') }}</h2>
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-semibold text-tx-main">{{ t('components.NetworkControlArea.title') }}</h2>
       <button
         v-if="!hideX"
         @click="closeApplet"
@@ -24,12 +24,13 @@
       </button>
     </div>
 
-    <!-- WiFi Toggle -->
+    <!-- Wi-Fi, with the live traffic riding along on the same row: it used to
+         own a block of its own, and that block was most of the space the list
+         of networks was missing. -->
     <div
-      v-if="wifiAvailable"
-      class="flex items-center justify-between mb-4 p-3 rounded-corner border border-ui-border bg-ui-surface/45"
+      class="flex items-center gap-3 mb-4 p-3 rounded-corner border border-ui-border bg-ui-surface/45"
     >
-      <div class="flex items-center gap-3">
+      <template v-if="wifiAvailable">
         <div class="p-2 rounded-full bg-primary/10">
           <svg
             class="w-5 h-5 text-primary"
@@ -45,38 +46,62 @@
             ></path>
           </svg>
         </div>
-        <div>
-          <h3 class="font-medium text-vsk-text">Wi-Fi</h3>
-          <p class="text-sm text-vsk-text/70">{{ wifiStatus }}</p>
+        <div class="min-w-0">
+          <h3 class="font-medium text-tx-main">Wi-Fi</h3>
+          <p class="text-sm text-tx-muted truncate">{{ wifiStatus }}</p>
         </div>
+      </template>
+
+      <span v-else class="text-sm text-tx-muted">{{
+        t('components.NetworkControlArea.wifiUnavailable')
+      }}</span>
+
+      <div class="flex-1"></div>
+
+      <div
+        class="flex items-center gap-3 text-xs text-tx-muted"
+        :title="t('components.NetworkControlArea.realtimeTraffic')"
+      >
+        <span class="truncate max-w-28">{{ statsInterfaceLabel }}</span>
+        <span
+          class="flex items-center gap-1 tabular-nums"
+          :title="t('components.NetworkControlArea.download')"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m0 0l-6-6m6 6l6-6"></path>
+          </svg>
+          {{ downloadSpeedLabel }}
+        </span>
+        <span
+          class="flex items-center gap-1 tabular-nums"
+          :title="t('components.NetworkControlArea.upload')"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20V4m0 0l-6 6m6-6l6 6"></path>
+          </svg>
+          {{ uploadSpeedLabel }}
+        </span>
       </div>
+
       <SwitchToggle
+        v-if="wifiAvailable"
         :is-on="wifiEnabled"
         @toggle="toggleWifi"
       />
     </div>
 
-    <div
-      v-else
-      class="mb-4 p-3 rounded-corner border border-ui-border bg-ui-surface/45 flex items-center justify-center"
-    >
-      <span class="text-sm text-tx-muted">{{
-        t('components.NetworkControlArea.wifiUnavailable')
-      }}</span>
-    </div>
-
-    <div v-if="wifiAvailable && wifiEnabled" class="flex-1 overflow-hidden">
-      <h3 class="text-sm font-medium text-vsk-text/80 mb-3">
+    <div v-if="wifiAvailable && wifiEnabled" class="flex-1 flex flex-col min-h-0">
+      <h3 class="text-sm font-medium text-tx-main mb-3">
         {{ t('components.NetworkControlArea.availableNetworks') }}
       </h3>
 
-      <div v-if="loading" class="flex items-center justify-center py-8">
+      <div v-if="loading" class="flex-1 flex items-center justify-center py-8">
         <div
           class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"
         ></div>
       </div>
 
-      <div v-else class="space-y-2 overflow-y-auto max-h-96">
+      <div v-else class="flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
         <NetworkWiFiCard
           v-for="network in availableNetworks"
           :key="network.ssid"
@@ -86,47 +111,16 @@
 
       <button
         @click="refreshNetworks"
-        class="w-full mt-4 p-2 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors text-sm text-vsk-text"
+        class="w-full mt-4 p-2 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors text-sm text-tx-main"
       >
         {{ t('components.NetworkControlArea.refresh') }}
       </button>
     </div>
 
-	<div class="mt-4">
-		<div class="flex items-center gap-3 p-3 rounded-corner border border-ui-border bg-ui-surface/45">
-			<div
-				class="w-2.5 h-2.5 rounded-full"
-				:class="vpnConnected ? 'bg-status-success animate-pulse' : 'bg-status-danger'"
-			></div>
-			<div class="flex-1 min-w-0">
-				<h3 class="font-medium text-vsk-text">VPN</h3>
-				<p class="text-sm text-vsk-text/70 truncate">{{ vpnLabel }}</p>
-			</div>
-		</div>
-	</div>
-
-  <div class="mt-4">
-    <div class="rounded-corner border border-ui-border bg-ui-surface/45 p-3">
-      <div class="flex items-center justify-between">
-        <h3 class="font-medium text-vsk-text">{{ t('components.NetworkControlArea.realtimeTraffic') }}</h3>
-        <span class="text-xs text-vsk-text/60 truncate max-w-32 text-right">{{ statsInterfaceLabel }}</span>
-      </div>
-      <div class="mt-3 grid grid-cols-2 gap-3">
-        <div class="rounded-corner bg-ui-surface/60 border border-ui-border p-2">
-          <p class="text-xs text-vsk-text/70">{{ t('components.NetworkControlArea.download') }}</p>
-          <p class="text-sm font-semibold text-vsk-text">{{ downloadSpeedLabel }}</p>
-        </div>
-        <div class="rounded-corner bg-ui-surface/60 border border-ui-border p-2">
-          <p class="text-xs text-vsk-text/70">{{ t('components.NetworkControlArea.upload') }}</p>
-          <p class="text-sm font-semibold text-vsk-text">{{ uploadSpeedLabel }}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-    <div class="mt-6 pt-4 border-t border-primary/70">
+    <!-- The two wired states, side by side: one line each is all they say. -->
+    <div class="mt-4 grid grid-cols-2 gap-3">
       <div
-        class="flex items-center gap-3 p-3 bg-ui-surface/45 rounded-corner border border-ui-border"
+        class="flex items-center gap-3 p-3 rounded-corner border border-ui-border bg-ui-surface/45"
       >
         <div class="p-2 rounded-full bg-primary/10">
           <svg
@@ -143,9 +137,34 @@
             ></path>
           </svg>
         </div>
-        <div>
-          <h3 class="font-medium text-vsk-text">Ethernet</h3>
-          <p class="text-sm text-vsk-text/70">{{ ethernetStatus }}</p>
+        <div class="min-w-0">
+          <h3 class="font-medium text-tx-main">Ethernet</h3>
+          <p class="text-sm text-tx-muted truncate">{{ ethernetStatus }}</p>
+        </div>
+      </div>
+
+      <div
+        class="flex items-center gap-3 p-3 rounded-corner border border-ui-border bg-ui-surface/45"
+      >
+        <div class="p-2 rounded-full bg-primary/10">
+          <svg
+            class="w-5 h-5"
+            :class="vpnConnected ? 'text-status-success' : 'text-tx-muted'"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 3l7 3v5c0 4.418-2.99 8.166-7 9-4.01-.834-7-4.582-7-9V6l7-3z"
+            ></path>
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <h3 class="font-medium text-tx-main">VPN</h3>
+          <p class="text-sm text-tx-muted truncate">{{ vpnLabel }}</p>
         </div>
       </div>
     </div>
