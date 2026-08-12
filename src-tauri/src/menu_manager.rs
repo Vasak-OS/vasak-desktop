@@ -75,6 +75,46 @@ fn get_applications_dirs() -> Vec<PathBuf> {
     dirs
 }
 
+/// Session locale, most specific first: `es_AR.UTF-8` yields `es_AR` and `es`.
+fn locale_keys() -> Vec<String> {
+    let raw = std::env::var("LC_ALL")
+        .or_else(|_| std::env::var("LC_MESSAGES"))
+        .or_else(|_| std::env::var("LANG"))
+        .unwrap_or_default();
+
+    let locale = raw.split(['.', '@']).next().unwrap_or("");
+    if locale.is_empty() || locale == "C" || locale == "POSIX" {
+        return Vec::new();
+    }
+
+    let mut keys = vec![locale.to_string()];
+    if let Some(language) = locale.split('_').next() {
+        if language != locale {
+            keys.push(language.to_string());
+        }
+    }
+
+    keys
+}
+
+/// Value of `key` in the session language, falling back to the untranslated
+/// one. Applications ship their translations in the same file, as `Name[es]`,
+/// and reading only `Name` left the menu in English on a Spanish system even
+/// for the applications that do translate themselves.
+fn localized_attr<T: AsRef<str>>(
+    section: &freedesktop_entry_parser::AttrSelector<T>,
+    key: &str,
+    locales: &[String],
+) -> String {
+    for locale in locales {
+        if let Some(value) = section.attr_with_param(key, locale) {
+            return value.to_string();
+        }
+    }
+
+    section.attr(key).unwrap_or("").to_string()
+}
+
 fn normalize_category(categories: &str) -> String {
     let categories: Vec<&str> = categories.split(';').collect();
 
@@ -97,6 +137,7 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
     log_info("Cargando menú de aplicaciones");
     let mut menu_items: HashMap<String, CategoryInfo> = HashMap::new();
     let mut seen_names: HashSet<String> = HashSet::new();
+    let locales = locale_keys();
 
     let categories = ["all", "develop", "network", "settings", "media", "games", "utility"];
     for &category in categories.iter() {
@@ -137,15 +178,15 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
 
                     let app_categories = desktop_entry.attr("Categories").unwrap_or("");
                     let normalized_category = normalize_category(app_categories);
-                    let name = desktop_entry.attr("Name").unwrap_or("").to_string();
+                    let name = localized_attr(&desktop_entry, "Name", &locales);
 
                     let app_entry = AppEntry {
                         category: normalized_category.clone(),
                         name: name.clone(),
-                        generic: desktop_entry.attr("GenericName").unwrap_or("").to_string(),
-                        description: desktop_entry.attr("Comment").unwrap_or("").to_string(),
+                        generic: localized_attr(&desktop_entry, "GenericName", &locales),
+                        description: localized_attr(&desktop_entry, "Comment", &locales),
                         icon: desktop_entry.attr("Icon").unwrap_or("").to_string(),
-                        keywords: desktop_entry.attr("Keywords").unwrap_or("").to_string(),
+                        keywords: localized_attr(&desktop_entry, "Keywords", &locales),
                         path: path_str.clone(),
                     };
 
