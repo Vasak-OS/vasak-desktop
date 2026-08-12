@@ -1,23 +1,18 @@
-use tauri::{async_runtime::spawn, AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::logger::{log_info, log_warning};
 use crate::windows_apps::control_center::CONTROL_CENTER_LABEL;
-use crate::windows_apps::create_control_center_window;
 use crate::windows_apps::shell_layer::{
     hide_layer_window, layer_window_exists, layer_window_visible, show_layer_window,
 };
 
 #[tauri::command]
 pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
+    // Built once at startup on the GTK main thread. Building it here instead
+    // would mean touching GTK from whatever thread the command landed on, which
+    // is not thread-safe and killed the process.
     if !layer_window_exists(CONTROL_CENTER_LABEL) {
-        log_warning("[control_center] no existe todavía; se crea");
-        spawn(async move {
-            if let Err(error) = create_control_center_window(app).await {
-                log_warning(&format!("[control_center] no se pudo crear: {error}"));
-                return;
-            }
-            show_layer_window(CONTROL_CENTER_LABEL);
-        });
+        log_warning("[control_center] la superficie no existe; no se pudo crear al iniciar");
         return Ok(());
     }
 

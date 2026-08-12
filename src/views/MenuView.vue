@@ -14,7 +14,7 @@ import UserMenuCard from '@/components/cards/UserMenuCard.vue';
 import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import { getMenuItems, openApp } from '@/services/app.service';
-import { openSettings, toggleMenu, toggleSessionPopup } from '@/services/window.service';
+import { openSettings, toggleSessionPopup } from '@/services/window.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
@@ -72,14 +72,24 @@ const openConfiguration = async () => {
 	}
 };
 
+/**
+ * Plays the leave animation and hides the window.
+ *
+ * Hides rather than toggles. It used to call the toggle, and hiding raises a
+ * blur, and the blur handler called it again — by then the window was hidden,
+ * so the second call *opened* it. Escape appeared to close the menu and
+ * immediately bring it back.
+ *
+ * The guard is the other half: Escape and losing focus can both fire for the
+ * same dismissal, and two overlapping animations left the window half faded.
+ */
 const closeAfterAnimation = () => {
+	if (leaving.value) return;
 	leaving.value = true;
 	setTimeout(() => {
-		try {
-			toggleMenu();
-		} catch {
-			/* window already closed */
-		}
+		menuWindow.hide().catch(() => {
+			/* already gone */
+		});
 	}, 200);
 };
 
@@ -122,7 +132,18 @@ onMounted(() => {
 	document.addEventListener('keydown', onKeydown);
 	window.addEventListener('blur', onBlur);
 	menuWindow.onFocusChanged(({ payload: focused }) => {
-		if (focused) setTimeout(() => document.getElementById('search')?.focus(), 50);
+		if (focused) {
+			// Shown again after being hidden: the animation state has to be
+			// reset or the menu comes back mid-fade and never becomes solid.
+			leaving.value = false;
+			setTimeout(() => document.getElementById('search')?.focus(), 50);
+			return;
+		}
+		// Losing focus was never handled — only gaining it — so clicking
+		// somewhere else left the menu open over whatever you clicked. The DOM
+		// `blur` event does not stand in for this: the webview keeps its own
+		// focus when another window takes the compositor's.
+		closeAfterAnimation();
 	}).then(fn => { unlistenFocus = fn; });
 });
 

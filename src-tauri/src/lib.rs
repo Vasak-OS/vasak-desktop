@@ -213,6 +213,13 @@ pub fn run() {
             let handle = app.handle().clone();
             let _ = create_desktops(&handle);
             let _ = create_panels(&handle);
+            // Built here, on the GTK main thread, and hidden until asked for.
+            // Creating it later from an async task meant touching GTK from a
+            // Tokio worker, which is not thread-safe and took the whole process
+            // down the first time the button was pressed.
+            if let Err(error) = create_control_center_window(&handle) {
+                crate::logger::log_error(&format!("[control_center] no se pudo crear: {error}"));
+            }
             watch_monitor_changes(&handle);
             menu_watcher::watch_application_dirs(&handle);
 

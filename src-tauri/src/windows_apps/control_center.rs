@@ -21,8 +21,8 @@ const PANEL_HEIGHT: i32 = 38;
 /// tried to drag it into place afterwards. Anchoring it as a layer surface is
 /// how a shell component is meant to say where it belongs, and it works without
 /// asking the compositor for a favour.
-pub async fn create_control_center_window(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let primary = get_primary_monitor(&app).ok_or("No primary monitor found")?;
+pub fn create_control_center_window(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let primary = get_primary_monitor(app).ok_or("No primary monitor found")?;
     let gdk_monitor =
         find_gdk_monitor(&primary).ok_or("No GDK monitor matching the primary monitor")?;
 
@@ -36,7 +36,7 @@ pub async fn create_control_center_window(app: AppHandle) -> Result<(), Box<dyn 
     ));
 
     spawn_layer_window(
-        &app,
+        app,
         CONTROL_CENTER_LABEL,
         "index.html#/control_center",
         &gdk_monitor,

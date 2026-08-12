@@ -15,33 +15,86 @@ use tokio::net::UnixStream;
 use tokio::sync::{broadcast, Mutex as AsyncMutex, Notify};
 use tokio::time::{sleep, Duration, Instant};
 
+/// Reads a number that Wayfire may send as either an integer or a float.
+///
+/// Wayfire 0.11 moved its geometry to floating point, so coordinates arrive as
+/// `0.0` where they used to be `0`. Insisting on an integer made every window
+/// list fail to parse — the log filled with "invalid type: floating point
+/// `0.0`, expected i64" once a second, and the panel showed no open windows at
+/// all because it never received one.
+fn number_as_i64<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match serde_json::Value::deserialize(deserializer)? {
+        serde_json::Value::Number(number) => number
+            .as_i64()
+            // Coordinates land on whole pixels in the end, so rounding is what
+            // the compositor means rather than a loss.
+            .or_else(|| number.as_f64().map(|value| value.round() as i64))
+            .ok_or_else(|| serde::de::Error::custom("número fuera de rango")),
+        other => Err(serde::de::Error::custom(format!(
+            "se esperaba un número, llegó {other}"
+        ))),
+    }
+}
+
+/// Same, for the fields Wayfire may omit entirely.
+fn optional_number_as_i64<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<serde_json::Value>::deserialize(deserializer)? {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::Number(number)) => number
+            .as_i64()
+            .or_else(|| number.as_f64().map(|value| value.round() as i64))
+            .map(Some)
+            .ok_or_else(|| serde::de::Error::custom("número fuera de rango")),
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "se esperaba un número, llegó {other}"
+        ))),
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Geometry {
+    #[serde(deserialize_with = "number_as_i64")]
     pub x: i64,
+    #[serde(deserialize_with = "number_as_i64")]
     pub y: i64,
+    #[serde(deserialize_with = "number_as_i64")]
     pub width: i64,
+    #[serde(deserialize_with = "number_as_i64")]
     pub height: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Size {
+    #[serde(deserialize_with = "number_as_i64")]
     pub width: i64,
+    #[serde(deserialize_with = "number_as_i64")]
     pub height: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Workspace {
     #[serde(rename = "grid_width")]
+    #[serde(deserialize_with = "number_as_i64")]
     pub grid_width: i64,
     #[serde(rename = "grid_height")]
+    #[serde(deserialize_with = "number_as_i64")]
     pub grid_height: i64,
+    #[serde(deserialize_with = "number_as_i64")]
     pub x: i64,
+    #[serde(deserialize_with = "number_as_i64")]
     pub y: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Output {
     pub geometry: Geometry,
+    #[serde(deserialize_with = "number_as_i64")]
     pub id: i64,
     pub name: String,
     #[serde(rename = "workarea")]
@@ -49,6 +102,7 @@ pub struct Output {
     #[serde(rename = "workspace")]
     pub workspace: Workspace,
     #[serde(rename = "wset-index")]
+    #[serde(deserialize_with = "number_as_i64")]
     pub wset_index: i64,
 }
 
@@ -63,8 +117,10 @@ pub struct View {
     pub focusable: Option<bool>,
     pub fullscreen: Option<bool>,
     pub geometry: Option<Geometry>,
+    #[serde(deserialize_with = "number_as_i64")]
     pub id: i64,
     #[serde(rename = "last-focus-timestamp")]
+    #[serde(default, deserialize_with = "optional_number_as_i64")]
     pub last_focus_timestamp: Option<i64>,
     pub layer: Option<String>,
     pub mapped: Option<bool>,
@@ -74,19 +130,24 @@ pub struct View {
     pub min_size: Option<Size>,
     pub minimized: Option<bool>,
     #[serde(rename = "output-id")]
+    #[serde(default, deserialize_with = "optional_number_as_i64")]
     pub output_id: Option<i64>,
     #[serde(rename = "output-name")]
     pub output_name: Option<String>,
+    #[serde(default, deserialize_with = "optional_number_as_i64")]
     pub parent: Option<i64>,
+    #[serde(default, deserialize_with = "optional_number_as_i64")]
     pub pid: Option<i64>,
     pub role: Option<String>,
     pub sticky: Option<bool>,
     #[serde(rename = "tiled-edges")]
+    #[serde(default, deserialize_with = "optional_number_as_i64")]
     pub tiled_edges: Option<i64>,
     pub title: Option<String>,
     #[serde(rename = "type")]
     pub type_field: Option<String>,
     #[serde(rename = "wset-index")]
+    #[serde(default, deserialize_with = "optional_number_as_i64")]
     pub wset_index: Option<i64>,
 }
 
@@ -417,5 +478,50 @@ pub async fn get_wayfire_client() -> Option<Arc<WayfireClient>> {
             }
             None
         }
+    }
+}
+
+#[cfg(test)]
+mod geometry_tests {
+    use super::*;
+
+    /// What Wayfire 0.11 actually sends. Refusing it made every window list
+    /// fail, which is why the panel showed nothing.
+    #[test]
+    fn floating_point_geometry_is_accepted() {
+        let geometry: Geometry =
+            serde_json::from_str(r#"{"x":0.0,"y":38.0,"width":1920.0,"height":1042.0}"#)
+                .expect("floats are what the compositor sends");
+
+        assert_eq!(geometry.x, 0);
+        assert_eq!(geometry.y, 38);
+        assert_eq!(geometry.width, 1920);
+        assert_eq!(geometry.height, 1042);
+    }
+
+    /// Older versions send integers, and an upgrade must not break the other way.
+    #[test]
+    fn integer_geometry_still_works() {
+        let geometry: Geometry =
+            serde_json::from_str(r#"{"x":0,"y":38,"width":1920,"height":1042}"#).expect("ints");
+        assert_eq!((geometry.x, geometry.height), (0, 1042));
+    }
+
+    /// A fractional coordinate rounds to the pixel it lands on rather than
+    /// being refused.
+    #[test]
+    fn fractional_values_round_to_a_pixel() {
+        let geometry: Geometry =
+            serde_json::from_str(r#"{"x":10.6,"y":-0.4,"width":100.5,"height":50.49}"#)
+                .expect("fractions");
+        assert_eq!((geometry.x, geometry.y, geometry.width, geometry.height), (11, 0, 101, 50));
+    }
+
+    #[test]
+    fn something_that_is_not_a_number_is_still_refused() {
+        assert!(
+            serde_json::from_str::<Geometry>(r#"{"x":"0","y":0,"width":0,"height":0}"#).is_err(),
+            "a string coordinate is a protocol change worth failing on"
+        );
     }
 }
