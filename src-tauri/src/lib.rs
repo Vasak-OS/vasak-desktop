@@ -160,6 +160,7 @@ pub fn run() {
             delete_notification,
             invoke_notification_action,
             toggle_control_center,
+            hide_control_center,
             toggle_network_applet,
             init_sni_watcher,
             get_tray_items,

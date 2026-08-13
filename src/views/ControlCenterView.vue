@@ -12,7 +12,8 @@ import SearchButtonControl from '@/components/controls/SearchButtonControl.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
-import { toggleControlCenter } from '@/services/window.service';
+import { hideControlCenter } from '@/services/window.service';
+import { useSharedEvent } from '@/tools/event.bus';
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const leaving = ref(false);
@@ -28,9 +29,15 @@ const closeAfterAnimation = () => {
 	const main = document.querySelector('main');
 	main?.getAnimations().forEach(a => a.cancel());
 
-	// Play exit animation, then close window
+	// Play exit animation, then close window.
+	//
+	// Hides rather than toggles, and that is the whole bug: pressing the panel
+	// button closed the centre and brought it straight back. The click reaches
+	// the panel and toggles the centre shut, while this timer — armed by the
+	// blur the same click raised — fires 200 ms later, finds it shut, and calls
+	// it open again. The menu had this verbatim.
 	closeTimeout = setTimeout(() => {
-		try { toggleControlCenter(); } catch { /* window already closed */ }
+		hideControlCenter().catch(() => { /* window already closed */ });
 	}, 200);
 };
 
@@ -43,6 +50,18 @@ const onKeydown = (event: KeyboardEvent) => {
 const onBlur = () => {
 	closeAfterAnimation();
 };
+
+// Shown again after being hidden. The window is never destroyed, so Vue does
+// not re-run and the animation state survives from the last dismissal — without
+// this the centre comes back mid-fade and `leaving` keeps closeAfterAnimation
+// short-circuited for good.
+useSharedEvent('window-shown', () => {
+	if (closeTimeout !== null) {
+		clearTimeout(closeTimeout);
+		closeTimeout = null;
+	}
+	leaving.value = false;
+});
 
 onMounted(async () => {
 	bluetoothInitialized.value = await isBluetoothPluginInitialized();

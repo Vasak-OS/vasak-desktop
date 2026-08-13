@@ -23,16 +23,28 @@ pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
     if layer_window_visible(CONTROL_CENTER_LABEL).unwrap_or(false) {
         log_info("[control_center] ocultando");
         hide_layer_window(CONTROL_CENTER_LABEL);
-    } else {
-        log_info("[control_center] mostrando");
-        // The view refreshes on this rather than on being rebuilt: the window is
-        // hidden, never destroyed, so the page is not reloaded and Vue does not
-        // re-run.
-        if let Some(webview) = app.get_webview_window(CONTROL_CENTER_LABEL) {
-            let _ = webview.emit("window-shown", ());
-        }
-        show_layer_window(CONTROL_CENTER_LABEL);
+        return Ok(());
     }
 
+    log_info("[control_center] mostrando");
+    // The view refreshes on this rather than on being rebuilt: the window is
+    // hidden, never destroyed, so the page is not reloaded and Vue does not
+    // re-run.
+    if let Some(webview) = app.get_webview_window(CONTROL_CENTER_LABEL) {
+        let _ = webview.emit("window-shown", ());
+    }
+    show_layer_window(CONTROL_CENTER_LABEL);
+
+    Ok(())
+}
+
+/// Hides the centre, without asking whether it is open.
+///
+/// The page closes itself with this rather than with the toggle. Calling the
+/// toggle is the trap the menu fell into: hiding drops focus, focus loss closes
+/// it, and the toggle then finds it hidden and opens it again.
+#[tauri::command]
+pub fn hide_control_center() -> Result<(), ()> {
+    hide_layer_window(CONTROL_CENTER_LABEL);
     Ok(())
 }

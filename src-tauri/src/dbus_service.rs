@@ -28,7 +28,20 @@ impl DesktopService {
             }
             "OpenControlCenter" => {
                 log_info("D-Bus: Abriendo centro de control");
-                let _ = toggle_control_center(self.app_handle.clone());
+                // Has to run on the main thread. The centre's layer surface
+                // lives in a thread-local registry there, so called straight
+                // from this D-Bus worker the toggle looks it up in an empty map,
+                // concludes the surface was never built, and does nothing —
+                // OpenControlCenter was silently dead over D-Bus.
+                //
+                // OpenMenu below needs no such care: it goes through Tauri's
+                // window API, which marshals to the main thread itself.
+                let app_handle = self.app_handle.clone();
+                if let Err(e) = self.app_handle.run_on_main_thread(move || {
+                    let _ = toggle_control_center(app_handle);
+                }) {
+                    log_error(&format!("D-Bus: no se pudo alternar el centro de control: {}", e));
+                }
             }
             "OpenSearch" | "ToggleSearch" => {
                 log_info("D-Bus: Alternando búsqueda");

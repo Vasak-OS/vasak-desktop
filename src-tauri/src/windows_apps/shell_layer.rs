@@ -274,6 +274,12 @@ pub fn layer_window_visible(label: &str) -> Option<bool> {
     .flatten()
 }
 
+/// Whether the surface was built.
+///
+/// Main-thread only, like [`layer_window_visible`]: the registry is thread-local
+/// and every other thread sees an empty one, so this answers `false` there
+/// whatever is actually on screen. Callers off the main thread must marshal onto
+/// it — `AppHandle::run_on_main_thread` — rather than trust the answer.
 pub fn layer_window_exists(label: &str) -> bool {
     LAYER_WINDOWS
         .try_with(|windows| windows.borrow().contains_key(label))
