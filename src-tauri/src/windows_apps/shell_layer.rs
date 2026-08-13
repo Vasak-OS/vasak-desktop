@@ -24,7 +24,6 @@ pub struct LayerSpec {
     /// `None` reserves space automatically (panel); `Some(-1)` opts out entirely
     /// so other surfaces can overlap (wallpaper).
     pub exclusive_zone: Option<i32>,
-    pub height_request: Option<i32>,
     /// Gap from each anchored edge, in the same order as `anchors`.
     pub margins: (i32, i32, i32, i32),
     /// Whether the surface takes keyboard focus. A popup needs it so Escape
@@ -47,7 +46,6 @@ impl Default for LayerSpec {
             layer: Layer::Top,
             anchors: (false, false, false, false),
             exclusive_zone: None,
-            height_request: None,
             margins: (0, 0, 0, 0),
             keyboard: KeyboardMode::None,
             start_hidden: false,
@@ -87,16 +85,25 @@ pub fn spawn_layer_window(
     let layer_win = gtk::Window::new(gtk::WindowType::Toplevel);
     layer_win.set_decorated(false);
 
-    if let Some(height) = spec.height_request {
-        layer_win.set_size_request(width as i32, height);
-    }
+    let (left, right, top, bottom) = spec.anchors;
+
+    // Layer-shell asks the compositor for the surface size on every axis that is
+    // not anchored to both of its edges, and it takes that size from this
+    // window. `inner_size` above applies to the throwaway toplevel, not to this
+    // one, so without a request here the axis collapses to what WebKit asks for,
+    // which is nothing: that is how the control centre ended up as a sliver in
+    // the corner. -1 is GTK for "no request", and leaves the stretched axes to
+    // the compositor.
+    layer_win.set_size_request(
+        if left && right { -1 } else { width as i32 },
+        if top && bottom { -1 } else { height as i32 },
+    );
 
     layer_win.init_layer_shell();
     layer_win.set_monitor(gdk_monitor);
     layer_win.set_namespace(spec.namespace);
     layer_win.set_layer(spec.layer);
 
-    let (left, right, top, bottom) = spec.anchors;
     layer_win.set_anchor(Edge::Left, left);
     layer_win.set_anchor(Edge::Right, right);
     layer_win.set_anchor(Edge::Top, top);

@@ -50,7 +50,6 @@ pub fn create_control_center_window(app: &AppHandle) -> Result<(), Box<dyn std::
             // Overlays reserve nothing: windows must not be pushed aside by a
             // panel that appears and disappears.
             exclusive_zone: Some(-1),
-            height_request: None,
             margins: (0, MARGIN, PANEL_HEIGHT + MARGIN, MARGIN),
             // Needed for Escape to arrive and for losing focus to be noticed.
             keyboard: KeyboardMode::OnDemand,

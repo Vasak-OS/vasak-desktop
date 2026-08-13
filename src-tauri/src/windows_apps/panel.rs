@@ -29,7 +29,6 @@ pub fn create_panels(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
             anchors: (true, true, true, false),
             // Automatic: the panel reserves its strip so windows don't sit under it.
             exclusive_zone: None,
-            height_request: Some(PANEL_HEIGHT),
             ..Default::default()
         },
     )

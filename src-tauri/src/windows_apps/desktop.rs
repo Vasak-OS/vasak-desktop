@@ -49,7 +49,6 @@ fn setup_desktop(
             // -1 opts out of space reservation: the wallpaper must not push
             // windows around, and everything else draws on top of it.
             exclusive_zone: Some(-1),
-            height_request: None,
             ..Default::default()
         },
     )
