@@ -4,11 +4,13 @@
 import { emit } from '@tauri-apps/api/event';
 import { Command } from '@tauri-apps/plugin-shell';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
 import type { Notification as AppNotification, NotificationDelta } from '@/interfaces/notifications';
+import type { ConnectDevice } from '@/interfaces/connect';
+import { listConnectDevices, toggleConnectMenu } from '@/services/connect.service';
 import { getAllNotifications } from '@/services/notification.service';
 import { toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
@@ -21,12 +23,45 @@ const notifications = ref<AppNotification[]>([]);
 const hasNewNotifications = ref(false);
 let notificationResetTimer: ReturnType<typeof setTimeout> | undefined;
 
-const { menuIcon, notifyIcon, configIcon, fileManagerIcon } = useIcons({
+const { menuIcon, notifyIcon, configIcon, fileManagerIcon, phoneIcon } = useIcons({
 	menuIcon: 'start-here',
 	notifyIcon: 'preferences-desktop-notification',
 	configIcon: 'preferences-system',
 	fileManagerIcon: 'system-file-manager',
+	phoneIcon: 'smartphone',
 });
+
+/**
+ * Phones the device service can see.
+ *
+ * The button only exists while there is one. A permanent icon for a feature
+ * that needs hardware most people never plug in is clutter in the one strip of
+ * screen that is always visible.
+ */
+const connectDevices = ref<ConnectDevice[]>([]);
+
+const hasPhone = computed(() => connectDevices.value.length > 0);
+
+/**
+ * True while a phone is plugged in but nobody has accepted the debugging
+ * prompt yet. Worth a mark on the icon: from the outside it looks identical to
+ * a phone that simply has no apps.
+ */
+const phoneNeedsAuth = computed(() =>
+	connectDevices.value.some((device) => device.state === 'unauthorized')
+);
+
+const refreshConnectDevices = async () => {
+	connectDevices.value = await listConnectDevices();
+};
+
+const openPhoneMenu = async () => {
+	try {
+		await toggleConnectMenu();
+	} catch (error) {
+		logError('Error al abrir el menú del teléfono:', error);
+	}
+};
 
 const openMenu = async () => {
 	try {
@@ -77,7 +112,20 @@ onMounted(async () => {
 	performance.measure('panel-startup', 'panel-mounted', 'panel-ready');
 	// Signal backend that panel has painted - triggers deferred applets
 	emit('panel-ready', {});
+
+	// After the readiness signal: the device service is a deferred applet, so
+	// it has not subscribed yet, and nothing here belongs on the path that
+	// decides how fast the panel appears.
+	await refreshConnectDevices();
 });
+
+// At setup, not inside onMounted: useSharedEvent registers onMounted and
+// onUnmounted hooks of its own, and Vue only collects those while the component
+// is being set up. Called later they never fire, and the subscription is never
+// released.
+useSharedEvent('connect-device-added', refreshConnectDevices);
+useSharedEvent('connect-device-changed', refreshConnectDevices);
+useSharedEvent('connect-device-removed', refreshConnectDevices);
 
 useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 	switch (delta.action) {
@@ -135,6 +183,23 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         @click="openFileManager"
         class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
       />
+      <!-- Only while a phone is connected: a permanent button for hardware
+           most people never plug in is clutter in the one strip of screen that
+           is always on top of everything else. -->
+      <div v-if="hasPhone" class="relative">
+        <img
+          :src="phoneIcon"
+          :alt="t('views.connect.menuAlt')"
+          :title="t('views.connect.menuAlt')"
+          @click="openPhoneMenu"
+          class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        />
+        <div
+          v-if="phoneNeedsAuth"
+          :title="t('views.connect.unauthorized')"
+          class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-status-warning"
+        ></div>
+      </div>
     </div>
     <WindowsArea />
     <div class="flex content-center items-center">

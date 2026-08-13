@@ -6,6 +6,10 @@ const routes = [
 	{ path: '/panel', component: () => import('@/views/PanelView.vue') },
 	{ path: '/menu', component: () => import('@/views/MenuView.vue') },
 	{
+		path: '/connect',
+		component: () => import('@/views/ConnectMenuView.vue'),
+	},
+	{
 		path: '/control_center',
 		component: () => import('@/views/ControlCenterView.vue'),
 	},

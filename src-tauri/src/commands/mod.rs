@@ -3,6 +3,7 @@ mod batch;
 mod battery;
 mod bluetooth;
 mod brightness;
+mod connect;
 mod control_center;
 mod logger;
 mod menu;
@@ -27,6 +28,7 @@ pub use audio::{
 pub use battery::{battery_exists, battery_fetch_info, get_battery_info};
 pub use bluetooth::toggle_bluetooth_applet;
 pub use brightness::{get_brightness_info, set_brightness_info};
+pub use connect::toggle_connect_menu;
 pub use control_center::toggle_control_center;
 pub use logger::{log_from_frontend, get_log_file_path, read_log_file, get_last_log_lines};
 pub use menu::{get_menu_items, toggle_menu};

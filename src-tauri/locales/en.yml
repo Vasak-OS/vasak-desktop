@@ -59,6 +59,20 @@ views:
     logout: Log out
     suspend: Suspend
     noApps: No applications available
+  connect:
+    title: Phone
+    menuAlt: Phone applications
+    noDevice: No phone
+    plugIn: Plug in an Android phone with USB debugging enabled.
+    unauthorized: Accept USB debugging on the phone's screen. Its applications appear here as soon as you do.
+    search: Search application
+    loading: Reading the phone's applications…
+    noApps: No applications match
+    showSystem: Show system applications
+    refresh: Refresh the list
+    close: Close
+    openApps: "{0} open"
+    connecting: Connecting…
   panel:
     menuAlt: Menu
     settingsAlt: Settings

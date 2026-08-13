@@ -59,6 +59,20 @@ views:
     logout: Cerrar sesión
     suspend: Suspender
     noApps: No hay aplicaciones disponibles
+  connect:
+    title: Teléfono
+    menuAlt: Aplicaciones del teléfono
+    noDevice: Sin teléfono
+    plugIn: Conectá un teléfono Android con la depuración USB activada.
+    unauthorized: Aceptá la depuración USB en la pantalla del teléfono. En cuanto lo hagas, sus aplicaciones aparecen acá.
+    search: Buscar aplicación
+    loading: Leyendo las aplicaciones del teléfono…
+    noApps: No hay aplicaciones que coincidan
+    showSystem: Mostrar aplicaciones del sistema
+    refresh: Actualizar la lista
+    close: Cerrar
+    openApps: "{0} abiertas"
+    connecting: Conectando…
   panel:
     menuAlt: Menú
     settingsAlt: Configuración

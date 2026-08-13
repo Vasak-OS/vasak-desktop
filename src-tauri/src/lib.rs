@@ -12,6 +12,7 @@ mod audio;
 mod audio_native;
 mod brightness;
 mod commands;
+mod connect;
 mod dbus_service;
 mod eventloops;
 /// Where the translations live.
@@ -58,6 +59,10 @@ mod windows_apps;
 
 use tauri::{Listener, Manager};
 use commands::*;
+use connect::{
+    connect_launch_app, connect_list_apps, connect_list_devices, connect_list_running,
+    connect_stop_app,
+};
 use dbus_pool::DbusPool;
 use eventloops::{
     setup_dbus_service,
@@ -82,6 +87,7 @@ use applets::{
     battery::BatteryApplet,
     bluetooth::BluetoothApplet,
     brightness::BrightnessApplet,
+    connect::ConnectApplet,
     keyboard_leds::KeyboardLedsApplet,
     music::MusicApplet,
     network::NetworkApplet,
@@ -178,7 +184,13 @@ pub fn run() {
             log_from_frontend,
             get_log_file_path,
             read_log_file,
-            get_last_log_lines
+            get_last_log_lines,
+            connect_list_devices,
+            connect_list_apps,
+            connect_launch_app,
+            connect_stop_app,
+            connect_list_running,
+            toggle_connect_menu
         ])
         .setup(move |app| {
             let setup_start = std::time::Instant::now();
@@ -279,6 +291,9 @@ pub fn run() {
                 // Deferred: Started after panel-ready event from frontend
                 manager.register(BluetoothApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkApplet, AppletPriority::Deferred).await;
+                // The phone service: nothing on screen depends on it, and most
+                // sessions never plug one in.
+                manager.register(ConnectApplet, AppletPriority::Deferred).await;
                 
                 manager.start_phased(app_handle).await;
                 logger::log_info("Todos los applets iniciados correctamente");

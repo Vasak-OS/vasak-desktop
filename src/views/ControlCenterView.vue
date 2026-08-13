@@ -3,6 +3,7 @@
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
 import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
+import PhoneControlCenterCard from '@/components/cards/PhoneControlCenterCard.vue';
 import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue';
 import BluetoothControl from '@/components/controls/BluetoothControl.vue';
 import BrightnessControl from '@/components/controls/BrightnessControl.vue';
@@ -68,6 +69,7 @@ onBeforeUnmount(() => {
     >
       <div class="flex flex-col w-full gap-2 p-2">
         <UserControlCenterCard />
+        <PhoneControlCenterCard />
         <NotificationArea />
       </div>
       <div class="flex flex-wrap w-full justify-around items-end self-end p-2">
