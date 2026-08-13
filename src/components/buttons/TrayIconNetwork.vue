@@ -105,7 +105,7 @@ useSharedEvent('vpn-changed', refreshVpnStatus);
 	>
 	  <div
 			class="absolute top-3 right-0.5 w-2.5 h-2.5 rounded-full transition-all duration-300 ring-1 ring-ui-bg"
-			:class="networkState.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-danger'"
+			:class="networkState.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-error'"
 	  ></div>
 
 		<div

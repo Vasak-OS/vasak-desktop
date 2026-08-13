@@ -74,8 +74,8 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
       </div>
 
       <div class="min-w-0">
-        <div class="font-medium text-vsk-text truncate">{{ props.ssid || props.name }}</div>
-        <div class="text-xs text-vsk-text/70 flex items-center gap-1.5">
+        <div class="font-medium text-tx-main truncate">{{ props.ssid || props.name }}</div>
+        <div class="text-xs text-tx-muted flex items-center gap-1.5">
           <span>{{ securityLabel }}</span>
           <span v-if="props.is_connected">• {{ t('components.NetworkWiFiCard.connected') }}</span>
         </div>
@@ -98,7 +98,7 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
 
       <svg
         v-if="props.security_type && String(props.security_type) !== 'none'"
-        class="w-4 h-4 text-vsk-text/60"
+        class="w-4 h-4 text-tx-muted"
         fill="currentColor"
         viewBox="0 0 24 24"
       >
@@ -117,14 +117,14 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
   <!-- Modal para pedir contraseña -->
   <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
     <div class="w-full max-w-sm rounded-corner border border-ui-border bg-ui-bg p-4 shadow-xl flex flex-col gap-3">
-      <h3 class="text-base font-semibold text-vsk-text">
+      <h3 class="text-base font-semibold text-tx-main">
         {{ t('components.NetworkWiFiCard.connectTo').replace('{0}', String(props.ssid)) }}
       </h3>
       <input
         v-model="password"
         type="password"
         :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
-        class="border border-ui-border rounded-corner p-2 text-vsk-text outline-none bg-ui-surface/50 focus:border-primary/40"
+        class="border border-ui-border rounded-corner p-2 text-tx-main outline-none bg-ui-surface/50 focus:border-primary/40"
         :disabled="connecting"
       />
       <div v-if="errorMsg" class="text-status-error text-sm">{{ errorMsg }}</div>

@@ -95,7 +95,7 @@ onMounted(async () => {
         <div class="text-lg font-semibold">{{ formatDay(weather.daily.time[0]) }}</div>
         <div class="flex gap-3 text-base">
           <span class="font-semibold">{{ weather.daily.temperature_2m_max[0] }}°</span>
-          <span class="text-vsk-text/60">{{ weather.daily.temperature_2m_min[0] }}°</span>
+          <span class="text-tx-muted">{{ weather.daily.temperature_2m_min[0] }}°</span>
         </div>
       </div>
 
