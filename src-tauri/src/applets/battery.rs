@@ -472,13 +472,6 @@ pub async fn get_battery_info() -> Option<BatteryInfo> {
     get_battery_info_with_conn(&conn).await
 }
 
-/// Public function used by batch commands that have access to AppHandle.
-/// Uses DbusPool for connection sharing.
-pub async fn get_battery_info_with_app(app_handle: &AppHandle) -> Option<BatteryInfo> {
-    let conn = get_system_connection(app_handle).await?;
-    get_battery_info_with_conn(&conn).await
-}
-
 /// Internal: fetch battery info using a provided connection.
 /// Uses GetAll for a single D-Bus round-trip with 300ms timeout.
 /// On timeout with cache: returns cached state.

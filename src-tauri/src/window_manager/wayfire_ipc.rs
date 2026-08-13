@@ -78,6 +78,7 @@ pub struct Size {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct Workspace {
     #[serde(rename = "grid_width")]
     #[serde(deserialize_with = "number_as_i64")]
@@ -92,6 +93,7 @@ pub struct Workspace {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct Output {
     pub geometry: Geometry,
     #[serde(deserialize_with = "number_as_i64")]
@@ -347,6 +349,7 @@ impl WayfireClient {
         Ok(serde_json::from_value(response)?)
     }
 
+    #[allow(dead_code)]
     pub async fn list_outputs_typed(&self) -> Result<Vec<Output>, Box<dyn Error + Send + Sync>> {
         let response = self.send_and_wait("window-rules/list-outputs", Value::Null).await?;
         Ok(serde_json::from_value(response)?)
@@ -360,6 +363,7 @@ impl WayfireClient {
         self.send_and_wait("wm-actions/set-minimized", json!({ "view_id": view_id, "state": state })).await
     }
 
+    #[allow(dead_code)]
     pub async fn configure_view_coords(
         &self,
         view_id: u64,
@@ -381,10 +385,12 @@ impl WayfireClient {
         self.send_and_wait("window-rules/configure-view", data).await
     }
 
+    #[allow(dead_code)]
     pub async fn set_sticky(&self, view_id: u64, state: bool) -> Result<Value, Box<dyn Error + Send + Sync>> {
         self.send_and_wait("wm-actions/set-sticky", json!({ "view_id": view_id, "state": state })).await
     }
 
+    #[allow(dead_code)]
     pub async fn set_always_on_top(&self, view_id: u64, state: bool) -> Result<Value, Box<dyn Error + Send + Sync>> {
         self.send_and_wait("wm-actions/set-always-on-top", json!({ "view_id": view_id, "state": state })).await
     }

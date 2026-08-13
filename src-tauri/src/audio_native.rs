@@ -25,20 +25,12 @@ use std::sync::Arc;
 /// Error type for PipeWire connection failures.
 #[derive(Debug, thiserror::Error)]
 pub enum PipeWireError {
+    /// Only `PipeWireMonitor::connect` raises this, and it is compiled out
+    /// unless the feature is on — hence the gate, or the default build warns
+    /// about a variant nothing can construct.
+    #[cfg(feature = "pipewire-native")]
     #[error("PipeWire initialization failed: {0}")]
     InitFailed(String),
-
-    #[error("PipeWire main loop creation failed: {0}")]
-    MainLoopFailed(String),
-
-    #[error("PipeWire context creation failed: {0}")]
-    ContextFailed(String),
-
-    #[error("PipeWire core connection failed: {0}")]
-    CoreFailed(String),
-
-    #[error("PipeWire thread panicked")]
-    ThreadPanicked,
 
     #[error("pw-dump process not available: {0}")]
     PwDumpNotAvailable(String),
@@ -679,15 +671,6 @@ impl AudioMonitor {
             AudioMonitor::PwDump(pwd) => pwd.state_rx.clone(),
             AudioMonitor::Pactl(pa) => pa.state_rx.clone(),
         }
-    }
-
-    /// Returns true if currently using native PipeWire monitoring.
-    pub fn is_native(&self) -> bool {
-        #[cfg(feature = "pipewire-native")]
-        if matches!(self, AudioMonitor::PipeWire(_)) {
-            return true;
-        }
-        false
     }
 
     /// Returns true if using event-driven monitoring (native or pw-dump).

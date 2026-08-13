@@ -53,23 +53,4 @@ impl DbusPool {
         self.system.read().await.clone()
     }
 
-    /// Attempt to reconnect the session bus. Replaces the stored connection
-    /// on success or sets it to None on failure.
-    pub async fn reconnect_session(&self) -> Result<(), zbus::Error> {
-        let new_conn = Connection::session().await?;
-        let mut guard = self.session.write().await;
-        *guard = Some(new_conn);
-        logger::log_info("DbusPool: reconexión session exitosa");
-        Ok(())
-    }
-
-    /// Attempt to reconnect the system bus. Replaces the stored connection
-    /// on success or sets it to None on failure.
-    pub async fn reconnect_system(&self) -> Result<(), zbus::Error> {
-        let new_conn = Connection::system().await?;
-        let mut guard = self.system.write().await;
-        *guard = Some(new_conn);
-        logger::log_info("DbusPool: reconexión system exitosa");
-        Ok(())
-    }
 }

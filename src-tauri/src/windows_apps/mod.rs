@@ -6,7 +6,6 @@ pub mod desktop;
 pub mod shell_layer;
 pub mod menu;
 pub mod panel;
-pub mod wayland_layer;
 
 pub use applets::{create_applet_bluetooth_window, create_applet_network_window, create_systray_popup_window};
 pub use applications::{create_osd_window, create_search_window, create_session_popup_window};
