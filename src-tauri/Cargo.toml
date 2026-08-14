@@ -80,7 +80,12 @@ incremental = true # Compile your binary in smaller steps.
 
 [profile.release]
 codegen-units = 1  # Allows LLVM to perform better optimization.
-lto = "fat"     
+# Thin LTO: ~90% de fat LTO y compila mucho más rápido, igual que el resto de
+# las aplicaciones. `fat` cargaba el bitcode de todo el árbol en un solo proceso
+# de enlazado: en esta máquina entra, pero el mínimo declarado de VasakOS son
+# 4 GB de RAM, y ahí el enlazador se queda sin memoria y el build muere por algo
+# que no tiene nada que ver con el código.
+lto = "thin"
 opt-level = 3      # Máxima optimización de velocidad. Usar "s" para priorizar tamaño.
 panic = "abort"    # Higher performance by disabling panic handlers.
 strip = true       # Ensures debug symbols are removed.
