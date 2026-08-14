@@ -71,7 +71,7 @@ views:
     showSystem: Show system applications
     refresh: Refresh the list
     close: Close
-    openApps: "{0} open"
+    openApps: "{0} running"
     connecting: Connecting…
   panel:
     menuAlt: Menu
