@@ -60,7 +60,7 @@ useSharedEvent('connect-app-closed', refresh);
           <span v-else-if="device.state === 'ready'">
             {{ device.transport === 'usb' ? 'USB' : device.address }}
             <template v-if="running.length > 0">
-              · {{ t('views.connect.openApps', [running.length]) }}
+              · {{ t('views.connect.openApps').replace('{0}', String(running.length)) }}
             </template>
           </span>
           <span v-else>{{ t('views.connect.connecting') }}</span>
