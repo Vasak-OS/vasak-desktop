@@ -48,7 +48,7 @@ useSharedEvent('connect-app-closed', refresh);
 </script>
 
 <template>
-  <div v-if="device" class="flex flex-col gap-2 rounded-corner bg-ui-surface/40 p-3">
+  <div v-if="device" class="flex flex-col gap-2 rounded-corner bg-ui-surface/40 p-3 text-tx-main">
     <button type="button" class="flex items-center gap-3 text-left" @click="toggleConnectMenu()">
       <img :src="phoneIcon" alt="" class="h-8 w-8 shrink-0" />
       <div class="min-w-0 flex-1">
@@ -89,7 +89,7 @@ useSharedEvent('connect-app-closed', refresh);
         <button
           type="button"
           :title="t('views.connect.close')"
-          class="shrink-0 rounded-corner px-2 text-xs text-primary hover:bg-primary hover:text-white"
+          class="shrink-0 rounded-corner px-2 text-xs text-primary hover:bg-primary hover:text-tx-on-primary"
           @click="close(app)"
         >
           {{ t('views.connect.close') }}

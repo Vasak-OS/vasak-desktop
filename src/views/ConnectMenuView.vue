@@ -6,6 +6,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
+import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import type { ConnectApp, ConnectDevice, ConnectRunningApp } from '@/interfaces/connect';
 import {
 	launchConnectApp,
@@ -71,11 +72,21 @@ const loadApps = async (refresh = false) => {
 };
 
 const loadDevices = async () => {
+	const previous = device.value?.state;
 	devices.value = await listConnectDevices();
+
 	if (!devices.value.some((d) => d.serial === selected.value)) {
 		selected.value = devices.value[0]?.serial ?? '';
 		apps.value = [];
 		if (selected.value) await loadApps();
+		return;
+	}
+
+	// The phone was waiting for the debugging prompt and has just been allowed.
+	// Without this the list stays empty behind a notice that is no longer true:
+	// nothing else would ask again, because the window is already open.
+	if (previous !== 'ready' && device.value?.state === 'ready' && apps.value.length === 0) {
+		await loadApps();
 	}
 };
 
@@ -135,6 +146,9 @@ onMounted(async () => {
 		.onFocusChanged(({ payload: focused }) => {
 			if (focused) {
 				leaving.value = false;
+				// Reopened after being hidden: the phone may have been unplugged
+				// or authorised while nobody was looking at this window.
+				void loadDevices();
 				return;
 			}
 			closeAfterAnimation();
@@ -152,22 +166,33 @@ onBeforeUnmount(() => {
   <Transition appear enter-active-class="enter-active">
     <div
       :class="[
-        'flex h-screen flex-col gap-3 rounded-corner border border-ui-border bg-ui-bg/80 p-4',
+        'flex h-screen flex-col gap-3 rounded-corner border border-ui-border bg-ui-bg/80 p-4 text-tx-main',
         { 'leave-active': leaving },
       ]"
     >
       <header class="flex items-center gap-3">
         <img :src="phoneIcon" alt="" class="h-8 w-8" />
         <div class="min-w-0 flex-1">
-          <select
-            v-if="devices.length > 1"
-            v-model="selected"
-            @change="loadApps()"
-            class="w-full rounded-corner bg-ui-surface px-2 py-1 text-sm text-tx-main"
-          >
-            <option v-for="d in devices" :key="d.serial" :value="d.serial">{{ d.model }}</option>
-          </select>
-          <p v-else class="truncate font-semibold text-tx-main">
+          <!-- A native <select> is drawn by GTK, not by the stylesheet, so its
+               popup ignores the session's colours entirely. With one phone —
+               the normal case — there is nothing to choose anyway. -->
+          <div v-if="devices.length > 1" class="flex flex-wrap gap-1">
+            <button
+              v-for="d in devices"
+              :key="d.serial"
+              type="button"
+              class="rounded-corner border border-ui-border px-2 py-1 text-xs"
+              :class="
+                d.serial === selected
+                  ? 'bg-primary text-tx-on-primary'
+                  : 'bg-ui-surface/40 hover:bg-primary/20'
+              "
+              @click="selected = d.serial; loadApps()"
+            >
+              {{ d.model }}
+            </button>
+          </div>
+          <p v-else class="truncate font-semibold">
             {{ device?.model || t('views.connect.noDevice') }}
           </p>
           <p v-if="device" class="text-xs text-tx-muted">
@@ -189,13 +214,13 @@ onBeforeUnmount(() => {
            first-run state, so it gets an explanation rather than an empty list. -->
       <div
         v-if="device && device.state === 'unauthorized'"
-        class="rounded-corner bg-status-warning/10 p-4 text-sm text-status-warning"
+        class="rounded-corner border border-status-warning/40 bg-status-warning/10 p-4 text-sm text-status-warning"
       >
         {{ t('views.connect.unauthorized') }}
       </div>
 
       <div v-else-if="!device" class="flex flex-1 items-center justify-center px-6 text-center">
-        <p class="text-tx-main/60">{{ t('views.connect.plugIn') }}</p>
+        <p class="text-tx-muted">{{ t('views.connect.plugIn') }}</p>
       </div>
 
       <template v-else>
@@ -203,14 +228,18 @@ onBeforeUnmount(() => {
           v-model="filter"
           type="search"
           :placeholder="t('views.connect.search')"
-          class="w-full rounded-corner bg-ui-surface px-3 py-2 text-sm text-tx-main placeholder:text-tx-muted focus:outline-none focus:ring-2 focus:ring-primary"
+          :aria-label="t('views.connect.search')"
+          class="form-control w-full rounded-corner border border-ui-border bg-ui-bg/80 p-2 shadow-none focus:outline-none focus:ring-0"
         />
 
         <div v-if="loading" class="flex flex-1 items-center justify-center">
           <p class="text-tx-muted">{{ t('views.connect.loading') }}</p>
         </div>
 
-        <div v-else-if="errorMessage" class="rounded-corner bg-status-error/10 p-4 text-sm text-status-error">
+        <div
+          v-else-if="errorMessage"
+          class="rounded-corner border border-status-error/40 bg-status-error/10 p-4 text-sm text-status-error"
+        >
           {{ errorMessage }}
         </div>
 
@@ -219,14 +248,14 @@ onBeforeUnmount(() => {
             <div class="group flex items-center gap-3 rounded-corner p-2 hover:bg-primary/20">
               <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" @click="open(app)">
                 <img :src="app.icon || appIcon" alt="" class="h-8 w-8 shrink-0" />
-                <span class="truncate text-tx-main">{{ app.label }}</span>
+                <span class="truncate">{{ app.label }}</span>
               </button>
               <button
                 v-if="isRunning(app.package)"
                 type="button"
                 :title="t('views.connect.close')"
                 @click="close(app)"
-                class="shrink-0 rounded-corner px-2 py-1 text-xs text-primary hover:bg-primary hover:text-white"
+                class="shrink-0 rounded-corner border border-ui-border px-2 py-1 text-xs text-primary hover:bg-primary hover:text-tx-on-primary"
               >
                 {{ t('views.connect.close') }}
               </button>
@@ -237,11 +266,46 @@ onBeforeUnmount(() => {
           </li>
         </ul>
 
-        <label class="flex items-center gap-2 text-xs text-tx-muted">
-          <input v-model="showSystem" type="checkbox" class="accent-primary" />
-          {{ t('views.connect.showSystem') }}
-        </label>
+        <div class="flex items-center justify-between gap-2 text-xs text-tx-muted">
+          <span>{{ t('views.connect.showSystem') }}</span>
+          <SwitchToggle :is-on="showSystem" @toggle="showSystem = $event" />
+        </div>
       </template>
     </div>
   </Transition>
 </template>
+
+<style scoped>
+/* The same open and close animation as the application menu. Defined here
+   because MenuView's copy is scoped to that component, so referencing its class
+   names from another view silently produced no animation at all. */
+@keyframes scale-in {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes scale-out {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+.enter-active {
+  animation: scale-in 200ms ease-out;
+}
+
+.leave-active {
+  animation: scale-out 200ms ease-in;
+}
+</style>
