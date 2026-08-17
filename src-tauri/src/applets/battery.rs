@@ -187,7 +187,27 @@ impl BatteryApplet {
         }
 
         let mut last_info: Option<BatteryInfo> = None;
-        let mut stream = MessageStream::from(&conn);
+
+        // Asking for the signal is what was missing, and without it the whole
+        // loop below was decoration: a plain `MessageStream::from(&conn)` only
+        // yields what the bus decided to send us, and broadcast signals are only
+        // sent to connections that registered a match rule for them. UPower's
+        // PropertiesChanged never arrived, so the battery froze at whatever it
+        // read when the desktop started and the five-second branch below just
+        // re-emitted that same cached value for the rest of the session.
+        let rule = zbus::MatchRule::builder()
+            .msg_type(zbus::message::Type::Signal)
+            .interface("org.freedesktop.DBus.Properties")
+            .map_err(|e| format!("bad match rule: {e}"))?
+            .member("PropertiesChanged")
+            .map_err(|e| format!("bad match rule: {e}"))?
+            .path(path.as_str())
+            .map_err(|e| format!("bad match rule: {e}"))?
+            .build();
+
+        let mut stream = MessageStream::for_match_rule(rule, &conn, Some(16))
+            .await
+            .map_err(|e| format!("could not subscribe to UPower: {e}"))?;
 
         loop {
             tokio::select! {
@@ -223,11 +243,17 @@ impl BatteryApplet {
                     }
                 }
 
-                _ = tokio::time::sleep(Duration::from_secs(5)) => {
-                    // On timeout: return cached state if available, otherwise do full fetch
-                    let cached = BATTERY_CACHE.lock().unwrap().clone();
-                    let info = if cached.is_some() {
-                        cached
+                _ = tokio::time::sleep(Duration::from_secs(30)) => {
+                    // A safety net, not the mechanism: with the match rule in
+                    // place the signals do the work. Re-reading the cache would
+                    // only ever repeat what is already on screen, so this asks
+                    // the device again — the cheap sysfs read, since it costs
+                    // nothing and catches a signal we somehow missed.
+                    let info = read_sysfs_battery_info()
+                        .or_else(|| BATTERY_CACHE.lock().unwrap().clone());
+
+                    let info = if info.is_some() {
+                        info
                     } else {
                         // Initial timeout without cache: emit has_battery: false, retry in 5s
                         Some(BatteryInfo {
