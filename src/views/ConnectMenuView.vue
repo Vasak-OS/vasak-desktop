@@ -6,6 +6,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
+import ConnectAppButton from '@/components/buttons/ConnectAppButton.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import type { ConnectApp, ConnectDevice, ConnectRunningApp } from '@/interfaces/connect';
 import {
@@ -31,9 +32,8 @@ const loading = ref(false);
 const errorMessage = ref('');
 const leaving = ref(false);
 
-const { phoneIcon, appIcon, refreshIcon } = useIcons({
+const { phoneIcon, refreshIcon } = useIcons({
 	phoneIcon: 'smartphone',
-	appIcon: 'application-x-executable',
 	refreshIcon: 'view-refresh',
 });
 
@@ -245,21 +245,19 @@ onBeforeUnmount(() => {
 
         <ul v-else class="flex-1 space-y-1 overflow-y-auto">
           <li v-for="app in visibleApps" :key="app.package">
-            <div class="group flex items-center gap-3 rounded-corner p-2 hover:bg-primary/20">
-              <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" @click="open(app)">
-                <img :src="app.icon || appIcon" alt="" class="h-8 w-8 shrink-0" />
-                <span class="truncate">{{ app.label }}</span>
-              </button>
-              <button
-                v-if="isRunning(app.package)"
-                type="button"
-                :title="t('views.connect.close')"
-                @click="close(app)"
-                class="shrink-0 rounded-corner border border-ui-border px-2 py-1 text-xs text-primary hover:bg-primary hover:text-tx-on-primary"
-              >
-                {{ t('views.connect.close') }}
-              </button>
-            </div>
+            <ConnectAppButton :app="app" :running="isRunning(app.package)" @open="open(app)">
+              <template #actions>
+                <button
+                  v-if="isRunning(app.package)"
+                  type="button"
+                  :title="t('views.connect.close')"
+                  @click="close(app)"
+                  class="shrink-0 rounded-corner border border-ui-border px-2 py-1 text-xs text-primary hover:bg-primary hover:text-tx-on-primary"
+                >
+                  {{ t('views.connect.close') }}
+                </button>
+              </template>
+            </ConnectAppButton>
           </li>
           <li v-if="visibleApps.length === 0" class="py-8 text-center text-tx-muted">
             {{ t('views.connect.noApps') }}
