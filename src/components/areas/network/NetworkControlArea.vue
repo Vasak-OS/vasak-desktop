@@ -165,6 +165,9 @@
         <div class="min-w-0">
           <h3 class="font-medium text-tx-main">VPN</h3>
           <p class="text-sm text-tx-muted truncate">{{ vpnLabel }}</p>
+          <!-- Por dónde sale y con qué dirección: lo que alguien mira cuando
+               quiere saber si está entrando a la red de la oficina. -->
+          <p v-if="vpnDetail" class="text-xs text-tx-muted truncate">{{ vpnDetail }}</p>
         </div>
       </div>
     </div>
@@ -205,6 +208,12 @@ const wifiStatus = ref(t('components.NetworkControlArea.checking'));
 const ethernetStatus = ref(t('components.NetworkControlArea.checking'));
 
 const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
+const vpnDetail = computed(() => {
+	if (!vpnConnected.value) return '';
+	return [vpnStatus.value?.interface, vpnStatus.value?.ip_address]
+		.filter(Boolean)
+		.join(' · ');
+});
 const vpnLabel = computed(() => {
 	if (!vpnConnected.value) return t('components.NetworkControlArea.vpnInactive');
 	return vpnStatus.value?.active_profile_name

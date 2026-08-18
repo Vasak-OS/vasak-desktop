@@ -30,6 +30,13 @@ export interface VpnStatus {
 	ip_address?: string;
 	gateway?: string;
 	since_unix_ms?: number;
+	/** La interfaz del túnel: sdwan0 (Twingate), tailscale0, wg0… */
+	interface?: string;
+	/**
+	 * La administra su propia aplicación, no NetworkManager: se muestra, pero
+	 * no se conecta ni se desconecta desde acá.
+	 */
+	managed_externally?: boolean;
 }
 
 export interface NetworkStats {
