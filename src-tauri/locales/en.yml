@@ -175,6 +175,8 @@ components:
     passwordPlaceholder: WiFi password
     connectAction: Connect
     connectError: "Connection error: {0}"
+  NotificationCard:
+    openHint: Click to open
   NotificationArea:
     notificationOne: Notification
     notificationMany: Notifications

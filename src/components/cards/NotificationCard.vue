@@ -4,7 +4,10 @@
     :class="{
       'opacity-75 scale-95': notification.seen,
       'border-l-4 border-l-primary animate-notification-glow': !notification.seen,
-    }" :data-urgency="notification.urgency?.toLowerCase()">
+      'cursor-pointer': hasDefaultAction,
+    }" :data-urgency="notification.urgency?.toLowerCase()"
+    :title="hasDefaultAction ? t('components.NotificationCard.openHint') : undefined"
+    @click="handleDefaultAction">
     <img :src="iconSrc" :alt="notification.app_name" class="w-10 h-10 object-contain transition-transform duration-200 ease-in-out group-hover/nc:scale-105" />
     <div class="flex-1 min-w-0">
       <div class="flex items-center justify-between gap-2">
@@ -73,6 +76,27 @@ const { iconSrc, closeIconSrc } = useIcons({
 	iconSrc: computed(() => props.notification.app_icon),
 	closeIconSrc: 'window-close-symbolic',
 });
+
+/**
+ * La acción que se ejecuta al hacer clic en la notificación misma.
+ *
+ * Es la que usan las aplicaciones para «abrí esto»: el navegador para ir a la
+ * página, el gestor de archivos para mostrar la descarga. No se dibuja como
+ * botón —el botón es la notificación entera— y por eso quedaba inalcanzable:
+ * la tarjeta no tenía clic y la lista de botones la salteaba.
+ */
+const DEFAULT_ACTION = 'default';
+
+const hasDefaultAction = computed(() =>
+	(props.notification.actions || []).some(
+		(value, index) => index % 2 === 0 && value === DEFAULT_ACTION,
+	),
+);
+
+async function handleDefaultAction() {
+	if (!hasDefaultAction.value) return;
+	await handleAction(DEFAULT_ACTION);
+}
 
 // Parse standard DBus actions [key, label, key, label...]
 const parsedActions = computed(() => {
