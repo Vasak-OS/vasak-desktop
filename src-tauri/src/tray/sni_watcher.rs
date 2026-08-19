@@ -558,11 +558,24 @@ impl SniWatcher {
         };
 
         let icon_data = Self::get_icon_data(proxy).await;
-        let menu_path = match proxy.menu().await.ok().filter(|path| !path.is_empty()) {
+        // The path the item actually publishes wins. The fallback below is the
+        // libayatana convention and it is a guess: it only happens to be right
+        // for apps built on libayatana-appindicator, so reaching for it when the
+        // item did tell us where its menu lives is how items ended up with no
+        // context menu at all.
+        let menu_path = match proxy
+            .menu()
+            .await
+            .ok()
+            .map(|path| path.as_str().to_string())
+            .filter(|path| !path.is_empty() && path != "/")
+        {
             Some(path) => Some(path),
             None => {
-                let default_path = format!("/org/ayatana/NotificationItem/{}/Menu", id);
-                Some(default_path)
+                log_info(&format!(
+                    "[SNI] {id} no publica Menu; se prueba la ruta de libayatana"
+                ));
+                Some(format!("/org/ayatana/NotificationItem/{}/Menu", id))
             }
         };
 

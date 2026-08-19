@@ -13,17 +13,25 @@ pub struct DbusMenuLayout(
 /// Get the D-Bus menu layout by manually calling GetLayout.
 /// The response has TWO top-level body items (UINT32 + struct), but zbus
 /// proxy tuple expects them wrapped in a D-Bus struct. We call manually.
+///
+/// `parent_id` is the node to read. It used to be hardcoded to 0, so asking for a
+/// submenu's contents returned the root again and the caller filed the whole menu
+/// away as that submenu's children — every submenu showed a copy of the entire
+/// menu. Servers commonly leave a submenu's children out of the root reply and
+/// only fill them in when asked for that node directly, which is why the depth
+/// below is not enough on its own.
 pub async fn call_get_layout(
     conn: &zbus::Connection,
     bus_name: &str,
     menu_path: &str,
+    parent_id: i32,
 ) -> zbus::Result<(i32, DbusMenuLayout)> {
     let reply = conn.call_method(
         Some(bus_name),
         menu_path,
         Some("com.canonical.dbusmenu"),
         "GetLayout",
-        &(0i32, -1i32, Vec::<&str>::new()),
+        &(parent_id, -1i32, Vec::<&str>::new()),
     ).await?;
 
     let body = reply.body();

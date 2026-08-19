@@ -68,8 +68,15 @@ trait SniItem {
     fn tool_tip(&self) -> zbus::Result<String>;
 
     /// Menu property
+    ///
+    /// This is an object path (`o`) on the bus, not a string. Declaring it as
+    /// `String` made zvariant reject every read on the signature mismatch, and
+    /// the caller turned that error into "no menu path" and fell back to the
+    /// libayatana convention. Apps that happen to use that path worked; apps
+    /// publishing the standard `/com/canonical/dbusmenu` — or their own, like
+    /// `/MenuBar` — had no context menu at all.
     #[zbus(property)]
-    fn menu(&self) -> zbus::Result<String>;
+    fn menu(&self) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
 
     /// ItemIsMenu property
     #[zbus(property)]

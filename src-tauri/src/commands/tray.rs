@@ -234,7 +234,7 @@ fn load_dbus_menu_level<'a>(
     Box::pin(async move {
         let _ = call_about_to_show(conn, bus_name, menu_path, parent_id).await;
 
-        let (_revision, layout) = call_get_layout(conn, bus_name, menu_path).await.map_err(|e| e.to_string())?;
+        let (_revision, layout) = call_get_layout(conn, bus_name, menu_path, parent_id).await.map_err(|e| e.to_string())?;
         let root_menu = parse_dbus_menu_layout(layout);
         let mut items = root_menu.children.unwrap_or_default();
 
@@ -476,4 +476,113 @@ pub async fn tray_popup_click(
     proxy.event(menu_id, "clicked", &Value::from(""), 0).await.map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Reads every tray item that is actually on the bus and walks its menu with
+    /// the same code the panel uses.
+    ///
+    /// The bug this covers does not show up without a real app on the other end:
+    /// `Menu` is an object path and was declared as `String`, so zvariant rejected
+    /// every read, the caller took that as "no menu" and fell back to the
+    /// libayatana path — which is only right for libayatana apps. Everything else
+    /// looked like an item with no context menu.
+    ///
+    /// Ignored by default: it needs a session bus with at least one tray app
+    /// running. `cargo test -- --ignored --nocapture tray_menus`.
+    #[tokio::test]
+    #[ignore]
+    async fn tray_menus_resolve_against_the_live_bus() {
+        let conn = Connection::session().await.expect("no hay bus de sesión");
+
+        let watcher = zbus::Proxy::new(
+            &conn,
+            "org.kde.StatusNotifierWatcher",
+            "/StatusNotifierWatcher",
+            "org.kde.StatusNotifierWatcher",
+        )
+        .await
+        .expect("no hay StatusNotifierWatcher");
+
+        let items: Vec<String> = watcher
+            .get_property("RegisteredStatusNotifierItems")
+            .await
+            .expect("no se pudo leer RegisteredStatusNotifierItems");
+
+        assert!(
+            !items.is_empty(),
+            "no hay items en el tray; abrí una app con icono de bandeja"
+        );
+
+        for service in &items {
+            let (bus_name, object_path) = match service.split_once('/') {
+                Some((bus, path)) => (bus.to_string(), format!("/{path}")),
+                None => (service.clone(), "/StatusNotifierItem".to_string()),
+            };
+
+            let proxy = SniItemProxy::builder(&conn)
+                .destination(bus_name.as_str())
+                .unwrap()
+                .path(object_path.clone())
+                .unwrap()
+                .build()
+                .await
+                .expect("no se pudo armar el proxy del item");
+
+            // The whole point of the type fix: this used to be an Err.
+            let menu_path = proxy
+                .menu()
+                .await
+                .unwrap_or_else(|e| panic!("{service}: no se pudo leer Menu: {e}"));
+            let menu_path = menu_path.as_str().to_string();
+            println!("{service}\n  Menu -> {menu_path}");
+
+            // The real path the panel takes, recursion included.
+            let children = load_dbus_menu_level(&conn, &bus_name, &menu_path, 0)
+                .await
+                .unwrap_or_else(|e| panic!("{service}: no se pudo leer el menú: {e}"));
+
+            println!("  {} entradas de primer nivel", children.len());
+            for child in &children {
+                let subs = child.children.clone().unwrap_or_default();
+                println!(
+                    "    id={:<4} type={:<9} sub={} {:?}",
+                    child.id,
+                    child.menu_type,
+                    subs.len(),
+                    child.label
+                );
+                for sub in &subs {
+                    println!("        id={:<4} {:?}", sub.id, sub.label);
+                }
+
+                // A submenu that reports no children is the duplication bug's
+                // other face: GetLayout used to ignore the parent id, so this
+                // either came back empty or came back as a copy of the root.
+                if child.menu_type == "submenu" {
+                    assert!(
+                        !subs.is_empty(),
+                        "{service}: el submenú {:?} (id={}) quedó vacío",
+                        child.label,
+                        child.id
+                    );
+                    let duplicated = subs.len() == children.len()
+                        && subs.iter().zip(children.iter()).all(|(a, b)| a.id == b.id);
+                    assert!(
+                        !duplicated,
+                        "{service}: el submenú {:?} devolvió el menú raíz entero",
+                        child.label
+                    );
+                }
+            }
+
+            assert!(
+                !children.is_empty(),
+                "{service}: el menú se leyó vacío desde {menu_path}"
+            );
+        }
+    }
 }

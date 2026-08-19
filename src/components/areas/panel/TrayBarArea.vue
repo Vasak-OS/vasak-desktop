@@ -9,6 +9,7 @@ import TrayIconCapsLock from '@/components/buttons/TrayIconCapsLock.vue';
 import TrayIconMicrophone from '@/components/buttons/TrayIconMicrophone.vue';
 import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
 import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
+import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import type { TrayItem } from '@/interfaces/tray';
 import { batteryExists } from '@/services/core.service';
@@ -161,20 +162,9 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
         @transitionend="onTransitionEnd"
         :title="item.tooltip || item.title"
       >
-        <!-- Icon with loading state -->
+        <!-- Icon: own pixmap, then the theme, then the initial -->
         <div class="relative w-4 h-4 flex items-center justify-center">
-          <img
-            v-if="item.icon_data"
-            :src="`data:image/png;base64,${item.icon_data}`"
-            :alt="item.title || item.service_name"
-            class="w-4 h-4 object-contain transition-all duration-300 group-hover:brightness-110 group-hover:scale-110 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]"
-            @error="($event.target as HTMLImageElement).style.display = 'none'"
-          />
-          <div
-            v-else
-            class="w-4 h-4 object-contain transition-all duration-300 group-hover:brightness-110 group-hover:scale-110 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]-placeholder"
-            :class="{ 'animate-pulse': !item.icon_data }"
-          />
+          <TrayItemButton :item="item" />
         </div>
 
         <!-- Status indicator -->
