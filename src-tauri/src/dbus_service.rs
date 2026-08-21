@@ -2,7 +2,7 @@ use crate::commands::{toggle_control_center, toggle_menu, toggle_search, toggle_
 use crate::constants::DBUS_SERVICE_NAME;
 use crate::logger::{log_info, log_error, log_warning, log_debug};
 use futures_util::TryStreamExt;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use zbus::{Connection, Message, Result as ZbusResult};
 
 /// Servicio D-Bus simplificado para controlar la aplicación Vasak Desktop
@@ -56,6 +56,23 @@ impl DesktopService {
                 tauri::async_runtime::spawn(async move {
                     let _ = toggle_session_popup("shutdown".to_string(), app_handle).await;
                 });
+            }
+            // Pausar y reanudar el fondo en movimiento desde afuera.
+            //
+            // Lo usa el temporizador de inactividad: un video decodificando
+            // detrás de la pantalla de bloqueo, durante horas, es el gasto más
+            // grande y el más inútil de todos. El escritorio no puede darse
+            // cuenta solo —la superficie de bloqueo es de otro proceso y la
+            // suya sigue mapeada—, así que se lo avisa quien sí sabe.
+            "PauseWallpaper" | "ResumeWallpaper" => {
+                let reproducir = member == "ResumeWallpaper";
+                log_info(&format!(
+                    "D-Bus: {} el fondo en movimiento",
+                    if reproducir { "reanudando" } else { "pausando" }
+                ));
+                if let Err(e) = self.app_handle.emit("wallpaper-playback", reproducir) {
+                    log_error(&format!("D-Bus: no se pudo avisar al fondo: {}", e));
+                }
             }
             _ => {
                 log::warn!("D-Bus: Unknown method called: {}", member);

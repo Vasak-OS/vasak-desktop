@@ -80,6 +80,8 @@ views:
     notificationsAlt: Notifications
   desktop:
     backgroundAlt: Wallpaper
+    videoWallpaperPowerTitle: A moving wallpaper uses more power
+    videoWallpaperPowerBody: A video wallpaper keeps the system working all the time and drains more battery than an image. It can pause automatically on battery from Settings › Appearance › Wallpaper.
   search:
     iconAlt: Search
     placeholder: Search apps, files and actions...

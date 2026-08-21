@@ -6,6 +6,7 @@
     "desktop*",
     "panel",
     "menu",
+    "connect",
     "control_center",
     "applet_bluetooth",
     "applet_network",
