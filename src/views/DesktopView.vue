@@ -4,18 +4,14 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { homeDir } from '@tauri-apps/api/path';
-import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { Store } from 'pinia';
-import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import WidgetLayer from '@/components/widgets/WidgetLayer.vue';
-import type { FileEntry } from '@/interfaces/file';
 import { getBatteryInfo } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
-import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
 import { logError } from '@/utils/logger';
 
 const route = useRoute();
@@ -34,7 +30,6 @@ const configStore = useConfigStore() as Store<
 	'config',
 	{ config: VSKConfig; loadConfig: () => Promise<void> }
 >;
-const desktopFiles = ref<FileEntry[]>([]);
 
 // Computados reactivos que leen directamente de la configuración del store
 const DEFAULT_WALLPAPER = '/usr/share/backgrounds/cutefishos/wallpaper-9.jpg';
@@ -274,76 +269,18 @@ onUnmounted(() => {
 	playbackListeners.forEach((off) => off());
 });
 
-const showFiles = computed(() => (configStore as any).config?.desktop?.showfiles ?? false);
 const showHiddenFiles = computed(
 	() => (configStore as any).config?.desktop?.showhiddenfiles ?? false
 );
-const iconSize: ComputedRef<number> = computed(
-	(): number => (configStore as any).config?.desktop?.iconsize ?? 64
-);
 
-// Cargar archivos del escritorio
-const loadDesktopFiles = async () => {
-	if (!showFiles.value) {
-		desktopFiles.value = [];
-		return;
-	}
 
-	try {
-		const home = await homeDir();
-		const userDirs = await getUserDirectories(home);
 
-		// Buscar el directorio Desktop en las carpetas XDG
-		const desktopDir = userDirs.find((dir) => dir.xdgKey === 'XDG_DESKTOP_DIR');
-
-		if (desktopDir) {
-			desktopFiles.value = await loadDirectory(desktopDir.path, showHiddenFiles.value);
-		} else {
-			// Fallback al directorio Desktop tradicional si no se encuentra en XDG
-			const desktopPath = `${home}/Desktop`;
-			desktopFiles.value = await loadDirectory(desktopPath, showHiddenFiles.value);
-		}
-	} catch (error) {
-		logError('Error loading desktop files:', error);
-		desktopFiles.value = [];
-	}
-};
-
-// Manejar clicks en archivos y carpetas
-const handleFileClick = async (file: FileEntry) => {
-	if (file.isDirectory) {
-		// Abrir el file manager externo en la carpeta seleccionada
-		try {
-			const cmd = Command.create('vasak-file-manager', [file.path]);
-			await cmd.spawn();
-		} catch (error) {
-			logError('Error al abrir file manager:', error);
-		}
-	} else {
-		// Abrir el archivo con la aplicación predeterminada del sistema
-		try {
-			const cmd = Command.create('open', [file.path]);
-			await cmd.spawn();
-		} catch (error) {
-			logError('Error al abrir archivo:', file.path);
-		}
-	}
-};
-
-// Ver cambios en showFiles para recargar archivos
-watch(showFiles, () => {
-	if (!isSecondaryMonitor.value) {
-		loadDesktopFiles();
-	}
-});
 
 watch(showHiddenFiles, () => {
 	if (!isSecondaryMonitor.value) {
-		loadDesktopFiles();
 	}
 });
 
-let unlistenTheme: (() => void) | null = null;
 let isMounted = false;
 
 onMounted(async () => {
@@ -351,33 +288,19 @@ onMounted(async () => {
 	await (configStore as any).loadConfig();
 	if (!isMounted) return;
 
-	// Secondary monitors only need wallpaper — skip file loading and theme listeners
-	if (!isSecondaryMonitor.value) {
-		await loadDesktopFiles();
-		if (!isMounted) return;
-
-		const unlisten = await listen('vicons:theme-changed', () => {
-			loadDesktopFiles();
-		});
-
-		if (isMounted) {
-			unlistenTheme = unlisten;
-		} else {
-			unlisten();
-		}
-	}
+	// El escritorio secundario sólo necesita el fondo: ni widgets ni escuchas.
+	//
+	// El aviso de cambio de tema de los iconos ya no se escucha acá: servía para
+	// redibujar los iconos de los archivos del escritorio, que ahora son un
+	// widget y se releen solos.
 });
 
 onUnmounted(() => {
 	isMounted = false;
-	unlistenTheme?.();
 });
 
 useSharedEvent('config-changed', async () => {
 	await (configStore as any).loadConfig();
-	if (!isSecondaryMonitor.value) {
-		await loadDesktopFiles();
-	}
 });
 </script>
 
@@ -393,25 +316,6 @@ useSharedEvent('config-changed', async () => {
     @error="onVideoError"></video>
   <img v-else :src="imageBackground" :alt="t('views.desktop.backgroundAlt')" class="w-screen h-screen object-cover absolute z-10"
     style="border-radius: 0px" />
-
-  <!-- Grid de archivos del escritorio (primary monitor only) -->
-  <div v-if="!isSecondaryMonitor && showFiles && desktopFiles.length > 0" class="absolute z-15 w-full h-full overflow-auto px-4 py-14">
-    <div class="grid gap-4 content-start" :style="{
-      gridTemplateColumns: `repeat(auto-fill, minmax(${40 + iconSize}px, 1fr))`
-    }">
-      <div v-for="file in desktopFiles" :key="file.path"
-        class="flex flex-col items-center justify-start cursor-pointer hover:bg-white/10 rounded-lg p-2 transition-colors"
-        :style="{ width: `${(iconSize as number) + 40}px` }" @dblclick="handleFileClick(file)">
-        <img v-if="file.icon" :src="file.icon" :alt="file.name" class="mb-1 shrink-0"
-          :style="{ width: `${iconSize}px`, height: `${iconSize}px` }" />
-        <span class="text-white text-center text-sm warp-break-words max-w-full px-1 py-0.5 rounded"
-          style="text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.6);"
-          :style="{ fontSize: `${Math.max(12, iconSize / 6)}px` }">
-          {{ file.name }}
-        </span>
-      </div>
-    </div>
-  </div>
 
   <!-- Widgets: ahora viven en una cuadrícula con su posición guardada, y se
        mueven, se agregan y se sacan desde el modo edición. Antes estaban

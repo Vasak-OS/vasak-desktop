@@ -3,6 +3,7 @@ import { writeConfig } from '@vasakgroup/plugin-config-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
+import FilesWidget from '@/components/widgets/FilesWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import WidgetHost from '@/components/widgets/WidgetHost.vue';
@@ -36,8 +37,7 @@ const componentes: Record<WidgetType, unknown> = {
 	clock: DesktopClockWidget,
 	music: MusicWidget,
 	weather: WeatherWidget,
-	// El de archivos llega en el paso siguiente; hasta entonces no se ofrece.
-	files: null,
+	files: FilesWidget,
 };
 
 const contenedor = ref<HTMLElement | null>(null);

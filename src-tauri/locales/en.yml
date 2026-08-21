@@ -262,3 +262,4 @@ widgets:
   files:
     name: Desktop files
     description: What you have in your Desktop folder
+    empty: Nothing on the desktop
