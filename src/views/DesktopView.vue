@@ -11,8 +11,7 @@ import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import type { Store } from 'pinia';
 import { type ComputedRef, computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
-import MusicWidget from '@/components/widgets/MusicWidget.vue';
+import WidgetLayer from '@/components/widgets/WidgetLayer.vue';
 import type { FileEntry } from '@/interfaces/file';
 import { getBatteryInfo } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
@@ -414,9 +413,8 @@ useSharedEvent('config-changed', async () => {
     </div>
   </div>
 
-  <!-- Widgets (primary monitor only) -->
-  <main v-if="!isSecondaryMonitor" class="w-screen h-screen flex flex-col items-center justify-center absolute z-20 pointer-events-none">
-    <MusicWidget class="pointer-events-auto" />
-    <DesktopClockWidget class="pointer-events-auto" />
-  </main>
+  <!-- Widgets: ahora viven en una cuadrícula con su posición guardada, y se
+       mueven, se agregan y se sacan desde el modo edición. Antes estaban
+       apilados en un flex centrado, sin posición ni nada que se pudiera tocar. -->
+  <WidgetLayer v-if="!isSecondaryMonitor" :config="(configStore as any).config" />
 </template>
