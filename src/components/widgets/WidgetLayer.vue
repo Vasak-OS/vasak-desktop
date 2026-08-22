@@ -168,8 +168,24 @@ function terminarEdicion() {
 	void guardar();
 }
 
-/** Se entra a editar con clic derecho en el escritorio, como en Android con un toque largo. */
+/**
+ * Se entra a editar con clic derecho en el escritorio, como en Android con un
+ * toque largo.
+ *
+ * La escucha va en la ventana y no en el contenedor de la cuadrícula: fuera del
+ * modo edición ese contenedor tiene `pointer-events: none` —para no robarle los
+ * clics al escritorio— y entonces el clic derecho no le llegaba nunca. El
+ * resultado era que no se podía entrar a editar, y por lo tanto nada se podía
+ * mover.
+ */
 function abrirEdicion(evento: MouseEvent) {
+	// Sólo el clic derecho sobre el fondo. Si viene de un widget o de un panel,
+	// es asunto de ese componente: el día que los widgets tengan su propio menú
+	// contextual, este no se lo puede comer.
+	const destino = evento.target as HTMLElement | null;
+
+	if (editing.value || destino?.closest('[data-widget], [data-widget-panel]')) return;
+
 	evento.preventDefault();
 	editing.value = true;
 	panelAbierto.value = true;
@@ -180,6 +196,7 @@ let observador: ResizeObserver | null = null;
 onMounted(() => {
 	placements.value = leerDeConfig();
 	medir();
+	window.addEventListener('contextmenu', abrirEdicion);
 
 	if (contenedor.value) {
 		observador = new ResizeObserver(medir);
@@ -187,7 +204,10 @@ onMounted(() => {
 	}
 });
 
-onUnmounted(() => observador?.disconnect());
+onUnmounted(() => {
+	observador?.disconnect();
+	window.removeEventListener('contextmenu', abrirEdicion);
+});
 
 // Si la configuración cambia desde otro lado —Ajustes, otro monitor— se relee.
 watch(
@@ -205,7 +225,6 @@ defineExpose({ abrirEdicion });
 		ref="contenedor"
 		class="absolute inset-0 z-20"
 		:class="editing ? 'pointer-events-auto bg-black/20' : 'pointer-events-none'"
-		@contextmenu="abrirEdicion"
 	>
 		<div
 			class="grid h-full w-full"
@@ -226,6 +245,7 @@ defineExpose({ abrirEdicion });
 				:min-size="WIDGETS[puesto.type].min"
 				:max-size="WIDGETS[puesto.type].max"
 				class="pointer-events-auto"
+				data-widget
 				@move="(posicion) => mover(puesto.id, posicion)"
 				@resize="(tamano) => redimensionar(puesto.id, tamano)"
 				@remove="quitar(puesto.id)"
@@ -237,6 +257,7 @@ defineExpose({ abrirEdicion });
 		<!-- Panel de widgets disponibles, sólo mientras se edita. -->
 		<aside
 			v-if="editing && panelAbierto"
+			data-widget-panel
 			class="pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner border border-ui-border bg-ui-bg/90 p-4 shadow-2xl backdrop-blur-lg"
 		>
 			<div class="mb-3 flex items-center justify-between">

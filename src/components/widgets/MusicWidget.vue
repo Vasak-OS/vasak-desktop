@@ -92,18 +92,18 @@ watch(
 
 <template>
   <div
-    class="p-4 rounded-corner bg-ui-bg/80 flex mb-4 ring-2 ring-primary items-center"
+    class="flex h-full w-full items-center gap-3 overflow-hidden rounded-corner bg-ui-bg/80 p-3 ring-2 ring-primary"
   >
     <img
       :src="imgSrc"
       :alt="musicInfo.title"
       :title="musicInfo.title"
-      class="w-24 h-24 shrink-0"
+      class="aspect-square h-full max-h-24 w-auto shrink-0 rounded-corner object-cover"
       :class="{ 'animate-pulse': isPlaying }"
       @error="onImgError"
     />
 
-    <div class="ml-4 flex flex-col justify-center min-w-0">
+    <div class="flex min-w-0 flex-1 flex-col justify-center">
       <div class="mb-2 min-w-0">
         <div
           ref="titleContainer"
@@ -140,7 +140,7 @@ watch(
       >
         <button
           @click.prevent="onPrev"
-          class="w-12 h-12 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
           :title="t('components.MusicWidget.previous')"
         >
           <img :src="prevIcon" :alt="t('components.MusicWidget.previous')" class="w-4 h-4" />
@@ -148,7 +148,7 @@ watch(
 
         <button
           @click.prevent="onPlayPause"
-          class="w-12 h-12 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
           :title="isPlaying
             ? t('components.MusicWidget.pause')
             : t('components.MusicWidget.play')"
@@ -164,7 +164,7 @@ watch(
 
         <button
           @click.prevent="onNext"
-          class="w-12 h-12 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
           :title="t('components.MusicWidget.next')"
         >
           <img :src="nextIcon" :alt="t('components.MusicWidget.next')" class="w-4 h-4" />

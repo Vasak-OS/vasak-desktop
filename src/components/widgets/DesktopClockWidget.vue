@@ -22,7 +22,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex flex-col items-center justify-center h-auto p-4 rounded-corner bg-ui-bg/80 backdrop-blur-lg shadow-lg mb-4 ring-2 ring-primary/50">
-        <h1 class="text-6xl font-bold text-white font-mono">{{ time }}</h1>
+    <!-- container-type hace que las unidades cqh de abajo midan contra el widget y
+         no contra la ventana: sin esto, la hora salía del tamaño de la pantalla. -->
+    <div style="container-type: size"
+        class="flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-corner bg-ui-bg/80 p-3 shadow-lg ring-2 ring-primary/50 backdrop-blur-lg">
+        <h1 class="font-mono text-[clamp(1.5rem,18cqh,4rem)] font-bold leading-none text-tx-main">{{ time }}</h1>
     </div>
 </template>
