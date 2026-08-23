@@ -13,6 +13,15 @@ const weatherInfo: Ref<WeatherInfo | null> = ref(null);
 const props = defineProps<{
 	code: number;
 	dayOrNight: 'day' | 'night';
+	/**
+	 * El tamaño, como clases de Tailwind.
+	 *
+	 * Va como propiedad y no como clase del lado de quien lo usa porque Vue
+	 * suma las dos clases —la de acá y la de afuera— y cuál gana lo decide el
+	 * orden del CSS, no el del atributo: `h-16` le ganaba a `h-5` y el icono
+	 * salía de 64 píxeles en un panel de 36.
+	 */
+	sizeClass?: string;
 }>();
 
 const iconPath = useIcon(computed(() => {
@@ -31,7 +40,7 @@ const iconPath = useIcon(computed(() => {
 	  :src="iconPath"
 	  :alt="weatherInfo ? weatherInfo[dayOrNight].description : t('components.WeatherIcon.unknown')"
 	  :title="weatherInfo ? weatherInfo[dayOrNight].description : t('components.WeatherIcon.unknown')"
-	  class="img-fluid h-16 w-16"
+	  :class="['img-fluid', props.sizeClass ?? 'h-16 w-16']"
 	/>
   </transition>
 </template>

@@ -37,7 +37,7 @@ const detalle = computed(() => {
     class="flex items-center gap-1 rounded-corner p-1 hover:bg-primary"
     :title="detalle"
   >
-    <WeatherIcon :code="current.weather_code" :dayOrNight="dayOrNight" class="h-5 w-5" />
+    <WeatherIcon :code="current.weather_code" :dayOrNight="dayOrNight" size-class="h-5 w-5" />
     <span class="text-xs font-semibold tabular-nums text-tx-main">{{ grados }}</span>
   </div>
 </template>
