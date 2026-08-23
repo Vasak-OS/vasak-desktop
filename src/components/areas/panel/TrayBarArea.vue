@@ -28,7 +28,7 @@ import { useSharedEvent } from '@/tools/event.bus';
 import { logError, logWarning } from '@/utils/logger';
 
 // Qué partes del panel están encendidas en la configuración.
-const { showWeather, showMusic, showTransfer } = usePanelConfig();
+const { showWeather, showMusic, showTransfer, showTray } = usePanelConfig();
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
@@ -155,7 +155,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
       <TrayWeatherControl v-if="showWeather" key="weather" />
       <TrayMusicControl v-if="showMusic" key="music-control" />
       <div
-        v-for="item in trayItems"
+        v-for="item in (showTray ? trayItems : [])"
         :key="item.service_name"
         :class="[
           'relative flex items-center justify-center w-7 h-7 rounded-corner cursor-pointer transform transition-all duration-300 ease-out hover:bg-white/15 hover:scale-110 hover:rotate-3 active:scale-95 active:rotate-0 group',
