@@ -41,6 +41,13 @@ async function cargar() {
 	}
 }
 
+/**
+ * Abre lo que se eligió.
+ *
+ * El doble clic es para el mouse; Enter y espacio para el teclado. Un `button`
+ * activado por teclado emite `click`, no `dblclick`, así que sin esos dos
+ * atajos quien no usa mouse no podía abrir nada del escritorio.
+ */
 async function abrir(file: FileEntry) {
 	try {
 		// Una carpeta va al gestor de archivos; lo demás, a la aplicación que le
@@ -94,6 +101,8 @@ watch(showHidden, () => void cargar());
 					class="flex flex-col items-center justify-start rounded-corner p-2 transition-colors hover:bg-ui-surface/50"
 					:title="file.name"
 					@dblclick="abrir(file)"
+					@keydown.enter.prevent="abrir(file)"
+					@keydown.space.prevent="abrir(file)"
 				>
 					<img
 						v-if="file.icon"

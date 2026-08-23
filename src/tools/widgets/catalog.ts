@@ -145,6 +145,44 @@ export function clampToGrid(
 	};
 }
 
+/**
+ * Acomoda una disposición entera a la cuadrícula, sin dejar widgets pisados.
+ *
+ * Acomodar de a uno no alcanza, y el caso lo mostró la revisión del PR: en
+ * 1366×768 la cuadrícula tiene 10 columnas y 5 filas; el reloj ocupa las filas
+ * 3 y 4, y la música —que estaba en la fila 5 con dos de alto— se acomoda a la
+ * fila 4 para entrar, quedando encima del reloj. Y esa disposición pisada se
+ * guardaba.
+ *
+ * Acá cada widget se acomoda y, si cae sobre otro ya ubicado, se lo manda al
+ * primer hueco libre. El que no tiene dónde entrar se descarta: es una pantalla
+ * donde no cabe, y dejarlo invisible debajo de otro es peor que no tenerlo.
+ */
+export function fitAll(
+	placements: WidgetPlacement[],
+	columns: number,
+	rows: number
+): WidgetPlacement[] {
+	const ubicados: WidgetPlacement[] = [];
+
+	for (const placement of placements) {
+		const acomodado = clampToGrid(placement, columns, rows);
+
+		if (!ubicados.some((otro) => overlaps(acomodado, otro))) {
+			ubicados.push(acomodado);
+			continue;
+		}
+
+		const hueco = firstFreeSlot(ubicados, { w: acomodado.w, h: acomodado.h }, columns, rows);
+
+		if (hueco) {
+			ubicados.push({ ...acomodado, ...hueco });
+		}
+	}
+
+	return ubicados;
+}
+
 /** Si dos widgets se pisan. */
 export function overlaps(a: WidgetPlacement, b: WidgetPlacement): boolean {
 	return (

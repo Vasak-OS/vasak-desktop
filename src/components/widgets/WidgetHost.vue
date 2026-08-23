@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 import { CELL_GAP, CELL_SIZE, type WidgetPlacement } from '@/tools/widgets/catalog';
 
 /**
@@ -24,6 +24,8 @@ const props = defineProps<{
 const emit = defineEmits<{
 	(e: 'move', posicion: { x: number; y: number }): void;
 	(e: 'resize', tamano: { w: number; h: number }): void;
+	/** El arrastre terminó: es el momento de guardar, no cada celda. */
+	(e: 'commit'): void;
 	(e: 'remove'): void;
 }>();
 
@@ -59,15 +61,41 @@ function seguirPuntero(
 	};
 
 	const soltar = () => {
-		window.removeEventListener('pointermove', mover);
-		window.removeEventListener('pointerup', soltar);
-		dragging.value = false;
-		resizing.value = false;
+		limpiar();
+		emit('commit');
 	};
 
+	// `pointercancel` importa: si el sistema o el navegador cancelan el gesto
+	// —un gesto del touchpad, la ventana que pierde el foco— `pointerup` no
+	// llega nunca, y sin esto el widget seguía al puntero para siempre.
 	window.addEventListener('pointermove', mover);
 	window.addEventListener('pointerup', soltar);
+	window.addEventListener('pointercancel', soltar);
+
+	soltarActual = () => {
+		window.removeEventListener('pointermove', mover);
+		window.removeEventListener('pointerup', soltar);
+		window.removeEventListener('pointercancel', soltar);
+		dragging.value = false;
+		resizing.value = false;
+		soltarActual = null;
+	};
 }
+
+/**
+ * Cómo se sueltan las escuchas del arrastre en curso.
+ *
+ * Se guarda aparte para poder cortarlo también al desmontar: las escuchas
+ * viven en la ventana, así que sobrevivían al componente y quedaban moviendo
+ * un widget que ya no existe.
+ */
+let soltarActual: (() => void) | null = null;
+
+function limpiar() {
+	soltarActual?.();
+}
+
+onUnmounted(limpiar);
 
 function empezarArrastre(evento: PointerEvent) {
 	if (!props.editing || evento.button !== 0) return;

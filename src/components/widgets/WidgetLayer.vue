@@ -12,9 +12,9 @@ import {
 	CELL_SIZE,
 	GRID_PADDING,
 	WIDGETS,
-	clampToGrid,
 	defaultLayout,
 	firstFreeSlot,
+	fitAll,
 	gridSize,
 	overlaps,
 	type WidgetPlacement,
@@ -57,23 +57,31 @@ const disponibles = computed(() =>
 	})
 );
 
-/** Lo guardado, o la disposición de siempre para quien nunca configuró nada. */
+/**
+ * Lo guardado, o la disposición de siempre para quien nunca configuró nada.
+ *
+ * Siempre acomodado a la cuadrícula que hay ahora: una disposición guardada en
+ * una pantalla más grande traía widgets fuera de borde, y acomodar de a uno los
+ * dejaba pisados.
+ */
 function leerDeConfig(): WidgetPlacement[] {
 	const guardados = props.config?.desktop?.widgets;
 
-	if (Array.isArray(guardados) && guardados.length > 0) {
-		return guardados.filter((w: WidgetPlacement) => w?.type && componentes[w.type] !== undefined);
-	}
+	const crudos: WidgetPlacement[] =
+		Array.isArray(guardados) && guardados.length > 0
+			? guardados.filter((w: WidgetPlacement) => w?.type && componentes[w.type] !== undefined)
+			: defaultLayout(Boolean(props.config?.desktop?.showfiles));
 
-	return defaultLayout(Boolean(props.config?.desktop?.showfiles));
+	return fitAll(crudos, grid.value.columns, grid.value.rows);
 }
 
 /**
  * Guarda la disposición.
  *
- * Se escribe la configuración entera porque es como funciona el plugin; lo que
- * importa es no hacerlo en cada píxel del arrastre, sino cuando la posición ya
- * cambió de celda.
+ * Se escribe la configuración entera porque es como funciona el plugin. Se
+ * llama al terminar el arrastre —no en cada celda que se cruza— y al agregar o
+ * sacar un widget. Antes sólo se guardaba al salir del modo edición: si la
+ * sesión se cortaba antes, el trabajo de acomodar se perdía.
  */
 async function guardar() {
 	try {
@@ -95,10 +103,8 @@ function medir() {
 	alto.value = caja.height;
 
 	// Una pantalla más chica que antes puede dejar widgets afuera: se acomodan
-	// en vez de quedar invisibles para siempre.
-	const acomodados = placements.value.map((puesto) =>
-		clampToGrid(puesto, grid.value.columns, grid.value.rows)
-	);
+	// en vez de quedar invisibles para siempre, y sin quedar uno encima de otro.
+	const acomodados = fitAll(placements.value, grid.value.columns, grid.value.rows);
 
 	if (JSON.stringify(acomodados) !== JSON.stringify(placements.value)) {
 		placements.value = acomodados;
@@ -248,6 +254,7 @@ defineExpose({ abrirEdicion });
 				data-widget
 				@move="(posicion) => mover(puesto.id, posicion)"
 				@resize="(tamano) => redimensionar(puesto.id, tamano)"
+				@commit="guardar()"
 				@remove="quitar(puesto.id)"
 			>
 				<component :is="componentes[puesto.type]" :variant="puesto.variant" />

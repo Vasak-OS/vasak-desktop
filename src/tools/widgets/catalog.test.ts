@@ -5,6 +5,7 @@ import {
 	clampToGrid,
 	defaultLayout,
 	firstFreeSlot,
+	fitAll,
 	gridSize,
 	overlaps,
 	type WidgetPlacement,
@@ -107,5 +108,49 @@ describe('escritorio nuevo', () => {
 				expect(overlaps(puestos[i], puestos[j])).toBe(false);
 			}
 		}
+	});
+});
+
+describe('acomodar una disposición entera', () => {
+	/**
+	 * El caso exacto que encontró la revisión: en 1366×768 la cuadrícula tiene
+	 * 10×5, y al acomodar la música para que entre, quedaba encima del reloj.
+	 */
+	test('en una pantalla chica ningún widget queda encima de otro', () => {
+		const { columns, rows } = gridSize(1366, 768);
+
+		for (const conArchivos of [false, true]) {
+			const acomodados = fitAll(defaultLayout(conArchivos), columns, rows);
+
+			for (let i = 0; i < acomodados.length; i++) {
+				for (let j = i + 1; j < acomodados.length; j++) {
+					expect(overlaps(acomodados[i], acomodados[j])).toBe(false);
+				}
+			}
+		}
+	});
+
+	test('todos quedan dentro de la cuadrícula', () => {
+		const { columns, rows } = gridSize(1366, 768);
+
+		for (const puesto of fitAll(defaultLayout(true), columns, rows)) {
+			expect(puesto.x + puesto.w - 1).toBeLessThanOrEqual(columns);
+			expect(puesto.y + puesto.h - 1).toBeLessThanOrEqual(rows);
+		}
+	});
+
+	test('lo que no tiene dónde entrar se descarta en vez de quedar tapado', () => {
+		const apretado = fitAll(
+			[widget(1, 1, 2, 2), widget(1, 1, 2, 2), widget(1, 1, 2, 2)],
+			2,
+			2
+		);
+
+		expect(apretado).toHaveLength(1);
+	});
+
+	test('una disposición que ya estaba bien no se toca', () => {
+		const original = [widget(1, 1, 2, 2), widget(3, 1, 2, 2)];
+		expect(fitAll(original, 10, 5)).toEqual(original);
 	});
 });

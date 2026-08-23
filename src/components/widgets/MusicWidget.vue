@@ -3,7 +3,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { nextTick, onMounted, ref, watch } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 
 const { t } = useI18n();
@@ -58,21 +58,30 @@ const titleInner = ref<HTMLElement | null>(null);
 const titleOverflow = ref(false);
 const marqueeDistance = ref(0);
 const marqueeDuration = ref(6);
-const TITLE_MAX_PX = 150;
-
+/**
+ * Si el título no entra, se desliza.
+ *
+ * Antes esto forzaba el contenedor a 150 px fijos, de cuando el widget tenía un
+ * solo tamaño posible. Con la cuadrícula el widget se redimensiona: en uno
+ * angosto esa caja se salía de su columna, y en uno ancho recortaba títulos que
+ * entraban de sobra. Ahora se mide el ancho que hay y se recalcula cuando el
+ * widget cambia de tamaño.
+ */
 function updateTitleOverflow(): void {
 	const container = titleContainer.value;
 	const inner = titleInner.value;
+
 	if (!container || !inner) {
 		titleOverflow.value = false;
 		return;
 	}
-	container.style.width = `${TITLE_MAX_PX}px`;
-	const cw = container.clientWidth;
-	const iw = inner.scrollWidth;
-	if (iw > cw + 2) {
+
+	const disponible = container.clientWidth;
+	const necesario = inner.scrollWidth;
+
+	if (disponible > 0 && necesario > disponible + 2) {
 		titleOverflow.value = true;
-		marqueeDistance.value = iw - cw;
+		marqueeDistance.value = necesario - disponible;
 		marqueeDuration.value = Math.min(20, Math.max(4, marqueeDistance.value / 30));
 	} else {
 		titleOverflow.value = false;
@@ -80,6 +89,18 @@ function updateTitleOverflow(): void {
 		marqueeDuration.value = 0;
 	}
 }
+
+let observadorTitulo: ResizeObserver | null = null;
+
+onMounted(() => {
+	if (!titleContainer.value) return;
+
+	observadorTitulo = new ResizeObserver(() => updateTitleOverflow());
+	observadorTitulo.observe(titleContainer.value);
+	updateTitleOverflow();
+});
+
+onUnmounted(() => observadorTitulo?.disconnect());
 
 watch(
 	() => musicInfo.value?.title,
