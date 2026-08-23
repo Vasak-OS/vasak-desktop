@@ -220,9 +220,6 @@ components:
     networkDisconnected: Red desconectada
     vpnConnected: VPN conectada
     vpnDisconnected: VPN desconectada
-    vpnProfileActive: Perfil VPN activo
-    vpnProfileTitle: "Perfil VPN activo: {0}"
-    vpnBadge: VPN activa
   TrayIconSound:
     mute: Silenciar
     unmute: Activar sonido
@@ -234,6 +231,18 @@ components:
   VolumeControl:
     mute: Silenciar
     unmute: Activar sonido
+  TwingateArea:
+    resourceCount: "{0} recursos"
+    disconnected: Sin conexión
+    pendingCount: "{0} por autorizar"
+    loading: Consultando los recursos…
+    empty: No hay recursos disponibles
+    needsAuth: Hay que autorizarlo
+    expiresIn: "Vence en {0}"
+    noAuthNeeded: Sin autenticación
+    authorize: Autorizar
+    authorizing: Autorizando…
+    showAll: "Ver los {0} restantes"
   WeatherIcon:
     unknown: Condición meteorológica desconocida
   WeatherWidget:

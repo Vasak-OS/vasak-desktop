@@ -136,6 +136,8 @@ pub fn run() {
             toggle_window,
             open_app,
             open_settings,
+            twingate_info,
+            twingate_authorize,
             show_osd,
             toggle_session_popup,
             logout,

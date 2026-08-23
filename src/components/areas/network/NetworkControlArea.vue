@@ -170,6 +170,11 @@
           <p v-if="vpnDetail" class="text-xs text-tx-muted truncate">{{ vpnDetail }}</p>
         </div>
       </div>
+
+      <!-- Twingate no habla por NetworkManager, así que lo que la tarjeta de
+           arriba puede decir es «hay un túnel». Lo que hace falta saber —a qué
+           se puede entrar y qué hay que autorizar— lo sabe su cliente. -->
+      <TwingateArea />
     </div>
   </div>
 </template>
@@ -177,6 +182,7 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import TwingateArea from '@/components/areas/network/TwingateArea.vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import {
@@ -210,9 +216,7 @@ const ethernetStatus = ref(t('components.NetworkControlArea.checking'));
 const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 const vpnDetail = computed(() => {
 	if (!vpnConnected.value) return '';
-	return [vpnStatus.value?.interface, vpnStatus.value?.ip_address]
-		.filter(Boolean)
-		.join(' · ');
+	return [vpnStatus.value?.interface, vpnStatus.value?.ip_address].filter(Boolean).join(' · ');
 });
 const vpnLabel = computed(() => {
 	if (!vpnConnected.value) return t('components.NetworkControlArea.vpnInactive');
