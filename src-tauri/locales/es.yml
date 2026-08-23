@@ -242,6 +242,7 @@ components:
     loading: Consultando los recursos…
     empty: No hay recursos disponibles
     notInstalled: El cliente de Twingate no está instalado
+    failed: No se pudo consultar el estado de Twingate
     needsAuth: Hay que autorizarlo
     expiresIn: "Vence en {0}"
     noAuthNeeded: Sin autenticación

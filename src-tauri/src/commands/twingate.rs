@@ -69,7 +69,13 @@ fn instalado() -> bool {
 }
 
 async fn correr(argumentos: &[&str]) -> Result<String, String> {
-    let futuro = Command::new(BINARY).args(argumentos).output();
+    // `kill_on_drop` no es cosmético: cuando el temporizador cancela el futuro,
+    // el proceso hijo sigue corriendo por su cuenta y nadie lo espera nunca. Con
+    // esto, el cliente que se colgó se muere junto con el intento.
+    let futuro = Command::new(BINARY)
+        .args(argumentos)
+        .kill_on_drop(true)
+        .output();
 
     let salida = tokio::time::timeout(TIMEOUT, futuro)
         .await

@@ -242,6 +242,7 @@ components:
     loading: Checking the resources…
     empty: No resources available
     notInstalled: The Twingate client is not installed
+    failed: Could not check the Twingate status
     needsAuth: Needs authorization
     expiresIn: "Expires in {0}"
     noAuthNeeded: No authentication

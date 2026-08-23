@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppletFrame from '@/components/layouts/AppletFrame.vue';
 import {
 	authorizeTwingateResource,
@@ -34,12 +34,21 @@ const info = ref<TwingateInfo | null>(null);
 const cargando = ref(true);
 const autorizando = ref<string | null>(null);
 
+/**
+ * Que el puente con Rust haya fallado no es lo mismo que no tener Twingate
+ * instalado, y decir lo segundo cuando pasó lo primero manda a buscar un
+ * paquete que ya está puesto.
+ */
+const fallo = ref(false);
+
 const cargar = async () => {
 	try {
 		info.value = await getTwingateInfo();
+		fallo.value = false;
 	} catch (error) {
 		logError('[twingate] No se pudo leer el estado:', error);
 		info.value = null;
+		fallo.value = true;
 	} finally {
 		cargando.value = false;
 	}
@@ -87,6 +96,26 @@ const detalleDeEstado = (recurso: TwingateResource) => {
 	return recurso.status || t('components.TwingateArea.noAuthNeeded');
 };
 
+/** Cada cuánto se vuelve a preguntar mientras se espera la autorización. */
+const ESPERA = 3000;
+
+/** Cuántas veces: pasado ese rato, el navegador quedó a medio camino y lo que
+ * corresponde es dejar de insistir en vez de sondear para siempre. */
+const INTENTOS = 20;
+
+let vivo = true;
+onUnmounted(() => {
+	vivo = false;
+});
+
+/**
+ * La autorización no termina cuando el comando vuelve.
+ *
+ * `twingate auth` abre el navegador y el trámite sigue del otro lado, así que lo
+ * único que sabemos al volver es que el cliente arrancó. Sin esto el recurso
+ * seguía diciendo «hay que autorizarlo» hasta que alguien cerrara y abriera el
+ * applet: ahora se vuelve a preguntar hasta que Twingate diga que ya está.
+ */
 const autorizar = async (recurso: TwingateResource) => {
 	autorizando.value = recurso.name;
 
@@ -94,9 +123,24 @@ const autorizar = async (recurso: TwingateResource) => {
 		await authorizeTwingateResource(recurso.name);
 	} catch (error) {
 		logError('[twingate] No se pudo pedir la autorización:', error);
-	} finally {
 		autorizando.value = null;
+		return;
 	}
+
+	for (let intento = 0; intento < INTENTOS; intento += 1) {
+		await new Promise((seguir) => setTimeout(seguir, ESPERA));
+
+		// La ventana se cierra al perder el foco —el navegador se lo lleva—, así
+		// que esto normalmente se corta solo; al volver a abrirla se lee de nuevo.
+		if (!vivo) return;
+
+		await cargar();
+
+		const ahora = info.value?.resources.find((otro) => otro.name === recurso.name);
+		if (!ahora?.needs_auth) break;
+	}
+
+	if (vivo) autorizando.value = null;
 };
 </script>
 
@@ -130,6 +174,10 @@ const autorizar = async (recurso: TwingateResource) => {
 
 			<p v-if="cargando" class="text-sm text-tx-muted">
 				{{ t('components.TwingateArea.loading') }}
+			</p>
+
+			<p v-else-if="fallo" class="text-sm text-status-error">
+				{{ t('components.TwingateArea.failed') }}
 			</p>
 
 			<p v-else-if="!info?.installed" class="text-sm text-tx-muted">
