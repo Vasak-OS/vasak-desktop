@@ -13,6 +13,7 @@
     "applet_audio",
     "app_terminal",
     "app_search",
+    "panel_menu",
     "systray_popup",
     "session_popup",
     "osd_popup"
