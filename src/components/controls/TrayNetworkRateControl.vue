@@ -43,7 +43,7 @@ const subida = computed(() => legible(tasa.value?.up ?? 0));
        intervalo en tener dos lecturas que comparar. -->
   <div
     v-if="tasa"
-    class="flex flex-col justify-center rounded-corner px-1 leading-none hover:bg-primary"
+    class="flex flex-col justify-center rounded-corner px-1 leading-none"
     :title="t('components.TrayNetworkRateControl.title')"
   >
     <span class="flex items-center gap-0.5 text-[9px] tabular-nums text-tx-main">
