@@ -22,7 +22,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="flex flex-col items-center justify-center h-auto p-4 rounded-corner bg-ui-bg/80 backdrop-blur-lg shadow-lg mb-4 ring-2 ring-primary/50">
-        <h1 class="text-6xl font-bold text-white font-mono">{{ time }}</h1>
+    <div class="flex h-full w-full flex-col items-center justify-center p-[4cqmin]">
+        <h1 class="font-mono text-[clamp(1.75rem,38cqh,7rem)] font-bold leading-none text-tx-main">{{ time }}</h1>
     </div>
 </template>

@@ -244,3 +244,22 @@ components:
     disconnected: Desconectado
     vpnOn: activa
     vpnOff: VPN inactiva
+widgets:
+  panelTitle: Widgets disponibles
+  done: Listo
+  allPlaced: Ya están todos en el escritorio
+  clock:
+    name: Reloj
+    description: La hora y la fecha
+  music:
+    name: Música
+    description: Lo que estás escuchando
+  weather:
+    name: Clima
+    description: El tiempo de tu ciudad
+    extended: Extendido
+    today: Sólo hoy
+  files:
+    name: Archivos del escritorio
+    description: Lo que tenés en la carpeta Escritorio
+    empty: No hay nada en el escritorio

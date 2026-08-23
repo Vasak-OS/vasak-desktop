@@ -244,3 +244,22 @@ components:
     disconnected: Disconnected
     vpnOn: active
     vpnOff: VPN inactive
+widgets:
+  panelTitle: Available widgets
+  done: Done
+  allPlaced: They are all on the desktop already
+  clock:
+    name: Clock
+    description: Time and date
+  music:
+    name: Music
+    description: What you are listening to
+  weather:
+    name: Weather
+    description: The forecast for your city
+    extended: Extended
+    today: Today only
+  files:
+    name: Desktop files
+    description: What you have in your Desktop folder
+    empty: Nothing on the desktop
