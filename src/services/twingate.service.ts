@@ -25,3 +25,6 @@ export const getTwingateInfo = (): Promise<TwingateInfo> => invoke('twingate_inf
 
 export const authorizeTwingateResource = (resource: string): Promise<void> =>
 	invoke('twingate_authorize', { resource });
+
+/** Abre o esconde el applet, desde el botón del panel. */
+export const toggleTwingateApplet = (): Promise<void> => invoke('toggle_twingate_applet');

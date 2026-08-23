@@ -246,6 +246,34 @@ pub async fn twingate_authorize(resource: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Abre o esconde el applet de Twingate.
+#[tauri::command]
+pub fn toggle_twingate_applet(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::{async_runtime::spawn, Emitter, Manager};
+
+    if let Some(ventana) = app.get_webview_window("applet_twingate") {
+        if ventana.is_visible().unwrap_or(false) {
+            let _ = ventana.hide();
+        } else {
+            // `window-shown` es lo que hace que la vista vuelva a preguntar:
+            // esconder no destruye el webview, así que Vue no se monta de nuevo.
+            let _ = ventana.emit("window-shown", ());
+            let _ = ventana.show();
+            let _ = ventana.set_focus();
+        }
+
+        return Ok(());
+    }
+
+    spawn(async move {
+        if let Err(error) = crate::windows_apps::create_applet_twingate_window(app).await {
+            eprintln!("[twingate] No se pudo abrir el applet: {error}");
+        }
+    });
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

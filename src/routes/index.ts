@@ -32,6 +32,10 @@ const routes = [
 				path: 'tray-popup',
 				component: () => import('@/views/applets/TrayPopupView.vue'),
 			},
+			{
+				path: 'twingate',
+				component: () => import('@/views/applets/TwingateAppletView.vue'),
+			},
 		],
 	},
 	{

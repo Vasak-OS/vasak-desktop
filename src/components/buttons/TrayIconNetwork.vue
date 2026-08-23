@@ -95,19 +95,6 @@ useSharedEvent('vpn-changed', refreshVpnStatus);
 			:class="networkState.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-error'"
 	  ></div>
 
-		<!-- Un escudo de diez píxeles sobre el icono de red, en vez de la
-		     etiqueta con el nombre del perfil que ocupaba una franja entera del
-		     panel: cuál es la VPN lo dice el tooltip, y el applet lo muestra con
-		     sus recursos. -->
-		<div
-			v-if="vpnConnected"
-			class="absolute -top-0.5 -left-0.5 flex h-3 w-3 items-center justify-center rounded-full border border-ui-bg bg-primary text-tx-on-primary"
-			:title="vpnLabel"
-		>
-			<svg class="h-2 w-2" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-				<path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" />
-			</svg>
-		</div>
 	</TrayIconButton>
 
   </div>

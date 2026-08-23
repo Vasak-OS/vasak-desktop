@@ -223,6 +223,10 @@ components:
   TrayIconSound:
     mute: Mute
     unmute: Unmute
+  TrayIconTwingate:
+    connected: "Twingate: {0} resources"
+    disconnected: "Twingate: disconnected"
+    pending: "Twingate: {0} resources to authorize"
   TrayMusicControl:
     previous: Previous
     play: Play
@@ -237,6 +241,7 @@ components:
     pendingCount: "{0} to authorize"
     loading: Checking the resources…
     empty: No resources available
+    notInstalled: The Twingate client is not installed
     needsAuth: Needs authorization
     expiresIn: "Expires in {0}"
     noAuthNeeded: No authentication

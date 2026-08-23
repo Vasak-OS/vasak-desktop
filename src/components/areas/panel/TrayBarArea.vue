@@ -9,6 +9,7 @@ import TrayIconCapsLock from '@/components/buttons/TrayIconCapsLock.vue';
 import TrayIconMicrophone from '@/components/buttons/TrayIconMicrophone.vue';
 import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
 import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
+import TrayIconTwingate from '@/components/buttons/TrayIconTwingate.vue';
 import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import type { TrayItem } from '@/interfaces/tray';
@@ -175,6 +176,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
       <TrayIconCapsLock key="icon-capslock" />
       <TrayIconMicrophone key="icon-micmute" />
       <TrayIconBluetooth key="icon-bluetooth" />
+      <TrayIconTwingate key="icon-twingate" />
       <TrayIconNetwork key="icon-network" />
     </TransitionGroup>
   </div>
