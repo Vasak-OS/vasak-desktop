@@ -10,13 +10,13 @@ import WidgetHost from '@/components/widgets/WidgetHost.vue';
 import {
 	CELL_GAP,
 	CELL_SIZE,
-	GRID_PADDING,
-	WIDGETS,
 	defaultLayout,
 	firstFreeSlot,
 	fitAll,
+	GRID_PADDING,
 	gridSize,
 	overlaps,
+	WIDGETS,
 	type WidgetPlacement,
 	type WidgetType,
 } from '@/tools/widgets/catalog';
@@ -56,6 +56,55 @@ const disponibles = computed(() =>
 		return !placements.value.some((puesto) => puesto.type === definicion.type);
 	})
 );
+
+/**
+ * Lo que ofrece el panel: un widget con variantes aparece una vez por variante.
+ *
+ * El clima entra en una celda ancha y baja al lado del reloj, o en un cuadro
+ * grande con la semana entera. Son dos formas de agregarlo, no una que después
+ * hay que descubrir redimensionando.
+ */
+type OpcionDeWidget = {
+	key: string;
+	type: WidgetType;
+	variant?: string;
+	label: string;
+	description: string;
+	size: { w: number; h: number };
+};
+
+const opciones = computed<OpcionDeWidget[]>(() => {
+	const lista: OpcionDeWidget[] = [];
+
+	for (const definicion of disponibles.value) {
+		const variantes = definicion.variants ?? [];
+
+		if (variantes.length > 1) {
+			for (const variante of variantes) {
+				lista.push({
+					key: `${definicion.type}:${variante.id}`,
+					type: definicion.type,
+					variant: variante.id,
+					label: `${t(definicion.labelKey)} · ${t(variante.labelKey)}`,
+					description: t(definicion.descriptionKey),
+					size: variante.size,
+				});
+			}
+			continue;
+		}
+
+		lista.push({
+			key: definicion.type,
+			type: definicion.type,
+			variant: variantes[0]?.id,
+			label: t(definicion.labelKey),
+			description: t(definicion.descriptionKey),
+			size: definicion.default,
+		});
+	}
+
+	return lista;
+});
 
 /**
  * Lo guardado, o la disposición de siempre para quien nunca configuró nada.
@@ -141,14 +190,10 @@ function quitar(id: string) {
 	void guardar();
 }
 
-function agregar(type: WidgetType) {
+function agregar(type: WidgetType, variant?: string, tamano?: { w: number; h: number }) {
 	const definicion = WIDGETS[type];
-	const hueco = firstFreeSlot(
-		placements.value,
-		definicion.default,
-		grid.value.columns,
-		grid.value.rows
-	);
+	const medida = tamano ?? definicion.default;
+	const hueco = firstFreeSlot(placements.value, medida, grid.value.columns, grid.value.rows);
 
 	if (!hueco) {
 		logError(`No hay lugar en el escritorio para un widget de ${type}`);
@@ -161,8 +206,8 @@ function agregar(type: WidgetType) {
 			id: `${type}-${Date.now()}`,
 			type,
 			...hueco,
-			...definicion.default,
-			variant: definicion.variants?.[0]?.id,
+			...medida,
+			variant: variant ?? definicion.variants?.[0]?.id,
 		},
 	];
 	void guardar();
@@ -280,20 +325,20 @@ defineExpose({ abrirEdicion });
 				</button>
 			</div>
 
-			<p v-if="disponibles.length === 0" class="text-sm text-tx-muted">
+			<p v-if="opciones.length === 0" class="text-sm text-tx-muted">
 				{{ t('widgets.allPlaced') }}
 			</p>
 
 			<div v-else class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 				<button
-					v-for="definicion in disponibles"
-					:key="definicion.type"
+					v-for="opcion in opciones"
+					:key="opcion.key"
 					type="button"
 					class="rounded-corner border border-ui-border bg-ui-surface/40 p-3 text-left transition-colors hover:bg-ui-surface"
-					@click="agregar(definicion.type)"
+					@click="agregar(opcion.type, opcion.variant, opcion.size)"
 				>
-					<span class="block text-sm font-medium text-tx-main">{{ t(definicion.labelKey) }}</span>
-					<span class="block text-xs text-tx-muted">{{ t(definicion.descriptionKey) }}</span>
+					<span class="block text-sm font-medium text-tx-main">{{ opcion.label }}</span>
+					<span class="block text-xs text-tx-muted">{{ opcion.description }}</span>
 				</button>
 			</div>
 		</aside>

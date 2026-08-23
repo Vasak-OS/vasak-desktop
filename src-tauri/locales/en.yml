@@ -234,6 +234,10 @@ components:
   VolumeControl:
     mute: Mute
     unmute: Unmute
+  TrayNetworkRateControl:
+    title: "Network transfer: download and upload"
+  TrayWeatherControl:
+    summary: "High {0}° and low {1}°"
   WeatherIcon:
     unknown: Unknown weather condition
   WeatherWidget:

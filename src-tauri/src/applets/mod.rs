@@ -13,6 +13,7 @@ pub mod connect;
 pub mod keyboard_leds;
 pub mod music;
 pub mod network;
+pub mod network_rate;
 pub mod notifications;
 pub mod tray;
 
