@@ -91,104 +91,108 @@ watch(
 </script>
 
 <template>
-  <div
-    class="flex h-full w-full items-center gap-3 overflow-hidden rounded-corner bg-ui-bg/80 p-3 ring-2 ring-primary"
-  >
+  <!--
+    Tres columnas: portada, texto y controles. Los controles eran el pie de la
+    columna del texto, y ahí quedaban alineados a la izquierda debajo del
+    título: en un widget ancho la fila de botones aparecía perdida en una
+    esquina. Como columna propia quedan centrados y a la misma distancia del
+    borde en cualquier forma que tenga el widget.
+
+    Las medidas van en unidades de contenedor —cqmin, el lado más chico— así
+    que todo acompaña el tamaño de la celda en los dos ejes. El marco (fondo,
+    blur, borde) no está acá: lo pone el contenedor de widgets, igual para todos.
+  -->
+  <div class="relative flex h-full w-full items-center gap-[3cqmin] p-[4cqmin]">
     <img
       :src="imgSrc"
       :alt="musicInfo.title"
       :title="musicInfo.title"
-      class="aspect-square h-full max-h-24 w-auto shrink-0 rounded-corner object-cover"
+      class="aspect-square w-[min(30cqw,80cqh)] shrink-0 rounded-corner object-cover"
       :class="{ 'animate-pulse': isPlaying }"
       @error="onImgError"
     />
 
     <div class="flex min-w-0 flex-1 flex-col justify-center">
-      <div class="mb-2 min-w-0">
-        <div
-          ref="titleContainer"
-          class="overflow-hidden"
-          :title="musicInfo.title || ''"
+      <div ref="titleContainer" class="overflow-hidden" :title="musicInfo.title || ''">
+        <span
+          ref="titleInner"
+          class="inline-block whitespace-nowrap text-[clamp(0.72rem,14cqmin,1rem)] font-medium text-tx-main"
+          :class="{ marquee: titleOverflow }"
+          :style="
+            titleOverflow
+              ? {
+                  '--marquee-distance': `${marqueeDistance}px`,
+                  '--marquee-duration': `${marqueeDuration}s`,
+                }
+              : {}
+          "
         >
-          <span
-            ref="titleInner"
-            class="text-sm font-medium inline-block whitespace-nowrap"
-            :class="{ marquee: titleOverflow }"
-            :style="
-              titleOverflow
-                ? {
-                    '--marquee-distance': `${marqueeDistance}px`,
-                    '--marquee-duration': `${marqueeDuration}s`,
-                  }
-                : {}
-            "
-          >
-            {{ musicInfo.title || t('components.MusicWidget.unknownTitle') }}
-          </span>
-        </div>
-        <div
-          class="text-xs text-muted truncate"
-          :title="musicInfo.artist || ''"
-        >
-          {{ musicInfo.artist || "" }}
-        </div>
+          {{ musicInfo.title || t('components.MusicWidget.unknownTitle') }}
+        </span>
       </div>
 
       <div
-        class="flex items-center pr-1 space-x-1 transition-all duration-150"
-        aria-hidden="false"
+        class="truncate text-[clamp(0.65rem,11cqmin,0.85rem)] text-tx-muted"
+        :title="musicInfo.artist || ''"
       >
-        <button
-          @click.prevent="onPrev"
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-          :title="t('components.MusicWidget.previous')"
-        >
-          <img :src="prevIcon" :alt="t('components.MusicWidget.previous')" class="w-4 h-4" />
-        </button>
-
-        <button
-          @click.prevent="onPlayPause"
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-          :title="isPlaying
-            ? t('components.MusicWidget.pause')
-            : t('components.MusicWidget.play')"
-        >
-          <img
-            :src="isPlaying ? pauseIcon : playIcon"
-            :alt="isPlaying
-              ? t('components.MusicWidget.pause')
-              : t('components.MusicWidget.play')"
-            class="w-4 h-4"
-          />
-        </button>
-
-        <button
-          @click.prevent="onNext"
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-          :title="t('components.MusicWidget.next')"
-        >
-          <img :src="nextIcon" :alt="t('components.MusicWidget.next')" class="w-4 h-4" />
-        </button>
+        {{ musicInfo.artist || "" }}
       </div>
+    </div>
 
-      <transition enter-active-class="transition-all duration-300 ease-out" leave-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0 -translate-y-1" leave-to-class="opacity-0 translate-y-1">
-        <div
-          v-if="showError"
-          class="mt-2 text-xs bg-status-error px-2 py-1 rounded-corner"
-        >
+    <div class="flex shrink-0 items-center justify-center gap-[2cqmin]">
+      <button
+        class="flex aspect-square w-[clamp(1.5rem,24cqmin,2.75rem)] shrink-0 items-center justify-center rounded-corner bg-ui-surface/60"
+        :title="t('components.MusicWidget.previous')"
+        @click.prevent="onPrev"
+      >
+        <img :src="prevIcon" :alt="t('components.MusicWidget.previous')" class="w-[50%]" />
+      </button>
+
+      <button
+        class="flex aspect-square w-[clamp(1.75rem,28cqmin,3.25rem)] shrink-0 items-center justify-center rounded-corner bg-primary/80"
+        :title="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
+        @click.prevent="onPlayPause"
+      >
+        <img
+          :src="isPlaying ? pauseIcon : playIcon"
+          :alt="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
+          class="w-[50%]"
+        />
+      </button>
+
+      <button
+        class="flex aspect-square w-[clamp(1.5rem,24cqmin,2.75rem)] shrink-0 items-center justify-center rounded-corner bg-ui-surface/60"
+        :title="t('components.MusicWidget.next')"
+        @click.prevent="onNext"
+      >
+        <img :src="nextIcon" :alt="t('components.MusicWidget.next')" class="w-[50%]" />
+      </button>
+    </div>
+
+    <!-- Los avisos van superpuestos abajo: si empujaran el layout, un error
+         haría saltar la portada y los botones. -->
+    <div class="pointer-events-none absolute inset-x-[4cqmin] bottom-[3cqmin] flex flex-col gap-1">
+      <transition
+        enter-active-class="transition-all duration-300 ease-out"
+        leave-active-class="transition-all duration-300 ease-out"
+        enter-from-class="opacity-0 -translate-y-1"
+        leave-to-class="opacity-0 translate-y-1"
+      >
+        <div v-if="showError" class="rounded-corner bg-status-error px-2 py-1 text-xs">
           {{ commandError }}
         </div>
       </transition>
 
-      <transition enter-active-class="transition-all duration-300 ease-out" leave-active-class="transition-all duration-300 ease-out" enter-from-class="opacity-0 -translate-y-1" leave-to-class="opacity-0 translate-y-1">
+      <transition
+        enter-active-class="transition-all duration-300 ease-out"
+        leave-active-class="transition-all duration-300 ease-out"
+        enter-from-class="opacity-0 -translate-y-1"
+        leave-to-class="opacity-0 translate-y-1"
+      >
         <div
           v-if="dbusStatus === 'reconnecting' || dbusStatus === 'failed'"
-          class="mt-2 text-xs px-2 py-1 rounded-corner  text-ui-main"
-          :class="[
-            dbusStatus === 'reconnecting'
-              ? 'bg-status-warning'
-              : 'bg-status-error',
-          ]"
+          class="rounded-corner px-2 py-1 text-xs text-ui-main"
+          :class="dbusStatus === 'reconnecting' ? 'bg-status-warning' : 'bg-status-error'"
         >
           {{ dbusMessage }}
         </div>

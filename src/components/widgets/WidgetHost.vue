@@ -123,9 +123,23 @@ function empezarRedimensionado(evento: PointerEvent) {
 		]"
 		@pointerdown="empezarArrastre"
 	>
-		<!-- El contenido no recibe clics mientras se edita: si los recibiera,
-		     arrastrar el reproductor de música cambiaría de canción. -->
-		<div class="h-full w-full" :class="editing ? 'pointer-events-none select-none' : ''">
+		<!--
+			El marco de todos los widgets vive acá y no en cada uno: fondo, blur,
+			borde y esquinas. Repetirlo en cada componente era lo que hacía que
+			cada widget tuviera su propia opacidad y su propio blur —o ninguno—,
+			y que agregar uno nuevo empezara con la pregunta de qué clases copiar.
+
+			`container-type: size` también va acá, así lo de adentro puede medirse
+			contra su celda sin que cada widget tenga que declararlo.
+
+			El contenido no recibe clics mientras se edita: si los recibiera,
+			arrastrar el reproductor de música cambiaría de canción.
+		-->
+		<div
+			style="container-type: size"
+			class="h-full w-full overflow-hidden rounded-corner border border-ui-border bg-ui-bg/80 backdrop-blur-md"
+			:class="editing ? 'pointer-events-none select-none' : ''"
+		>
 			<slot />
 		</div>
 

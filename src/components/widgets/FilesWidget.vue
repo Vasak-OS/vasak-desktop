@@ -73,7 +73,7 @@ watch(showHidden, () => void cargar());
 
 <template>
 	<div
-		class="flex h-full w-full flex-col overflow-hidden rounded-corner border border-ui-border bg-ui-bg/60 backdrop-blur-md"
+		class="flex h-full w-full flex-col"
 	>
 		<div
 			v-if="files.length === 0"

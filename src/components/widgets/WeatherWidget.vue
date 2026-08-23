@@ -87,7 +87,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="h-full grid gap-2 min-h-0" style="grid-template-columns: 2fr 3fr;">
+  <div class="grid h-full min-h-0 gap-3 p-[3cqmin]" style="grid-template-columns: 2fr 3fr;">
     <template v-if="weather">
       <div class="flex flex-col items-center justify-center gap-4 rounded-corner bg-ui-surface/80 border border-primary p-4">
         <div class="text-4xl font-bold">{{ weather.current.temperature_2m }}{{ weather.current_units.temperature_2m }}</div>
@@ -99,7 +99,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <div class="grid grid-cols-3 grid-rows-2 gap-2 min-h-0">
+      <div class="grid min-h-0 grid-cols-3 grid-rows-2 gap-3">
         <DailyWeatherCard
           v-for="day in upcoming"
           :key="day.date"

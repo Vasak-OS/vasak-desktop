@@ -60,9 +60,12 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
 		labelKey: 'widgets.music.name',
 		descriptionKey: 'widgets.music.description',
 		icon: 'multimedia-player-symbolic',
-		default: { w: 3, h: 2 },
-		min: { w: 2, h: 2 },
-		max: { w: 6, h: 3 },
+		// Una sola fila alcanza: portada, título y los tres botones entran de
+		// lado. Antes el mínimo era de dos filas y por eso no se podía achicar
+		// —y el ancho mínimo de dos celdas dejaba los botones sin lugar—.
+		default: { w: 4, h: 1 },
+		min: { w: 3, h: 1 },
+		max: { w: 8, h: 3 },
 		unique: true,
 	},
 	weather: {
