@@ -32,6 +32,10 @@ const routes = [
 				path: 'tray-popup',
 				component: () => import('@/views/applets/TrayPopupView.vue'),
 			},
+			{
+				path: 'panel-menu',
+				component: () => import('@/views/applets/PanelMenuView.vue'),
+			},
 		],
 	},
 	{

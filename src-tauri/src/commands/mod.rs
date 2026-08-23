@@ -9,6 +9,7 @@ mod logger;
 mod menu;
 pub mod osd;
 mod panel;
+mod panel_menu;
 mod music;
 mod network;
 mod notifications;
@@ -35,13 +36,14 @@ pub use logger::{log_from_frontend, get_log_file_path, read_log_file, get_last_l
 pub use menu::{get_menu_items, toggle_menu};
 pub use osd::show_osd;
 pub use panel::show_panel;
+pub use panel_menu::open_panel_menu;
 pub use music::{music_next_track, music_now_playing, music_play_pause, music_previous_track};
 pub use network::toggle_network_applet;
 pub use notifications::{
     clear_notifications, delete_notification, get_all_notifications, invoke_notification_action,
     send_notify,
 };
-pub use runner::{open_app, open_settings};
+pub use runner::{open_app, open_settings, open_settings_section};
 pub use search::{execute_search_result, global_search};
 pub use search_window::toggle_search;
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};

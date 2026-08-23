@@ -143,6 +143,8 @@ pub fn run() {
             toggle_window,
             open_app,
             open_settings,
+            open_settings_section,
+            open_panel_menu,
             show_osd,
             toggle_session_popup,
             logout,

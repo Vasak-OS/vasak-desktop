@@ -64,9 +64,25 @@ const SETTINGS_BINARY: &str = "vasak-settings";
 /// shell has no settings UI of its own — vasak-settings is a separate app — so
 /// the button's job is simply to launch it.
 pub fn spawn_settings() -> Result<(), String> {
+    spawn_settings_at(None)
+}
+
+/// La misma aplicación, abierta en una sección puntual.
+///
+/// `vasak-settings appearance-panel` abre esa pantalla en vez de la portada: el
+/// menú del panel lleva al ajuste que corresponde en vez de dejar a la persona
+/// buscándolo en el menú lateral. La sección viaja como argumento y la valida el
+/// otro lado; acá se filtra por forma para no pasarle cualquier cosa.
+pub fn spawn_settings_at(seccion: Option<&str>) -> Result<(), String> {
     log_info("Abriendo la aplicación de configuración");
 
-    Command::new(SETTINGS_BINARY).spawn().map_err(|error| {
+    let mut comando = Command::new(SETTINGS_BINARY);
+
+    if let Some(seccion) = seccion.filter(|valor| es_nombre_de_seccion(valor)) {
+        comando.arg(seccion);
+    }
+
+    comando.spawn().map_err(|error| {
         let message = format!(
             "No se pudo abrir {}: {}. ¿Está instalado el paquete vasak-settings?",
             SETTINGS_BINARY, error
@@ -81,4 +97,42 @@ pub fn spawn_settings() -> Result<(), String> {
 #[tauri::command]
 pub async fn open_settings() -> Result<(), String> {
     spawn_settings()
+}
+
+/// La configuración, abierta en una sección: lo usa el menú del panel.
+#[tauri::command]
+pub async fn open_settings_section(section: String) -> Result<(), String> {
+    spawn_settings_at(Some(&section))
+}
+
+/// Minúsculas, dígitos y guiones: los nombres que usa el router de la
+/// configuración. No es una barrera de seguridad —el argumento va como un
+/// elemento propio de `argv`, no por una shell— sino la forma de no arrastrar
+/// hasta otra aplicación algo que claramente no es una sección.
+fn es_nombre_de_seccion(valor: &str) -> bool {
+    !valor.is_empty()
+        && valor.len() <= 40
+        && valor
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
+#[cfg(test)]
+mod tests_seccion {
+    use super::es_nombre_de_seccion;
+
+    #[test]
+    fn las_secciones_reales_pasan() {
+        assert!(es_nombre_de_seccion("appearance-panel"));
+        assert!(es_nombre_de_seccion("network-wifi"));
+    }
+
+    #[test]
+    fn lo_que_no_es_una_seccion_no_pasa() {
+        assert!(!es_nombre_de_seccion(""));
+        assert!(!es_nombre_de_seccion("/etc/passwd"));
+        assert!(!es_nombre_de_seccion("Appearance-Panel"));
+        assert!(!es_nombre_de_seccion("dos palabras"));
+        assert!(!es_nombre_de_seccion(&"a".repeat(41)));
+    }
 }

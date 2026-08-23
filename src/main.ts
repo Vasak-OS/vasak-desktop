@@ -3,7 +3,10 @@ import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 import App from '@/App.vue';
 import { router } from '@/routes/index';
+import { disableNativeContextMenu } from '@/tools/native-menu';
 import '@/assets/main.css';
+
+disableNativeContextMenu();
 
 const pinia = createPinia();
 const i18n = I18n.getInstance();
