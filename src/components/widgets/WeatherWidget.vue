@@ -19,6 +19,31 @@ const { weather, current, failed, dayOrNight, upcoming } = useWeather();
 const soloHoy = computed(() => props.variant === 'today');
 
 /**
+ * Si hay con qué dibujar.
+ *
+ * No alcanza con «llegó algo»: lo guardado puede ser de una respuesta a medias
+ * —o de una versión anterior del servicio— y las dos variantes leen `current`,
+ * `current_units` y `daily`. Preguntando sólo por `weather` bastaba un
+ * pronóstico raro para que el widget reventara al dibujarse en vez de decir que
+ * no hay datos.
+ */
+const listo = computed(() => {
+	const diario = weather.value?.daily;
+
+	// Cada arreglo que la plantilla indexa, y con el primer día adentro: mirar
+	// sólo `time` dejaba pasar un pronóstico al que le faltaran las
+	// temperaturas, y el widget reventaba al dibujarse en vez de decir que no
+	// hay datos.
+	const arreglos = [diario?.time, diario?.temperature_2m_max, diario?.temperature_2m_min];
+
+	return (
+		Boolean(current.value) &&
+		Boolean(weather.value?.current_units?.temperature_2m) &&
+		arreglos.every((arreglo) => Array.isArray(arreglo) && arreglo.length > 0)
+	);
+});
+
+/**
  * `2026-08-08` parseado por `new Date()` es medianoche UTC, así que en cualquier
  * lugar detrás de UTC se dibuja como el día anterior. Armar la fecha por partes
  * la mantiene local en todas las zonas.
@@ -33,7 +58,7 @@ const nombreDelDia = (fecha: string) => {
   <div class="h-full min-h-0 w-full p-[3cqmin]">
     <!-- Sin datos todavía, o sin red: el widget dice qué pasa en vez de quedar
          en blanco. -->
-    <div v-if="!weather" class="flex h-full items-center justify-center p-2 text-center text-tx-main/60">
+    <div v-if="!listo" class="flex h-full items-center justify-center p-2 text-center text-tx-main/60">
       {{ failed ? t('components.WeatherWidget.failed') : t('components.WeatherWidget.loading') }}
     </div>
 

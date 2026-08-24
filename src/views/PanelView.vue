@@ -1,15 +1,20 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+import { invoke } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { Command } from '@tauri-apps/plugin-shell';
+import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
-import type { Notification as AppNotification, NotificationDelta } from '@/interfaces/notifications';
 import type { ConnectDevice } from '@/interfaces/connect';
+import type {
+	Notification as AppNotification,
+	NotificationDelta,
+} from '@/interfaces/notifications';
 import { listConnectDevices, toggleConnectMenu } from '@/services/connect.service';
 import { getAllNotifications } from '@/services/notification.service';
 import { toggleControlCenter, toggleMenu } from '@/services/window.service';
@@ -18,6 +23,59 @@ import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
+
+/**
+ * El clic derecho del panel: sólo cosas del panel.
+ *
+ * Lo que se hace con el escritorio —los widgets, el fondo— tiene su propio clic
+ * derecho ahí, y ofrecerlo también acá daría dos caminos para lo mismo, uno de
+ * ellos en el lugar equivocado.
+ *
+ * Va en modo ventana porque el panel mide unos treinta píxeles de alto: un menú
+ * dibujado adentro quedaría recortado a la primera línea. El resto —el dibujo,
+ * el teclado, el tema, cerrarse al perder el foco— es del plugin, que es el
+ * mismo menú que usan todas las aplicaciones de VasakOS.
+ */
+const abrirMenuDelPanel = async (evento: MouseEvent) => {
+	try {
+		const elegido = await showContextMenu(
+			[
+				{
+					id: 'panel',
+					label: t('views.applets.panelMenu.panelSettings'),
+					icon: 'preferences-system-windows',
+				},
+				{
+					id: 'notificaciones',
+					label: t('views.applets.panelMenu.notifications'),
+					icon: 'preferences-desktop-notification',
+				},
+				{ type: 'separator' },
+				{
+					id: 'sistema',
+					label: t('views.applets.panelMenu.systemSettings'),
+					icon: 'preferences-system',
+				},
+			],
+			evento,
+			{ window: true }
+		);
+
+		switch (elegido?.id) {
+			case 'panel':
+				await invoke('open_settings_section', { section: 'appearance-panel' });
+				break;
+			case 'notificaciones':
+				await toggleControlCenter();
+				break;
+			case 'sistema':
+				await invoke('open_settings');
+				break;
+		}
+	} catch (error) {
+		logError('No se pudo abrir el menú del panel:', error);
+	}
+};
 
 const notifications = ref<AppNotification[]>([]);
 const hasNewNotifications = ref(false);
@@ -167,7 +225,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 </script>
 
 <template>
-	<nav class="relative z-20 flex w-[calc(100%-8px)] justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80 px-3">
+	<nav @contextmenu.prevent="abrirMenuDelPanel" class="relative z-20 flex w-[calc(100%-8px)] justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80 px-3">
     <div class="flex items-center gap-1">
       <img :src="menuIcon" :alt="t('views.panel.menuAlt')" @click="openMenu" class="h-7 w-7 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out" />
 			<div class="w-1 h-7 bg-ui-bg/80"></div>

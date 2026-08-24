@@ -23,6 +23,15 @@ const datos = ref<any>(null);
 const fallo = ref(false);
 const cargando = ref(false);
 
+/**
+ * Cuánto se espera a cada pedido.
+ *
+ * Sin esto, un pedido que se cuelga —una red que acepta la conexión y después
+ * no contesta— deja `cargando` en verdadero para siempre: el turno queda tomado
+ * y el clima no se vuelve a pedir en toda la sesión.
+ */
+const LIMITE = 10_000;
+
 /** Cada cuánto se revisa si lo guardado venció. No toca la red. */
 const REVISION = 60_000;
 
@@ -49,7 +58,8 @@ async function deducirLugar(): Promise<WeatherPlace> {
 	if (!ciudad) throw new Error(`No se pudo deducir la ciudad de la zona horaria: ${zona}`);
 
 	const respuesta = await fetch(
-		`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(ciudad)}&count=1&format=json`
+		`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(ciudad)}&count=1&format=json`,
+		{ signal: AbortSignal.timeout(LIMITE) }
 	);
 	const lugares = await respuesta.json();
 	const lugar = lugares?.results?.[0];
@@ -61,7 +71,8 @@ async function deducirLugar(): Promise<WeatherPlace> {
 
 async function pedirPronostico(lugar: WeatherPlace) {
 	const respuesta = await fetch(
-		`https://api.open-meteo.com/v1/forecast?latitude=${lugar.lat}&longitude=${lugar.lon}&current=temperature_2m,is_day,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`
+		`https://api.open-meteo.com/v1/forecast?latitude=${lugar.lat}&longitude=${lugar.lon}&current=temperature_2m,is_day,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`,
+		{ signal: AbortSignal.timeout(LIMITE) }
 	);
 
 	if (!respuesta.ok) throw new Error(`El servicio del clima contestó ${respuesta.status}`);

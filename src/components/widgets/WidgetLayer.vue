@@ -1,5 +1,7 @@
 <script lang="ts" setup>
+import { invoke } from '@tauri-apps/api/core';
 import { writeConfig } from '@vasakgroup/plugin-config-manager';
+import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
@@ -229,17 +231,59 @@ function terminarEdicion() {
  * resultado era que no se podía entrar a editar, y por lo tanto nada se podía
  * mover.
  */
-function abrirEdicion(evento: MouseEvent) {
-	// Sólo el clic derecho sobre el fondo. Si viene de un widget o de un panel,
-	// es asunto de ese componente: el día que los widgets tengan su propio menú
-	// contextual, este no se lo puede comer.
+// Si abrir el menú falla —o falla el comando que abre la configuración— hay que
+// verlo: una promesa suelta acá termina en un aviso del motor que nadie lee.
+const alClicDerecho = (evento: MouseEvent) => {
+	abrirEdicion(evento).catch((error) => {
+		logError('No se pudo abrir el menú del escritorio:', error);
+	});
+};
+
+async function abrirEdicion(evento: MouseEvent) {
+	// Sólo el clic derecho sobre el fondo. Si viene de un widget o del panel de
+	// edición, es asunto de ese componente: el día que los widgets tengan su
+	// propio menú contextual, este no se lo puede comer.
 	const destino = evento.target as HTMLElement | null;
 
 	if (editing.value || destino?.closest('[data-widget], [data-widget-panel]')) return;
 
-	evento.preventDefault();
-	editing.value = true;
-	panelAbierto.value = true;
+	// Antes el clic derecho entraba directo al modo edición. Eso escondía todo
+	// lo demás que uno quiere hacer parado en el escritorio —cambiar el fondo,
+	// abrir la configuración— y no había forma de descubrirlo.
+	const elegido = await showContextMenu(
+		[
+			{
+				id: 'widgets',
+				label: t('widgets.menu.edit'),
+				icon: 'preferences-desktop',
+			},
+			{
+				id: 'fondo',
+				label: t('widgets.menu.wallpaper'),
+				icon: 'preferences-desktop-wallpaper',
+			},
+			{ type: 'separator' },
+			{
+				id: 'sistema',
+				label: t('widgets.menu.settings'),
+				icon: 'preferences-system',
+			},
+		],
+		evento
+	);
+
+	switch (elegido?.id) {
+		case 'widgets':
+			editing.value = true;
+			panelAbierto.value = true;
+			break;
+		case 'fondo':
+			await invoke('open_settings_section', { section: 'appearance-wallpaper' });
+			break;
+		case 'sistema':
+			await invoke('open_settings');
+			break;
+	}
 }
 
 let observador: ResizeObserver | null = null;
@@ -247,7 +291,7 @@ let observador: ResizeObserver | null = null;
 onMounted(() => {
 	placements.value = leerDeConfig();
 	medir();
-	window.addEventListener('contextmenu', abrirEdicion);
+	window.addEventListener('contextmenu', alClicDerecho);
 
 	if (contenedor.value) {
 		observador = new ResizeObserver(medir);
@@ -257,7 +301,7 @@ onMounted(() => {
 
 onUnmounted(() => {
 	observador?.disconnect();
-	window.removeEventListener('contextmenu', abrirEdicion);
+	window.removeEventListener('contextmenu', alClicDerecho);
 });
 
 // Si la configuración cambia desde otro lado —Ajustes, otro monitor— se relee.

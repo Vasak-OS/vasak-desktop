@@ -3,12 +3,15 @@
   "private": true,
   "version": "1.2.0",
   "type": "module",
+  "engines": {
+    "bun": ">=1.2.21"
+  },
   "scripts": {
     "dev": "bunx --bun vite",
     "build": "vue-tsc --noEmit && bunx --bun vite build",
     "preview": "bunx --bun vite preview",
     "tauri": "tauri",
-    "tauri:build": "tauri build --features wayland",
+    "tauri:build": "tauri build",
     "test": "bun test",
     "lint": "bunx --bun biome check .",
     "lint:fix": "bunx --bun biome check --write . && bunx --bun biome format --write .",
@@ -25,6 +28,7 @@
     "@vasakgroup/plugin-network-manager": "^2.2.0",
     "@vasakgroup/plugin-user-data": "^2.0.0",
     "@vasakgroup/plugin-vicons": "^2.1.2",
+    "@vasakgroup/plugin-vsk-contextual-menu": "2.0.2",
     "@vasakgroup/tauri-plugin-i18n": "^2.1.0",
     "@vasakgroup/vue-libvasak": "~0.2.3",
     "pinia": "^3.0.4",

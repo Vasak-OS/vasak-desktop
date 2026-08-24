@@ -164,7 +164,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
           getItemPulseClass(item),
         ]"
         @mousedown.prevent="(e) => handleTrayClick(item, e)"
-        @contextmenu.prevent
+        @contextmenu.prevent.stop
         @animationstart="onAnimationStart"
         @animationend="onAnimationEnd"
         @transitionstart="onTransitionStart"
