@@ -132,6 +132,7 @@ pub fn run() {
             locales_dir(),
         ))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_vsk_contextual_menu::init())
         .invoke_handler(tauri::generate_handler![
             batch_invoke,
             weather_cached,
@@ -144,7 +145,6 @@ pub fn run() {
             open_app,
             open_settings,
             open_settings_section,
-            open_panel_menu,
             show_osd,
             toggle_session_popup,
             logout,

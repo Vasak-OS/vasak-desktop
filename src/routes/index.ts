@@ -4,6 +4,12 @@ import { ipcBatch } from '@/tools/ipc.batch';
 const routes = [
 	{ path: '/desktop', component: () => import('@/views/DesktopView.vue') },
 	{ path: '/panel', component: () => import('@/views/PanelView.vue') },
+	// La ruta donde el plugin del menú contextual dibuja su ventana. El nombre
+	// lo fija el plugin.
+	{
+		path: '/vsk-context-menu',
+		component: () => import('@/views/ContextMenuView.vue'),
+	},
 	{ path: '/menu', component: () => import('@/views/MenuView.vue') },
 	{
 		path: '/connect',
@@ -31,10 +37,6 @@ const routes = [
 			{
 				path: 'tray-popup',
 				component: () => import('@/views/applets/TrayPopupView.vue'),
-			},
-			{
-				path: 'panel-menu',
-				component: () => import('@/views/applets/PanelMenuView.vue'),
 			},
 		],
 	},

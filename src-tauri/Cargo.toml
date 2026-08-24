@@ -61,6 +61,7 @@ pipewire = { version = "0.8", optional = true }
 inotify = "0.10"
 parking_lot = "0.12"
 url = "2"
+tauri-plugin-vsk-contextual-menu = "2"
 
 
 [dev-dependencies]

@@ -4,6 +4,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
 import { Command } from '@tauri-apps/plugin-shell';
+import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
@@ -24,15 +25,53 @@ import { logError } from '@/utils/logger';
 const { t } = useI18n();
 
 /**
- * El clic derecho del panel abre el menú propio del escritorio.
+ * El clic derecho del panel: sólo cosas del panel.
  *
- * En una ventana aparte, no acá: el panel mide unos treinta píxeles de alto y
- * cualquier menú dibujado adentro quedaría recortado a la primera línea. Se le
- * pasa la posición del clic para que aparezca donde se hizo.
+ * Lo que se hace con el escritorio —los widgets, el fondo— tiene su propio clic
+ * derecho ahí, y ofrecerlo también acá daría dos caminos para lo mismo, uno de
+ * ellos en el lugar equivocado.
+ *
+ * Va en modo ventana porque el panel mide unos treinta píxeles de alto: un menú
+ * dibujado adentro quedaría recortado a la primera línea. El resto —el dibujo,
+ * el teclado, el tema, cerrarse al perder el foco— es del plugin, que es el
+ * mismo menú que usan todas las aplicaciones de VasakOS.
  */
 const abrirMenuDelPanel = async (evento: MouseEvent) => {
 	try {
-		await invoke('open_panel_menu', { x: Math.round(evento.clientX) });
+		const elegido = await showContextMenu(
+			[
+				{
+					id: 'panel',
+					label: t('views.applets.panelMenu.panelSettings'),
+					icon: 'preferences-system-windows',
+				},
+				{
+					id: 'notificaciones',
+					label: t('views.applets.panelMenu.notifications'),
+					icon: 'preferences-desktop-notification',
+				},
+				{ type: 'separator' },
+				{
+					id: 'sistema',
+					label: t('views.applets.panelMenu.systemSettings'),
+					icon: 'preferences-system',
+				},
+			],
+			evento,
+			{ window: true }
+		);
+
+		switch (elegido?.id) {
+			case 'panel':
+				await invoke('open_settings_section', { section: 'appearance-panel' });
+				break;
+			case 'notificaciones':
+				await toggleControlCenter();
+				break;
+			case 'sistema':
+				await invoke('open_settings');
+				break;
+		}
 	} catch (error) {
 		logError('No se pudo abrir el menú del panel:', error);
 	}

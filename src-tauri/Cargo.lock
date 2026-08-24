@@ -5136,6 +5136,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-vsk-contextual-menu"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9cc7d8a72e763b71c77d583fbf3e0c04bfd1ac6a012f56e7181569d6528e3cbe"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "tauri-runtime"
 version = "2.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5866,6 +5879,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-user-data",
  "tauri-plugin-vicons",
+ "tauri-plugin-vsk-contextual-menu",
  "thiserror 2.0.20",
  "tokio",
  "url",
