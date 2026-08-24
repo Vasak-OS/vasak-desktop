@@ -12,6 +12,7 @@
 use super::Applet;
 use async_trait::async_trait;
 use serde::Serialize;
+use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 
@@ -37,27 +38,95 @@ struct Contadores {
     enviados: u64,
 }
 
-/// Las que no cuentan como «internet».
+/// Por dónde sale el tráfico de esta máquina.
 ///
-/// Empezó como una lista de prefijos —`docker`, `virbr`, `br-`— y esa lista no
-/// se termina nunca: `podman0`, `cni0`, `flannel.1`, el próximo runtime de
-/// contenedores. Lo que todos tienen en común no es cómo se llaman sino lo que
-/// son, y eso el kernel lo dice en `/sys/class/net`:
+/// Antes esto era una lista de nombres —`docker`, `virbr`, `br-`— y después una
+/// regla sobre `/sys/class/net`: descartar los puentes y lo que estuviera
+/// esclavizado a uno. Las dos estaban mal. La lista no se termina nunca
+/// (`podman0`, `cni0`, el próximo runtime), y la regla se comía el caso de una
+/// máquina cuya placa de red está adentro de un puente —lo normal con máquinas
+/// virtuales—: el puente se descartaba por ser puente y la placa por tener amo,
+/// así que **no quedaba nada** y el indicador marcaba cero para siempre.
 ///
-/// * `bridge/` existe → es un puente, y lo que pasa por él ya se contó en la
-///   interfaz por la que salió de verdad.
-/// * `master` existe → está esclavizada a un puente o a un bond; cuenta el amo.
+/// Lo que se quiere medir tiene un nombre exacto: por dónde sale el tráfico. Eso
+/// lo dice la tabla de rutas, y en ese caso nombra al puente, que es la interfaz
+/// por la que efectivamente se sale.
+const RUTAS_V4: &str = "/proc/net/route";
+const RUTAS_V6: &str = "/proc/net/ipv6_route";
+
+/// Las interfaces con ruta por defecto: las de salida a internet.
 ///
-/// El loopback y los pares `veth` se descartan por nombre porque son el caso en
-/// que las dos puntas están en esta misma máquina.
-fn es_interna(nombre: &str) -> bool {
-    if nombre == "lo" || nombre.starts_with("veth") {
-        return true;
+/// Pueden ser varias —IPv4 e IPv6, o dos salidas a la vez—, y no hay ninguna
+/// garantía de que sean una sola.
+fn interfaces_de_salida(v4: &str, v6: &str) -> BTreeSet<String> {
+    let mut salidas = BTreeSet::new();
+
+    // `Iface Destination Gateway Flags RefCnt Use Metric Mask …`; la ruta por
+    // defecto es destino y máscara en cero.
+    for linea in v4.lines().skip(1) {
+        let campos: Vec<&str> = linea.split_whitespace().collect();
+
+        if campos.len() > 7 && campos[1] == "00000000" && campos[7] == "00000000" {
+            salidas.insert(campos[0].to_string());
+        }
     }
 
-    let base = std::path::Path::new("/sys/class/net").join(nombre);
+    // `destino prefijo origen … interfaz`, con la interfaz al final y el destino
+    // en ceros con prefijo cero.
+    for linea in v6.lines() {
+        let campos: Vec<&str> = linea.split_whitespace().collect();
 
-    base.join("bridge").exists() || base.join("master").exists()
+        if campos.len() >= 10
+            && campos[0].chars().all(|c| c == '0')
+            && campos[1] == "00"
+        {
+            if let Some(interfaz) = campos.last() {
+                salidas.insert((*interfaz).to_string());
+            }
+        }
+    }
+
+    salidas
+}
+
+/// Cuando no hay ruta por defecto —sin internet— igual hay tráfico que mostrar:
+/// una copia por la red local, por ejemplo. Ahí se cuenta todo menos lo que
+/// empieza y termina en esta misma máquina, o lo que ya cuenta su amo.
+fn es_local(nombre: &str) -> bool {
+    nombre == "lo"
+        || nombre.starts_with("veth")
+        || std::path::Path::new("/sys/class/net")
+            .join(nombre)
+            .join("master")
+            .exists()
+}
+
+/// Qué interfaces se suman ahora mismo.
+fn interfaces_a_contar() -> Contadas {
+    let v4 = std::fs::read_to_string(RUTAS_V4).unwrap_or_default();
+    let v6 = std::fs::read_to_string(RUTAS_V6).unwrap_or_default();
+    let salidas = interfaces_de_salida(&v4, &v6);
+
+    if salidas.is_empty() {
+        Contadas::TodoMenosLoLocal
+    } else {
+        Contadas::Estas(salidas)
+    }
+}
+
+/// El criterio con el que se decide si una interfaz suma.
+enum Contadas {
+    Estas(BTreeSet<String>),
+    TodoMenosLoLocal,
+}
+
+impl Contadas {
+    fn incluye(&self, nombre: &str) -> bool {
+        match self {
+            Contadas::Estas(salidas) => salidas.contains(nombre),
+            Contadas::TodoMenosLoLocal => !es_local(nombre),
+        }
+    }
 }
 
 /// Suma los contadores de todas las interfaces que sí cuentan.
@@ -66,12 +135,12 @@ fn es_interna(nombre: &str) -> bool {
 /// con las dos primeras líneas de encabezado y el nombre pegado a los dos
 /// puntos o separado por espacios, según el ancho del nombre.
 fn sumar(texto: &str) -> Contadores {
-    sumar_con(texto, es_interna)
+    sumar_con(texto, &interfaces_a_contar())
 }
 
-/// La suma de verdad, con el criterio inyectado: `es_interna` mira `/sys`, que
-/// no existe en un test, así que la prueba pasa el suyo.
-fn sumar_con(texto: &str, es_interna: impl Fn(&str) -> bool) -> Contadores {
+/// La suma de verdad, con el criterio como parámetro: en la máquina sale de la
+/// tabla de rutas, y en un test se arma a mano.
+fn sumar_con(texto: &str, contadas: &Contadas) -> Contadores {
     let mut total = Contadores {
         recibidos: 0,
         enviados: 0,
@@ -83,7 +152,7 @@ fn sumar_con(texto: &str, es_interna: impl Fn(&str) -> bool) -> Contadores {
         };
 
         let nombre = nombre.trim();
-        if es_interna(nombre) {
+        if !contadas.incluye(nombre) {
             continue;
         }
 
@@ -158,14 +227,23 @@ impl Applet for NetworkRateApplet {
 mod tests {
     use super::*;
 
-    /// El criterio de los tests: los mismos nombres que en la máquina real
-    /// resultan internos, pero sin leer `/sys`, que en un test no dice nada.
-    fn falsos_internos(nombre: &str) -> bool {
-        nombre == "lo"
-            || nombre.starts_with("veth")
-            || nombre.starts_with("docker")
-            || nombre.starts_with("podman")
-            || nombre.starts_with("cni")
+    /// Las rutas de una máquina común: salida por wlan0.
+    const RUTAS: &str = "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\tMTU\tWindow\tIRTT
+wlan0\t00000000\t016413AC\t0003\t0\t0\t600\t00000000\t0\t0\t0
+wlan0\t006413AC\t00000000\t0001\t0\t0\t600\tOOFFFFFF\t0\t0\t0
+docker0\t000011AC\t00000000\t0001\t0\t0\t0\t0000FFFF\t0\t0\t0
+";
+
+    /// El criterio que usa la máquina, armado desde una tabla de rutas de
+    /// mentira: los tests prueban la regla de verdad y no una copia.
+    fn contando(v4: &str, v6: &str) -> Contadas {
+        let salidas = interfaces_de_salida(v4, v6);
+
+        if salidas.is_empty() {
+            Contadas::TodoMenosLoLocal
+        } else {
+            Contadas::Estas(salidas)
+        }
     }
 
     /// Dos líneas de encabezado y tres interfaces, con el formato real del
@@ -178,21 +256,60 @@ mod tests {
 ";
 
     #[test]
-    fn suma_las_interfaces_reales_y_saltea_el_loopback() {
-        let total = sumar_con(MUESTRA, falsos_internos);
+    fn suma_sólo_la_interfaz_por_la_que_se_sale() {
+        let total = sumar_con(MUESTRA, &contando(RUTAS, ""));
 
-        assert_eq!(total.recibidos, 1_250_000, "eth0 + wlan0, sin lo");
-        assert_eq!(total.enviados, 625_000);
+        // wlan0 tiene la ruta por defecto; eth0 está en la muestra pero no lleva
+        // tráfico a ningún lado, y el loopback nunca cuenta.
+        assert_eq!(total.recibidos, 250_000);
+        assert_eq!(total.enviados, 125_000);
     }
 
     #[test]
-    fn ignora_los_puentes_de_contenedores() {
-        let texto = format!(
-            "a\nb\n docker0: 999 1 0 0 0 0 0 0 999 1 0 0 0 0 0 0\n{}",
-            "  eth0: 100 1 0 0 0 0 0 0 50 1 0 0 0 0 0 0\n"
-        );
+    fn con_la_placa_adentro_de_un_puente_cuenta_el_puente() {
+        // El caso que rompía la regla anterior: `br0` se descartaba por ser
+        // puente y `eth0` por tener amo, así que no quedaba nada y el indicador
+        // marcaba cero para siempre. La ruta por defecto nombra al puente.
+        let rutas = "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\tMTU\tWindow\tIRTT
+br0\t00000000\t0164A8C0\t0003\t0\t0\t100\t00000000\t0\t0\t0
+";
+        let texto = "a\nb\n   br0: 900 1 0 0 0 0 0 0 400 1 0 0 0 0 0 0\n  eth0: 900 1 0 0 0 0 0 0 400 1 0 0 0 0 0 0\n";
 
-        let total = sumar_con(&texto, falsos_internos);
+        let total = sumar_con(texto, &contando(rutas, ""));
+
+        assert_eq!(total.recibidos, 900, "una sola vez, por el puente");
+        assert_eq!(total.enviados, 400);
+    }
+
+    #[test]
+    fn una_salida_por_ipv6_también_cuenta() {
+        let v6 = "00000000000000000000000000000000 00 00000000000000000000000000000000 00 fe80000000000000024290fffe9d4d02 00000400 00000001 00000000 00000003 wlan0\n";
+
+        let salidas = interfaces_de_salida("", v6);
+
+        assert!(salidas.contains("wlan0"), "{salidas:?}");
+    }
+
+    #[test]
+    fn sin_ruta_por_defecto_igual_se_mide_la_red_local() {
+        // Sin internet sigue habiendo tráfico que mostrar —una copia por la red
+        // de casa—, así que se cuenta todo menos lo que no sale de la máquina.
+        let contadas = contando("Iface\tDestination\n", "");
+
+        assert!(matches!(contadas, Contadas::TodoMenosLoLocal));
+        assert!(contadas.incluye("wlan0"));
+        assert!(!contadas.incluye("lo"));
+        assert!(!contadas.incluye("veth1234"));
+    }
+
+    #[test]
+    fn los_puentes_de_contenedores_no_suman() {
+        // docker0 tiene rutas, pero no la de por defecto: lo que sale de un
+        // contenedor a internet vuelve a contarse en wlan0.
+        let texto = "a\nb\n docker0: 999 1 0 0 0 0 0 0 999 1 0 0 0 0 0 0\n wlan0: 100 1 0 0 0 0 0 0 50 1 0 0 0 0 0 0\n";
+
+        let total = sumar_con(texto, &contando(RUTAS, ""));
+
         assert_eq!(total.recibidos, 100);
         assert_eq!(total.enviados, 50);
     }
@@ -204,7 +321,7 @@ mod tests {
         // interfaz real.
         let texto = "a\nb\n podman0: 900 1 0 0 0 0 0 0 900 1 0 0 0 0 0 0\n    cni0: 700 1 0 0 0 0 0 0 700 1 0 0 0 0 0 0\n  wlan0: 100 1 0 0 0 0 0 0 50 1 0 0 0 0 0 0\n";
 
-        let total = sumar_con(texto, falsos_internos);
+        let total = sumar_con(texto, &contando(RUTAS, ""));
 
         assert_eq!(total.recibidos, 100);
         assert_eq!(total.enviados, 50);
@@ -259,7 +376,7 @@ mod tests {
     #[test]
     fn una_linea_recortada_no_rompe_la_lectura() {
         let texto = "a\nb\n  eth0: 100\n wlan0: 200 1 0 0 0 0 0 0 100 1 0 0 0 0 0 0\n";
-        let total = sumar_con(texto, falsos_internos);
+        let total = sumar_con(texto, &contando(RUTAS, ""));
 
         assert_eq!(total.recibidos, 200, "la línea sin tx_bytes se descarta");
         assert_eq!(total.enviados, 100);
@@ -268,7 +385,7 @@ mod tests {
     #[test]
     fn un_archivo_vacio_da_cero() {
         assert_eq!(
-            sumar_con("", falsos_internos),
+            sumar_con("", &contando(RUTAS, "")),
             Contadores {
                 recibidos: 0,
                 enviados: 0

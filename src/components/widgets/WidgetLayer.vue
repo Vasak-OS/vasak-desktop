@@ -231,7 +231,13 @@ function terminarEdicion() {
  * resultado era que no se podía entrar a editar, y por lo tanto nada se podía
  * mover.
  */
-const alClicDerecho = (evento: MouseEvent) => void abrirEdicion(evento);
+// Si abrir el menú falla —o falla el comando que abre la configuración— hay que
+// verlo: una promesa suelta acá termina en un aviso del motor que nadie lee.
+const alClicDerecho = (evento: MouseEvent) => {
+	abrirEdicion(evento).catch((error) => {
+		logError('No se pudo abrir el menú del escritorio:', error);
+	});
+};
 
 async function abrirEdicion(evento: MouseEvent) {
 	// Sólo el clic derecho sobre el fondo. Si viene de un widget o del panel de

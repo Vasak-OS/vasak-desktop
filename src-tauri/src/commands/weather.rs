@@ -167,12 +167,14 @@ mod tests {
     ///
     /// `Instant::now() - duración` entra en pánico si el reloj monotónico vale
     /// menos que la duración, que es lo que pasa en una máquina recién
-    /// arrancada: el test fallaba por el reloj y no por lo que prueba.
+    /// arrancada. Devolver «ahora» en ese caso era peor que el pánico: los tests
+    /// de vencimiento y de reclamo abandonado comparaban contra un instante que
+    /// no era el que pedían, y fallaban por el reloj sin decir por qué. Si no se
+    /// puede construir, se dice.
     fn hace(segundos: u64) -> Instant {
-        let ahora = Instant::now();
-        ahora
+        Instant::now()
             .checked_sub(Duration::from_secs(segundos))
-            .unwrap_or(ahora)
+            .expect("el reloj monotónico no llega tan atrás; la máquina acaba de arrancar")
     }
 
     #[test]

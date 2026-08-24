@@ -27,13 +27,21 @@ const soloHoy = computed(() => props.variant === 'today');
  * pronóstico raro para que el widget reventara al dibujarse en vez de decir que
  * no hay datos.
  */
-const listo = computed(
-	() =>
+const listo = computed(() => {
+	const diario = weather.value?.daily;
+
+	// Cada arreglo que la plantilla indexa, y con el primer día adentro: mirar
+	// sólo `time` dejaba pasar un pronóstico al que le faltaran las
+	// temperaturas, y el widget reventaba al dibujarse en vez de decir que no
+	// hay datos.
+	const arreglos = [diario?.time, diario?.temperature_2m_max, diario?.temperature_2m_min];
+
+	return (
 		Boolean(current.value) &&
 		Boolean(weather.value?.current_units?.temperature_2m) &&
-		Array.isArray(weather.value?.daily?.time) &&
-		weather.value.daily.time.length > 0
-);
+		arreglos.every((arreglo) => Array.isArray(arreglo) && arreglo.length > 0)
+	);
+});
 
 /**
  * `2026-08-08` parseado por `new Date()` es medianoche UTC, así que en cualquier
