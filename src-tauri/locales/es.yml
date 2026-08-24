@@ -268,6 +268,10 @@ components:
     vpnOn: activa
     vpnOff: VPN inactiva
 widgets:
+  menu:
+    edit: Editar los widgets
+    wallpaper: Cambiar el fondo de pantalla
+    settings: Configuración del sistema
   panelTitle: Widgets disponibles
   done: Listo
   allPlaced: Ya están todos en el escritorio

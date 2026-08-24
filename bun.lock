@@ -15,7 +15,7 @@
         "@vasakgroup/plugin-network-manager": "^2.2.0",
         "@vasakgroup/plugin-user-data": "^2.0.0",
         "@vasakgroup/plugin-vicons": "^2.1.2",
-        "@vasakgroup/plugin-vsk-contextual-menu": "^2.0.0",
+        "@vasakgroup/plugin-vsk-contextual-menu": "2.0.2",
         "@vasakgroup/tauri-plugin-i18n": "^2.1.0",
         "@vasakgroup/vue-libvasak": "~0.2.3",
         "pinia": "^3.0.4",
@@ -258,7 +258,7 @@
 
     "@vasakgroup/plugin-vicons": ["@vasakgroup/plugin-vicons@2.1.2", "", { "dependencies": { "@tauri-apps/api": "^2.11.0" } }, "sha512-c7szP8mDMweiUmzpyxZuqK7Sdc5i3gTG+QevqCvF96J2/VIVmWFRnAz02e+dCucbgNKV4yuKfQPrlEy1d/sBhg=="],
 
-    "@vasakgroup/plugin-vsk-contextual-menu": ["@vasakgroup/plugin-vsk-contextual-menu@2.0.0", "", { "dependencies": { "@tauri-apps/api": "^2.11.0" }, "peerDependencies": { "vue": "^3.0.0" }, "optionalPeers": ["vue"] }, "sha512-aNLgO1ZEd8ofjuxXQzfig41zLGXzroP1GCcqS5qF6sOhZtHFadjhLz+jU/JHEtP4jorQS9TEX5qdcyxNlobssg=="],
+    "@vasakgroup/plugin-vsk-contextual-menu": ["@vasakgroup/plugin-vsk-contextual-menu@2.0.2", "", { "dependencies": { "@tauri-apps/api": "^2.11.0" }, "peerDependencies": { "vue": "^3.0.0" }, "optionalPeers": ["vue"] }, "sha512-DWt4tXftm0F32hyUMIxpmYFj3kzwcdsAI0x/9cNl7ZDyt9kBSrc8nAcvtw32D+H8kornnAMhcQoi4s/2HuLYfQ=="],
 
     "@vasakgroup/tauri-plugin-i18n": ["@vasakgroup/tauri-plugin-i18n@2.1.0", "", { "dependencies": { "@tauri-apps/api": "^2.10.1" }, "peerDependencies": { "vue": "^3.0.0" }, "optionalPeers": ["vue"] }, "sha512-zeM7pJc5b4BERCvkbrBQhvmqxLmlzqmIAkCIdJNIioS5uZwbvZsGDcgC6XqFn22TvNsj0zceTf55PM2byEUNsg=="],
 

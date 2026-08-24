@@ -40,24 +40,18 @@ const abrirMenuDelPanel = async (evento: MouseEvent) => {
 	try {
 		const elegido = await showContextMenu(
 			[
-				// El `type` va explícito aunque el tipo lo declare opcional: en modo
-				// ventana el plugin manda los ítems tal cual al Rust, que exige la
-				// etiqueta. Sin esto contesta «missing field `type`» y no abre nada.
 				{
-					type: 'item',
 					id: 'panel',
 					label: t('views.applets.panelMenu.panelSettings'),
 					icon: 'preferences-system-windows',
 				},
 				{
-					type: 'item',
 					id: 'notificaciones',
 					label: t('views.applets.panelMenu.notifications'),
 					icon: 'preferences-desktop-notification',
 				},
 				{ type: 'separator' },
 				{
-					type: 'item',
 					id: 'sistema',
 					label: t('views.applets.panelMenu.systemSettings'),
 					icon: 'preferences-system',
