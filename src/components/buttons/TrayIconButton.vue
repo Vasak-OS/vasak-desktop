@@ -1,7 +1,7 @@
 <template>
   <div
-    class="theme-transition p-1 rounded-corner relative hover:bg-primary group transition-all duration-300"
-    :class="customClass"
+    class="theme-transition p-1 rounded-corner relative group transition-all duration-300"
+    :class="[customClass, interactive ? 'cursor-pointer hover:bg-primary' : '']"
     :title="tooltip"
     @click="handleClick"
     @mouseenter="showTooltip = true"
@@ -56,6 +56,14 @@ interface Props {
 	tooltipClass?: string | Record<string, boolean>;
 	showCustomTooltip?: boolean;
 	customTooltipText?: string;
+	/**
+	 * Si hacer clic hace algo.
+	 *
+	 * Los que sólo informan —la batería, Bloq Mayús, el micrófono silenciado—
+	 * se pintaban al pasar el mouse como si fueran botones: el resaltado promete
+	 * un clic que no existe. Con esto quedan quietos.
+	 */
+	interactive?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -67,6 +75,7 @@ withDefaults(defineProps<Props>(), {
 	tooltipClass: '',
 	showCustomTooltip: false,
 	customTooltipText: '',
+	interactive: true,
 });
 
 const emit = defineEmits<{
