@@ -110,7 +110,11 @@ pub async fn open_settings_section(section: String) -> Result<(), String> {
 /// elemento propio de `argv`, no por una shell— sino la forma de no arrastrar
 /// hasta otra aplicación algo que claramente no es una sección.
 fn es_nombre_de_seccion(valor: &str) -> bool {
+    // Que no empiece con guion no es cosmético: `vasak-settings --help` trataría
+    // el argumento como una opción de la aplicación en vez de como la pantalla
+    // que hay que abrir.
     !valor.is_empty()
+        && !valor.starts_with('-')
         && valor.len() <= 40
         && valor
             .chars()
@@ -133,6 +137,7 @@ mod tests_seccion {
         assert!(!es_nombre_de_seccion("/etc/passwd"));
         assert!(!es_nombre_de_seccion("Appearance-Panel"));
         assert!(!es_nombre_de_seccion("dos palabras"));
+        assert!(!es_nombre_de_seccion("--help"), "una opción, no una sección");
         assert!(!es_nombre_de_seccion(&"a".repeat(41)));
     }
 }

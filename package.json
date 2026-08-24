@@ -3,6 +3,9 @@
   "private": true,
   "version": "1.2.0",
   "type": "module",
+  "engines": {
+    "bun": ">=1.2.21"
+  },
   "scripts": {
     "dev": "bunx --bun vite",
     "build": "vue-tsc --noEmit && bunx --bun vite build",

@@ -37,15 +37,27 @@ struct Contadores {
     enviados: u64,
 }
 
-/// Las que no cuentan como «internet»: el loopback y los puentes que arman
-/// Docker, libvirt, las VPN de tipo bridge y los pares de veth.
+/// Las que no cuentan como «internet».
+///
+/// Empezó como una lista de prefijos —`docker`, `virbr`, `br-`— y esa lista no
+/// se termina nunca: `podman0`, `cni0`, `flannel.1`, el próximo runtime de
+/// contenedores. Lo que todos tienen en común no es cómo se llaman sino lo que
+/// son, y eso el kernel lo dice en `/sys/class/net`:
+///
+/// * `bridge/` existe → es un puente, y lo que pasa por él ya se contó en la
+///   interfaz por la que salió de verdad.
+/// * `master` existe → está esclavizada a un puente o a un bond; cuenta el amo.
+///
+/// El loopback y los pares `veth` se descartan por nombre porque son el caso en
+/// que las dos puntas están en esta misma máquina.
 fn es_interna(nombre: &str) -> bool {
-    nombre == "lo"
-        || nombre.starts_with("veth")
-        || nombre.starts_with("docker")
-        || nombre.starts_with("br-")
-        || nombre.starts_with("virbr")
-        || nombre.starts_with("vnet")
+    if nombre == "lo" || nombre.starts_with("veth") {
+        return true;
+    }
+
+    let base = std::path::Path::new("/sys/class/net").join(nombre);
+
+    base.join("bridge").exists() || base.join("master").exists()
 }
 
 /// Suma los contadores de todas las interfaces que sí cuentan.
@@ -54,6 +66,12 @@ fn es_interna(nombre: &str) -> bool {
 /// con las dos primeras líneas de encabezado y el nombre pegado a los dos
 /// puntos o separado por espacios, según el ancho del nombre.
 fn sumar(texto: &str) -> Contadores {
+    sumar_con(texto, es_interna)
+}
+
+/// La suma de verdad, con el criterio inyectado: `es_interna` mira `/sys`, que
+/// no existe en un test, así que la prueba pasa el suyo.
+fn sumar_con(texto: &str, es_interna: impl Fn(&str) -> bool) -> Contadores {
     let mut total = Contadores {
         recibidos: 0,
         enviados: 0,
@@ -140,6 +158,16 @@ impl Applet for NetworkRateApplet {
 mod tests {
     use super::*;
 
+    /// El criterio de los tests: los mismos nombres que en la máquina real
+    /// resultan internos, pero sin leer `/sys`, que en un test no dice nada.
+    fn falsos_internos(nombre: &str) -> bool {
+        nombre == "lo"
+            || nombre.starts_with("veth")
+            || nombre.starts_with("docker")
+            || nombre.starts_with("podman")
+            || nombre.starts_with("cni")
+    }
+
     /// Dos líneas de encabezado y tres interfaces, con el formato real del
     /// kernel: nombres alineados a la derecha y el loopback en el medio.
     const MUESTRA: &str = "Inter-|   Receive                                                |  Transmit
@@ -151,7 +179,7 @@ mod tests {
 
     #[test]
     fn suma_las_interfaces_reales_y_saltea_el_loopback() {
-        let total = sumar(MUESTRA);
+        let total = sumar_con(MUESTRA, falsos_internos);
 
         assert_eq!(total.recibidos, 1_250_000, "eth0 + wlan0, sin lo");
         assert_eq!(total.enviados, 625_000);
@@ -164,7 +192,20 @@ mod tests {
             "  eth0: 100 1 0 0 0 0 0 0 50 1 0 0 0 0 0 0\n"
         );
 
-        let total = sumar(&texto);
+        let total = sumar_con(&texto, falsos_internos);
+        assert_eq!(total.recibidos, 100);
+        assert_eq!(total.enviados, 50);
+    }
+
+    #[test]
+    fn los_puentes_de_cualquier_runtime_quedan_afuera() {
+        // `podman0` y `cni0` no estaban en la lista de prefijos que había antes:
+        // su tráfico se contaba dos veces, una por el puente y otra por la
+        // interfaz real.
+        let texto = "a\nb\n podman0: 900 1 0 0 0 0 0 0 900 1 0 0 0 0 0 0\n    cni0: 700 1 0 0 0 0 0 0 700 1 0 0 0 0 0 0\n  wlan0: 100 1 0 0 0 0 0 0 50 1 0 0 0 0 0 0\n";
+
+        let total = sumar_con(texto, falsos_internos);
+
         assert_eq!(total.recibidos, 100);
         assert_eq!(total.enviados, 50);
     }
@@ -218,7 +259,7 @@ mod tests {
     #[test]
     fn una_linea_recortada_no_rompe_la_lectura() {
         let texto = "a\nb\n  eth0: 100\n wlan0: 200 1 0 0 0 0 0 0 100 1 0 0 0 0 0 0\n";
-        let total = sumar(texto);
+        let total = sumar_con(texto, falsos_internos);
 
         assert_eq!(total.recibidos, 200, "la línea sin tx_bytes se descarta");
         assert_eq!(total.enviados, 100);
@@ -227,7 +268,7 @@ mod tests {
     #[test]
     fn un_archivo_vacio_da_cero() {
         assert_eq!(
-            sumar(""),
+            sumar_con("", falsos_internos),
             Contadores {
                 recibidos: 0,
                 enviados: 0

@@ -163,8 +163,16 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    /// Un instante de hace tanto.
+    ///
+    /// `Instant::now() - duración` entra en pánico si el reloj monotónico vale
+    /// menos que la duración, que es lo que pasa en una máquina recién
+    /// arrancada: el test fallaba por el reloj y no por lo que prueba.
     fn hace(segundos: u64) -> Instant {
-        Instant::now() - Duration::from_secs(segundos)
+        let ahora = Instant::now();
+        ahora
+            .checked_sub(Duration::from_secs(segundos))
+            .unwrap_or(ahora)
     }
 
     #[test]
