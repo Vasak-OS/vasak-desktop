@@ -18,6 +18,7 @@ mod search_window;
 mod session;
 mod session_popup;
 mod tray;
+mod weather;
 mod window_manager;
 
 pub use batch::batch_invoke;
@@ -48,6 +49,9 @@ pub use session_popup::toggle_session_popup;
 pub use tray::{
     get_tray_items, get_tray_menu, get_tray_popup_data, init_sni_watcher, open_tray_popup,
     tray_item_activate, tray_item_secondary_activate, tray_menu_item_click, tray_popup_click,
+};
+pub use weather::{
+    weather_cached, weather_claim, weather_place, weather_release, weather_store, WeatherCache,
 };
 pub use window_manager::{get_windows, toggle_window};
 

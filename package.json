@@ -9,6 +9,7 @@
     "preview": "bunx --bun vite preview",
     "tauri": "tauri",
     "tauri:build": "tauri build --features wayland",
+    "test": "bun test",
     "lint": "bunx --bun biome check .",
     "lint:fix": "bunx --bun biome check --write . && bunx --bun biome format --write .",
     "format": "bunx --bun biome format --write ."
