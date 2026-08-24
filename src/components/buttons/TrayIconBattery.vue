@@ -2,11 +2,11 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { getBatteryInfo } from '@/services/core.service';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -86,10 +86,6 @@ async function getBatteryInfoComp() {
 	}
 }
 
-async function toggleBatteryInfo() {
-	// Toggle behavior for battery info display
-}
-
 onMounted(async () => {
 	await getBatteryInfoComp();
 });
@@ -111,7 +107,7 @@ useSharedEvent<BatteryInfo>('battery-update', (payload) => {
       'opacity-60': !batteryInfo.has_battery,
       'animate-pulse': batteryInfo.is_charging,
     }"
-    @click="toggleBatteryInfo"
+    :interactive="false"
   />
 </template>
 

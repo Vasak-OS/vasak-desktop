@@ -225,12 +225,13 @@ components:
     networkDisconnected: Red desconectada
     vpnConnected: VPN conectada
     vpnDisconnected: VPN desconectada
-    vpnProfileActive: Perfil VPN activo
-    vpnProfileTitle: "Perfil VPN activo: {0}"
-    vpnBadge: VPN activa
   TrayIconSound:
     mute: Silenciar
     unmute: Activar sonido
+  TrayIconTwingate:
+    connected: "Twingate: {0} recursos"
+    disconnected: "Twingate: sin conexión"
+    pending: "Twingate: {0} recursos por autorizar"
   TrayMusicControl:
     previous: Anterior
     play: Reproducir
@@ -239,6 +240,19 @@ components:
   VolumeControl:
     mute: Silenciar
     unmute: Activar sonido
+  TwingateArea:
+    resourceCount: "{0} recursos"
+    disconnected: Sin conexión
+    pendingCount: "{0} por autorizar"
+    loading: Consultando los recursos…
+    empty: No hay recursos disponibles
+    notInstalled: El cliente de Twingate no está instalado
+    failed: No se pudo consultar el estado de Twingate
+    needsAuth: Hay que autorizarlo
+    expiresIn: "Vence en {0}"
+    noAuthNeeded: Sin autenticación
+    authorize: Autorizar
+    authorizing: Autorizando…
   TrayNetworkRateControl:
     title: "Transferencia de red: lo que baja y lo que sube"
   TrayWeatherControl:

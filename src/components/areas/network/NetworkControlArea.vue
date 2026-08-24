@@ -210,9 +210,7 @@ const ethernetStatus = ref(t('components.NetworkControlArea.checking'));
 const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 const vpnDetail = computed(() => {
 	if (!vpnConnected.value) return '';
-	return [vpnStatus.value?.interface, vpnStatus.value?.ip_address]
-		.filter(Boolean)
-		.join(' · ');
+	return [vpnStatus.value?.interface, vpnStatus.value?.ip_address].filter(Boolean).join(' · ');
 });
 const vpnLabel = computed(() => {
 	if (!vpnConnected.value) return t('components.NetworkControlArea.vpnInactive');

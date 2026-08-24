@@ -11,6 +11,7 @@
     "applet_bluetooth",
     "applet_network",
     "applet_audio",
+    "applet_twingate",
     "app_terminal",
     "app_search",
     "vsk_context_menu",
