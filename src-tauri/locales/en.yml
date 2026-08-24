@@ -248,7 +248,10 @@ components:
     noAuthNeeded: No authentication
     authorize: Authorize
     authorizing: Authorizing…
-    showAll: "Show the remaining {0}"
+  TrayNetworkRateControl:
+    title: "Network transfer: download and upload"
+  TrayWeatherControl:
+    summary: "High {0}° and low {1}°"
   WeatherIcon:
     unknown: Unknown weather condition
   WeatherWidget:

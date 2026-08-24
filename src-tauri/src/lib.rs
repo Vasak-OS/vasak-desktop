@@ -91,6 +91,7 @@ use applets::{
     keyboard_leds::KeyboardLedsApplet,
     music::MusicApplet,
     network::NetworkApplet,
+    network_rate::NetworkRateApplet,
     notifications::NotificationApplet, 
     tray::TrayApplet
 };
@@ -117,6 +118,7 @@ pub fn run() {
         .manage(wm_state)
         .manage(tray_manager)
         .manage(SystrayPopupState(std::sync::Mutex::new(None)))
+        .manage(WeatherCache::default())
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_config_manager::init())
@@ -132,6 +134,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             batch_invoke,
+            weather_cached,
+            weather_claim,
+            weather_place,
+            weather_release,
+            weather_store,
             get_windows,
             toggle_window,
             open_app,
@@ -295,6 +302,7 @@ pub fn run() {
                 // Deferred: Started after panel-ready event from frontend
                 manager.register(BluetoothApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkApplet, AppletPriority::Deferred).await;
+                manager.register(NetworkRateApplet, AppletPriority::Deferred).await;
                 // The phone service: nothing on screen depends on it, and most
                 // sessions never plug one in.
                 manager.register(ConnectApplet, AppletPriority::Deferred).await;

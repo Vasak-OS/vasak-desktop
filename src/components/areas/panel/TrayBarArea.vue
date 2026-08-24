@@ -12,6 +12,8 @@ import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import TrayIconTwingate from '@/components/buttons/TrayIconTwingate.vue';
 import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
+import TrayNetworkRateControl from '@/components/controls/TrayNetworkRateControl.vue';
+import TrayWeatherControl from '@/components/controls/TrayWeatherControl.vue';
 import type { TrayItem } from '@/interfaces/tray';
 import { batteryExists } from '@/services/core.service';
 import {
@@ -22,8 +24,12 @@ import {
 	trayItemSecondaryActivate,
 } from '@/services/tray.service';
 import { animationBudget } from '@/tools/animation.budget';
+import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError, logWarning } from '@/utils/logger';
+
+// Qué partes del panel están encendidas en la configuración.
+const { showWeather, showMusic, showTransfer, showTray } = usePanelConfig();
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
@@ -146,9 +152,11 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
       tag="div"
       class="flex items-center gap-1"
     >
-      <TrayMusicControl key="music-control" />
+      <TrayNetworkRateControl v-if="showTransfer" key="network-rate" />
+      <TrayWeatherControl v-if="showWeather" key="weather" />
+      <TrayMusicControl v-if="showMusic" key="music-control" />
       <div
-        v-for="item in trayItems"
+        v-for="item in (showTray ? trayItems : [])"
         :key="item.service_name"
         :class="[
           'relative flex items-center justify-center w-7 h-7 rounded-corner cursor-pointer transform transition-all duration-300 ease-out hover:bg-white/15 hover:scale-110 hover:rotate-3 active:scale-95 active:rotate-0 group',
