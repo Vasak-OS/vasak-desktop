@@ -58,84 +58,46 @@ fn announce_caps_state(app: &AppHandle, active: bool, initial: bool) {
 /// has to be connected where the main loop that dispatches it lives.
 ///
 /// Returns `false` when there is no display or no keymap to ask, so the caller
-/// can fall back instead of leaving the indicator mute.
-fn connect_gdk_caps_monitor(app: AppHandle) -> bool {
-    let Some(display) = gdk::Display::default() else {
-        log::warn!("Sin GDK display: no se puede seguir Bloq Mayús por el compositor");
-        return false;
-    };
-
-    let Some(keymap) = gdk::Keymap::for_display(&display) else {
-        log::warn!("Sin GDK keymap: no se puede seguir Bloq Mayús por el compositor");
-        return false;
-    };
-
-    let initial = keymap.is_caps_locked();
-    log::info!("Estado inicial de Bloq Mayús (GDK): {}", initial);
-    announce_caps_state(&app, initial, true);
-
-    // `state-changed` fires for every modifier (Num Lock, Scroll Lock,
-    // direction…), so remember what we last reported and stay quiet otherwise.
-    let last = std::cell::Cell::new(initial);
-
-    keymap.connect_state_changed(move |keymap| {
-        let active = keymap.is_caps_locked();
-        if active == last.get() {
-            return;
-        }
-        last.set(active);
-
-        log::info!("Bloq Mayús cambió (GDK): {}", active);
-        announce_caps_state(&app, active, false);
-    });
-
-    // The keymap wrapper is dropped here, but GDK keeps its own reference to the
-    // display's keymap for the life of the display, so the handler stays live.
-    true
-}
-
-/// Starts Caps Lock monitoring, preferring the compositor over the kernel LED.
+/// Sigue el estado de Bloq Mayús por las luces del kernel.
 ///
-/// GDK has to be touched from the main thread, and only there can we find out
-/// whether a keymap exists at all — so the fallback decision is made inside the
-/// main-thread closure, right where the answer is known.
+/// Antes esto preguntaba por GDK, que es quien tiene el estado de xkb del
+/// compositor. No sirve: GDK se entera de los modificadores por los eventos que
+/// el compositor manda **a la ventana con foco de teclado**, y el panel es una
+/// superficie de capa que nunca lo toma. Medido en esta máquina: escribiendo en
+/// mayúsculas, GDK seguía diciendo que Bloq Mayús estaba apagado.
 fn start_caps_monitor(app: AppHandle, running: Arc<AtomicBool>) {
-    let monitored = app.clone();
-    let monitored_running = running.clone();
-
-    let dispatch = app.run_on_main_thread(move || {
-        if !connect_gdk_caps_monitor(monitored.clone()) {
-            log::warn!("Cayendo al LED del kernel para Bloq Mayús (puede quedarse pegado)");
-            spawn_evdev_caps_monitor(monitored, monitored_running);
-        }
-    });
-
-    if let Err(error) = dispatch {
-        log::error!(
-            "No se pudo llegar al hilo principal para GDK ({error}); usando el LED del kernel"
-        );
-        spawn_evdev_caps_monitor(app, running);
-    }
+    spawn_evdev_caps_monitor(app, running);
 }
 
-// ─── e v d e v   C a p s   L o c k   m o n i t o r  ( f a l l b a c k ) ──────
-// Reads the keyboard LED straight from the kernel through udev uaccess — no
-// input group, no Wayfire IPC, no FIFO.
+// ─── L a s   l u c e s   d e l   t e c l a d o ───────────────────────────────
+// Se leen del kernel por udev uaccess: sin grupo `input`, sin IPC del
+// compositor, sin FIFO.
 //
-// Only a fallback now: on Wayland the compositor owns that LED **per device**,
-// so as soon as another process grabs the keyboard with EVIOCGRAB and replays
-// keys through a uinput virtual keyboard — which is exactly what
-// `vasak-press-and-hold` does for the accent picker — the compositor starts
-// lighting the LED of the virtual device and the physical keyboard's LED stays
-// on for good. It also only ever watched a single device, so an external
-// keyboard was invisible to it.
+// Se miran **todos** los teclados que se puedan abrir, no uno solo. En Wayland
+// el compositor enciende la luz por dispositivo, y cuando otro proceso toma el
+// teclado en exclusiva y reinyecta por un teclado virtual —que es exactamente
+// lo que hace `vasak-press-and-hold` para el selector de acentos— la única luz
+// que se mueve es la del virtual, que no aparece en `/dev/input/by-path`.
+// Mirando uno solo, además, un teclado externo era invisible.
 
 const EV_KEY: u16 = 0x01;
 const EV_LED: u16 = 0x11;
 const KEY_CAPSLOCK: u16 = 58;
-const LED_CAPSL: u16 = 0;
+
+/// **1**, no 0: el cero es Bloq Num.
+///
+/// Estaba puesto en 0, así que lo que el indicador mostraba era el Bloq Num —que
+/// en un teclado con teclado numérico vive encendido—: de ahí que pareciera
+/// trabado en «mayúsculas activadas» sin importar lo que uno apretara.
+const LED_CAPSL: u16 = 1;
+
 // EVIOCGLED = _IOR('E', 0x19, int) = 0x80044519 (64-bit)
 const EVIOCGLED: libc::c_ulong = 0x8004_4519;
+
+/// EVIOCGBIT(EV_LED, 1) = _IOC(_IOC_READ, 'E', 0x20 + EV_LED, 1): qué luces dice
+/// tener el dispositivo. Es lo que separa un teclado de un mouse o del botón de
+/// encendido, que también son `/dev/input/event*`.
+const EVIOCGBIT_LED: libc::c_ulong = 0x8001_4531;
 
 #[repr(C)]
 struct InputEvent {
@@ -146,86 +108,139 @@ struct InputEvent {
     value: i32,
 }
 
-fn find_keyboard_evdev() -> Option<String> {
-    if let Ok(dir) = fs::read_dir("/dev/input/by-path") {
-        for entry in dir.flatten() {
-            let path = entry.path();
-            if let Some(name) = path.file_name()?.to_str() {
-                if name.ends_with("-event-kbd") {
-                    return Some(path.to_string_lossy().to_string());
-                }
-            }
+/// Si el dispositivo dice tener luz de Bloq Mayús.
+fn tiene_luz_de_mayusculas(fd: std::os::unix::io::RawFd) -> bool {
+    let mut luces: u8 = 0;
+    let leidos = unsafe {
+        libc::ioctl(fd, EVIOCGBIT_LED, &mut luces as *mut u8 as *mut libc::c_void)
+    };
+
+    leidos >= 0 && (luces >> LED_CAPSL) & 1 == 1
+}
+
+/// Todos los teclados que se pueden abrir y tienen esa luz.
+///
+/// Se recorre `/dev/input/event*` y no `/dev/input/by-path`: el teclado virtual
+/// que crea el selector de acentos —el único cuya luz se mueve mientras tiene
+/// tomado el teclado de verdad— no tiene entrada ahí.
+fn find_caps_devices() -> Vec<std::path::PathBuf> {
+    let mut encontrados = Vec::new();
+
+    let Ok(dir) = fs::read_dir("/dev/input") else {
+        log::warn!("No se pudo leer /dev/input: Bloq Mayús queda sin seguimiento");
+        return encontrados;
+    };
+
+    for entrada in dir.flatten() {
+        let ruta = entrada.path();
+        let es_evento = ruta
+            .file_name()
+            .and_then(|nombre| nombre.to_str())
+            .is_some_and(|nombre| nombre.starts_with("event"));
+
+        if !es_evento {
+            continue;
+        }
+
+        // Abrir es también la prueba de permisos: sin uaccess no hay nada que
+        // hacer con este dispositivo.
+        let Ok(archivo) = fs::File::open(&ruta) else {
+            continue;
+        };
+
+        if tiene_luz_de_mayusculas(archivo.as_raw_fd()) {
+            encontrados.push(ruta);
         }
     }
-    log::warn!("No keyboard evdev device found — Caps Lock monitoring unavailable");
-    None
+
+    if encontrados.is_empty() {
+        log::warn!("Ningún teclado con luz de Bloq Mayús: el indicador queda sin seguimiento");
+    }
+
+    encontrados
 }
 
 fn caps_led_state(fd: std::os::unix::io::RawFd) -> bool {
-    let mut leds: u32 = 0;
+    let mut luces: u32 = 0;
     unsafe {
-        libc::ioctl(fd, EVIOCGLED, &mut leds as *mut u32 as *mut libc::c_void);
+        libc::ioctl(fd, EVIOCGLED, &mut luces as *mut u32 as *mut libc::c_void);
     }
-    (leds & 1) != 0
+    (luces >> LED_CAPSL) & 1 == 1
 }
 
+/// Un hilo por teclado, y un solo aviso por cambio.
+///
+/// Varios dispositivos pueden reportar la misma tecla —el físico y el virtual
+/// que lo replica—, así que el último estado avisado se comparte entre los
+/// hilos: el segundo que llega con la misma novedad se calla.
 fn spawn_evdev_caps_monitor(app: AppHandle, running: Arc<AtomicBool>) {
-    let device_path = match find_keyboard_evdev() {
-        Some(p) => p,
-        None => return,
-    };
+    let dispositivos = find_caps_devices();
+    if dispositivos.is_empty() {
+        return;
+    }
 
-    std::thread::spawn(move || {
-        log::info!("Caps Lock evdev monitor on {}", device_path);
+    // El estado inicial sale del primero que se pueda leer, y se avisa una sola
+    // vez, antes de largar los hilos.
+    let inicial = dispositivos
+        .iter()
+        .find_map(|ruta| fs::File::open(ruta).ok())
+        .map(|archivo| caps_led_state(archivo.as_raw_fd()))
+        .unwrap_or(false);
 
-        let mut file = match fs::File::open(&device_path) {
-            Ok(f) => f,
-            Err(e) => {
-                log::error!("Cannot open evdev device {}: {}", device_path, e);
-                log::warn!("Ensure udev uaccess grants access to input devices");
+    log::info!("Estado inicial de Bloq Mayús: {inicial}");
+    announce_caps_state(&app, inicial, true);
+
+    let ultimo = Arc::new(AtomicBool::new(inicial));
+
+    for ruta in dispositivos {
+        let app = app.clone();
+        let running = running.clone();
+        let ultimo = Arc::clone(&ultimo);
+
+        std::thread::spawn(move || {
+            log::info!("Siguiendo Bloq Mayús en {}", ruta.display());
+
+            let Ok(mut archivo) = fs::File::open(&ruta) else {
+                log::error!("No se pudo abrir {} para leer sus eventos", ruta.display());
                 return;
-            }
-        };
-
-        let fd = file.as_raw_fd();
-
-        // Read initial Caps Lock LED state from kernel
-        let mut caps_state = caps_led_state(fd);
-        log::info!("Initial Caps Lock state: {}", caps_state);
-
-        announce_caps_state(&app, caps_state, true);
-
-        let mut buf = [0u8; 24];
-
-        loop {
-            if !running.load(Ordering::Relaxed) {
-                break;
-            }
-
-            if let Err(e) = io::Read::read_exact(&mut file, &mut buf) {
-                log::error!("evdev read error: {}", e);
-                break;
-            }
-
-            let event: InputEvent = unsafe { std::mem::transmute(buf) };
-
-            let new_state = match (event.type_, event.code, event.value) {
-                (EV_LED, LED_CAPSL, v) => Some(v != 0),
-                (EV_KEY, KEY_CAPSLOCK, 1) => Some(caps_led_state(fd)),
-                _ => None,
             };
 
-            if let Some(new) = new_state {
-                if new == caps_state {
+            let fd = archivo.as_raw_fd();
+            let mut buf = [0u8; 24];
+
+            while running.load(Ordering::Relaxed) {
+                if let Err(error) = io::Read::read_exact(&mut archivo, &mut buf) {
+                    // Un teclado que se desenchufa cierra su hilo y ya; los
+                    // demás siguen andando.
+                    log::info!("Se dejó de leer {}: {error}", ruta.display());
+                    break;
+                }
+
+                let evento: InputEvent = unsafe { std::mem::transmute(buf) };
+
+                let nuevo = match (evento.type_, evento.code, evento.value) {
+                    (EV_LED, LED_CAPSL, valor) => Some(valor != 0),
+                    // Al soltar la tecla el kernel ya movió la luz; preguntarla
+                    // cubre a los teclados que no emiten el evento de LED.
+                    (EV_KEY, KEY_CAPSLOCK, 0) => Some(caps_led_state(fd)),
+                    _ => None,
+                };
+
+                let Some(nuevo) = nuevo else {
+                    continue;
+                };
+
+                // `swap` y no `load`+`store`: dos teclados pueden traer el mismo
+                // cambio al mismo tiempo y sólo uno tiene que avisar.
+                if ultimo.swap(nuevo, Ordering::SeqCst) == nuevo {
                     continue;
                 }
-                caps_state = new;
 
-                announce_caps_state(&app, caps_state, false);
-                log::info!("Caps Lock state changed: {}", caps_state);
+                log::info!("Bloq Mayús cambió: {nuevo}");
+                announce_caps_state(&app, nuevo, false);
             }
-        }
-    });
+        });
+    }
 }
 
 fn show_osd_sync(icon: &str, value: f64, maximum: f64, label: &str, app: &AppHandle) {
