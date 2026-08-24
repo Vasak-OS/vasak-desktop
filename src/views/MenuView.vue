@@ -12,7 +12,7 @@ import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
 import SessionButton from '@/components/buttons/SessionButton.vue';
 import UserMenuCard from '@/components/cards/UserMenuCard.vue';
 import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
-import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
+import WidgetSlot from '@/components/widgets/WidgetSlot.vue';
 import { getMenuItems, openApp } from '@/services/app.service';
 import { openSettings, toggleSessionPopup } from '@/services/window.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
@@ -131,20 +131,24 @@ onMounted(() => {
 	});
 	document.addEventListener('keydown', onKeydown);
 	window.addEventListener('blur', onBlur);
-	menuWindow.onFocusChanged(({ payload: focused }) => {
-		if (focused) {
-			// Shown again after being hidden: the animation state has to be
-			// reset or the menu comes back mid-fade and never becomes solid.
-			leaving.value = false;
-			setTimeout(() => document.getElementById('search')?.focus(), 50);
-			return;
-		}
-		// Losing focus was never handled — only gaining it — so clicking
-		// somewhere else left the menu open over whatever you clicked. The DOM
-		// `blur` event does not stand in for this: the webview keeps its own
-		// focus when another window takes the compositor's.
-		closeAfterAnimation();
-	}).then(fn => { unlistenFocus = fn; });
+	menuWindow
+		.onFocusChanged(({ payload: focused }) => {
+			if (focused) {
+				// Shown again after being hidden: the animation state has to be
+				// reset or the menu comes back mid-fade and never becomes solid.
+				leaving.value = false;
+				setTimeout(() => document.getElementById('search')?.focus(), 50);
+				return;
+			}
+			// Losing focus was never handled — only gaining it — so clicking
+			// somewhere else left the menu open over whatever you clicked. The DOM
+			// `blur` event does not stand in for this: the webview keeps its own
+			// focus when another window takes the compositor's.
+			closeAfterAnimation();
+		})
+		.then((fn) => {
+			unlistenFocus = fn;
+		});
 });
 
 onBeforeUnmount(() => {
@@ -281,8 +285,12 @@ const onBlur = () => {
             </div>
           </div>
 
-          <div class="rounded-corner bg-ui-bg/80 border border-ui-border p-4 overflow-y-auto min-h-0">
-            <WeatherWidget />
+          <!-- El hueco de la derecha acepta cualquiera de los widgets del
+               escritorio: cambiar `type` alcanza. El marco y el contenedor los
+               pone WidgetSlot, que es lo que hace que las medidas de adentro se
+               resuelvan contra este hueco y no contra la ventana entera. -->
+          <div class="min-h-0">
+            <WidgetSlot type="weather" />
           </div>
         </div>
       </div>
