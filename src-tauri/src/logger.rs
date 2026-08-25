@@ -1,7 +1,7 @@
 use std::fs::{File, OpenOptions};
 use std::io::BufWriter;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use chrono::Local;
 use std::sync::LazyLock;
@@ -143,7 +143,7 @@ impl VasakLogger {
     ///
     /// One file per day was created and never removed, so the directory grew
     /// without bound for the life of the install.
-    fn prune_old_logs(log_path: &PathBuf) {
+    fn prune_old_logs(log_path: &Path) {
         const MAX_AGE: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 60 * 60);
 
         let Some(dir) = log_path.parent() else { return };
@@ -201,6 +201,88 @@ impl VasakLogger {
     /// Obtiene la ruta actual del log
     pub fn get_current_log_path(&self) -> PathBuf {
         self.log_path.clone()
+    }
+
+    /// Vuelca lo que quede en el buffer.
+    pub fn flush(&mut self) {
+        if let Some(ref mut file) = self.log_file {
+            let _ = file.flush();
+        }
+    }
+}
+
+// ── Puente con el crate `log` ───────────────────────────────────────────────
+
+/// Manda al registro de la aplicación lo que se escriba con las macros de `log`.
+///
+/// `log` es una fachada: sin un backend instalado descarta todos los registros
+/// en silencio, y así estaban las setenta y dos llamadas repartidas por la
+/// aplicación. No eran mensajes de adorno —un applet crítico que no arranca, los
+/// monitores de D-Bus rindiéndose tras el último reintento, las lecturas de
+/// brillo que fallan, el IPC de Wayfire sin responder— y ninguno dejaba rastro.
+///
+/// Se hace con un puente y no reescribiendo los setenta y dos sitios: es el
+/// mismo resultado en treinta líneas, y deja funcionando de una vez lo que
+/// escriba cualquier dependencia que también use `log`.
+struct LogCrateBridge;
+
+impl log::Log for LogCrateBridge {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= log::max_level()
+    }
+
+    fn log(&self, record: &log::Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+
+        let level = match record.level() {
+            log::Level::Error => LogLevel::Error,
+            log::Level::Warn => LogLevel::Warning,
+            log::Level::Info => LogLevel::Info,
+            // El registro propio no distingue Trace, y nadie lo usa acá.
+            log::Level::Debug | log::Level::Trace => LogLevel::Debug,
+        };
+
+        // El objetivo va delante porque es lo único que dice de dónde salió el
+        // mensaje: varias de estas llamadas están en dependencias.
+        let message = format!("[{}] {}", record.target(), record.args());
+
+        if let Ok(mut logger) = LOGGER.lock() {
+            logger.log(level, LogSource::Rust, &message);
+        }
+    }
+
+    fn flush(&self) {
+        if let Ok(mut logger) = LOGGER.lock() {
+            logger.flush();
+        }
+    }
+}
+
+static LOG_BRIDGE: LogCrateBridge = LogCrateBridge;
+
+/// Conecta las macros de `log` con el registro de la aplicación.
+///
+/// Hay que llamarla una vez, lo antes posible: lo que se registre antes se
+/// pierde, porque así funciona la fachada.
+///
+/// El techo de nivel se pone acá y no se deja en su valor por omisión, que es
+/// `Off` —con un backend instalado y el techo en `Off` no pasaría nada igual—.
+/// En release queda en `Info`: el registro propio ya descarta los `Debug` fuera
+/// de desarrollo, y filtrarlos en la fachada evita además construir el mensaje.
+pub fn install_log_bridge() {
+    let level = if cfg!(debug_assertions) {
+        log::LevelFilter::Debug
+    } else {
+        log::LevelFilter::Info
+    };
+
+    // Falla si ya había uno puesto, que no es un problema: significa que algo
+    // se adelantó, y avisar por el mismo canal que acabamos de instalar sería
+    // dar vueltas.
+    if log::set_logger(&LOG_BRIDGE).is_ok() {
+        log::set_max_level(level);
     }
 }
 
@@ -279,5 +361,71 @@ mod tests {
     fn test_log_sources() {
         assert_eq!(LogSource::Rust.as_str(), "RUST");
         assert_eq!(LogSource::JavaScript.as_str(), "JS");
+    }
+}
+
+#[cfg(test)]
+mod bridge_tests {
+    use super::*;
+
+    #[test]
+    fn los_niveles_del_crate_log_se_traducen_uno_a_uno() {
+        // Sin esto, un `log::warn!` podría terminar archivado como Info y
+        // dejar de volcarse al instante, que es lo que distingue un aviso.
+        let pares = [
+            (log::Level::Error, LogLevel::Error),
+            (log::Level::Warn, LogLevel::Warning),
+            (log::Level::Info, LogLevel::Info),
+            (log::Level::Debug, LogLevel::Debug),
+            (log::Level::Trace, LogLevel::Debug),
+        ];
+
+        for (origen, esperado) in pares {
+            let traducido = match origen {
+                log::Level::Error => LogLevel::Error,
+                log::Level::Warn => LogLevel::Warning,
+                log::Level::Info => LogLevel::Info,
+                log::Level::Debug | log::Level::Trace => LogLevel::Debug,
+            };
+            assert_eq!(traducido, esperado, "{origen:?} se archivó mal");
+        }
+    }
+
+    #[test]
+    fn instalar_el_puente_deja_pasar_los_errores() {
+        // El techo por omisión de la fachada es `Off`: instalar un backend y
+        // olvidarse de subirlo descarta todo igual, que es la trampa que este
+        // arreglo justamente vino a evitar.
+        install_log_bridge();
+
+        assert!(
+            log::max_level() >= log::LevelFilter::Info,
+            "el techo quedó en {} y los mensajes se seguirían descartando",
+            log::max_level()
+        );
+        assert!(log::log_enabled!(log::Level::Error));
+        assert!(log::log_enabled!(log::Level::Warn));
+        assert!(log::log_enabled!(log::Level::Info));
+    }
+
+    #[test]
+    fn un_mensaje_del_crate_log_llega_al_archivo() {
+        install_log_bridge();
+
+        let ruta = match LOGGER.lock() {
+            Ok(logger) => logger.get_current_log_path(),
+            Err(_) => return,
+        };
+
+        let marca = "puente-log-vasak-prueba";
+        log::error!("{marca}");
+        log::logger().flush();
+
+        let contenido = std::fs::read_to_string(&ruta).unwrap_or_default();
+        assert!(
+            contenido.contains(marca),
+            "el mensaje no llegó a {}",
+            ruta.display()
+        );
     }
 }

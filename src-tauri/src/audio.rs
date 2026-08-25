@@ -33,14 +33,12 @@ fn get_default_sink_name() -> Result<String> {
     let default_sink = info_output
         .lines()
         .find_map(|line| {
+            // `pactl` cambió la capitalización de esta etiqueta entre versiones.
             let trimmed = line.trim();
-            if let Some(suffix) = trimmed.strip_prefix("Default Sink:") {
-                Some(suffix.trim().to_string())
-            } else if let Some(suffix) = trimmed.strip_prefix("default sink:") {
-                Some(suffix.trim().to_string())
-            } else {
-                None
-            }
+            trimmed
+                .strip_prefix("Default Sink:")
+                .or_else(|| trimmed.strip_prefix("default sink:"))
+                .map(|suffix| suffix.trim().to_string())
         })
         .ok_or_else(|| {
             log_error("No se encontró el sink por defecto en pactl info");

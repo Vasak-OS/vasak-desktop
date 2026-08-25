@@ -20,8 +20,11 @@ pub enum AppletPriority {
     Deferred,
 }
 
+/// Lo que se guarda de cada applet: la instancia y cuándo hay que arrancarla.
+type RegisteredApplet = (Arc<dyn Applet>, AppletPriority);
+
 pub struct AppletManager {
-    applets: RwLock<HashMap<&'static str, (Arc<dyn Applet>, AppletPriority)>>,
+    applets: RwLock<HashMap<&'static str, RegisteredApplet>>,
 }
 
 impl AppletManager {
