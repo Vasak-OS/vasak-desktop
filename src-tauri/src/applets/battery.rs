@@ -6,7 +6,7 @@ use futures_util::StreamExt;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use zbus::zvariant::OwnedValue;
@@ -18,6 +18,22 @@ pub struct BatteryApplet;
 static BATTERY_CACHE: Mutex<Option<BatteryInfo>> = Mutex::new(None);
 // Cached device path (discovered at startup)
 static BATTERY_DEVICE_PATH: Mutex<Option<String>> = Mutex::new(None);
+
+/// Toma el candado, recuperándolo si quedó envenenado.
+///
+/// `lock().unwrap()` paniquea cuando otro hilo ya paniqueó teniendo el candado,
+/// y acá eso significaba que **el indicador de batería moría para el resto de
+/// la sesión**: son doce accesos a estas dos cachés, en el proceso del panel que
+/// está siempre encendido, así que el primer envenenamiento se propagaba a todos
+/// los siguientes.
+///
+/// Recuperar el guard es seguro para lo que se guarda: son un `Option<BatteryInfo>`
+/// y un `Option<String>` completos, no una estructura a medio escribir.
+fn tomar<T>(candado: &Mutex<T>) -> MutexGuard<'_, T> {
+    candado
+        .lock()
+        .unwrap_or_else(|envenenado| envenenado.into_inner())
+}
 
 #[async_trait]
 impl Applet for BatteryApplet {
@@ -36,7 +52,7 @@ impl Applet for BatteryApplet {
         if let Some(conn) = get_system_connection(&app_handle).await {
             if let Some(path) = find_battery_path(&conn).await {
                 // Cache the path and use D-Bus monitoring
-                BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
+                tomar(&BATTERY_DEVICE_PATH).replace(path.clone());
 
                 // Emit initial state
                 if let Some(info) = get_battery_info_with_conn(&conn).await {
@@ -155,7 +171,7 @@ impl BatteryApplet {
                     // Try to get a fresh connection from the pool
                     if let Some(new_conn) = get_system_connection(&app_handle).await {
                         if let Some(p) = find_battery_path(&new_conn).await {
-                            BATTERY_DEVICE_PATH.lock().unwrap().replace(p.clone());
+                            tomar(&BATTERY_DEVICE_PATH).replace(p.clone());
                             path = p;
                         }
                         conn = new_conn;
@@ -250,7 +266,7 @@ impl BatteryApplet {
                     // the device again — the cheap sysfs read, since it costs
                     // nothing and catches a signal we somehow missed.
                     let info = read_sysfs_battery_info()
-                        .or_else(|| BATTERY_CACHE.lock().unwrap().clone());
+                        .or_else(|| tomar(&BATTERY_CACHE).clone());
 
                     let info = if info.is_some() {
                         info
@@ -316,11 +332,11 @@ impl BatteryApplet {
         // If no changed properties, nothing to do
         if changed_properties.is_empty() {
             // Return current cache as-is
-            return BATTERY_CACHE.lock().unwrap().clone();
+            return tomar(&BATTERY_CACHE).clone();
         }
 
         // Get the current cached state to merge into
-        let mut cached = match BATTERY_CACHE.lock().unwrap().clone() {
+        let mut cached = match tomar(&BATTERY_CACHE).clone() {
             Some(info) => info,
             None => {
                 // No cache exists yet, can't merge - need a full GetAll
@@ -333,7 +349,7 @@ impl BatteryApplet {
         merge_properties_into_cache(&mut cached, &changed_properties);
 
         // Update the cache with merged state
-        *BATTERY_CACHE.lock().unwrap() = Some(cached.clone());
+        *tomar(&BATTERY_CACHE) = Some(cached.clone());
 
         // We don't need the connection for the merge itself, but it's available
         // in case future logic needs it
@@ -479,13 +495,13 @@ pub async fn get_battery_info() -> Option<BatteryInfo> {
 async fn get_battery_info_with_conn(conn: &Connection) -> Option<BatteryInfo> {
     // Get or discover device path
     let device_path = {
-        let cached = BATTERY_DEVICE_PATH.lock().unwrap().clone();
+        let cached = tomar(&BATTERY_DEVICE_PATH).clone();
         match cached {
             Some(p) => p,
             None => {
                 match find_battery_path(conn).await {
                     Some(path) => {
-                        BATTERY_DEVICE_PATH.lock().unwrap().replace(path.clone());
+                        tomar(&BATTERY_DEVICE_PATH).replace(path.clone());
                         path
                     }
                     None => {
@@ -523,22 +539,22 @@ async fn get_battery_info_with_conn(conn: &Connection) -> Option<BatteryInfo> {
                 Ok(p) => p,
                 Err(_) => {
                     // Parse failure: return cache if available
-                    return BATTERY_CACHE.lock().unwrap().clone();
+                    return tomar(&BATTERY_CACHE).clone();
                 }
             };
 
             let info = parse_battery_info_from_props(&props);
             // Update cache
-            *BATTERY_CACHE.lock().unwrap() = Some(info.clone());
+            *tomar(&BATTERY_CACHE) = Some(info.clone());
             Some(info)
         }
         Ok(Err(_dbus_err)) => {
             // D-Bus method call error: return cache if available
-            BATTERY_CACHE.lock().unwrap().clone()
+            tomar(&BATTERY_CACHE).clone()
         }
         Err(_timeout) => {
             // Timeout: return cached state if available
-            let cached = BATTERY_CACHE.lock().unwrap().clone();
+            let cached = tomar(&BATTERY_CACHE).clone();
             if cached.is_some() {
                 return cached;
             }
