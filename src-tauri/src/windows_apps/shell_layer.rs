@@ -4,6 +4,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
+use crate::logger::log_error;
+
 // Layer-shell windows owned by the shell, keyed by window label.
 //
 // These used to be handed to `std::mem::forget` so GTK would keep them alive.
@@ -230,7 +232,11 @@ pub fn destroy_layer_windows(app: &AppHandle, prefixes: &[&str]) {
     for (label, window) in app.webview_windows() {
         if matches(&label) {
             if let Err(error) = window.destroy() {
-                log::error!("No se pudo cerrar {label}: {error}");
+                // Con el logger propio, por lo mismo que en `desktop.rs`: el
+                // crate `log` no tiene backend en esta aplicación, así que un
+                // `log::error!` acá se descarta. Justo el silencio que este
+                // arreglo vino a sacar.
+                log_error(&format!("No se pudo cerrar {label}: {error}"));
             }
         }
     }
