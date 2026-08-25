@@ -7,23 +7,41 @@ import App from '@/App.vue';
 import { router } from '@/routes/index';
 import '@/assets/main.css';
 
-// Una violación de CSP no se ve: el recurso simplemente no carga y la interfaz
-// queda a medias sin decir nada. Esto la manda a la consola, que es donde se
-// puede encontrar al ajustar la política.
-document.addEventListener('securitypolicyviolation', (evento) => {
-	// Sin la query ni el fragmento: `blockedURI` puede llevar tokens o
-	// identificadores, y en esta aplicación el `console.error` va al registro en
-	// disco. Para saber qué directiva falló alcanza el origen y la ruta.
-	let recurso = evento.blockedURI || '(en línea)';
-	try {
-		const url = new URL(recurso);
-		recurso = url.protocol === 'data:' ? 'data:(recortado)' : `${url.origin}${url.pathname}`;
-	} catch {
-		// No era una URL absoluta —'inline', 'eval', una ruta relativa—: va tal cual.
+/**
+ * Saca de una URL lo que no debería quedar en un registro.
+ *
+ * Se conserva el esquema y la autoridad completos usando `href`, y no
+ * `origin + pathname`: para esquemas propios como `asset:` o `ipc:` el `origin`
+ * es la cadena «null», así que esa forma escribía `null/ruta` y perdía
+ * justamente lo que permite entender qué se bloqueó.
+ */
+const sanearUrl = (valor: string | null | undefined): string => {
+	if (!valor) {
+		return '(en línea)';
 	}
+	try {
+		const url = new URL(valor);
+		if (url.protocol === 'data:') {
+			return 'data:(recortado)';
+		}
+		// Credenciales, query y fragmento: ahí es donde viajan los tokens.
+		url.username = '';
+		url.password = '';
+		url.search = '';
+		url.hash = '';
+		return url.href;
+	} catch {
+		// No era una URL absoluta —'inline', 'eval', una ruta relativa—: tal cual.
+		return valor;
+	}
+};
+
+document.addEventListener('securitypolicyviolation', (evento) => {
+	// Se sanean **las dos** URLs. `sourceFile` también puede llevar query con
+	// datos sensibles, y antes se escribía sin tocar.
 	console.error(
-		`[CSP] bloqueado ${recurso} por la directiva ` +
-			`«${evento.violatedDirective}» en ${evento.sourceFile ?? 'documento'}:${evento.lineNumber}`
+		`[CSP] bloqueado ${sanearUrl(evento.blockedURI)} por la directiva ` +
+			`«${evento.violatedDirective}» en ${sanearUrl(evento.sourceFile) || 'documento'}:${evento.lineNumber}`
 	);
 });
 
