@@ -305,7 +305,7 @@ pub async fn get_tray_menu(
 
     let conn = Connection::session().await.map_err(|e| e.to_string())?;
 
-    load_dbus_menu_level(&conn, &bus_name, &menu_path, 0).await
+    load_dbus_menu_level(&conn, bus_name, &menu_path, 0).await
 }
 
 

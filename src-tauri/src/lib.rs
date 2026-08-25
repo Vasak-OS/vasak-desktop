@@ -99,6 +99,10 @@ use applets::{
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Inicializar el sistema de logging
+    // Lo primero: las macros de `log` no tienen backend por su cuenta y
+    // descartan todo hasta que esto corre. Lo que se registre antes se pierde.
+    logger::install_log_bridge();
+
     logger::log_info("Vasak Desktop iniciando...");
     
     let window_manager = Arc::new(RwLock::new(

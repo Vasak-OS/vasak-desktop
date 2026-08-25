@@ -211,8 +211,10 @@ mod tests {
 
     #[test]
     fn si_el_que_reclamo_no_volvio_otro_reintenta() {
-        let mut estado = Estado::default();
-        estado.reclamado = Some(hace(31));
+        let mut estado = Estado {
+            reclamado: Some(hace(31)),
+            ..Default::default()
+        };
 
         assert!(
             estado.reclamar(Instant::now()),
