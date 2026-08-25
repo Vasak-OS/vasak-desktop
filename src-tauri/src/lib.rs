@@ -98,11 +98,6 @@ use applets::{
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Inicializar el sistema de logging
-    // Lo primero: las macros de `log` no tienen backend por su cuenta y
-    // descartan todo hasta que esto corre. Lo que se registre antes se pierde.
-    logger::install_log_bridge();
-
     logger::log_info("Vasak Desktop iniciando...");
     
     let window_manager = Arc::new(RwLock::new(
@@ -210,6 +205,21 @@ pub fn run() {
             toggle_connect_menu
         ])
         .setup(move |app| {
+            // El puente de `log` se instala **acá**, después de los plugins, y
+            // no antes de construir Tauri.
+            //
+            // `tauri-plugin-bluetooth-manager` instala su propio
+            // `tracing-subscriber` con `.init()`, que reclama el mismo slot
+            // global de `log` y **paniquea** si ya está tomado: con el puente
+            // primero, el escritorio no arrancaba —«failed to set global default
+            // subscriber»— y eso llegó a main sin que nadie lo notara, porque
+            // lanzar el shell para probarlo se lleva puesta la sesión.
+            //
+            // Instalándolo después gana el plugin y el puente queda inerte sin
+            // romper nada. El plugin ya está corregido para usar `try_init`; al
+            // publicarse esa versión, vuelve a ganar el puente.
+            logger::install_log_bridge();
+
             let setup_start = std::time::Instant::now();
             logger::log_info("Configurando aplicación Tauri...");
 
