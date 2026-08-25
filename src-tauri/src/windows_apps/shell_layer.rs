@@ -221,10 +221,17 @@ pub fn destroy_layer_windows(app: &AppHandle, prefixes: &[&str]) {
         }
     });
 
-    // The hidden xdg-toplevels still exist behind each layer window.
+    // Detrás de cada superficie de capa queda su ventana de Tauri.
+    //
+    // `close()` **pide** el cierre: emite el evento y la baja la procesa el
+    // bucle más tarde, así que la etiqueta sigue ocupada al volver de acá y
+    // recrearla falla. `destroy()` la cierra sin preguntar, que es lo que
+    // corresponde cuando la estamos rehaciendo nosotros.
     for (label, window) in app.webview_windows() {
         if matches(&label) {
-            let _ = window.close();
+            if let Err(error) = window.destroy() {
+                log::error!("No se pudo cerrar {label}: {error}");
+            }
         }
     }
 }
