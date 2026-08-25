@@ -405,7 +405,10 @@ pub async fn open_tray_popup(
         items: items.clone(),
     };
 
-    *popup_state.0.lock().unwrap() = Some(payload);
+    *popup_state
+        .0
+        .lock()
+        .unwrap_or_else(|envenenado| envenenado.into_inner()) = Some(payload);
 
     let popup_width = 700.0;
     let popup_height = 620.0;
@@ -440,7 +443,10 @@ pub async fn open_tray_popup(
 pub async fn get_tray_popup_data(
     popup_state: tauri::State<'_, SystrayPopupState>,
 ) -> Result<Option<SystrayPopupPayload>, String> {
-    let data = popup_state.0.lock().unwrap().clone();
+    let data = popup_state
+        .0
+        .lock()
+        .unwrap_or_else(|envenenado| envenenado.into_inner()).clone();
     Ok(data)
 }
 
@@ -451,7 +457,10 @@ pub async fn tray_popup_click(
     popup_state: tauri::State<'_, SystrayPopupState>,
 ) -> Result<(), String> {
     let service_name = {
-        let data = popup_state.0.lock().unwrap();
+        let data = popup_state
+        .0
+        .lock()
+        .unwrap_or_else(|envenenado| envenenado.into_inner());
         data.as_ref().map(|d| d.service_name.clone())
     }.ok_or("No popup data available")?;
 

@@ -232,7 +232,13 @@ impl PipeWireMonitor {
                                 .register();
 
                             // Keep node and listener alive for the duration of the loop
-                            bound_nodes.lock().unwrap().push((node, listener));
+                            // Se recupera el guard: un envenenamiento acá dejaba el monitor de
+                            // audio muerto para el resto de la sesión, y lo que se
+                            // guarda es una lista completa, no algo a medio escribir.
+                            bound_nodes
+                                .lock()
+                                .unwrap_or_else(|envenenado| envenenado.into_inner())
+                                .push((node, listener));
                         } else {
                             log_error(&format!(
                                 "PipeWireMonitor: failed to bind sink node id={}",
