@@ -11,8 +11,18 @@ import '@/assets/main.css';
 // queda a medias sin decir nada. Esto la manda a la consola, que es donde se
 // puede encontrar al ajustar la política.
 document.addEventListener('securitypolicyviolation', (evento) => {
+	// Sin la query ni el fragmento: `blockedURI` puede llevar tokens o
+	// identificadores, y en esta aplicación el `console.error` va al registro en
+	// disco. Para saber qué directiva falló alcanza el origen y la ruta.
+	let recurso = evento.blockedURI || '(en línea)';
+	try {
+		const url = new URL(recurso);
+		recurso = url.protocol === 'data:' ? 'data:(recortado)' : `${url.origin}${url.pathname}`;
+	} catch {
+		// No era una URL absoluta —'inline', 'eval', una ruta relativa—: va tal cual.
+	}
 	console.error(
-		`[CSP] bloqueado ${evento.blockedURI || '(en línea)'} por la directiva ` +
+		`[CSP] bloqueado ${recurso} por la directiva ` +
 			`«${evento.violatedDirective}» en ${evento.sourceFile ?? 'documento'}:${evento.lineNumber}`
 	);
 });

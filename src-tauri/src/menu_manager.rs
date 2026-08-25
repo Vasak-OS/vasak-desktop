@@ -217,7 +217,15 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
     menu_items
 }
 
-/// Alfabético por nombre visible, sin distinguir mayúsculas ni acentos.
+/// Alfabético por nombre visible, **sin distinguir mayúsculas**.
+///
+/// Los acentos **sí** cuentan, y conviene saberlo: se comparan por su valor
+/// Unicode, así que «álgebra» queda después de «avahi» y la «ñ» después de la
+/// «z». Una colación completa necesita una tabla de reglas por idioma —es lo que
+/// hacía `localeCompare` en la vista— y costaba 0,75 ms en cada apertura del
+/// menú. Con nombres de aplicaciones el caso se da poco; si alguna vez molesta,
+/// lo que corresponde es normalizar los diacríticos acá, no volver a ordenar en
+/// la vista.
 ///
 /// `to_lowercase` y no una comparación cruda: con la comparación por bytes
 /// «Zathura» iba antes que «archivos», que es lo que hacía falta corregir en el
