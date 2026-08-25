@@ -45,12 +45,9 @@ const setMenu = async () => {
 			menuData.value = {};
 			return;
 		}
-		// Pre-sort all apps within each category alphabetically by name
-		for (const key of Object.keys(data)) {
-			if (data[key]?.apps) {
-				data[key].apps.sort((a: any, b: any) => a.name.localeCompare(b.name));
-			}
-		}
+		// Ya vienen ordenadas: el backend las ordena al armar la caché del menú,
+		// que sólo se rearma cuando cambia un .desktop. Ordenarlas acá era
+		// repetir novecientas comparaciones de colación en cada apertura.
 		menuData.value = data;
 		menuLoadFailed.value = false;
 	} catch (error) {
