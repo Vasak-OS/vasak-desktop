@@ -4,6 +4,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
+use crate::logger::log_error;
+
 // Layer-shell windows owned by the shell, keyed by window label.
 //
 // These used to be handed to `std::mem::forget` so GTK would keep them alive.
@@ -221,10 +223,21 @@ pub fn destroy_layer_windows(app: &AppHandle, prefixes: &[&str]) {
         }
     });
 
-    // The hidden xdg-toplevels still exist behind each layer window.
+    // Detrás de cada superficie de capa queda su ventana de Tauri.
+    //
+    // `close()` **pide** el cierre: emite el evento y la baja la procesa el
+    // bucle más tarde, así que la etiqueta sigue ocupada al volver de acá y
+    // recrearla falla. `destroy()` la cierra sin preguntar, que es lo que
+    // corresponde cuando la estamos rehaciendo nosotros.
     for (label, window) in app.webview_windows() {
         if matches(&label) {
-            let _ = window.close();
+            if let Err(error) = window.destroy() {
+                // Con el logger propio, por lo mismo que en `desktop.rs`: el
+                // crate `log` no tiene backend en esta aplicación, así que un
+                // `log::error!` acá se descarta. Justo el silencio que este
+                // arreglo vino a sacar.
+                log_error(&format!("No se pudo cerrar {label}: {error}"));
+            }
         }
     }
 }

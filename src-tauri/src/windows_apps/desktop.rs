@@ -1,6 +1,7 @@
 use gtk_layer_shell::Layer;
 use tauri::AppHandle;
 
+use crate::logger::log_error;
 use crate::monitor_manager::{find_gdk_monitor, get_monitors, get_primary_monitor, label_for};
 use crate::windows_apps::shell_layer::{spawn_layer_window, LayerSpec};
 
@@ -9,12 +10,25 @@ pub fn create_desktops(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>
     let monitors = get_monitors(app).ok_or("No monitors found")?;
     let primary = get_primary_monitor(app).ok_or("No primary monitor found")?;
 
+    let mut creados = 0;
+
     for (index, monitor) in monitors.iter().enumerate() {
         let label = label_for("desktop", monitor, &primary, index);
 
         if let Err(error) = setup_desktop(app, &label, monitor) {
-            log::error!("Desktop {} failed: {}", label, error);
+            // Con el logger propio y no con `log::error!`: el crate `log` no
+            // tiene backend en esta aplicación, así que ese mensaje no llegaba
+            // a ningún lado. Un escritorio que no se crea es una pantalla negra,
+            // y quedaba sin rastro.
+            log_error(&format!("No se pudo crear el escritorio {label}: {error}"));
+            continue;
         }
+
+        creados += 1;
+    }
+
+    if creados == 0 {
+        return Err("no se pudo crear ningún escritorio".into());
     }
 
     Ok(())

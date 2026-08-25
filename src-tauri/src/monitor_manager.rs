@@ -1,7 +1,7 @@
 use gdk::prelude::*;
 use std::cell::Cell;
 use std::time::Duration;
-use tauri::{AppHandle, Monitor};
+use tauri::{AppHandle, Manager, Monitor};
 
 use crate::logger::{log_debug, log_error, log_info};
 use crate::windows_apps::desktop::create_desktops;
@@ -108,15 +108,61 @@ pub fn find_gdk_monitor(monitor: &Monitor) -> Option<gdk::Monitor> {
 }
 
 /// Rebuilds every panel and desktop for the monitors currently connected.
+/// Los prefijos de las superficies que se rehacen al cambiar los monitores.
+const SUPERFICIES: [&str; 2] = ["panel", "desktop"];
+
+/// Cada cuánto se vuelve a mirar si las etiquetas quedaron libres.
+const ESPERA_ENTRE_INTENTOS: Duration = Duration::from_millis(120);
+
+/// Cuántas veces: medio segundo en total, de sobra para lo que tarda el cierre
+/// de una ventana y poco como para no dejar la pantalla vacía si algo falló.
+const INTENTOS: u32 = 4;
+
 pub fn rebuild_shell_surfaces(app: &AppHandle) {
     log_info("Reconstruyendo paneles y escritorios por cambio de monitores");
 
-    destroy_layer_windows(app, &["panel", "desktop"]);
+    destroy_layer_windows(app, &SUPERFICIES);
+    recrear_cuando_se_liberen(app.clone(), 0);
+}
 
-    if let Err(error) = create_desktops(app) {
+/// Qué etiquetas siguen ocupadas.
+///
+/// Cerrar una ventana no libera su etiqueta en el mismo instante: la baja la
+/// procesa el bucle de eventos. Recrear antes de eso falla con «a webview with
+/// label `panel` already exists», y ahí no queda ni panel ni escritorio: la
+/// pantalla se ve negra hasta reiniciar la sesión. Es exactamente lo que pasaba
+/// al desconectar un monitor.
+fn ocupadas<'a>(etiquetas: impl Iterator<Item = &'a str>, prefijos: &[&str]) -> Vec<String> {
+    etiquetas
+        .filter(|etiqueta| prefijos.iter().any(|prefijo| etiqueta.starts_with(prefijo)))
+        .map(str::to_string)
+        .collect()
+}
+
+fn recrear_cuando_se_liberen(app: AppHandle, intento: u32) {
+    let ventanas = app.webview_windows();
+    let pendientes = ocupadas(ventanas.keys().map(String::as_str), &SUPERFICIES);
+
+    if !pendientes.is_empty() {
+        if intento < INTENTOS {
+            gtk::glib::timeout_add_local_once(ESPERA_ENTRE_INTENTOS, move || {
+                recrear_cuando_se_liberen(app, intento + 1);
+            });
+            return;
+        }
+
+        // Se intenta igual: una etiqueta trabada deja esa superficie afuera,
+        // pero las demás pueden crearse y algo es mejor que una pantalla negra.
+        log_error(&format!(
+            "Estas ventanas no terminaron de cerrarse: {}. Se recrea igual.",
+            pendientes.join(", ")
+        ));
+    }
+
+    if let Err(error) = create_desktops(&app) {
         log_error(&format!("No se pudieron recrear los escritorios: {}", error));
     }
-    if let Err(error) = create_panels(app) {
+    if let Err(error) = create_panels(&app) {
         log_error(&format!("No se pudieron recrear los paneles: {}", error));
     }
 }
@@ -169,4 +215,46 @@ pub fn watch_monitor_changes(app: &AppHandle) {
     }
 
     log_info("Vigilancia de cambios de monitores activa");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Cerrar una ventana no libera su etiqueta en el acto, y recrearla antes
+    /// falla con «already exists»: sin panel ni escritorio, la pantalla queda
+    /// negra. Esto es lo que decide si conviene esperar un poco más.
+    #[test]
+    fn una_etiqueta_del_shell_todavia_ocupada_se_reconoce() {
+        let etiquetas = ["panel", "menu", "control_center"];
+
+        assert_eq!(
+            ocupadas(etiquetas.into_iter(), &SUPERFICIES),
+            vec!["panel".to_string()]
+        );
+    }
+
+    #[test]
+    fn los_escritorios_de_los_otros_monitores_cuentan() {
+        // En un monitor secundario la etiqueta lleva el índice, y esa ventana
+        // también hay que esperar a que se cierre.
+        let etiquetas = ["desktop", "desktop_1", "desktop_2"];
+
+        assert_eq!(ocupadas(etiquetas.into_iter(), &SUPERFICIES).len(), 3);
+    }
+
+    #[test]
+    fn las_ventanas_que_no_son_del_shell_no_frenan_nada() {
+        // El menú, el centro de control o un applet abierto no tienen nada que
+        // ver con rehacer las superficies: esperarlos sería esperar para
+        // siempre.
+        let etiquetas = ["menu", "applet_network", "systray_popup", "vsk_context_menu"];
+
+        assert!(ocupadas(etiquetas.into_iter(), &SUPERFICIES).is_empty());
+    }
+
+    #[test]
+    fn sin_ventanas_no_hay_nada_que_esperar() {
+        assert!(ocupadas(std::iter::empty(), &SUPERFICIES).is_empty());
+    }
 }
