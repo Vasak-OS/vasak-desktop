@@ -63,7 +63,7 @@ async function abrir(file: FileEntry) {
 	}
 }
 
-let dejarDeEscuchar: (() => void) | null = null;
+let promesaDeEscucha: Promise<() => void> | null = null;
 
 onMounted(() => {
 	void cargar();
@@ -77,15 +77,25 @@ onMounted(() => {
 	// Y no alcanzaba con pausar por `document.hidden`: el escritorio es una
 	// ventana de capa que nunca queda oculta para el navegador, aunque esté
 	// tapada por todas las ventanas abiertas.
-	listen('desktop-files-changed', () => void cargar())
-		.then((soltar) => {
-			dejarDeEscuchar = soltar;
-		})
-		.catch((error) => logError(`No se pudo escuchar los cambios del escritorio: ${error}`));
+	// Se guarda la promesa, no el resultado. `listen` resuelve después, y si el
+	// componente se desmonta antes de que resuelva —al cambiar de widget, o al
+	// cerrar la ventana enseguida— `onUnmounted` no encontraba ninguna función que
+	// llamar: el escucha quedaba vivo y podía releer el directorio de un
+	// componente ya desmontado.
+	promesaDeEscucha = listen('desktop-files-changed', () => void cargar());
+	promesaDeEscucha.catch((error) =>
+		logError(`No se pudo escuchar los cambios del escritorio: ${error}`)
+	);
 });
 
 onUnmounted(() => {
-	dejarDeEscuchar?.();
+	promesaDeEscucha
+		?.then((soltar) => soltar())
+		.catch(() => {
+			// Si nunca llegó a enganchar, no hay nada que soltar. El error ya se
+			// informó arriba.
+		});
+	promesaDeEscucha = null;
 });
 
 watch(showHidden, () => void cargar());

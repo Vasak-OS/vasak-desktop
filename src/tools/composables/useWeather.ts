@@ -9,6 +9,7 @@ import {
 	weatherRelease,
 	weatherStore,
 } from '@/services/weather.service';
+import { crearEscuchaDeVisibilidad } from '@/tools/composables/escucha-de-visibilidad';
 import { logError } from '@/utils/logger';
 
 /**
@@ -50,7 +51,18 @@ function aLaVista(): boolean {
 let arrancado = false;
 let reloj: ReturnType<typeof setInterval> | undefined;
 let consumidores = 0;
-let escuchandoVisibilidad = false;
+/**
+ * El escucha que refresca al volver la ventana a la vista.
+ *
+ * Se suelta cuando se desmonta el último consumidor. Con un booleano marcando
+ * «ya enganché» no había forma de soltarlo: quedaba vivo para siempre, y un ciclo
+ * de esconder y mostrar seguía disparando un IPC —y a veces un pedido a la red—
+ * sin que hubiera nadie mirando el clima. Ver `escucha-de-visibilidad.ts`.
+ */
+const escuchaDeVisibilidad = crearEscuchaDeVisibilidad(
+	typeof document === 'undefined' ? undefined : document,
+	() => void refrescar()
+);
 
 /**
  * Coordenadas a partir de la zona horaria.
@@ -163,19 +175,19 @@ export function useWeather() {
 
 	// Al volver a la vista se revisa enseguida, sin esperar hasta un minuto: si
 	// estuvo escondida un rato largo, lo guardado puede haber vencido hace mucho.
-	if (!escuchandoVisibilidad && typeof document !== 'undefined') {
-		escuchandoVisibilidad = true;
-		document.addEventListener('visibilitychange', () => {
-			if (aLaVista()) void refrescar();
-		});
-	}
+	escuchaDeVisibilidad.enganchar();
 
 	onUnmounted(() => {
 		consumidores -= 1;
-		if (consumidores <= 0 && reloj) {
+		if (consumidores > 0) return;
+
+		if (reloj) {
 			clearInterval(reloj);
 			reloj = undefined;
 		}
+		// Y el escucha con él: sin nadie mirando, esconder y mostrar la ventana no
+		// tiene que disparar ningún trabajo.
+		escuchaDeVisibilidad.soltar();
 	});
 
 	const actual = computed(() => datos.value?.current ?? null);
