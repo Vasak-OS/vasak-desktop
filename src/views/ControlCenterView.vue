@@ -27,7 +27,9 @@ const closeAfterAnimation = () => {
 
 	// Cancel entrance animation if still running
 	const main = document.querySelector('main');
-	main?.getAnimations().forEach(a => a.cancel());
+	main?.getAnimations().forEach((a) => {
+		a.cancel();
+	});
 
 	// Play exit animation, then close window.
 	//
@@ -37,7 +39,9 @@ const closeAfterAnimation = () => {
 	// blur the same click raised — fires 200 ms later, finds it shut, and calls
 	// it open again. The menu had this verbatim.
 	closeTimeout = setTimeout(() => {
-		hideControlCenter().catch(() => { /* window already closed */ });
+		hideControlCenter().catch(() => {
+			/* window already closed */
+		});
 	}, 200);
 };
 

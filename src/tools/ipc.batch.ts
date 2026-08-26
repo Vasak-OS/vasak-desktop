@@ -25,7 +25,13 @@ interface BatchResponse {
  * Each route maps to the IPC commands needed for the target view to render.
  */
 const PREFETCH_MAP: Record<string, string[]> = {
-	'/panel': ['get_windows', 'get_tray_items', 'get_all_notifications', 'get_audio_volume', 'battery_exists'],
+	'/panel': [
+		'get_windows',
+		'get_tray_items',
+		'get_all_notifications',
+		'get_audio_volume',
+		'battery_exists',
+	],
 	'/menu': ['get_menu_items'],
 	'/control_center': ['get_all_notifications', 'get_audio_volume', 'get_brightness_info'],
 };
@@ -62,11 +68,13 @@ class IPCBatchLayer {
 		if (!commands || commands.length === 0) return;
 
 		const promises = commands.map((command) =>
-			this.invoke(command).then((data) => {
-				this.prefetchCache.set(command, data);
-			}).catch(() => {
-				// Prefetch is best-effort; silently ignore failures
-			}),
+			this.invoke(command)
+				.then((data) => {
+					this.prefetchCache.set(command, data);
+				})
+				.catch(() => {
+					// Prefetch is best-effort; silently ignore failures
+				})
 		);
 
 		await Promise.allSettled(promises);

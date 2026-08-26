@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { onMounted, type Ref, ref } from 'vue';
 import { getAudioDevices, setAudioDevice } from '@/services/core.service';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 

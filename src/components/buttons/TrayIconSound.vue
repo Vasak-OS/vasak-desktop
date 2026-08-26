@@ -2,12 +2,12 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { VolumeInfo } from '@/interfaces/volume';
 import { getAudioVolume } from '@/services/core.service';
 import { toggleAudioApplet } from '@/services/window.service';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
@@ -24,9 +24,9 @@ const currentVolume = ref(0);
 const volumePercentage = computed(() =>
 	calculateVolumePercentage(volumeInfo.value, currentVolume.value)
 );
-const currentIcon = useSymbol(computed(() =>
-	getVolumeIconName(volumeInfo.value.is_muted, volumePercentage.value)
-));
+const currentIcon = useSymbol(
+	computed(() => getVolumeIconName(volumeInfo.value.is_muted, volumePercentage.value))
+);
 
 async function getVolumeInfo(): Promise<void> {
 	try {
@@ -50,10 +50,14 @@ onMounted(async () => {
 	await getVolumeInfo();
 });
 
-useSharedEvent<VolumeInfo>('volume-changed', (payload) => {
-	volumeInfo.value = payload;
-	currentVolume.value = payload.current;
-}, { throttleMs: 16 });
+useSharedEvent<VolumeInfo>(
+	'volume-changed',
+	(payload) => {
+		volumeInfo.value = payload;
+		currentVolume.value = payload.current;
+	},
+	{ throttleMs: 16 }
+);
 </script>
 <template>
   <TrayIconButton

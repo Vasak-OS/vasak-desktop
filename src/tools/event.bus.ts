@@ -26,15 +26,19 @@ class SharedEventBus {
 	subscribe<T>(
 		event: string,
 		handler: (payload: T) => void,
-		options?: EventBusOptions,
+		options?: EventBusOptions
 	): () => void {
 		const entry = this.listeners.get(event);
 
 		if (entry) {
-			if (options && (options.throttleMs !== entry.options.throttleMs || options.debounceMs !== entry.options.debounceMs)) {
+			if (
+				options &&
+				(options.throttleMs !== entry.options.throttleMs ||
+					options.debounceMs !== entry.options.debounceMs)
+			) {
 				console.warn(
 					`[SharedEventBus] Handler for "${event}" registered with conflicting timing options. ` +
-					`Using first subscriber's options (throttleMs=${entry.options.throttleMs}, debounceMs=${entry.options.debounceMs}).`,
+						`Using first subscriber's options (throttleMs=${entry.options.throttleMs}, debounceMs=${entry.options.debounceMs}).`
 				);
 			}
 			entry.handlers.add(handler as unknown as (payload: unknown) => void);
@@ -81,7 +85,7 @@ class SharedEventBus {
 			} catch (error) {
 				console.error(
 					`[SharedEventBus] Failed to register listener for "${event}"${isRetry ? ' (retry)' : ''}:`,
-					error,
+					error
 				);
 
 				if (!isRetry) {
@@ -98,7 +102,7 @@ class SharedEventBus {
 					if (failEntry === entry && failEntry.handlers.size > 0) {
 						console.error(
 							`[SharedEventBus] Listener registration failed for "${event}" after retry. ` +
-								`${failEntry.handlers.size} subscriber(s) will not receive events.`,
+								`${failEntry.handlers.size} subscriber(s) will not receive events.`
 						);
 					}
 				}
@@ -117,10 +121,13 @@ class SharedEventBus {
 
 		const { options } = entry;
 
+		// La ventana se pasa como argumento en lugar de volver a leerla adentro
+		// con un `!`: así el hecho de que exista lo garantiza este `if` y lo dice
+		// la firma, en vez de una aserción que hay que ir a verificar acá arriba.
 		if (options.throttleMs) {
-			this.dispatchThrottled(entry, payload);
+			this.dispatchThrottled(entry, payload, options.throttleMs);
 		} else if (options.debounceMs) {
-			this.dispatchDebounced(entry, payload);
+			this.dispatchDebounced(entry, payload, options.debounceMs);
 		} else {
 			this.fanout(entry, payload);
 		}
@@ -131,9 +138,8 @@ class SharedEventBus {
 	 * Delivers immediately if enough time has passed, otherwise schedules
 	 * delivery of the latest value at the end of the window.
 	 */
-	private dispatchThrottled(entry: ListenerEntry, payload: unknown): void {
+	private dispatchThrottled(entry: ListenerEntry, payload: unknown, throttleMs: number): void {
 		const now = Date.now();
-		const throttleMs = entry.options.throttleMs!;
 		const elapsed = now - entry.lastEmitTime;
 
 		if (elapsed >= throttleMs) {
@@ -157,9 +163,7 @@ class SharedEventBus {
 	 * Debounce: trailing-edge. Delivers only after silence of debounceMs.
 	 * Always delivers the latest payload.
 	 */
-	private dispatchDebounced(entry: ListenerEntry, payload: unknown): void {
-		const debounceMs = entry.options.debounceMs!;
-
+	private dispatchDebounced(entry: ListenerEntry, payload: unknown, debounceMs: number): void {
 		if (entry.debounceTimer !== null) {
 			clearTimeout(entry.debounceTimer);
 		}
@@ -224,7 +228,7 @@ export const eventBus = new SharedEventBus();
 export function useSharedEvent<T>(
 	event: string,
 	handler: (payload: T) => void,
-	options?: EventBusOptions,
+	options?: EventBusOptions
 ): void {
 	let unsubscribe: (() => void) | null = null;
 

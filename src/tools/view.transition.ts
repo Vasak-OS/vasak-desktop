@@ -81,9 +81,10 @@ class ViewTransitionGuard {
 			this.deferredCallbacks.push(callback);
 		} else {
 			const result = callback();
-			if (result) result.catch((error) => {
-				console.error('[ViewTransitionGuard] Deferred callback threw an error:', error);
-			});
+			if (result)
+				result.catch((error) => {
+					console.error('[ViewTransitionGuard] Deferred callback threw an error:', error);
+				});
 		}
 	}
 
@@ -130,9 +131,10 @@ class ViewTransitionGuard {
 		for (const cb of callbacks) {
 			try {
 				const result = cb();
-				if (result) result.catch((error) => {
-					console.error('[ViewTransitionGuard] Deferred callback threw an error:', error);
-				});
+				if (result)
+					result.catch((error) => {
+						console.error('[ViewTransitionGuard] Deferred callback threw an error:', error);
+					});
 			} catch (error) {
 				console.error('[ViewTransitionGuard] Deferred callback threw an error:', error);
 			}

@@ -2,12 +2,12 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
 	getBrightnessInfo as fetchBrightnessInfo,
 	setBrightnessInfo,
 } from '@/services/core.service';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 import SliderControl from '../forms/SliderControl.vue';
@@ -40,11 +40,13 @@ const brightnessLabel = computed(() =>
 	t('components.BrightnessControl.brightness').replace('{0}', String(brightnessPercentage.value))
 );
 
-const currentIcon = useSymbol(computed(() => {
-	if (brightnessPercentage.value > 66) return 'display-brightness-high-symbolic';
-	if (brightnessPercentage.value > 33) return 'display-brightness-medium-symbolic';
-	return 'display-brightness-low-symbolic';
-}));
+const currentIcon = useSymbol(
+	computed(() => {
+		if (brightnessPercentage.value > 66) return 'display-brightness-high-symbolic';
+		if (brightnessPercentage.value > 33) return 'display-brightness-medium-symbolic';
+		return 'display-brightness-low-symbolic';
+	})
+);
 
 async function getBrightnessInfo() {
 	try {
@@ -88,16 +90,20 @@ onUnmounted(() => {
 	}
 });
 
-useSharedEvent<Record<string, number>>('brightness-changed', (p) => {
-	if (p.current !== undefined) {
-		brightnessInfo.value = p as unknown as BrightnessInfo;
-		currentBrightness.value = p.current;
-	} else if (p.value !== undefined && p.max !== undefined && p.max > 0) {
-		const current = p.percentage ?? Math.round((p.value / p.max) * 100);
-		brightnessInfo.value = { current, max: 100, min: 0 };
-		currentBrightness.value = current;
-	}
-}, { throttleMs: 16 });
+useSharedEvent<Record<string, number>>(
+	'brightness-changed',
+	(p) => {
+		if (p.current !== undefined) {
+			brightnessInfo.value = p as unknown as BrightnessInfo;
+			currentBrightness.value = p.current;
+		} else if (p.value !== undefined && p.max !== undefined && p.max > 0) {
+			const current = p.percentage ?? Math.round((p.value / p.max) * 100);
+			brightnessInfo.value = { current, max: 100, min: 0 };
+			currentBrightness.value = current;
+		}
+	},
+	{ throttleMs: 16 }
+);
 </script>
 
 <template>

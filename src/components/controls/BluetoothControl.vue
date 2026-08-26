@@ -4,8 +4,8 @@
 import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, type Ref, ref } from 'vue';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 import ToggleControl from '../forms/ToggleControl.vue';
 
@@ -17,10 +17,12 @@ const { isBluetoothOn, connectedDevicesCount } = useBluetoothState({
 	getIcon: async () => '',
 });
 
-const bluetoothIcon = useIcon(computed(() => {
-	if (!isBluetoothOn.value) return 'bluetooth-disabled-symbolic';
-	return connectedDevicesCount.value > 0 ? 'bluetooth-active-symbolic' : 'bluetooth-symbolic';
-}));
+const bluetoothIcon = useIcon(
+	computed(() => {
+		if (!isBluetoothOn.value) return 'bluetooth-disabled-symbolic';
+		return connectedDevicesCount.value > 0 ? 'bluetooth-active-symbolic' : 'bluetooth-symbolic';
+	})
+);
 
 const toggleBT = async (): Promise<void> => {
 	try {

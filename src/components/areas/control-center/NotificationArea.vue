@@ -56,7 +56,11 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
-import type { Notification, NotificationDelta, NotificationGroupData } from '@/interfaces/notifications';
+import type {
+	Notification,
+	NotificationDelta,
+	NotificationGroupData,
+} from '@/interfaces/notifications';
 import {
 	clearNotifications,
 	deleteNotification,

@@ -1,3 +1,7 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: el `body *` de más abajo
+   fija el color del texto y el bloque de `@layer base` fija `border-color`. La
+   regla compara selectores sin mirar qué propiedad tocan, así que ve un conflicto
+   donde no hay ninguno: ninguna de las dos declaraciones puede pisar a la otra. */
 @import "tailwindcss";
 
 :root {
@@ -172,7 +176,10 @@ body * {
 }
 
 .theme-transition {
-  transition: color 300ms ease, background-color 300ms ease, border-color 300ms ease;
+  transition:
+    color 300ms ease,
+    background-color 300ms ease,
+    border-color 300ms ease;
 }
 
 .background {

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { useIcon } from '@/tools/composables/useReactiveIcon';
+
 import { computed } from 'vue';
 import type { WindowPanelButtonProps } from '@/interfaces/window';
 import { toggleWindow as sysToggleWindow } from '@/services/window.service';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const props = defineProps<WindowPanelButtonProps>();

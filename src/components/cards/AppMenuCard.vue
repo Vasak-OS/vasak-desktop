@@ -3,8 +3,8 @@ import { openApp } from '@/services/app.service';
 <script lang="ts" setup>
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { computed } from 'vue';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { openApp as sysOpenApp } from '@/services/app.service';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const props = defineProps({

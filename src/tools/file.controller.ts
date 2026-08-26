@@ -143,7 +143,6 @@ export async function loadDirectory(
 	}
 }
 
-
 /**
  * Reads and parses the XDG user-dirs.dirs configuration file
  * to get the user's special directories (Documents, Downloads, etc.)
