@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { listen } from '@tauri-apps/api/event';
 import { homeDir } from '@tauri-apps/api/path';
 import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
@@ -62,17 +63,39 @@ async function abrir(file: FileEntry) {
 	}
 }
 
-let recarga: ReturnType<typeof setInterval> | null = null;
+let promesaDeEscucha: Promise<() => void> | null = null;
 
 onMounted(() => {
 	void cargar();
+
 	// El escritorio cambia por fuera de la aplicación —se descarga algo, se
-	// borra un archivo—, así que se relee cada tanto. Barato: es un directorio.
-	recarga = setInterval(() => void cargar(), 10_000);
+	// borra un archivo— y hay que enterarse. Antes esto se releía cada diez
+	// segundos: seis veces por minuto, con un `stat` y la resolución del icono
+	// de cada archivo, hubiera cambiado algo o no. Ahora avisa el disco, así que
+	// la relectura ocurre cuando de verdad hace falta.
+	//
+	// Y no alcanzaba con pausar por `document.hidden`: el escritorio es una
+	// ventana de capa que nunca queda oculta para el navegador, aunque esté
+	// tapada por todas las ventanas abiertas.
+	// Se guarda la promesa, no el resultado. `listen` resuelve después, y si el
+	// componente se desmonta antes de que resuelva —al cambiar de widget, o al
+	// cerrar la ventana enseguida— `onUnmounted` no encontraba ninguna función que
+	// llamar: el escucha quedaba vivo y podía releer el directorio de un
+	// componente ya desmontado.
+	promesaDeEscucha = listen('desktop-files-changed', () => void cargar());
+	promesaDeEscucha.catch((error) =>
+		logError(`No se pudo escuchar los cambios del escritorio: ${error}`)
+	);
 });
 
 onUnmounted(() => {
-	if (recarga) clearInterval(recarga);
+	promesaDeEscucha
+		?.then((soltar) => soltar())
+		.catch(() => {
+			// Si nunca llegó a enganchar, no hay nada que soltar. El error ya se
+			// informó arriba.
+		});
+	promesaDeEscucha = null;
 });
 
 watch(showHidden, () => void cargar());

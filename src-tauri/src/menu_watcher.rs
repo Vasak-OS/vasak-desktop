@@ -1,7 +1,8 @@
 use inotify::{Inotify, WatchMask};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 
+use crate::inotify_rafaga::esperar_rafaga;
 use crate::logger::{log_error, log_info};
 use crate::menu_manager::{applications_dirs, invalidate_menu_cache};
 
@@ -67,34 +68,22 @@ pub fn watch_application_dirs(app: &AppHandle) {
         ));
 
         let mut buffer = [0u8; 4096];
-        let mut pending: Option<Instant> = None;
 
         loop {
-            // A short read timeout lets the loop notice a burst has settled
-            // without waiting for another unrelated event to wake it.
-            match inotify.read_events(&mut buffer) {
-                Ok(events) => {
-                    if events.count() > 0 {
-                        pending = Some(Instant::now());
-                    }
+            // Bloquea hasta que algo cambie. Antes este bucle sondeaba a 5 Hz
+            // para siempre —unos 144 mil despertares en ocho horas— y casi
+            // todos eran para descubrir que no había nada.
+            match esperar_rafaga(&mut inotify, &mut buffer, SETTLE) {
+                Ok(()) => {
+                    invalidate_menu_cache();
+                    log_info("Cambió la lista de aplicaciones; menú invalidado");
+                    let _ = app.emit(MENU_CHANGED_EVENT, ());
                 }
-                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
                 Err(error) => {
                     log_error(&format!("Vigilancia del menú interrumpida: {}", error));
                     return;
                 }
             }
-
-            if let Some(since) = pending {
-                if since.elapsed() >= SETTLE {
-                    pending = None;
-                    invalidate_menu_cache();
-                    log_info("Cambió la lista de aplicaciones; menú invalidado");
-                    let _ = app.emit(MENU_CHANGED_EVENT, ());
-                }
-            }
-
-            std::thread::sleep(Duration::from_millis(200));
         }
     });
 }

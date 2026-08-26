@@ -9,6 +9,7 @@ import {
 	weatherRelease,
 	weatherStore,
 } from '@/services/weather.service';
+import { crearEscuchaDeVisibilidad } from '@/tools/composables/escucha-de-visibilidad';
 import { logError } from '@/utils/logger';
 
 /**
@@ -35,9 +36,33 @@ const LIMITE = 10_000;
 /** Cada cuánto se revisa si lo guardado venció. No toca la red. */
 const REVISION = 60_000;
 
+/**
+ * Si esta ventana está a la vista.
+ *
+ * La revisión del minuto no toca la red, pero sí cruza el IPC para preguntarle a
+ * Rust si le toca pedir. Hacerlo mientras la ventana está escondida —el panel
+ * cerrado, el menú sin abrir— es preguntar por un dato que nadie está mirando: el
+ * clima no cambia en un minuto, y al volver a mostrarse se revisa igual.
+ */
+function aLaVista(): boolean {
+	return typeof document === 'undefined' || !document.hidden;
+}
+
 let arrancado = false;
 let reloj: ReturnType<typeof setInterval> | undefined;
 let consumidores = 0;
+/**
+ * El escucha que refresca al volver la ventana a la vista.
+ *
+ * Se suelta cuando se desmonta el último consumidor. Con un booleano marcando
+ * «ya enganché» no había forma de soltarlo: quedaba vivo para siempre, y un ciclo
+ * de esconder y mostrar seguía disparando un IPC —y a veces un pedido a la red—
+ * sin que hubiera nadie mirando el clima. Ver `escucha-de-visibilidad.ts`.
+ */
+const escuchaDeVisibilidad = crearEscuchaDeVisibilidad(
+	typeof document === 'undefined' ? undefined : document,
+	() => void refrescar()
+);
 
 /**
  * Coordenadas a partir de la zona horaria.
@@ -142,14 +167,27 @@ export function useWeather() {
 	consumidores += 1;
 	void arrancar();
 
-	if (!reloj) reloj = setInterval(() => void refrescar(), REVISION);
+	if (!reloj) {
+		reloj = setInterval(() => {
+			if (aLaVista()) void refrescar();
+		}, REVISION);
+	}
+
+	// Al volver a la vista se revisa enseguida, sin esperar hasta un minuto: si
+	// estuvo escondida un rato largo, lo guardado puede haber vencido hace mucho.
+	escuchaDeVisibilidad.enganchar();
 
 	onUnmounted(() => {
 		consumidores -= 1;
-		if (consumidores <= 0 && reloj) {
+		if (consumidores > 0) return;
+
+		if (reloj) {
 			clearInterval(reloj);
 			reloj = undefined;
 		}
+		// Y el escucha con él: sin nadie mirando, esconder y mostrar la ventana no
+		// tiene que disparar ningún trabajo.
+		escuchaDeVisibilidad.soltar();
 	});
 
 	const actual = computed(() => datos.value?.current ?? null);
