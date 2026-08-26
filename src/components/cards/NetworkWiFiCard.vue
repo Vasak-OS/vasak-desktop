@@ -4,12 +4,12 @@
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, nextTick, ref } from 'vue';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import {
 	connectToWifi,
 	type NetworkInfo,
 	type WiFiConnectionConfig,
 } from '@/services/network.service';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import ActionButton from '../buttons/ActionButton.vue';
 import ListCard from './ListCard.vue';
 

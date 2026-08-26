@@ -167,7 +167,11 @@ function mover(id: string, posicion: { x: number; y: number }) {
 	const candidato = placements.value.map((puesto) =>
 		puesto.id === id ? { ...puesto, ...posicion } : puesto
 	);
-	const movido = candidato.find((puesto) => puesto.id === id)!;
+	// Sin el widget no hay nada que mover: con un id que no está en la
+	// cuadrícula, `find` devuelve undefined y seguir leería propiedades de
+	// nada. Antes eso iba tapado con un `!`.
+	const movido = candidato.find((puesto) => puesto.id === id);
+	if (!movido) return;
 
 	// No se permite dejar un widget encima de otro: la cuadrícula pierde sentido
 	// si dos cosas ocupan la misma celda.
@@ -180,7 +184,11 @@ function redimensionar(id: string, tamano: { w: number; h: number }) {
 	const candidato = placements.value.map((puesto) =>
 		puesto.id === id ? { ...puesto, ...tamano } : puesto
 	);
-	const cambiado = candidato.find((puesto) => puesto.id === id)!;
+	// Sin el widget no hay nada que mover: con un id que no está en la
+	// cuadrícula, `find` devuelve undefined y seguir leería propiedades de
+	// nada. Antes eso iba tapado con un `!`.
+	const cambiado = candidato.find((puesto) => puesto.id === id);
+	if (!cambiado) return;
 
 	if (candidato.some((otro) => otro.id !== id && overlaps(cambiado, otro))) return;
 

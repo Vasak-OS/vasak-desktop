@@ -219,8 +219,7 @@ async function warnAboutPowerUse() {
 /** El video no arrancó igual: se cae al fondo fijo en vez de dejar la pantalla negra. */
 function onVideoError() {
 	logError(
-		`El fondo ${backgroundPath.value} no se pudo reproducir. ` +
-			'Se muestra el fondo por omisión.'
+		`El fondo ${backgroundPath.value} no se pudo reproducir. Se muestra el fondo por omisión.`
 	);
 	releaseVideo();
 }
@@ -266,15 +265,14 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-	playbackListeners.forEach((off) => off());
+	playbackListeners.forEach((off) => {
+		off();
+	});
 });
 
 const showHiddenFiles = computed(
 	() => (configStore as any).config?.desktop?.showhiddenfiles ?? false
 );
-
-
-
 
 watch(showHiddenFiles, () => {
 	if (!isSecondaryMonitor.value) {

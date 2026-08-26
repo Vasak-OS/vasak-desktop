@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, type Ref, ref } from 'vue';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import weatherCodesData from '@/data/weatherCodes.json';
 import type { CodeDataType, WeatherInfo } from '@/interfaces/weather';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 
 const { t } = useI18n();
 
@@ -24,13 +24,15 @@ const props = defineProps<{
 	sizeClass?: string;
 }>();
 
-const iconPath = useIcon(computed(() => {
-	weatherInfo.value = codeData[String(props.code)];
-	if (weatherInfo.value) {
-		return weatherInfo.value[props.dayOrNight].image;
-	}
-	return 'weather-severe-alert';
-}));
+const iconPath = useIcon(
+	computed(() => {
+		weatherInfo.value = codeData[String(props.code)];
+		if (weatherInfo.value) {
+			return weatherInfo.value[props.dayOrNight].image;
+		}
+		return 'weather-severe-alert';
+	})
+);
 </script>
 
 <template>

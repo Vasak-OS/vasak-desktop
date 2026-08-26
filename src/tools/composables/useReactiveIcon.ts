@@ -1,7 +1,7 @@
-import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import { listen } from '@tauri-apps/api/event';
-import { onUnmounted, type Ref, ref, toValue, watch } from 'vue';
+import { getIconSource, getSymbolSource } from '@vasakgroup/plugin-vicons';
 import type { MaybeRef } from 'vue';
+import { onUnmounted, type Ref, ref, toValue, watch } from 'vue';
 
 type RefreshFn = () => Promise<void>;
 
@@ -69,7 +69,7 @@ class IconReloadScheduler {
 					}
 				}
 			},
-			{ threshold: 0 },
+			{ threshold: 0 }
 		);
 	}
 
@@ -182,7 +182,11 @@ class IconReloadScheduler {
 	 * Process a single batch of icon IDs by calling their refresh functions concurrently.
 	 */
 	private async processBatch(ids: number[], controller: ReloadController): Promise<void> {
-		const promises: Promise<{ id: number } | void>[] = [];
+		// `unknown` y no una unión con `void`: estas promesas sólo se esperan con
+		// `allSettled` y nadie lee lo que resuelven, así que el tipo del valor no
+		// aporta nada. `void` dentro de una unión además no dice «nada», dice
+		// «cualquier cosa que se ignora».
+		const promises: Promise<unknown>[] = [];
 		for (const id of ids) {
 			if (controller.aborted) return;
 			const entry = this.entries.get(id);
@@ -191,7 +195,7 @@ class IconReloadScheduler {
 			promises.push(
 				entry.refresh().catch((err) => {
 					console.error(`Icon refresh failed for entry ${id}:`, err);
-				}),
+				})
 			);
 		}
 		await Promise.allSettled(promises);
@@ -307,7 +311,7 @@ export function useReactiveSymbol(iconName: MaybeRef<string>): Ref<string> {
 
 function createBatchRefs(
 	map: Record<string, MaybeRef<string>>,
-	getSource: (name: string) => Promise<string>,
+	getSource: (name: string) => Promise<string>
 ): Record<string, Ref<string>> {
 	const result: Record<string, Ref<string>> = {};
 	const keyTokens: Record<string, number> = {};
@@ -335,33 +339,29 @@ function createBatchRefs(
 				const keyId = ++keyTokens[key];
 				const src = await getSource(toValue(name));
 				if (keyId === keyTokens[key]) result[key].value = src;
-			},
+			}
 		);
 	}
 
 	return result;
 }
 
-export function useIcons(
-	map: Record<string, MaybeRef<string>>,
-): Record<string, Ref<string>> {
+export function useIcons(map: Record<string, MaybeRef<string>>): Record<string, Ref<string>> {
 	return createBatchRefs(map, getIconSource);
 }
 
-export function useSymbols(
-	map: Record<string, MaybeRef<string>>,
-): Record<string, Ref<string>> {
+export function useSymbols(map: Record<string, MaybeRef<string>>): Record<string, Ref<string>> {
 	return createBatchRefs(map, getSymbolSource);
 }
 
 export function useReactiveIcons(
-	map: Record<string, MaybeRef<string>>,
+	map: Record<string, MaybeRef<string>>
 ): Record<string, Ref<string>> {
 	return useIcons(map);
 }
 
 export function useReactiveSymbols(
-	map: Record<string, MaybeRef<string>>,
+	map: Record<string, MaybeRef<string>>
 ): Record<string, Ref<string>> {
 	return useSymbols(map);
 }

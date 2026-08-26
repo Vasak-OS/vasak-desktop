@@ -80,8 +80,11 @@ describe('buscar lugar', () => {
 	test('esquiva lo que ya está puesto', () => {
 		const hueco = firstFreeSlot([widget(1, 1, 3, 3)], { w: 2, h: 2 }, 10, 8);
 
-		expect(hueco).not.toBeNull();
-		expect(overlaps({ ...widget(0, 0, 2, 2), ...hueco! }, widget(1, 1, 3, 3))).toBe(false);
+		// Se estrecha el tipo con un `throw` en lugar de afirmarlo con `!`: si
+		// devolviera null, el test falla acá y dice por qué, en vez de reventar dos
+		// líneas más abajo al desarmar un objeto que no existe.
+		if (!hueco) throw new Error('firstFreeSlot no encontró un hueco donde había uno');
+		expect(overlaps({ ...widget(0, 0, 2, 2), ...hueco }, widget(1, 1, 3, 3))).toBe(false);
 	});
 
 	test('si no hay lugar lo dice, en vez de apilar uno encima de otro', () => {
@@ -140,11 +143,7 @@ describe('acomodar una disposición entera', () => {
 	});
 
 	test('lo que no tiene dónde entrar se descarta en vez de quedar tapado', () => {
-		const apretado = fitAll(
-			[widget(1, 1, 2, 2), widget(1, 1, 2, 2), widget(1, 1, 2, 2)],
-			2,
-			2
-		);
+		const apretado = fitAll([widget(1, 1, 2, 2), widget(1, 1, 2, 2), widget(1, 1, 2, 2)], 2, 2);
 
 		expect(apretado).toHaveLength(1);
 	});

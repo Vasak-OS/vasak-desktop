@@ -33,7 +33,10 @@ export function cancelRunningThemeTransitions(): void {
 	elements.forEach((el) => {
 		const animations = el.getAnimations();
 		for (const anim of animations) {
-			if (anim instanceof CSSTransition && transitionColorProperties.includes(anim.transitionProperty)) {
+			if (
+				anim instanceof CSSTransition &&
+				transitionColorProperties.includes(anim.transitionProperty)
+			) {
 				anim.finish();
 			}
 		}

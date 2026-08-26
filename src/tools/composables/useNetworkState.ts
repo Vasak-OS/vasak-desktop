@@ -1,12 +1,12 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, ref } from 'vue';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import {
 	getCurrentNetworkState,
 	getVpnStatus,
 	type NetworkInfo,
 	type VpnStatus,
 } from '@/services/network.service';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 

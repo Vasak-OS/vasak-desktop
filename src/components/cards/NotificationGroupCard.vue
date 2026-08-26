@@ -74,8 +74,8 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
+import { useIcons } from '@/tools/composables/useReactiveIcon';
 import ActionButton from '../buttons/ActionButton.vue';
 
 const { t } = useI18n();

@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import type { VolumeInfo } from '@/interfaces/volume';
 import { getAudioVolume, setAudioVolume, toggleAudioMute } from '@/services/core.service';
+import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
@@ -14,10 +14,12 @@ export function useVolumeState() {
 		is_muted: false,
 	});
 	const currentVolume = ref(0);
-	const currentIcon = useSymbol(computed(() => {
-		const percentage = calculateVolumePercentage(volumeInfo.value, currentVolume.value);
-		return getVolumeIconName(volumeInfo.value.is_muted, percentage);
-	}));
+	const currentIcon = useSymbol(
+		computed(() => {
+			const percentage = calculateVolumePercentage(volumeInfo.value, currentVolume.value);
+			return getVolumeIconName(volumeInfo.value.is_muted, percentage);
+		})
+	);
 
 	const volumePercentage = computed(() =>
 		calculateVolumePercentage(volumeInfo.value, currentVolume.value)
@@ -70,10 +72,14 @@ export function useVolumeState() {
 		return '';
 	}
 
-	useSharedEvent<VolumeInfo>('volume-changed', (payload) => {
-		volumeInfo.value = payload;
-		currentVolume.value = payload.current;
-	}, { throttleMs: 16 });
+	useSharedEvent<VolumeInfo>(
+		'volume-changed',
+		(payload) => {
+			volumeInfo.value = payload;
+			currentVolume.value = payload.current;
+		},
+		{ throttleMs: 16 }
+	);
 
 	return {
 		volumeInfo,

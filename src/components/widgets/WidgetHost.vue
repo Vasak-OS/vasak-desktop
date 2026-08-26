@@ -46,10 +46,7 @@ const style = computed(() => ({
  * El imán está acá: se redondea el desplazamiento a celdas enteras, así que el
  * widget salta de celda en celda en vez de quedar a mitad de camino.
  */
-function seguirPuntero(
-	inicio: PointerEvent,
-	alMover: (celdasX: number, celdasY: number) => void
-) {
+function seguirPuntero(inicio: PointerEvent, alMover: (celdasX: number, celdasY: number) => void) {
 	const desdeX = inicio.clientX;
 	const desdeY = inicio.clientY;
 

@@ -11,7 +11,11 @@ const leaving = ref(false);
 const closeAfterAnimation = () => {
 	leaving.value = true;
 	setTimeout(() => {
-		try { props.closeFn(); } catch { /* window already closed */ }
+		try {
+			props.closeFn();
+		} catch {
+			/* window already closed */
+		}
 	}, 200);
 };
 

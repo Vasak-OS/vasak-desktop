@@ -46,8 +46,8 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed } from 'vue';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { invokeNotificationAction } from '@/services/notification.service';
+import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 import ActionButton from '../buttons/ActionButton.vue';
 
@@ -89,8 +89,8 @@ const DEFAULT_ACTION = 'default';
 
 const hasDefaultAction = computed(() =>
 	(props.notification.actions || []).some(
-		(value, index) => index % 2 === 0 && value === DEFAULT_ACTION,
-	),
+		(value, index) => index % 2 === 0 && value === DEFAULT_ACTION
+	)
 );
 
 async function handleDefaultAction() {
@@ -127,6 +127,5 @@ async function handleAction(action_key: string) {
 		logError('Error ejecutando acción de notificación:', error);
 	}
 }
-
 </script>
 

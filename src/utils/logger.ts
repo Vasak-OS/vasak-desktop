@@ -82,9 +82,7 @@ class VasakLogger {
 
 		console.debug = (...args: any[]) => {
 			this.debug(this.formatArgs(args));
-			{
-				originalDebug.apply(console, args);
-			}
+			originalDebug.apply(console, args);
 		};
 
 		this.info('Sistema de logging inicializado');

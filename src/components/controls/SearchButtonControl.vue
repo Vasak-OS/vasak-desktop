@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { toggleSearch } from '@/services/window.service';
+import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();

@@ -51,8 +51,8 @@
 </template>
 
 <script setup lang="ts">
-import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { logError } from '@/utils/logger';
 
@@ -121,8 +121,7 @@ let relojTimeout: ReturnType<typeof setTimeout> | null = null;
  */
 const programarProximoMinuto = () => {
 	const ahora = new Date();
-	const faltaParaElMinuto =
-		(60 - ahora.getSeconds()) * 1000 - ahora.getMilliseconds() + 250;
+	const faltaParaElMinuto = (60 - ahora.getSeconds()) * 1000 - ahora.getMilliseconds() + 250;
 
 	relojTimeout = globalThis.setTimeout(() => {
 		updateDateTime();
@@ -147,6 +146,5 @@ onUnmounted(() => {
 		relojTimeout = null;
 	}
 });
-
 </script>
 

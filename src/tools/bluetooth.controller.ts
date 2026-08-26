@@ -137,9 +137,7 @@ export function useBluetoothState(options: BluetoothComposableOptions) {
 	const getBluetoothIcon = async (): Promise<void> => {
 		try {
 			if (defaultAdapter.value?.path) {
-				connectedDevicesCount.value = await getConnectedDevicesCount(
-					defaultAdapter.value.path
-				);
+				connectedDevicesCount.value = await getConnectedDevicesCount(defaultAdapter.value.path);
 			}
 			const iconName = resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
 			bluetoothIcon.value = await options.getIcon(iconName);

@@ -14,10 +14,10 @@ import {
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
-import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
+import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -82,10 +82,12 @@ const scanDevices = async () => {
 	isScanning.value = false;
 };
 
-const bluetoothIcon = useIcon(computed(() => {
-	connectedDevicesCount.value = connectedDevices.value.length;
-	return resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
-}));
+const bluetoothIcon = useIcon(
+	computed(() => {
+		connectedDevicesCount.value = connectedDevices.value.length;
+		return resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
+	})
+);
 
 onMounted(async () => {
 	defaultAdapter.value = await getDefaultAdapter();
@@ -99,7 +101,7 @@ const connect = async (device: any) => {
 	try {
 		await connectDevice(device.path);
 		for (let i = 0; i < 30; i++) {
-			await new Promise(r => setTimeout(r, 500));
+			await new Promise((r) => setTimeout(r, 500));
 			try {
 				const info = await getDeviceInfo(device.path);
 				if (info?.connected) break;
