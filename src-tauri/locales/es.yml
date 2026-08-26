@@ -83,6 +83,8 @@ views:
     videoWallpaperPowerTitle: El fondo en movimiento consume más
     videoWallpaperPowerBody: Un video de fondo mantiene el sistema trabajando todo el tiempo y gasta más batería que una imagen. Se puede pausar automáticamente con batería desde Configuración › Apariencia › Fondo.
   search:
+    keyEnter: Intro
+    keyEsc: Esc
     iconAlt: Buscar
     placeholder: Buscar aplicaciones, archivos y acciones...
     hint: Escribe para buscar aplicaciones, archivos o acciones

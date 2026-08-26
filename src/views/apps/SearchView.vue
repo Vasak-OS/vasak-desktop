@@ -298,14 +298,14 @@ function getCategoryLabel(category: string): string {
             <span class="flex items-center gap-1">
               <kbd
                 class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
-                >Enter</kbd
+                >{{ t('views.search.keyEnter') }}</kbd
               >
               {{ t('views.search.keyExecute') }}
             </span>
             <span class="flex items-center gap-1">
               <kbd
                 class="bg-primary/15 px-2 py-1 rounded border border-primary/20 text-primary font-semibold"
-                >Esc</kbd
+                >{{ t('views.search.keyEsc') }}</kbd
               >
               {{ t('views.search.keyClose') }}
             </span>

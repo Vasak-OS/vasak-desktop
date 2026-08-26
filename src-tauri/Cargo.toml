@@ -65,6 +65,8 @@ tauri-plugin-vsk-contextual-menu = "2"
 
 
 [dev-dependencies]
+# Sólo para el test que valida los catálogos de idioma.
+serde_yaml = "0.9"
 proptest = "1"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
