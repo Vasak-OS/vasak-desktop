@@ -216,8 +216,16 @@ pub fn run() {
             // lanzar el shell para probarlo se lleva puesta la sesión.
             //
             // Instalándolo después gana el plugin y el puente queda inerte sin
-            // romper nada. El plugin ya está corregido para usar `try_init`; al
-            // publicarse esa versión, vuelve a ganar el puente.
+            // romper nada.
+            //
+            // Ojo con lo que **no** arregla el `try_init` del plugin: ese cambio
+            // sólo evita el panic, no cambia el orden. Mientras esta llamada
+            // siga acá, el plugin inicializa primero y se queda con el slot
+            // igual. Para que vuelva a ganar el puente —y los mensajes de `log`
+            // terminen en el registro de la aplicación en lugar del del
+            // plugin— hay que mover esta línea de vuelta antes de
+            // `tauri::Builder::default()`, y eso sólo es seguro una vez que la
+            // versión del plugin con `try_init` esté publicada.
             logger::install_log_bridge();
 
             let setup_start = std::time::Instant::now();
