@@ -62,6 +62,7 @@ inotify = "0.10"
 parking_lot = "0.12"
 url = "2"
 tauri-plugin-vsk-contextual-menu = "2"
+tauri-plugin-vsk-journal = "2"
 
 
 [dev-dependencies]

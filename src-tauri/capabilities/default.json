@@ -71,6 +71,7 @@
     "positioner:allow-move-window",
     "positioner:allow-set-tray-icon-state",
     "vsk-contextual-menu:default",
+    "vsk-journal:default",
     "vicons:default",
     "config-manager:default",
     "user-data:default",
