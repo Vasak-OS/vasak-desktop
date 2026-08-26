@@ -48,6 +48,8 @@ fn default_locale() -> String {
 }
 
 mod menu_manager;
+mod desktop_watcher;
+mod inotify_rafaga;
 mod menu_watcher;
 mod monitor_manager;
 mod notifications;
@@ -269,6 +271,9 @@ pub fn run() {
             }
             watch_monitor_changes(&handle);
             menu_watcher::watch_application_dirs(&handle);
+            // La carpeta del escritorio, para que el widget de archivos deje de
+            // releerla cada diez segundos sin motivo.
+            desktop_watcher::watch_desktop_dir(&handle);
 
             // Retry in the background instead of aborting startup.
             //

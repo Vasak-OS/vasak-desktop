@@ -35,9 +35,22 @@ const LIMITE = 10_000;
 /** Cada cuánto se revisa si lo guardado venció. No toca la red. */
 const REVISION = 60_000;
 
+/**
+ * Si esta ventana está a la vista.
+ *
+ * La revisión del minuto no toca la red, pero sí cruza el IPC para preguntarle a
+ * Rust si le toca pedir. Hacerlo mientras la ventana está escondida —el panel
+ * cerrado, el menú sin abrir— es preguntar por un dato que nadie está mirando: el
+ * clima no cambia en un minuto, y al volver a mostrarse se revisa igual.
+ */
+function aLaVista(): boolean {
+	return typeof document === 'undefined' || !document.hidden;
+}
+
 let arrancado = false;
 let reloj: ReturnType<typeof setInterval> | undefined;
 let consumidores = 0;
+let escuchandoVisibilidad = false;
 
 /**
  * Coordenadas a partir de la zona horaria.
@@ -142,7 +155,20 @@ export function useWeather() {
 	consumidores += 1;
 	void arrancar();
 
-	if (!reloj) reloj = setInterval(() => void refrescar(), REVISION);
+	if (!reloj) {
+		reloj = setInterval(() => {
+			if (aLaVista()) void refrescar();
+		}, REVISION);
+	}
+
+	// Al volver a la vista se revisa enseguida, sin esperar hasta un minuto: si
+	// estuvo escondida un rato largo, lo guardado puede haber vencido hace mucho.
+	if (!escuchandoVisibilidad && typeof document !== 'undefined') {
+		escuchandoVisibilidad = true;
+		document.addEventListener('visibilitychange', () => {
+			if (aLaVista()) void refrescar();
+		});
+	}
 
 	onUnmounted(() => {
 		consumidores -= 1;
