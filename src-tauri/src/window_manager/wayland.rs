@@ -312,7 +312,10 @@ mod tests {
         // Sin entrada `.desktop` a mano, el nombre de reserva tiene que ser el
         // `app-id` completo: recortarlo daba `desktop` para Telegram, que en el
         // tema de iconos es la carpeta del escritorio.
-        app_icon::invalidate_icon_cache();
+        //
+        // El `app-id` es propio de esta prueba, así que no hace falta vaciar lo
+        // memorizado —y no conviene: es global, y las pruebas corren en
+        // paralelo—.
         let telegram = aplicacion(232, "no.instalado.telegram", "Programación y Dev");
         let ventana = WaylandManager::view_to_window_info(&telegram).expect("debería listarse");
         assert_eq!(ventana.icon, "no.instalado.telegram");

@@ -22,6 +22,7 @@
 use freedesktop_entry_parser::parse_entry;
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, RwLock};
 
 use crate::menu_manager::applications_dirs;
@@ -39,10 +40,18 @@ static RESOLVED: LazyLock<RwLock<HashMap<String, Option<String>>>> =
 /// Con más aplicaciones abiertas que esto, el escritorio tiene otro problema.
 const LIMITE_MEMORIZADO: usize = 512;
 
+/// Cuántas veces se invalidó lo memorizado. La búsqueda se hace **fuera** del
+/// cerrojo —leer archivos con el cerrojo de escritura tomado dejaría al panel
+/// esperando—, así que una invalidación puede caer justo en el medio: sin este
+/// contador, la búsqueda que empezó antes guardaría después su resultado viejo,
+/// y ese icono ya inválido se quedaría hasta el próximo cambio en el disco.
+static GENERACION: AtomicU64 = AtomicU64::new(0);
+
 /// Olvida lo resuelto. La llama el vigilante de `.desktop`: una aplicación
 /// recién instalada tiene que poder aparecer con su icono, y una que cambió el
 /// suyo tiene que dejar de mostrar el viejo.
 pub fn invalidate_icon_cache() {
+    GENERACION.fetch_add(1, Ordering::SeqCst);
     if let Ok(mut cache) = RESOLVED.write() {
         cache.clear();
     }
@@ -62,16 +71,32 @@ pub fn icon_for_app_id(app_id: &str) -> Option<String> {
         }
     }
 
+    // La generación se lee antes de buscar: si alguien invalida mientras se
+    // leen los `.desktop`, lo que se encontró ya no vale y no se guarda.
+    let generacion = GENERACION.load(Ordering::SeqCst);
     let resolved = lookup_icon(key);
-
-    if let Ok(mut cache) = RESOLVED.write() {
-        if cache.len() >= LIMITE_MEMORIZADO {
-            cache.clear();
-        }
-        cache.insert(key.to_string(), resolved.clone());
-    }
+    memorizar(key, resolved.clone(), generacion);
 
     resolved
+}
+
+/// Guarda lo resuelto, salvo que se haya invalidado mientras se buscaba.
+/// Devuelve si lo guardó.
+fn memorizar(key: &str, resolved: Option<String>, generacion: u64) -> bool {
+    if GENERACION.load(Ordering::SeqCst) != generacion {
+        return false;
+    }
+
+    match RESOLVED.write() {
+        Ok(mut cache) => {
+            if cache.len() >= LIMITE_MEMORIZADO {
+                cache.clear();
+            }
+            cache.insert(key.to_string(), resolved);
+            true
+        }
+        Err(_) => false,
+    }
 }
 
 /// La clave `Icon` de la entrada `.desktop` que corresponde a este `app-id`.
@@ -301,14 +326,19 @@ mod tests {
         assert_eq!(icon_for_app_id(""), None);
     }
 
+    /// Lo memorizado, de punta a punta, en una sola prueba.
+    ///
+    /// Va junto a propósito: `RESOLVED` y `GENERACION` son globales del proceso
+    /// y las pruebas corren en paralelo, así que repartir esto en varias hace
+    /// que una invalide mientras la otra comprueba lo que guardó.
     #[test]
-    fn lo_resuelto_queda_memorizado() {
-        // Incluye el resultado negativo: si no se guardara, cada evento del
-        // compositor volvería a recorrer todos los directorios de aplicaciones
-        // por cada ventana sin entrada.
+    fn lo_memorizado_se_guarda_se_invalida_y_no_acepta_resultados_viejos() {
         let inexistente = "vasak.prueba.que.no.existe";
         invalidate_icon_cache();
 
+        // El resultado negativo también se guarda: si no, cada evento del
+        // compositor volvería a recorrer todos los directorios de aplicaciones
+        // por cada ventana sin entrada.
         assert_eq!(icon_for_app_id(inexistente), None);
         assert!(
             RESOLVED
@@ -318,6 +348,7 @@ mod tests {
             "el resultado negativo no quedó memorizado"
         );
 
+        // Invalidar vacía.
         invalidate_icon_cache();
         assert!(
             !RESOLVED
@@ -326,5 +357,28 @@ mod tests {
                 .contains_key(inexistente),
             "invalidar no vació lo memorizado"
         );
+
+        // Y un resultado de antes de invalidar no se guarda. La búsqueda lee
+        // archivos sin el cerrojo tomado, así que puede terminar después de que
+        // alguien invalidó; guardarlo dejaría el icono viejo memorizado hasta el
+        // próximo cambio en el disco.
+        let generacion = GENERACION.load(Ordering::SeqCst);
+        invalidate_icon_cache();
+        assert!(
+            !memorizar(inexistente, Some("viejo".into()), generacion),
+            "se guardó un resultado de antes de invalidar"
+        );
+        assert!(
+            !RESOLVED
+                .read()
+                .expect("cerrojo envenenado")
+                .contains_key(inexistente)
+        );
+
+        // Con la generación al día, sí.
+        let al_dia = GENERACION.load(Ordering::SeqCst);
+        assert!(memorizar(inexistente, Some("nuevo".into()), al_dia));
+
+        invalidate_icon_cache();
     }
 }

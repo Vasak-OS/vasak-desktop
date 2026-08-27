@@ -50,7 +50,7 @@
   {
     "id": 16,
     "pid": 2639,
-    "title": "#alerta-xd-prod | Platform - Discord",
+    "title": "#general | Servidor de prueba - Discord",
     "app-id": "discord",
     "base-geometry": {
       "x": 358.0,
@@ -146,7 +146,7 @@
   {
     "id": 232,
     "pid": 3328,
-    "title": "‎⁨Programación y Dev⁩ – (35)",
+    "title": "‎⁨Grupo de prueba⁩ – (35)",
     "app-id": "org.telegram.desktop",
     "base-geometry": {
       "x": 551.0,
@@ -194,7 +194,7 @@
   {
     "id": 1757,
     "pid": 4767,
-    "title": "Recibidos - jdecima@pickit.net - Correo de Pickit - Google Chrome",
+    "title": "Recibidos - persona@example.com - Correo - Google Chrome",
     "app-id": "google-chrome",
     "base-geometry": {
       "x": 0.0,
