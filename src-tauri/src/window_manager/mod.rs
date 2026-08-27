@@ -1,3 +1,4 @@
+pub mod app_icon;
 pub mod delta;
 pub mod wayland;
 pub mod wayfire_ipc;

@@ -5,6 +5,7 @@ use tauri::{AppHandle, Emitter};
 use crate::inotify_rafaga::esperar_rafaga;
 use crate::logger::{log_error, log_info};
 use crate::menu_manager::{applications_dirs, invalidate_menu_cache};
+use crate::window_manager::app_icon::invalidate_icon_cache;
 
 /// Emitted when the installed application list changes.
 pub const MENU_CHANGED_EVENT: &str = "menu-items-changed";
@@ -76,6 +77,11 @@ pub fn watch_application_dirs(app: &AppHandle) {
             match esperar_rafaga(&mut inotify, &mut buffer, SETTLE) {
                 Ok(()) => {
                     invalidate_menu_cache();
+                    // El icono de cada ventana del panel también sale de los
+                    // `.desktop`, así que lo memorizado deja de valer acá
+                    // mismo: una aplicación recién instalada tiene que
+                    // aparecer con su icono y no con el `app-id` de reserva.
+                    invalidate_icon_cache();
                     log_info("Cambió la lista de aplicaciones; menú invalidado");
                     let _ = app.emit(MENU_CHANGED_EVENT, ());
                 }

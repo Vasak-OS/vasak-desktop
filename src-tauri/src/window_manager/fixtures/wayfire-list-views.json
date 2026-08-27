@@ -1,0 +1,482 @@
+[
+  {
+    "id": 3,
+    "pid": -1,
+    "title": "nil",
+    "app-id": "nil",
+    "base-geometry": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 0.0,
+      "height": 0.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 0.0,
+      "height": 0.0
+    },
+    "bbox": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 0.0,
+      "height": 0.0
+    },
+    "output-id": 4294967295,
+    "output-name": "null",
+    "last-focus-timestamp": 0,
+    "role": "unmanaged",
+    "mapped": false,
+    "layer": "none",
+    "tiled-edges": 0,
+    "fullscreen": false,
+    "minimized": false,
+    "activated": false,
+    "sticky": false,
+    "wset-index": -1,
+    "min-size": {
+      "width": 0,
+      "height": 0
+    },
+    "max-size": {
+      "width": 0,
+      "height": 0
+    },
+    "focusable": true,
+    "type": "unmanaged",
+    "always-on-top": false
+  },
+  {
+    "id": 16,
+    "pid": 2639,
+    "title": "#general | Servidor de prueba - Discord",
+    "app-id": "discord",
+    "base-geometry": {
+      "x": 358.0,
+      "y": 218.0,
+      "width": 1312.0,
+      "height": 762.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 374.0,
+      "y": 228.0,
+      "width": 1280.0,
+      "height": 720.0
+    },
+    "bbox": {
+      "x": 358.0,
+      "y": 218.0,
+      "width": 1312.0,
+      "height": 762.0
+    },
+    "output-id": 1747,
+    "output-name": "HDMI-A-2",
+    "last-focus-timestamp": 147294918284446,
+    "role": "toplevel",
+    "mapped": true,
+    "layer": "workspace",
+    "tiled-edges": 0,
+    "fullscreen": false,
+    "minimized": false,
+    "activated": false,
+    "sticky": false,
+    "wset-index": 2,
+    "min-size": {
+      "width": 800,
+      "height": 500
+    },
+    "max-size": {
+      "width": 0,
+      "height": 0
+    },
+    "focusable": true,
+    "type": "toplevel",
+    "always-on-top": false
+  },
+  {
+    "id": 21,
+    "pid": 1268,
+    "title": "Claude",
+    "app-id": "com.anthropic.Claude",
+    "base-geometry": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1920.0,
+      "height": 1080.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1920.0,
+      "height": 1080.0
+    },
+    "bbox": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1920.0,
+      "height": 1080.0
+    },
+    "output-id": 1,
+    "output-name": "eDP-1",
+    "last-focus-timestamp": 147363968379810,
+    "role": "toplevel",
+    "mapped": true,
+    "layer": "workspace",
+    "tiled-edges": 15,
+    "fullscreen": false,
+    "minimized": false,
+    "activated": false,
+    "sticky": false,
+    "wset-index": 1,
+    "min-size": {
+      "width": 632,
+      "height": 442
+    },
+    "max-size": {
+      "width": 0,
+      "height": 0
+    },
+    "focusable": true,
+    "type": "toplevel",
+    "always-on-top": false
+  },
+  {
+    "id": 232,
+    "pid": 3328,
+    "title": "‎⁨Grupo de prueba⁩ – (35)",
+    "app-id": "org.telegram.desktop",
+    "base-geometry": {
+      "x": 551.0,
+      "y": 239.0,
+      "width": 818.0,
+      "height": 642.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 560.0,
+      "y": 247.0,
+      "width": 800.0,
+      "height": 624.0
+    },
+    "bbox": {
+      "x": 551.0,
+      "y": 239.0,
+      "width": 818.0,
+      "height": 642.0
+    },
+    "output-id": 1,
+    "output-name": "eDP-1",
+    "last-focus-timestamp": 146459369383651,
+    "role": "toplevel",
+    "mapped": true,
+    "layer": "workspace",
+    "tiled-edges": 0,
+    "fullscreen": false,
+    "minimized": false,
+    "activated": false,
+    "sticky": false,
+    "wset-index": 1,
+    "min-size": {
+      "width": 380,
+      "height": 504
+    },
+    "max-size": {
+      "width": 16777197,
+      "height": 16777197
+    },
+    "focusable": true,
+    "type": "toplevel",
+    "always-on-top": false
+  },
+  {
+    "id": 1757,
+    "pid": 4767,
+    "title": "Recibidos - persona@example.com - Correo - Google Chrome",
+    "app-id": "google-chrome",
+    "base-geometry": {
+      "x": 0.0,
+      "y": 38.0,
+      "width": 1920.0,
+      "height": 1042.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 0.0,
+      "y": 38.0,
+      "width": 1920.0,
+      "height": 1042.0
+    },
+    "bbox": {
+      "x": 0.0,
+      "y": 38.0,
+      "width": 1920.0,
+      "height": 1042.0
+    },
+    "output-id": 1747,
+    "output-name": "HDMI-A-2",
+    "last-focus-timestamp": 146622443702589,
+    "role": "toplevel",
+    "mapped": true,
+    "layer": "workspace",
+    "tiled-edges": 15,
+    "fullscreen": false,
+    "minimized": true,
+    "activated": false,
+    "sticky": false,
+    "wset-index": 2,
+    "min-size": {
+      "width": 520,
+      "height": 141
+    },
+    "max-size": {
+      "width": 0,
+      "height": 0
+    },
+    "focusable": true,
+    "type": "toplevel",
+    "always-on-top": false
+  },
+  {
+    "id": 2066,
+    "pid": 685041,
+    "title": "Vasak Terminal",
+    "app-id": "vasak-terminal",
+    "base-geometry": {
+      "x": 0.0,
+      "y": 38.0,
+      "width": 1920.0,
+      "height": 1042.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 0.0,
+      "y": 38.0,
+      "width": 1920.0,
+      "height": 1042.0
+    },
+    "bbox": {
+      "x": 0.0,
+      "y": 38.0,
+      "width": 1920.0,
+      "height": 1042.0
+    },
+    "output-id": 1747,
+    "output-name": "HDMI-A-2",
+    "last-focus-timestamp": 145940090996603,
+    "role": "toplevel",
+    "mapped": true,
+    "layer": "workspace",
+    "tiled-edges": 15,
+    "fullscreen": false,
+    "minimized": true,
+    "activated": false,
+    "sticky": false,
+    "wset-index": 2,
+    "min-size": {
+      "width": 0,
+      "height": 0
+    },
+    "max-size": {
+      "width": 0,
+      "height": 0
+    },
+    "focusable": true,
+    "type": "toplevel",
+    "always-on-top": false
+  },
+  {
+    "id": 2196,
+    "pid": 392036,
+    "title": "layer-shell",
+    "app-id": "vasak-flare",
+    "base-geometry": {
+      "x": 1528.0,
+      "y": 948.0,
+      "width": 380.0,
+      "height": 120.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 1528.0,
+      "y": 948.0,
+      "width": 380.0,
+      "height": 120.0
+    },
+    "bbox": {
+      "x": 1528.0,
+      "y": 948.0,
+      "width": 380.0,
+      "height": 120.0
+    },
+    "output-id": 1,
+    "output-name": "eDP-1",
+    "last-focus-timestamp": 0,
+    "role": "desktop-environment",
+    "mapped": true,
+    "layer": "overlay",
+    "tiled-edges": 0,
+    "fullscreen": false,
+    "minimized": false,
+    "activated": false,
+    "sticky": false,
+    "wset-index": -1,
+    "min-size": {
+      "width": 0,
+      "height": 0
+    },
+    "max-size": {
+      "width": 0,
+      "height": 0
+    },
+    "focusable": true,
+    "type": "overlay",
+    "always-on-top": false
+  },
+  {
+    "id": 2227,
+    "pid": 712722,
+    "title": "layer-shell",
+    "app-id": "vasak-desktop",
+    "base-geometry": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1920.0,
+      "height": 1080.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1920.0,
+      "height": 1080.0
+    },
+    "bbox": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1920.0,
+      "height": 1080.0
+    },
+    "output-id": 1,
+    "output-name": "eDP-1",
+    "last-focus-timestamp": 0,
+    "role": "desktop-environment",
+    "mapped": true,
+    "layer": "background",
+    "tiled-edges": 0,
+    "fullscreen": false,
+    "minimized": false,
+    "activated": false,
+    "sticky": false,
+    "wset-index": -1,
+    "min-size": {
+      "width": 0,
+      "height": 0
+    },
+    "max-size": {
+      "width": 0,
+      "height": 0
+    },
+    "focusable": true,
+    "type": "background",
+    "always-on-top": false
+  },
+  {
+    "id": 2229,
+    "pid": 712722,
+    "title": "layer-shell",
+    "app-id": "vasak-panel",
+    "base-geometry": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1920.0,
+      "height": 38.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1920.0,
+      "height": 38.0
+    },
+    "bbox": {
+      "x": 0.0,
+      "y": 0.0,
+      "width": 1920.0,
+      "height": 38.0
+    },
+    "output-id": 1747,
+    "output-name": "HDMI-A-2",
+    "last-focus-timestamp": 0,
+    "role": "desktop-environment",
+    "mapped": true,
+    "layer": "top",
+    "tiled-edges": 0,
+    "fullscreen": false,
+    "minimized": false,
+    "activated": false,
+    "sticky": false,
+    "wset-index": -1,
+    "min-size": {
+      "width": 0,
+      "height": 0
+    },
+    "max-size": {
+      "width": 0,
+      "height": 0
+    },
+    "focusable": true,
+    "type": "panel",
+    "always-on-top": false
+  },
+  {
+    "id": 2231,
+    "pid": 712722,
+    "title": "",
+    "app-id": "vasak-desktop",
+    "base-geometry": {
+      "x": 850.0,
+      "y": 440.0,
+      "width": 220.0,
+      "height": 200.0
+    },
+    "parent": -1,
+    "geometry": {
+      "x": 850.0,
+      "y": 440.0,
+      "width": 220.0,
+      "height": 200.0
+    },
+    "bbox": {
+      "x": 850.0,
+      "y": 440.0,
+      "width": 220.0,
+      "height": 200.0
+    },
+    "output-id": 1,
+    "output-name": "eDP-1",
+    "last-focus-timestamp": 147914630206481,
+    "role": "toplevel",
+    "mapped": true,
+    "layer": "workspace",
+    "tiled-edges": 0,
+    "fullscreen": false,
+    "minimized": false,
+    "activated": true,
+    "sticky": false,
+    "wset-index": 1,
+    "min-size": {
+      "width": 220,
+      "height": 200
+    },
+    "max-size": {
+      "width": 220,
+      "height": 200
+    },
+    "focusable": true,
+    "type": "toplevel",
+    "always-on-top": false
+  }
+]
