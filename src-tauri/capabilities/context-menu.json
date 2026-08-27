@@ -1,10 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "context-menu",
-  "description": "La ventana del menú contextual: dibuja un menú y devuelve lo elegido, nada más.",
-  "windows": ["vsk_context_menu"],
+  "description": "La ventana del men\u00fa contextual: dibuja un men\u00fa y devuelve lo elegido, nada m\u00e1s.",
+  "windows": [
+    "vsk_context_menu"
+  ],
   "permissions": [
     "vsk-contextual-menu:default",
+    "vsk-journal:default",
     "config-manager:default"
   ]
 }

@@ -133,6 +133,11 @@ pub fn run() {
             locales_dir(),
         ))
         .plugin(tauri_plugin_opener::init())
+        // El diario del sistema, con el nombre de esta aplicación. Va **primero**
+        // de todos los plugins: instala el gancho de pánico, y un pánico mientras
+        // arranca otro plugin es de los más probables y de los que menos rastro
+        // dejan — sin esto sólo queda un volcado de núcleo sin símbolos.
+        .plugin(tauri_plugin_vsk_journal::init())
         .plugin(tauri_plugin_vsk_contextual_menu::init())
         .invoke_handler(tauri::generate_handler![
             batch_invoke,
