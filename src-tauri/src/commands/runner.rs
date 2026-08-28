@@ -23,6 +23,16 @@ fn directorio_de_arranque() -> PathBuf {
     dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"))
 }
 
+/// El comando con el que se abre una aplicación, ya con su directorio puesto.
+///
+/// Existe para que la regla —«toda aplicación que abre el escritorio arranca
+/// desde un directorio elegido»— se pueda comprobar sin ejecutar nada.
+fn comando_de_aplicacion(programa: &str, argumentos: &[String]) -> Command {
+    let mut comando = Command::new(programa);
+    comando.args(argumentos).current_dir(directorio_de_arranque());
+    comando
+}
+
 fn parse_exec_line(exec_line: &str) -> Result<(String, Vec<String>), String> {
     let parts = shlex::split(exec_line).ok_or_else(|| "No se pudo parsear Exec".to_string())?;
 
@@ -60,14 +70,10 @@ pub async fn open_app(path: &str) -> Result<(), String> {
             })?;
 
             log_info(&format!("Ejecutando comando: {} {:?}", cmd, args));
-            Command::new(&cmd)
-                .args(&args)
-                .current_dir(directorio_de_arranque())
-                .spawn()
-                .map_err(|e| {
-                    log_error(&format!("Error al ejecutar comando {} {:?}: {}", cmd, args, e));
-                    e.to_string()
-                })?;
+            comando_de_aplicacion(&cmd, &args).spawn().map_err(|e| {
+                log_error(&format!("Error al ejecutar comando {} {:?}: {}", cmd, args, e));
+                e.to_string()
+            })?;
 
             return Ok(());
         }
@@ -100,8 +106,7 @@ pub fn spawn_settings() -> Result<(), String> {
 pub fn spawn_settings_at(seccion: Option<&str>) -> Result<(), String> {
     log_info("Abriendo la aplicación de configuración");
 
-    let mut comando = Command::new(SETTINGS_BINARY);
-    comando.current_dir(directorio_de_arranque());
+    let mut comando = comando_de_aplicacion(SETTINGS_BINARY, &[]);
 
     if let Some(seccion) = seccion.filter(|valor| es_nombre_de_seccion(valor)) {
         comando.arg(seccion);
@@ -148,25 +153,33 @@ fn es_nombre_de_seccion(valor: &str) -> bool {
 
 #[cfg(test)]
 mod tests_arranque {
-    use super::directorio_de_arranque;
+    use super::{comando_de_aplicacion, directorio_de_arranque};
 
     #[test]
-    fn es_un_directorio_que_existe_y_no_el_del_escritorio() {
-        // Lo que importa no es cuál sea, sino que sea uno elegido y no el que el
-        // escritorio haya heredado: desde el árbol de fuentes de una aplicación
-        // Tauri, el directorio actual tiene un `locales/` que la aplicación
-        // abierta cargaba en lugar de los suyos.
-        let directorio = directorio_de_arranque();
+    fn toda_aplicacion_arranca_con_un_directorio_puesto() {
+        // La regresión: sin `current_dir`, el hijo hereda el del escritorio, y
+        // desde el árbol de fuentes de una aplicación Tauri ése tiene un
+        // `locales/` que la aplicación abierta cargaba en lugar de los suyos.
+        //
+        // Se comprueba sobre el comando ya armado y no sobre el entorno de la
+        // prueba: mirar si el directorio actual tiene un `locales/` haría que en
+        // otra máquina la prueba pasara sin comprobar nada.
+        let comando = comando_de_aplicacion("cualquiera", &["argumento".to_string()]);
+
+        let directorio = comando
+            .get_current_dir()
+            .expect("la aplicación tiene que arrancar con un directorio puesto");
+        assert_eq!(directorio, directorio_de_arranque());
         assert!(directorio.is_absolute(), "{directorio:?}");
         assert!(directorio.is_dir(), "{directorio:?}");
+    }
 
-        if let Ok(actual) = std::env::current_dir() {
-            if actual.join("locales").is_dir() {
-                assert_ne!(
-                    directorio, actual,
-                    "se estaría entregando un directorio con catálogos de otra aplicación"
-                );
-            }
+    #[test]
+    fn el_directorio_de_arranque_es_el_hogar() {
+        // Y no la raíz, salvo que no haya hogar: es el directorio desde el que
+        // cualquier lanzador de escritorio abre una aplicación.
+        if let Some(hogar) = dirs::home_dir() {
+            assert_eq!(directorio_de_arranque(), hogar);
         }
     }
 }
