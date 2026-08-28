@@ -27,7 +27,7 @@ const openSearch = async () => {
     <!-- Overlay decorativo como ThemeToggle -->
     <div
       class="absolute inset-0 rounded-corner transition-all duration-500"
-      :class="'bg-lineal-to-br from-primary to-primary-secondary'"
+      :class="'bg-linear-to-br from-primary to-secondary'"
       style="opacity: 0"
     ></div>
 

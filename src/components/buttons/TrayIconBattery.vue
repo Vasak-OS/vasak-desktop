@@ -28,9 +28,9 @@ const batteryAltText = computed(() => {
 });
 
 const tooltipClass = computed(() => ({
-	'text-green-400': batteryInfo.value.is_charging,
-	'text-red-400': batteryInfo.value.percentage < 20 && !batteryInfo.value.is_charging,
-	'text-yellow-400':
+	'text-status-success': batteryInfo.value.is_charging,
+	'text-status-error': batteryInfo.value.percentage < 20 && !batteryInfo.value.is_charging,
+	'text-status-warning':
 		batteryInfo.value.percentage < 50 &&
 		batteryInfo.value.percentage >= 20 &&
 		!batteryInfo.value.is_charging,

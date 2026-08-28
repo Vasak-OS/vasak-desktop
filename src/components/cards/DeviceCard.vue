@@ -1,7 +1,7 @@
 <template>
   <div
     class="flex items-center justify-between bg-ui-bg/80 rounded-corner border border-ui-border px-6 py-3 mb-4"
-    :class="[{ 'border-l-4 border-green-500': isConnected }, customClass]"
+    :class="[{ 'border-l-4 border-status-success': isConnected }, customClass]"
     @click="handleClick"
   >
     <div class="flex items-center gap-3 flex-1 min-w-0">

@@ -42,7 +42,7 @@ const openApp = async (path: string) => {
     />
     <div class="col-10 app-card-info ps-2 text-left">
       {{ app.name }}
-      <span class="text-muted" style="display: none">{{
+      <span class="text-ui-surface" style="display: none">{{
         app.description
       }}</span>
       <span style="display: none">{{ app.keywords }}</span>

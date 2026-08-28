@@ -75,6 +75,9 @@ async function updateBrightness() {
 }
 
 const getPercentageClass = (percentage: number) => {
+	// Amarillo y naranja como ilustración de la temperatura del brillo, no con
+	// los tokens de estado: un brillo alto **no es un estado del sistema**, y
+	// pintarlo de `status-warning` diría que algo anda mal.
 	if (percentage > 80) return 'text-yellow-500';
 	if (percentage < 20) return 'text-orange-500';
 	return '';

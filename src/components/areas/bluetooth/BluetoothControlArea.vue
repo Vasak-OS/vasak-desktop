@@ -133,7 +133,7 @@ const disconnect = async (device: any) => {
         :disabled="isTogglingBluetooth"
         size="medium"
         active-class="bg-primary"
-        inactive-class="bg-gray-400"
+        inactive-class="bg-tx-muted"
         custom-class="mr-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
         @toggle="toggleBT"
       />
