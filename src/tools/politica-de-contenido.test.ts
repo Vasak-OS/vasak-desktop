@@ -17,6 +17,20 @@ import { join } from 'node:path';
 const RAIZ = join(import.meta.dir, '..');
 const CONFIGURACION = join(RAIZ, '..', 'src-tauri', 'tauri.conf.json');
 
+/**
+ * El servidor de un origen, con su puerto si no es el de siempre.
+ *
+ * Las dos listas tienen que normalizarse igual o la comparación miente en las
+ * dos direcciones: un `:8443` que una lista guarda y la otra descarta hace que
+ * un servidor permitido parezca faltante, y —peor— que un `https://donde:8443`
+ * del código parezca cubierto por un `https://donde` de la política, que en
+ * realidad no lo cubre: la política no acepta un puerto que su origen no
+ * nombra.
+ */
+function normalizarOrigen(origen: string): string {
+	return new URL(origen).host;
+}
+
 /** Los servidores que `connect-src` deja consultar. */
 function permitidos(): Set<string> {
 	const { app } = JSON.parse(readFileSync(CONFIGURACION, 'utf8'));
@@ -34,7 +48,7 @@ function permitidos(): Set<string> {
 			.split(/\s+/)
 			.slice(1)
 			.filter((origen) => origen.startsWith('https://'))
-			.map((origen) => origen.replace('https://', ''))
+			.map(normalizarOrigen)
 	);
 }
 
@@ -54,9 +68,10 @@ function usados(): Map<string, string[]> {
 
 			// Un servidor vacío —el `https://` suelto de un comentario o de un
 			// `startsWith`— no es nadie a quien se le pida nada.
-			for (const [, servidor] of readFileSync(camino, 'utf8').matchAll(
-				/https:\/\/([a-zA-Z0-9._-]+)/g
+			for (const [origen] of readFileSync(camino, 'utf8').matchAll(
+				/https:\/\/[a-zA-Z0-9._-]+(?::\d+)?/g
 			)) {
+				const servidor = normalizarOrigen(origen);
 				encontrados.set(servidor, [...(encontrados.get(servidor) ?? []), camino]);
 			}
 		}
@@ -74,6 +89,14 @@ describe('política de contenido', () => {
 			.map(([servidor, archivos]) => `${servidor} (en ${archivos.join(', ')})`);
 
 		expect(faltantes).toEqual([]);
+	});
+
+	test('un puerto distinto es un servidor distinto', () => {
+		// El puerto de siempre no se escribe, así que las dos formas de nombrar
+		// al mismo servidor tienen que dar lo mismo.
+		expect(normalizarOrigen('https://donde:443')).toBe(normalizarOrigen('https://donde'));
+		// Y uno distinto sí, porque la política tampoco lo da por permitido.
+		expect(normalizarOrigen('https://donde:8443')).not.toBe(normalizarOrigen('https://donde'));
 	});
 
 	test('no permite servidores que nadie consulta', () => {
