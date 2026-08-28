@@ -224,8 +224,8 @@ function getCategoryLabel(category: string): string {
             class="search-result flex items-center gap-4 p-4 rounded-corner cursor-pointer transition-all duration-200 mb-2 ring-1 ring-primary/20"
             :class="
               index === selectedIndex
-                ? 'selected bg-gradient-to-r from-primary/20 to-primary/10 translate-x-2 shadow-md shadow-primary/15 ring-2 ring-primary/40 scale-[1.01]'
-                : 'hover:bg-gradient-to-r hover:from-primary/20 hover:to-primary/10 hover:translate-x-2 hover:shadow-md hover:shadow-primary/15 hover:ring-primary/30'
+                ? 'selected bg-linear-to-r from-primary/20 to-primary/10 translate-x-2 shadow-md shadow-primary/15 ring-2 ring-primary/40 scale-[1.01]'
+                : 'hover:bg-linear-to-r hover:from-primary/20 hover:to-primary/10 hover:translate-x-2 hover:shadow-md hover:shadow-primary/15 hover:ring-primary/30'
             "
             @click="executeResult(result)"
             @mouseenter="selectedIndex = index"

@@ -33,7 +33,7 @@ const toggleWindow = async (): Promise<void> => {
       :title="title"
       class="w-6 h-6 transition-all duration-300 group-hover:rotate-3 group-hover:brightness-110"
     />
-    <div v-else class="w-6 h-6 bg-gray-500/50 rounded-corner animate-pulse" />
+    <div v-else class="w-6 h-6 bg-tx-muted/50 rounded-corner animate-pulse" />
   </div>
 </template>
 

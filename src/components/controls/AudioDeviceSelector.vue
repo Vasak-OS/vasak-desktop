@@ -76,7 +76,7 @@ function getDeviceName(device: AudioDevice): string {
 
 <template>
   <div class="space-y-2">
-    <div class="flex items-center gap-2 text-sm font-medium text-muted">
+    <div class="flex items-center gap-2 text-sm font-medium text-ui-surface">
       <img v-if="speakerIcon" :src="speakerIcon" :alt="t('components.AudioDeviceSelector.speakerAlt')" class="w-4 h-4" />
       <span>{{ t('components.AudioDeviceSelector.title') }}</span>
     </div>
@@ -104,7 +104,7 @@ function getDeviceName(device: AudioDevice): string {
           <div class="text-xs font-medium truncate">
             {{ getDeviceName(device) }}
           </div>
-          <div class="text-xs text-muted/70">
+          <div class="text-xs text-ui-surface/70">
             {{ t('components.AudioDeviceSelector.volume').replace('{0}', String(Math.round(device.volume * 100))) }}
           </div>
         </div>
@@ -116,7 +116,7 @@ function getDeviceName(device: AudioDevice): string {
       </div>
     </div>
 
-    <div v-else-if="isLoading" class="text-xs text-muted">
+    <div v-else-if="isLoading" class="text-xs text-ui-surface">
       {{ t('components.AudioDeviceSelector.loadingDevices') }}
     </div>
 

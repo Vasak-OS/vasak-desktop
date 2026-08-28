@@ -42,9 +42,9 @@ const toggleBT = async (): Promise<void> => {
     <div
       class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-300"
       :class="{
-        'bg-blue-400 animate-pulse': isBluetoothOn && connectedDevicesCount > 0,
-        'bg-blue-400': isBluetoothOn && connectedDevicesCount === 0,
-        'bg-gray-400': !isBluetoothOn,
+        'bg-primary animate-pulse': isBluetoothOn && connectedDevicesCount > 0,
+        'bg-primary': isBluetoothOn && connectedDevicesCount === 0,
+        'bg-tx-muted': !isBluetoothOn,
       }"
     ></div>
 
@@ -63,7 +63,7 @@ const toggleBT = async (): Promise<void> => {
       :is-active="isBluetoothOn"
       :is-loading="isTogglingBluetooth"
       :custom-class="{
-        'ring-2 ring-blue-400/50': isBluetoothOn,
+        'ring-2 ring-primary/50': isBluetoothOn,
       }"
       @click="toggleBT"
     />

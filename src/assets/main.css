@@ -25,10 +25,12 @@
   /* Colores de Texto */
   --text-main: #4c4f69;
   --text-muted: #6c6f85;
-  --text-on-primary: #5c5f77;
+  --text-on-primary: #1e1e2e;
+  --text-on-secondary: #eff1f5;
   --text-main-dark: #cdd6f4;
   --text-muted-dark: #a6adc8;
-  --text-on-primary-dark: #cdd6f4;
+  --text-on-primary-dark: #1e1e2e;
+  --text-on-secondary-dark: #1e1e2e;
 
   /* Status */
   --status-error: #d20f39;
@@ -91,6 +93,7 @@
   --use-text-main: var(--text-main);
   --use-text-muted: var(--text-muted);
   --use-text-on-primary: var(--text-on-primary);
+  --use-text-on-secondary: var(--text-on-secondary);
   --use-status-error: var(--status-error);
   --use-status-success: var(--status-success);
   --use-status-warning: var(--status-warning);
@@ -106,6 +109,7 @@
   --use-text-main: var(--text-main-dark);
   --use-text-muted: var(--text-muted-dark);
   --use-text-on-primary: var(--text-on-primary-dark);
+  --use-text-on-secondary: var(--text-on-secondary-dark);
   --use-status-error: var(--status-error-dark);
   --use-status-success: var(--status-success-dark);
   --use-status-warning: var(--status-warning-dark);
@@ -116,6 +120,12 @@
 @theme {
   /* radius */
   --radius-corner: var(--corner-radius);
+  /* El radio chico, para lo que no es una tarjeta: chips, insignias, el pulgar de
+     una barra. Derivado del que la persona configuró y no fijo, así que un
+     escritorio con esquinas rectas o muy redondeadas se ve coherente hasta en los
+     detalles — con `rounded-sm` a 2px, subir el radio general dejaba las tarjetas
+     redondas y los chips cuadrados. */
+  --radius-corner-sm: calc(var(--corner-radius) / 2.5);
   --radius-corner-window: calc(var(--corner-radius) + 2px);
 
   /* Colores de Marca - responsive a dark mode */
@@ -131,6 +141,7 @@
   --color-tx-main: var(--use-text-main);
   --color-tx-muted: var(--use-text-muted);
   --color-tx-on-primary: var(--use-text-on-primary);
+  --color-tx-on-secondary: var(--use-text-on-secondary);
 
   /* Status - responsive a dark mode */
   --color-status-error: var(--use-status-error);

@@ -10,9 +10,9 @@
     <div
       class="absolute inset-0 rounded-corner transition-all duration-500 pointer-events-none opacity-0 group-hover:opacity-100 group-hover:opacity-100 transition-opacity !opacity-100"
       :class="{
-        'bg-lineal-to-br from-orange-400/20 to-yellow-400/20':
+        'bg-linear-to-br from-orange-400/20 to-yellow-400/20':
           !(configStore?.config as any)?.style?.darkmode,
-        'bg-lineal-to-br from-purple-500/20 to-blue-600/20':
+        'bg-linear-to-br from-purple-500/20 to-blue-600/20':
           (configStore?.config as any)?.style?.darkmode,
       }"></div>
 
@@ -32,6 +32,10 @@
   </div>
 </template>
 
+<!-- Los amarillos, naranjas, azules y violetas de este control **no se
+     tokenizan**: son la ilustración del sol y de la luna, o sea el
+     significado del interruptor. Cambiarlos por los colores de marca haría
+     que los dos modos se vieran iguales y el control dejaría de decir nada. -->
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */

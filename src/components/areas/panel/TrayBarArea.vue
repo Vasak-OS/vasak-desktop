@@ -177,7 +177,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
         </div>
 
         <!-- Status indicator -->
-        <div v-if="item.status === 'NeedsAttention'" class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50" />
+        <div v-if="item.status === 'NeedsAttention'" class="absolute -top-1 -right-1 w-2 h-2 bg-status-error rounded-full animate-pulse shadow-lg shadow-red-500/50" />
       </div>
       <TrayIconSound key="icon-sound" />
       <TrayIconBattery v-if="existBattery" key="icon-battery" />
