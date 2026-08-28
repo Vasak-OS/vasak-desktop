@@ -284,13 +284,13 @@ body * {
   *,
   *::before,
   *::after {
-    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a cualquier animación declarada en otro lado, incluidas las clases de utilidad y los estilos en línea */
+    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a las declaraciones de animación y de transición que no usen `!important`, que son las de las clases de utilidad y las de los componentes */
     animation-duration: 0.01ms !important;
-    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a cualquier animación declarada en otro lado, incluidas las clases de utilidad y los estilos en línea */
+    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a las declaraciones de animación y de transición que no usen `!important`, que son las de las clases de utilidad y las de los componentes */
     animation-iteration-count: 1 !important;
-    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a cualquier animación declarada en otro lado, incluidas las clases de utilidad y los estilos en línea */
+    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a las declaraciones de animación y de transición que no usen `!important`, que son las de las clases de utilidad y las de los componentes */
     transition-duration: 0.01ms !important;
-    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a cualquier animación declarada en otro lado, incluidas las clases de utilidad y los estilos en línea */
+    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a las declaraciones de animación y de transición que no usen `!important`, que son las de las clases de utilidad y las de los componentes */
     scroll-behavior: auto !important;
   }
 }
