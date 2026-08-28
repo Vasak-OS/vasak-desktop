@@ -1,7 +1,27 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use std::process::Command;
 use crate::logger::{log_info, log_error};
+
+/// El directorio desde el que arranca una aplicación que abre el escritorio.
+///
+/// Tiene que ser el hogar y no el que herede el proceso del escritorio. Un
+/// proceso hijo hereda el directorio de trabajo del padre, y el del escritorio
+/// es el que haya tenido quien lo lanzó: con la sesión normal es el hogar, pero
+/// arrancado a mano desde el árbol de fuentes de una aplicación Tauri —cosa que
+/// se hace todo el tiempo para probar— es un directorio con un `locales/`
+/// adentro.
+///
+/// Y eso rompe a la aplicación que se abra: el plugin de idiomas busca los
+/// catálogos primero en `<directorio actual>/locales`, así que **cualquier**
+/// aplicación abierta desde el menú cargaba los textos del escritorio en lugar
+/// de los suyos y mostraba las claves crudas —`app.titulo`, `recursos.cpu`— en
+/// vez de la interfaz traducida. El mismo binario, abierto desde otro lado,
+/// andaba perfecto.
+fn directorio_de_arranque() -> PathBuf {
+    dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"))
+}
 
 fn parse_exec_line(exec_line: &str) -> Result<(String, Vec<String>), String> {
     let parts = shlex::split(exec_line).ok_or_else(|| "No se pudo parsear Exec".to_string())?;
@@ -40,10 +60,14 @@ pub async fn open_app(path: &str) -> Result<(), String> {
             })?;
 
             log_info(&format!("Ejecutando comando: {} {:?}", cmd, args));
-            Command::new(&cmd).args(&args).spawn().map_err(|e| {
-                log_error(&format!("Error al ejecutar comando {} {:?}: {}", cmd, args, e));
-                e.to_string()
-            })?;
+            Command::new(&cmd)
+                .args(&args)
+                .current_dir(directorio_de_arranque())
+                .spawn()
+                .map_err(|e| {
+                    log_error(&format!("Error al ejecutar comando {} {:?}: {}", cmd, args, e));
+                    e.to_string()
+                })?;
 
             return Ok(());
         }
@@ -77,6 +101,7 @@ pub fn spawn_settings_at(seccion: Option<&str>) -> Result<(), String> {
     log_info("Abriendo la aplicación de configuración");
 
     let mut comando = Command::new(SETTINGS_BINARY);
+    comando.current_dir(directorio_de_arranque());
 
     if let Some(seccion) = seccion.filter(|valor| es_nombre_de_seccion(valor)) {
         comando.arg(seccion);
@@ -119,6 +144,31 @@ fn es_nombre_de_seccion(valor: &str) -> bool {
         && valor
             .chars()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
+#[cfg(test)]
+mod tests_arranque {
+    use super::directorio_de_arranque;
+
+    #[test]
+    fn es_un_directorio_que_existe_y_no_el_del_escritorio() {
+        // Lo que importa no es cuál sea, sino que sea uno elegido y no el que el
+        // escritorio haya heredado: desde el árbol de fuentes de una aplicación
+        // Tauri, el directorio actual tiene un `locales/` que la aplicación
+        // abierta cargaba en lugar de los suyos.
+        let directorio = directorio_de_arranque();
+        assert!(directorio.is_absolute(), "{directorio:?}");
+        assert!(directorio.is_dir(), "{directorio:?}");
+
+        if let Ok(actual) = std::env::current_dir() {
+            if actual.join("locales").is_dir() {
+                assert_ne!(
+                    directorio, actual,
+                    "se estaría entregando un directorio con catálogos de otra aplicación"
+                );
+            }
+        }
+    }
 }
 
 #[cfg(test)]
