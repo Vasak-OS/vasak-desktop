@@ -101,7 +101,14 @@ onBeforeUnmount(() => {
         <NotificationArea class="min-h-0 flex-1" />
       </div>
       <div class="flex shrink-0 flex-wrap w-full justify-around items-end p-2">
-        <MusicWidget class="w-full" />
+        <!-- La caja va afuera y no como clase del widget: por dentro es
+             `h-full` —se adapta con consultas de contenedor— y una clase de
+             alto puesta desde acá compite con esa y pierde. Sin una altura
+             resuelta, la carátula se estira hasta tapar el brillo y el
+             volumen. -->
+        <div class="h-24 w-full">
+          <MusicWidget class="w-full" />
+        </div>
         <div class="flex justify-between gap-2 w-full">
           <SearchButtonControl />
           <NetworkControl />

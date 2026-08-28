@@ -6,7 +6,7 @@
          de juguete. Lo que indica que la fila responde al clic es el cursor y
          el giro de la flecha, que alcanza. -->
     <div
-      class="flex items-center gap-2 px-2 py-1.5 bg-ui-surface rounded-t-corner cursor-pointer"
+      class="group/grupo flex items-center gap-2 px-2 py-1.5 bg-ui-surface rounded-t-corner cursor-pointer"
       @click="toggleExpanded" :class="{ 'rounded-corner': !isExpanded }">
       <img :src="iconSrc" :alt="group.app_name" class="w-5 h-5 shrink-0 object-contain" />
 
@@ -30,16 +30,14 @@
         <span class="text-[11px] text-tx-muted">
           {{ formatTime(group.latest_timestamp) }}
         </span>
-        <ActionButton
-          label=""
-          :iconSrc="closeIconSrc"
-          :iconAlt="t('components.NotificationGroupCard.removeGroup')"
-          size="sm"
-          variant="secondary"
-          :stopPropagation="true"
-          customClass="bg-transparent border border-transparent text-tx-muted hover:text-status-error hover:bg-status-error/10"
-          @click="removeAllFromGroup"
-        />
+        <button
+          type="button"
+          :title="t('components.NotificationGroupCard.removeGroup')"
+          class="flex items-center justify-center w-4 h-4 rounded-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/grupo:opacity-100 focus-visible:opacity-100 hover:text-status-error"
+          @click.stop="removeAllFromGroup"
+        >
+          <img :src="closeIconSrc" :alt="t('components.NotificationGroupCard.removeGroup')" class="w-2.5 h-2.5" />
+        </button>
         <div class="w-4 h-4 flex items-center justify-center text-tx-muted transition-transform duration-200"
           :class="{ 'rotate-180': isExpanded }">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -72,7 +70,6 @@ import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { computed, onMounted, ref } from 'vue';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
-import ActionButton from '../buttons/ActionButton.vue';
 
 const { t } = useI18n();
 
