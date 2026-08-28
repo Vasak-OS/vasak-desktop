@@ -128,7 +128,7 @@ const disconnect = async (device: any) => {
 <template>
   <div class="flex flex-col h-full">
     <div class="flex items-center mb-4">
-      <SwitchToggle
+      <SwitchToggle :label="t('components.BluetoothControl.toggle')"
         :is-on="isBluetoothOn || false"
         :disabled="isTogglingBluetooth"
         size="medium"

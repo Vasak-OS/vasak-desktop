@@ -83,7 +83,7 @@
         </span>
       </div>
 
-      <SwitchToggle
+      <SwitchToggle :label="t('components.NetworkControlArea.wifiToggle')"
         v-if="wifiAvailable"
         :is-on="wifiEnabled"
         @toggle="toggleWifi"

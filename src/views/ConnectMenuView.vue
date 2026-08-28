@@ -265,7 +265,7 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center justify-between gap-2 text-xs text-tx-muted">
           <span>{{ t('views.connect.showSystem') }}</span>
-          <SwitchToggle :is-on="showSystem" @toggle="showSystem = $event" />
+          <SwitchToggle :label="t('views.connect.showSystem')" :is-on="showSystem" @toggle="showSystem = $event" />
         </div>
       </template>
     </div>

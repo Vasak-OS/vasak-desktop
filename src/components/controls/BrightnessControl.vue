@@ -112,8 +112,7 @@ useSharedEvent<Record<string, number>>(
 <template>
   <SliderControl
     :icon="currentIcon"
-    :alt="brightnessLabel"
-    :tooltip="brightnessLabel"
+    :label="brightnessLabel"
     v-model="currentBrightness"
     :min="brightnessInfo.min"
     :max="brightnessInfo.max"

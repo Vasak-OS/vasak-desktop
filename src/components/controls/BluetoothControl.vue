@@ -58,8 +58,8 @@ const toggleBT = async (): Promise<void> => {
 
     <ToggleControl
       :icon="bluetoothIcon"
-      :alt="t('components.BluetoothControl.iconAlt')"
-      :tooltip="t('components.BluetoothControl.toggle')"
+      :label="t('components.BluetoothControl.toggle')"
+      :pressed="isBluetoothOn"
       :is-active="isBluetoothOn"
       :is-loading="isTogglingBluetooth"
       :custom-class="{
