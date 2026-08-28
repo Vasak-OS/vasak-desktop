@@ -284,9 +284,13 @@ body * {
   *,
   *::before,
   *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a cualquier animación declarada en otro lado, incluidas las clases de utilidad y los estilos en línea */
     animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a cualquier animación declarada en otro lado, incluidas las clases de utilidad y los estilos en línea */
     animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a cualquier animación declarada en otro lado, incluidas las clases de utilidad y los estilos en línea */
     transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: es la forma canónica de respetar «reducir el movimiento»: tiene que ganarle a cualquier animación declarada en otro lado, incluidas las clases de utilidad y los estilos en línea */
     scroll-behavior: auto !important;
   }
 }

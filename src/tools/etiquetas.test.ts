@@ -16,7 +16,12 @@ const RAIZ_LOCALES = join(import.meta.dir, '../../src-tauri/locales');
 const RAIZ_FUENTE = join(import.meta.dir, '../../src');
 
 /** Controles sin texto propio: el nombre les tiene que llegar por prop. */
-const CON_ETIQUETA_OBLIGATORIA = ['SwitchToggle', 'ToggleControl', 'SliderControl', 'CategoryMenuPill'] as const;
+const CON_ETIQUETA_OBLIGATORIA = [
+	'SwitchToggle',
+	'ToggleControl',
+	'SliderControl',
+	'CategoryMenuPill',
+] as const;
 
 const catalogo = () =>
 	Bun.YAML.parse(readFileSync(join(RAIZ_LOCALES, 'es.yml'), 'utf8')) as Record<string, unknown>;
