@@ -1,33 +1,37 @@
 <template>
+  <!-- Una notificación ocupa lo que dice y nada más: sin degradados propios,
+       sin sombra, sin levantarse al pasar el mouse y sin colores fuera de los
+       del sistema. Lo único que distingue a una sin leer es la barra al
+       costado, en el color de acento. El nombre de la aplicación no se repite
+       acá: ya está en el encabezado del grupo. -->
   <div
-    class="theme-transition border border-transparent bg-[linear-gradient(135deg,rgba(255,255,255,0.5),rgba(255,255,255,0.3))] dark:bg-[linear-gradient(135deg,rgba(0,0,0,0.5),rgba(0,0,0,0.3))] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-[2px] hover:border-blue-500/30 group/nc flex items-start gap-3 p-3 bg-ui-bg/80 rounded-corner shadow-sm transition-all duration-200 hover:shadow-lg"
+    class="theme-transition group/nc flex items-start gap-2 px-2 py-1.5 border-l-2 border-transparent transition-colors duration-200 hover:bg-ui-surface/60"
     :class="{
-      'opacity-75 scale-95': notification.seen,
-      'border-l-4 border-l-primary animate-notification-glow': !notification.seen,
+      'opacity-60': notification.seen,
+      'border-l-primary': !notification.seen,
       'cursor-pointer': hasDefaultAction,
     }" :data-urgency="notification.urgency?.toLowerCase()"
     :title="hasDefaultAction ? t('components.NotificationCard.openHint') : undefined"
     @click="handleDefaultAction">
-    <img :src="iconSrc" :alt="notification.app_name" class="w-10 h-10 object-contain transition-transform duration-200 ease-in-out group-hover/nc:scale-105" />
+    <img :src="iconSrc" :alt="notification.app_name" class="w-4 h-4 mt-0.5 shrink-0 object-contain" />
     <div class="flex-1 min-w-0">
-      <div class="flex items-center justify-between gap-2">
-        <h3 class="font-medium truncate">{{ notification.summary }}</h3>
-        <button @click="$emit('seen', notification.id)"
-          class="close-button group/close active:scale-95 flex items-center justify-center w-6 h-6 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-gray-400 dark:hover:text-red-400 transition-all duration-200 transform hover:scale-110">
-          <img :src="closeIconSrc" :alt="t('common.close')" class="w-3 h-3 transition-transform duration-200" />
-        </button>
+      <div class="flex items-start justify-between gap-2">
+        <h3 class="text-sm font-medium text-tx-main truncate">{{ notification.summary }}</h3>
+        <div class="flex items-center gap-1 shrink-0">
+          <span class="text-[11px] text-tx-muted">{{ formatTime(notification.timestamp) }}</span>
+          <button @click.stop="$emit('seen', notification.id)"
+            :title="t('common.close')"
+            class="flex items-center justify-center w-4 h-4 rounded-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/nc:opacity-100 focus-visible:opacity-100 hover:text-status-error">
+            <img :src="closeIconSrc" :alt="t('common.close')" class="w-2.5 h-2.5" />
+          </button>
+        </div>
       </div>
-      <p class="text-sm text-tx-main line-clamp-2">
+      <p v-if="notification.body" class="text-xs text-tx-muted line-clamp-2">
         {{ notification.body }}
       </p>
-      <div class="flex items-center gap-2 mt-1 text-xs text-tx-muted">
-        <span>{{ notification.app_name }}</span>
-        <span>•</span>
-        <span>{{ formatTime(notification.timestamp) }}</span>
-      </div>
 
       <!-- Actions -->
-      <div v-if="parsedActions.length > 0" class="flex flex-wrap gap-2 mt-2" @click.stop>
+      <div v-if="parsedActions.length > 0" class="flex flex-wrap gap-1 mt-1" @click.stop>
         <ActionButton
           v-for="action in parsedActions"
           :key="action.key"

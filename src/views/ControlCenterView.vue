@@ -88,14 +88,19 @@ onBeforeUnmount(() => {
 <template>
   <Transition appear enter-active-class="enter-active">
     <main
-      :class="['bg-ui-bg/80 h-screen w-screen rounded-corner flex flex-row flex-wrap justify-between p-1 border border-ui-border', { 'leave-active': leaving }]"
+      :class="['bg-ui-bg/80 h-screen w-screen rounded-corner flex flex-col justify-between p-1 border border-ui-border overflow-hidden', { 'leave-active': leaving }]"
     >
-      <div class="flex flex-col w-full gap-2 p-2">
+      <!-- `min-h-0` es lo que hace que el scroll sea de las notificaciones y no
+           del centro entero: sin él, un hijo flexible no se deja achicar por
+           debajo de su contenido, la lista empujaba y los controles de abajo
+           —música, brillo, volumen— se iban de la pantalla en cuanto había unas
+           cuantas notificaciones. -->
+      <div class="flex min-h-0 flex-1 flex-col w-full gap-2 p-2">
         <UserControlCenterCard />
         <PhoneControlCenterCard />
-        <NotificationArea />
+        <NotificationArea class="min-h-0 flex-1" />
       </div>
-      <div class="flex flex-wrap w-full justify-around items-end self-end p-2">
+      <div class="flex shrink-0 flex-wrap w-full justify-around items-end p-2">
         <MusicWidget class="w-full" />
         <div class="flex justify-between gap-2 w-full">
           <SearchButtonControl />

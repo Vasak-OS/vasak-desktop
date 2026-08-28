@@ -1,37 +1,33 @@
 <template>
   <div class="transition-all duration-200 ease-in-out">
-    <!-- Header del grupo -->
+    <!-- Encabezado del grupo.
+         Sin cambio de fondo al pasar el mouse: el barrido diagonal y el
+         degradado a azul y violeta que había acá no son del sistema y se veían
+         de juguete. Lo que indica que la fila responde al clic es el cursor y
+         el giro de la flecha, que alcanza. -->
     <div
-      class="group-header relative overflow-hidden before:content-[''] before:absolute before:inset-0 before:bg-[linear-gradient(45deg,transparent_49%,rgba(255,255,255,0.1)_50%,transparent_51%)] before:-translate-x-full before:transition-transform before:duration-600 before:ease-in-out hover:before:translate-x-full  flex items-center gap-3 p-3 bg-linear-to-r from-primary/50 to-secondary/50 rounded-t-corner border-l-4 border-primary cursor-pointer transition-all duration-200 hover:bg-linear-to-r hover:from-blue-100/50 hover:to-purple-100/50 dark:hover:from-blue-800/30 dark:hover:to-purple-800/30"
-      @click="toggleExpanded" :class="{
-        'rounded-corner': !isExpanded,
-        'shadow-sm': group.has_unread,
-      }">
-      <img :src="iconSrc" :alt="group.app_name" class="w-8 h-8 object-contain transition-transform duration-200"
-        :class="{ 'scale-110': group.has_unread }" />
+      class="flex items-center gap-2 px-2 py-1.5 bg-ui-surface rounded-t-corner cursor-pointer"
+      @click="toggleExpanded" :class="{ 'rounded-corner': !isExpanded }">
+      <img :src="iconSrc" :alt="group.app_name" class="w-5 h-5 shrink-0 object-contain" />
 
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <h3 class="font-medium text-ui-main truncate">
+          <h3 class="text-sm font-medium text-tx-main truncate">
             {{ group.app_name }}
           </h3>
           <span
-            class="inline-flex items-center justify-center w-5 h-5 text-xs font-medium rounded-full transition-all duration-200"
-            :class="{
-              'bg-blue-500 text-white': group.has_unread,
-              'bg-ui-bg/80 text-ui-muted':
-                !group.has_unread,
-            }">
+            class="inline-flex items-center justify-center min-w-4 h-4 px-1 text-[11px] font-medium rounded-full"
+            :class="group.has_unread ? 'bg-primary text-tx-on-primary' : 'bg-ui-bg text-tx-muted'">
             {{ group.count }}
           </span>
         </div>
-        <p class="text-sm text-tx-muted truncate">
+        <p class="text-xs text-tx-muted truncate">
           {{ formatGroupSummary() }}
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <span class="text-xs text-tx-muted">
+      <div class="flex items-center gap-1 shrink-0">
+        <span class="text-[11px] text-tx-muted">
           {{ formatTime(group.latest_timestamp) }}
         </span>
         <ActionButton
@@ -41,12 +37,12 @@
           size="sm"
           variant="secondary"
           :stopPropagation="true"
-          customClass="bg-transparent text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent"
+          customClass="bg-transparent border border-transparent text-tx-muted hover:text-status-error hover:bg-status-error/10"
           @click="removeAllFromGroup"
         />
-        <div class="w-5 h-5 flex items-center justify-center transition-transform duration-200"
+        <div class="w-4 h-4 flex items-center justify-center text-tx-muted transition-transform duration-200"
           :class="{ 'rotate-180': isExpanded }">
-          <svg class="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </div>
@@ -57,7 +53,7 @@
       leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden"
       enter-from-class="h-0 opacity-0" leave-to-class="h-0 opacity-0" @enter="onEnter" @leave="onLeave">
       <div v-show="isExpanded"
-        class="notifications-list bg-ui-bg/80 rounded-b-vsk border-l-4 border-blue-500/30">
+        class="notifications-list bg-ui-bg/60 rounded-b-corner">
         <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           enter-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           leave-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
