@@ -1,6 +1,7 @@
 use crate::menu_manager::get_menu_cached;
 use crate::structs::CategoryInfo;
 use crate::windows_apps::create_menu_window;
+use crate::windows_apps::menu::MENU_LABEL;
 use std::collections::HashMap;
 use tauri::{async_runtime::spawn, AppHandle, Manager};
 
@@ -13,7 +14,7 @@ pub async fn get_menu_items() -> HashMap<String, CategoryInfo> {
 
 #[tauri::command]
 pub fn toggle_menu(app: AppHandle) -> Result<(), tauri::Error> {
-    if let Some(menu_window) = app.get_webview_window("menu") {
+    if let Some(menu_window) = app.get_webview_window(MENU_LABEL) {
         if menu_window.is_visible().unwrap_or(false) {
             // hide(), not close(): closing destroys the webview, so the next
             // open reloads the page and re-runs Vue from scratch. The app list

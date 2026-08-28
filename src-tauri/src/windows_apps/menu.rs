@@ -3,11 +3,19 @@ use tauri::{AppHandle, PhysicalPosition, Position, Url, WebviewUrl, WebviewWindo
 
 use crate::{app_url::get_app_url, monitor_manager::get_primary_monitor};
 
+/// La etiqueta de la ventana del menú.
+///
+/// Como constante y no como literal porque `monitor_manager` la necesita para
+/// bajar el menú al cambiar los monitores: con la cadena repetida en dos archivos,
+/// renombrarla en uno deja al otro apuntando a una ventana que ya no existe, y el
+/// menú vuelve a quedarse atado al monitor de cuando se abrió.
+pub const MENU_LABEL: &str = "menu";
+
 pub async fn create_menu_window(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let primary_monitor = get_primary_monitor(&app).ok_or("No primary monitor found")?;
 
     let menu_window =
-        WebviewWindowBuilder::new(&app, "menu", WebviewUrl::App("index.html#/menu".into()))
+        WebviewWindowBuilder::new(&app, MENU_LABEL, WebviewUrl::App("index.html#/menu".into()))
             .title("Vasak Menu")
             .decorations(false)
             .transparent(true)
