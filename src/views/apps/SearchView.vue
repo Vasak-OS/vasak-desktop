@@ -206,7 +206,7 @@ function getCategoryLabel(category: string): string {
           <input
             v-model="query"
             type="text"
-            class="search-input flex-1 bg-transparent border-none outline-none text-xl text-vsk-text font-medium placeholder:text-vsk-text/30"
+            class="search-input flex-1 bg-transparent border-none text-xl text-vsk-text font-medium placeholder:text-vsk-text/30"
             :placeholder="t('views.search.placeholder')"
             autofocus
           />

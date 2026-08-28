@@ -134,7 +134,7 @@ const disconnect = async (device: any) => {
         size="medium"
         active-class="bg-primary"
         inactive-class="bg-tx-muted"
-        custom-class="mr-2 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+        custom-class="mr-2 focus:ring-2 focus:ring-offset-2 focus:ring-primary"
         @toggle="toggleBT"
       />
       <img :src="bluetoothIcon" alt="Bluetooth" class="h-8 w-auto mr-3" />
@@ -142,8 +142,7 @@ const disconnect = async (device: any) => {
       <button
         class="bg-primary text-white rounded-corner px-1 py-0.5 active:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
         @click="scanDevices"
-        :disabled="!isBluetoothOn || isScanning"
-      >
+        :disabled="!isBluetoothOn || isScanning" :aria-label="t('components.BluetoothControlArea.scanAlt')">
         <img
           :src="syncIcon"
           :alt="t('components.BluetoothControlArea.scanAlt')"

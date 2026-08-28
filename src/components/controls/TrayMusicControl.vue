@@ -87,8 +87,7 @@ onMounted(async () => {
       <button
         @click.prevent="onPrev"
         class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-        :title="t('components.TrayMusicControl.previous')"
-      >
+        :title="t('components.TrayMusicControl.previous')" :aria-label="t('components.TrayMusicControl.previous')">
         <img :src="prevIcon" :alt="t('components.TrayMusicControl.previous')" class="w-4 h-4" />
       </button>
 
@@ -97,8 +96,9 @@ onMounted(async () => {
         class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
         :title="isPlaying
           ? t('components.TrayMusicControl.pause')
-          : t('components.TrayMusicControl.play')"
-      >
+          : t('components.TrayMusicControl.play')" :aria-label="isPlaying
+          ? t('components.TrayMusicControl.pause')
+          : t('components.TrayMusicControl.play')">
         <img
           :src="isPlaying ? pauseIcon : playIcon"
           :alt="isPlaying
@@ -111,8 +111,7 @@ onMounted(async () => {
       <button
         @click.prevent="onNext"
         class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-        :title="t('components.TrayMusicControl.next')"
-      >
+        :title="t('components.TrayMusicControl.next')" :aria-label="t('components.TrayMusicControl.next')">
         <img :src="nextIcon" :alt="t('components.TrayMusicControl.next')" class="w-4 h-4" />
       </button>
     </div>

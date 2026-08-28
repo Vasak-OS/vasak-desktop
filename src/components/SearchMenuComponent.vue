@@ -25,7 +25,7 @@ const emit = defineEmits(['update:filter']);
 <template>
   <input
     type="text"
-    class="form-control border border-ui-border rounded-corner grow bg-ui-bg/80 shadow-none focus:outline-none focus:ring-0 p-2 disabled:opacity-50 disabled:cursor-not-allowed"
+    class="form-control border border-ui-border rounded-corner grow bg-ui-bg/80 shadow-none focus:ring-0 p-2 disabled:opacity-50 disabled:cursor-not-allowed"
     :placeholder="t('components.SearchMenuComponent.placeholder')"
     :aria-label="t('components.SearchMenuComponent.placeholder')"
     id="search"
