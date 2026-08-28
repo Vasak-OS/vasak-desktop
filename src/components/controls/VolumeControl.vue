@@ -26,10 +26,8 @@ onMounted(async () => {
 <template>
   <SliderControl
     :icon="currentIcon"
-    :alt="volumeInfo.is_muted
-      ? t('components.VolumeControl.unmute')
-      : t('components.VolumeControl.mute')"
-    :tooltip="volumeInfo.is_muted
+    :label="t('components.VolumeControl.volume')"
+    :button-label="volumeInfo.is_muted
       ? t('components.VolumeControl.unmute')
       : t('components.VolumeControl.mute')"
     v-model="currentVolume"

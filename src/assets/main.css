@@ -18,13 +18,26 @@
   --ui-background: #eff1f5;
   --ui-surface: #ccd0da;
   --ui-border: #dce0e8;
+  /* El borde de lo que **delimita un control** —un campo, un botón, un selector—.
+     `--ui-border` da 1.17 contra el fondo en claro y 1.14 en oscuro, contra el
+     mínimo de 3.0 que pide WCAG 1.4.11 para lo que no es texto: a esos valores el
+     contorno de un input no se percibe. Se separa en dos tokens en lugar de subir
+     uno solo, porque el mismo color también hace de separador decorativo, y subirlo
+     ahí convertiría cada tarjeta en una caja marcada. */
+  --ui-border-strong: #7c7f93;
   --ui-background-dark: #1e1e2e;
   --ui-surface-dark: #313244;
   --ui-border-dark: #11111b;
+  --ui-border-strong-dark: #6c7086;
 
   /* Colores de Texto */
   --text-main: #4c4f69;
-  --text-muted: #6c6f85;
+  /* #555869 y no #6c6f85: el anterior daba 4.37 sobre el fondo y 3.20 sobre la
+     superficie, contra el mínimo de 4.5 de WCAG 1.4.3 — y es el color de casi todo
+     el texto secundario, que además suele ir en 12px o menos. Éste da 6.22 y 4.56,
+     y sigue siendo más claro que el texto principal, así que la jerarquía se
+     mantiene. El del modo oscuro ya cumplía (7.37 y 5.65) y no se toca. */
+  --text-muted: #555869;
   --text-on-primary: #1e1e2e;
   --text-on-secondary: #eff1f5;
   --text-main-dark: #cdd6f4;
@@ -90,6 +103,7 @@
   --use-ui-background: var(--ui-background);
   --use-ui-surface: var(--ui-surface);
   --use-ui-border: var(--ui-border);
+  --use-ui-border-strong: var(--ui-border-strong);
   --use-text-main: var(--text-main);
   --use-text-muted: var(--text-muted);
   --use-text-on-primary: var(--text-on-primary);
@@ -106,6 +120,7 @@
   --use-ui-background: var(--ui-background-dark);
   --use-ui-surface: var(--ui-surface-dark);
   --use-ui-border: var(--ui-border-dark);
+  --use-ui-border-strong: var(--ui-border-strong-dark);
   --use-text-main: var(--text-main-dark);
   --use-text-muted: var(--text-muted-dark);
   --use-text-on-primary: var(--text-on-primary-dark);
@@ -136,6 +151,7 @@
   --color-ui-bg: var(--use-ui-background);
   --color-ui-surface: var(--use-ui-surface);
   --color-ui-border: var(--use-ui-border);
+  --color-ui-border-strong: var(--use-ui-border-strong);
 
   /* Colores de Texto - responsive a dark mode */
   --color-tx-main: var(--use-text-main);
@@ -217,10 +233,60 @@ body * {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  /* Con `rgba(255,255,255,.2)` la barra era blanca sobre fondo claro, o sea
+     invisible. El token sigue al tema. */
+  background: color-mix(in srgb, var(--color-tx-muted) 45%, transparent);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: color-mix(in srgb, var(--color-tx-muted) 70%, transparent);
+}
+
+/* ── Accesibilidad: el foco y el movimiento ────────────────────────────────── */
+
+/*
+ * El foco del teclado tiene que verse (WCAG 2.4.7).
+ *
+ * Medido antes de escribir esto: 259 botones en el escritorio, 56 lugares con
+ * `outline-none` y sólo 21 con `focus-visible:`. Seis de las ocho aplicaciones no
+ * tenían ni uno, así que recorrer con Tab era hacerlo a ciegas.
+ *
+ * Va con `:where()` para que tenga especificidad cero: cualquier componente que
+ * quiera su propio indicador lo pisa sin peleas, y esto queda como piso.
+ */
+:where(
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  summary,
+  [role="button"],
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/*
+ * Menos movimiento para quien lo pidió (WCAG 2.3.3, y 2.2.2 para lo que no para).
+ *
+ * En el escritorio hay 378 transiciones y 41 animaciones **infinitas** —pulsos de
+ * «conectando», ruedas de carga—, y cero soporte de esta preferencia. Para alguien
+ * con trastorno vestibular eso no es una molestia estética.
+ *
+ * No se apaga del todo: una duración mínima en lugar de `none` conserva los eventos
+ * `transitionend` y `animationend`, que hay código que espera. Y `iteration-count: 1`
+ * es lo que detiene lo infinito, que es la parte que de verdad marea.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

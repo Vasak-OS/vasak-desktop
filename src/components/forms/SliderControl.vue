@@ -5,26 +5,18 @@
     <button
       v-if="showButton"
       @click="handleButtonClick"
+      :title="buttonLabel ?? label"
+      :aria-label="buttonLabel ?? label"
       class="w-8 h-8 flex items-center justify-center rounded-corner transition-all duration-200 hover:bg-ui-surface/80 hover:scale-110 active:scale-95"
     >
-      <img
-        :src="icon"
-        :alt="alt"
-        :title="tooltip"
-        class="w-6 h-6 transition-all duration-200"
-        :class="iconClass"
-      />
+      <img :src="icon" alt="" class="w-6 h-6 transition-all duration-200" :class="iconClass" />
     </button>
     
     <div
       v-else
       class="w-8 h-8 flex items-center justify-center"
     >
-      <img
-        :src="icon"
-        :alt="alt"
-        class="w-6 h-6 transition-all duration-200"
-      />
+      <img :src="icon" alt="" class="w-6 h-6 transition-all duration-200" />
     </div>
 
     <input
@@ -33,6 +25,8 @@
       :max="max"
       :value="modelValue"
       @input="handleInput"
+      :aria-label="label"
+      :aria-valuetext="`${percentage}%`"
       class="flex-1 transition-all duration-200 hover:scale-105 accent-primary hover:accent-secondary"
     />
     
@@ -51,8 +45,13 @@ import { computed } from 'vue';
 
 interface Props {
 	icon: string;
-	alt?: string;
-	tooltip?: string;
+	/**
+	 * Nombre de lo que regula el deslizador, ya traducido. Obligatorio: el
+	 * `input` no tiene `<label>` asociado ni texto propio.
+	 */
+	label: string;
+	/** Nombre de la acción del botón, si difiere del deslizador. */
+	buttonLabel?: string;
 	modelValue: number;
 	min?: number;
 	max?: number;
@@ -62,8 +61,6 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-	alt: '',
-	tooltip: '',
 	min: 0,
 	max: 100,
 	showButton: false,

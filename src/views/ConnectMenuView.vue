@@ -204,8 +204,7 @@ onBeforeUnmount(() => {
           type="button"
           :title="t('views.connect.refresh')"
           @click="loadApps(true)"
-          class="rounded-corner p-2 hover:bg-primary"
-        >
+          class="rounded-corner p-2 hover:bg-primary" :aria-label="t('views.connect.refresh')">
           <img :src="refreshIcon" alt="" class="h-5 w-5" />
         </button>
       </header>
@@ -229,7 +228,7 @@ onBeforeUnmount(() => {
           type="search"
           :placeholder="t('views.connect.search')"
           :aria-label="t('views.connect.search')"
-          class="form-control w-full rounded-corner border border-ui-border bg-ui-bg/80 p-2 shadow-none focus:outline-none focus:ring-0"
+          class="form-control w-full rounded-corner border border-ui-border bg-ui-bg/80 p-2 shadow-none focus:ring-0"
         />
 
         <div v-if="loading" class="flex flex-1 items-center justify-center">
@@ -266,7 +265,7 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center justify-between gap-2 text-xs text-tx-muted">
           <span>{{ t('views.connect.showSystem') }}</span>
-          <SwitchToggle :is-on="showSystem" @toggle="showSystem = $event" />
+          <SwitchToggle :label="t('views.connect.showSystem')" :is-on="showSystem" @toggle="showSystem = $event" />
         </div>
       </template>
     </div>

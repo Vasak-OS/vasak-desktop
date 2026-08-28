@@ -124,7 +124,7 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         v-model="password"
         type="password"
         :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
-        class="border border-ui-border rounded-corner p-2 text-tx-main outline-none bg-ui-surface/50 focus:border-primary/40"
+        class="border border-ui-border rounded-corner p-2 text-tx-main bg-ui-surface/50 focus:border-primary/40"
         :disabled="connecting"
       />
       <div v-if="errorMsg" class="text-status-error text-sm">{{ errorMsg }}</div>

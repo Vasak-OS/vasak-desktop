@@ -159,6 +159,7 @@ components:
   NetworkControlArea:
     title: Redes
     wifiUnavailable: Wi-Fi no disponible en este dispositivo
+    wifiToggle: Wi-Fi
     availableNetworks: Redes disponibles
     refresh: Actualizar redes
     realtimeTraffic: Tráfico en tiempo real
@@ -240,6 +241,7 @@ components:
     pause: Pausa
     next: Siguiente
   VolumeControl:
+    volume: Volumen
     mute: Silenciar
     unmute: Activar sonido
   TwingateArea:

@@ -34,8 +34,7 @@
           type="button"
           :title="t('components.NotificationGroupCard.removeGroup')"
           class="flex items-center justify-center w-4 h-4 rounded-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/grupo:opacity-100 focus-visible:opacity-100 hover:text-status-error"
-          @click.stop="removeAllFromGroup"
-        >
+          @click.stop="removeAllFromGroup" :aria-label="t('components.NotificationGroupCard.removeGroup')">
           <img :src="closeIconSrc" :alt="t('components.NotificationGroupCard.removeGroup')" class="w-2.5 h-2.5" />
         </button>
         <div class="w-4 h-4 flex items-center justify-center text-tx-muted transition-transform duration-200"

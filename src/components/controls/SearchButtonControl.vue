@@ -22,8 +22,7 @@ const openSearch = async () => {
   <button
     @click="openSearch"
     class="p-2 rounded-corner bg-ui-bg/80 transition-all duration-500 h-17 w-17 group relative overflow-hidden hover:scale-105 active:scale-95 ring-2 ring-primary"
-    :title="t('components.SearchButtonControl.openSearch')"
-  >
+    :title="t('components.SearchButtonControl.openSearch')" :aria-label="t('components.SearchButtonControl.openSearch')">
     <!-- Overlay decorativo como ThemeToggle -->
     <div
       class="absolute inset-0 rounded-corner transition-all duration-500"

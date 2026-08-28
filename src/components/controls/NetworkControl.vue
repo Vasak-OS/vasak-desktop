@@ -45,8 +45,7 @@ onMounted(async () => {
 
 		<ToggleControl
 			:icon="networkIconSrc"
-			:alt="networkAlt"
-			:tooltip="networkAlt"
+			:label="networkAlt"
 			:is-active="networkState.is_connected"
 			:custom-class="{
 				'ring-2 ring-status-success': networkState.is_connected && !vpnConnected,

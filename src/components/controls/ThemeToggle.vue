@@ -16,13 +16,10 @@
           (configStore?.config as any)?.style?.darkmode,
       }"></div>
 
-    <ToggleControl :icon="themeIcon" :alt="(configStore?.config as any)?.style?.darkmode
+    <ToggleControl :icon="themeIcon" :label="(configStore?.config as any)?.style?.darkmode
         ? t('components.ThemeToggle.toLight')
         : t('components.ThemeToggle.toDark')
-      " :tooltip="(configStore?.config as any)?.style?.darkmode
-          ? t('components.ThemeToggle.toLight')
-          : t('components.ThemeToggle.toDark')
-        " :is-active="true" :is-loading="isSwitching" :custom-class="{
+      " :pressed="Boolean((configStore?.config as any)?.style?.darkmode)" :is-active="true" :is-loading="isSwitching" :custom-class="{
         'h-[70px] w-[70px] p-2': true,
         'ring-2 ring-primary': true,
       }" :icon-class="{

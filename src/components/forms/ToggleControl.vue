@@ -9,11 +9,14 @@
       ...customClass
     }"
     :disabled="isLoading"
+    :title="label"
+    :aria-label="label"
+    :aria-pressed="pressed"
+    :aria-busy="isLoading || undefined"
   >
     <img
       :src="icon"
-      :alt="alt"
-      :title="tooltip"
+      alt=""
       class="m-auto w-12.5 h-12.5 transition-all duration-300 group-hover:scale-110 relative z-10"
       :class="{
         'animate-spin': isLoading,
@@ -29,8 +32,18 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 interface Props {
 	icon: string;
-	alt?: string;
-	tooltip?: string;
+	/**
+	 * Nombre del control, ya traducido. Es obligatorio porque el botón no tiene
+	 * más contenido que un icono: sin esto no tiene nombre accesible y un lector
+	 * de pantalla sólo puede anunciar «botón».
+	 */
+	label: string;
+	/**
+	 * Estado de dos posiciones, cuando el botón realmente alterna algo. Se deja
+	 * sin definir en los que abren un panel: `aria-pressed` ahí miente, y
+	 * `isActive` es sólo el resaltado visual.
+	 */
+	pressed?: boolean;
 	isActive?: boolean;
 	isLoading?: boolean;
 	iconClass?: Record<string, boolean>;
@@ -38,8 +51,6 @@ interface Props {
 }
 
 withDefaults(defineProps<Props>(), {
-	alt: '',
-	tooltip: '',
 	isActive: false,
 	isLoading: false,
 	iconClass: () => ({}),

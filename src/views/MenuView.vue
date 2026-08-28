@@ -257,7 +257,7 @@ const onBlur = () => {
                 <CategoryMenuPill
                   :category="categoryEntries.all[0]"
                   :image="categoryEntries.all[1].icon"
-                  :description="t(categoryEntries.all[1].description)"
+                  :label="t(categoryEntries.all[1].description)"
                   v-model:categorySelected="categorySelected"
                   large
                   class="w-full h-full"
@@ -275,7 +275,7 @@ const onBlur = () => {
                   :key="key"
                   :category="key"
                   :image="value.icon"
-                  :description="t(value.description)"
+                  :label="t(value.description)"
                   v-model:categorySelected="categorySelected"
                 />
               </transition-group>

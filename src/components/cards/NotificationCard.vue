@@ -21,7 +21,7 @@
           <span class="text-[11px] text-tx-muted">{{ formatTime(notification.timestamp) }}</span>
           <button @click.stop="$emit('seen', notification.id)"
             :title="t('common.close')"
-            class="flex items-center justify-center w-4 h-4 rounded-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/nc:opacity-100 focus-visible:opacity-100 hover:text-status-error">
+            class="flex items-center justify-center w-4 h-4 rounded-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/nc:opacity-100 focus-visible:opacity-100 hover:text-status-error" :aria-label="t('common.close')">
             <img :src="closeIconSrc" :alt="t('common.close')" class="w-2.5 h-2.5" />
           </button>
         </div>
