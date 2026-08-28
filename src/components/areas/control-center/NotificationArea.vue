@@ -1,9 +1,10 @@
 <template>
-  <div
-		class="flex flex-col gap-2 w-full h-full overflow-y-auto p-4"
-  >
+  <!-- El encabezado queda fijo y la lista se desplaza sola: con el scroll en
+       todo el bloque, unas cuantas notificaciones empujaban los controles del
+       centro —música, brillo, volumen— fuera de la pantalla. -->
+  <div class="flex flex-col w-full min-h-0">
     <div
-      class="flex items-center justify-between mb-2"
+      class="flex shrink-0 items-center justify-between gap-2 px-1 pb-2"
       v-if="groupedNotifications.length > 0"
     >
       <span class="text-sm text-tx-main font-medium">
@@ -24,7 +25,7 @@
       </span>
       <button
         @click="clearAllNotifications"
-        class="text-xs px-4 py-2 bg-primary rounded-corner hover:bg-primary/80 transition-colors"
+        class="shrink-0 text-xs px-3 py-1 bg-primary text-tx-on-primary rounded-corner hover:bg-primary/80 transition-colors"
       >
         {{ t('components.NotificationArea.clearAll') }}
       </button>
@@ -32,13 +33,13 @@
 
     <div
       v-if="groupedNotifications.length === 0"
-      class="text-center transition-opacity duration-300 ease-in-out text-tx-muted py-8"
+      class="text-center transition-opacity duration-300 ease-in-out text-tx-muted py-6"
     >
-      <img :src="emptyIcon" alt="" class="w-8 h-8 opacity-60 mx-auto" />
-      <p class="mt-2">{{ t('components.NotificationArea.empty') }}</p>
+      <img :src="emptyIcon" alt="" class="w-6 h-6 opacity-60 mx-auto" />
+      <p class="mt-1 text-sm">{{ t('components.NotificationArea.empty') }}</p>
     </div>
 
-    <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-active-class="transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)] [&>.notification-item]:animate-pulse-notification" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-from-class="opacity-0 translate-x-full scale-90" leave-to-class="opacity-0 translate-x-[-30%] scale-95" tag="div" class="flex flex-col gap-3">
+    <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-active-class="transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)] [&>.notification-item]:animate-pulse-notification" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-from-class="opacity-0 translate-x-full scale-90" leave-to-class="opacity-0 translate-x-[-30%] scale-95" tag="div" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-1">
       <NotificationGroupCard
         v-for="group in groupedNotifications"
         :key="group.app_name"
