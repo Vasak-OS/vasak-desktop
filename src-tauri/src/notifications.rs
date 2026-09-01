@@ -46,15 +46,19 @@ struct FlareNotification {
     read: bool,
 }
 
-// Kept compatible with the frontend's existing `notification-delta` handler.
+/// Lo que va al frontend cada vez que el demonio avisa un cambio.
+///
+/// Es una foto entera, en **un solo** evento, y eso es a propósito. Antes eran
+/// dos —`Cleared` y después `BatchUpdate` con todo de nuevo—, y como cada
+/// `emit` es un mensaje aparte, el frontend alcanzaba a dibujar la lista vacía
+/// entre uno y otro: borrar una sola notificación desmontaba las demás y las
+/// volvía a montar, así que todas repetían la animación de entrada. Con un
+/// evento la lista se reemplaza de una, Vue compara por clave y sólo se anima
+/// lo que de verdad entró o salió.
 #[derive(Serialize, Clone)]
 #[serde(tag = "action", rename_all = "snake_case")]
 enum NotificationDelta {
-    BatchUpdate {
-        added: Vec<Notification>,
-        removed: Vec<u32>,
-    },
-    Cleared,
+    Snapshot { items: Vec<Notification> },
 }
 
 fn map(f: FlareNotification) -> Notification {
@@ -164,8 +168,7 @@ pub async fn send_system_notification(
     Ok("Notification sent".to_string())
 }
 
-/// Fetch the current list and push it to the frontend as a full replace
-/// (Cleared + BatchUpdate), matching the existing delta handler.
+/// Lee la lista actual y la manda entera al frontend, en un solo evento.
 async fn emit_current() {
     let items = match fetch_all().await {
         Ok(v) => v,
@@ -175,14 +178,7 @@ async fn emit_current() {
         }
     };
     if let Some(app) = APP_HANDLE.read().await.as_ref() {
-        let _ = app.emit("notification-delta", NotificationDelta::Cleared);
-        let _ = app.emit(
-            "notification-delta",
-            NotificationDelta::BatchUpdate {
-                added: items,
-                removed: Vec::new(),
-            },
-        );
+        let _ = app.emit("notification-delta", NotificationDelta::Snapshot { items });
     }
 }
 
@@ -238,4 +234,50 @@ pub async fn initialize_app_handle(app_handle: AppHandle) {
             tokio::time::sleep(delay).await;
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn una(id: u32) -> Notification {
+        Notification {
+            id,
+            app_name: "Telegram".into(),
+            app_icon: "telegram".into(),
+            summary: "Hola".into(),
+            body: String::new(),
+            timestamp: 100,
+            seen: false,
+            urgency: NotificationUrgency::Normal,
+            actions: Vec::new(),
+            hints: HashMap::new(),
+        }
+    }
+
+    /// El frontend elige qué hacer mirando `action`, así que el nombre es
+    /// contrato y no un detalle del enum.
+    #[test]
+    fn la_foto_se_serializa_como_snapshot() {
+        let json = serde_json::to_value(NotificationDelta::Snapshot {
+            items: vec![una(1), una(2)],
+        })
+        .expect("la foto se serializa");
+
+        assert_eq!(json["action"], "snapshot");
+        assert_eq!(json["items"].as_array().map(Vec::len), Some(2));
+        assert_eq!(json["items"][0]["id"], 1);
+    }
+
+    /// Vaciar la lista es una foto sin nada adentro, no un evento aparte: es
+    /// justamente el segundo evento el que hacía que las notificaciones
+    /// sobrevivientes repitieran la animación de entrada.
+    #[test]
+    fn vaciar_es_una_foto_vacia() {
+        let json = serde_json::to_value(NotificationDelta::Snapshot { items: Vec::new() })
+            .expect("la foto vacía se serializa");
+
+        assert_eq!(json["action"], "snapshot");
+        assert_eq!(json["items"].as_array().map(Vec::len), Some(0));
+    }
 }

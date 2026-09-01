@@ -1,18 +1,25 @@
 <template>
+  <!-- Sin reacción al pasar el mouse: la tarjeta no se puede tocar. Cambiaba de
+       fondo, se agrandaba y le pintaba el nombre de otro color a algo que no
+       hace nada al hacerle clic, así que prometía un botón que no existe. Es la
+       misma decisión que en los iconos de la bandeja: que no se resalte lo que
+       no se puede tocar. -->
   <div
-    class="bg-ui-bg/80 rounded-corner border border-ui-border p-4 flex items-center gap-4 w-full transition-all duration-300 hover:bg-secondary hover:scale-[1.02] group"
+    class="bg-ui-bg/80 rounded-corner border border-ui-border p-4 flex items-center gap-4 w-full transition-all duration-300"
     :class="{
       'opacity-0 translate-y-4': !isLoaded,
       'opacity-100 translate-y-0': isLoaded,
     }"
   >
-    <div
-      class="relative w-16 h-16 rounded-full transition-all duration-300 group-hover:scale-110 "
-    >
+    <!-- El redondeo va también en la imagen, y el recorte en la caja: el
+         `rounded-full` estaba sólo acá afuera, y como la imagen no hereda el
+         redondeo de su contenedor ni lo desborda, la foto se veía cuadrada
+         dentro de un círculo que no recortaba nada. -->
+    <div class="relative w-16 h-16 shrink-0 overflow-hidden rounded-full">
       <img
         :src="userInfo.avatar_data"
         :alt="userInfo.full_name"
-        class="h-full w-full aspect-square object-cover transition-all duration-300 "
+        class="h-full w-full aspect-square rounded-full object-cover transition-all duration-300"
         :class="{
           'opacity-0 scale-90': !isLoaded,
           'opacity-100 scale-100': isLoaded,
@@ -22,12 +29,12 @@
     </div>
     <div class="flex flex-col flex-1 space-y-1">
       <h2
-        class="text-lg font-semibold transition-all duration-300 group-hover:text-primary"
+        class="text-lg font-semibold"
       >
         {{ userInfo.full_name }}
       </h2>
       <p
-        class="text-sm text-tx-muted transition-all duration-500 group-hover:opacity-90"
+        class="text-sm text-tx-muted"
       >
         {{ userInfo.username }}
       </p>

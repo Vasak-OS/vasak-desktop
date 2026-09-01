@@ -20,6 +20,7 @@ import { getAllNotifications } from '@/services/notification.service';
 import { toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
+import { hayNotificacionesNuevas } from '@/tools/notificaciones';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -185,42 +186,22 @@ useSharedEvent('connect-device-added', refreshConnectDevices);
 useSharedEvent('connect-device-changed', refreshConnectDevices);
 useSharedEvent('connect-device-removed', refreshConnectDevices);
 
+// La foto entera, en una sola asignación: ver `NotificationDelta`.
+//
+// La campanita se sacude sólo si en la foto viene alguna notificación que antes
+// no estaba. Antes bastaba con que la lista trajera algo, y como toda foto trae
+// lo que quedó, la campanita se sacudía también al borrar una.
 useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
-	switch (delta.action) {
-		case 'added':
-			notifications.value.unshift(delta.notification);
-			if (delta.dropped_id != null) {
-				notifications.value = notifications.value.filter((n) => n.id !== delta.dropped_id);
-			}
-			hasNewNotifications.value = true;
-			clearTimeout(notificationResetTimer);
-			notificationResetTimer = setTimeout(() => {
-				hasNewNotifications.value = false;
-			}, 1000);
-			break;
-		case 'removed':
-			notifications.value = notifications.value.filter((n) => n.id !== delta.id);
-			break;
-		case 'batch_update':
-			if (delta.added.length > 0) {
-				notifications.value = [...delta.added, ...notifications.value];
-			}
-			if (delta.removed.length > 0) {
-				const removedSet = new Set(delta.removed);
-				notifications.value = notifications.value.filter((n) => !removedSet.has(n.id));
-			}
-			if (delta.added.length > 0) {
-				hasNewNotifications.value = true;
-				clearTimeout(notificationResetTimer);
-				notificationResetTimer = setTimeout(() => {
-					hasNewNotifications.value = false;
-				}, 1000);
-			}
-			break;
-		case 'cleared':
-			notifications.value = [];
-			break;
-	}
+	const nuevas = hayNotificacionesNuevas(notifications.value, delta.items);
+	notifications.value = delta.items;
+
+	if (!nuevas) return;
+
+	hasNewNotifications.value = true;
+	clearTimeout(notificationResetTimer);
+	notificationResetTimer = setTimeout(() => {
+		hasNewNotifications.value = false;
+	}, 1000);
 });
 </script>
 
