@@ -46,33 +46,66 @@ pub fn invalidate_menu_cache() {
     }
 }
 
-fn get_applications_dirs() -> Vec<PathBuf> {
+/// Lo que usa XDG cuando `XDG_DATA_DIRS` no dice nada.
+const DATA_DIRS_POR_OMISION: &str = "/usr/local/share:/usr/share";
+
+/// Los directorios de entradas `.desktop`, **del que más manda al que menos**.
+///
+/// El orden no es cosmético: `get_menu` se queda con la primera entrada de cada
+/// nombre de archivo, así que quien vaya primero le gana a los demás. Y estaba
+/// al revés —el directorio de quien usa el sistema iba último—, de modo que un
+/// `~/.local/share/applications/loquesea.desktop` puesto para cambiarle el
+/// nombre, el icono o el comando a una aplicación quedaba tapado por el del
+/// sistema y no hacía nada. La especificación XDG dice lo contrario:
+/// `XDG_DATA_HOME` manda sobre `XDG_DATA_DIRS`.
+///
+/// De paso se respeta `XDG_DATA_HOME` en vez de dar por sentado
+/// `~/.local/share`, y el orden de la lista por omisión, que también estaba
+/// invertido: `/usr/local/share` va antes que `/usr/share`.
+fn ordenar_directorios(
+    data_home: Option<String>,
+    home: Option<PathBuf>,
+    data_dirs: Option<String>,
+) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
 
-    if let Ok(data_dirs) = std::env::var("XDG_DATA_DIRS") {
-        for dir in data_dirs.split(':') {
-            let apps_dir = PathBuf::from(dir).join("applications");
-            if apps_dir.exists() {
-                dirs.push(apps_dir);
-            }
-        }
-    } else {
-        for dir in &["/usr/share", "/usr/local/share"] {
-            let apps_dir = PathBuf::from(dir).join("applications");
-            if apps_dir.exists() {
-                dirs.push(apps_dir);
-            }
-        }
+    let base_del_usuario = data_home
+        .filter(|valor| !valor.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| home.map(|casa| casa.join(".local/share")));
+
+    if let Some(base) = base_del_usuario {
+        dirs.push(base.join("applications"));
     }
 
-    if let Some(home) = dirs::home_dir() {
-        let user_apps = home.join(".local/share/applications");
-        if user_apps.exists() {
-            dirs.push(user_apps);
+    // Una variable definida pero vacía significa «usá lo de siempre», igual que
+    // si no estuviera.
+    let del_sistema = data_dirs.filter(|valor| !valor.is_empty());
+
+    for dir in del_sistema
+        .as_deref()
+        .unwrap_or(DATA_DIRS_POR_OMISION)
+        .split(':')
+        .filter(|dir| !dir.is_empty())
+    {
+        let apps_dir = PathBuf::from(dir).join("applications");
+        if !dirs.contains(&apps_dir) {
+            dirs.push(apps_dir);
         }
     }
 
     dirs
+}
+
+fn get_applications_dirs() -> Vec<PathBuf> {
+    ordenar_directorios(
+        std::env::var("XDG_DATA_HOME").ok(),
+        dirs::home_dir(),
+        std::env::var("XDG_DATA_DIRS").ok(),
+    )
+    .into_iter()
+    .filter(|dir| dir.exists())
+    .collect()
 }
 
 /// Session locale, most specific first: `es_AR.UTF-8` yields `es_AR` and `es`.
@@ -268,5 +301,111 @@ fn get_category_description(category: &str) -> String {
         format!("menu.categories.{}", category)
     } else {
         "menu.categories.other".to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn apps(base: &str) -> PathBuf {
+        PathBuf::from(base).join("applications")
+    }
+
+    /// El caso que estaba al revés: una entrada del usuario tiene que ganarle a
+    /// la del sistema, porque `get_menu` se queda con la primera de cada
+    /// nombre.
+    #[test]
+    fn el_directorio_del_usuario_va_primero() {
+        let dirs = ordenar_directorios(
+            None,
+            Some(PathBuf::from("/home/alguien")),
+            Some("/usr/local/share:/usr/share".into()),
+        );
+
+        assert_eq!(dirs.first(), Some(&apps("/home/alguien/.local/share")));
+    }
+
+    #[test]
+    fn se_respeta_el_orden_de_xdg_data_dirs() {
+        let dirs = ordenar_directorios(
+            None,
+            Some(PathBuf::from("/home/alguien")),
+            Some("/primero:/segundo:/tercero".into()),
+        );
+
+        assert_eq!(
+            dirs,
+            vec![
+                apps("/home/alguien/.local/share"),
+                apps("/primero"),
+                apps("/segundo"),
+                apps("/tercero"),
+            ]
+        );
+    }
+
+    #[test]
+    fn xdg_data_home_le_gana_a_la_carpeta_de_siempre() {
+        let dirs = ordenar_directorios(
+            Some("/otro/lado".into()),
+            Some(PathBuf::from("/home/alguien")),
+            Some("/usr/share".into()),
+        );
+
+        assert_eq!(dirs.first(), Some(&apps("/otro/lado")));
+        assert!(!dirs.contains(&apps("/home/alguien/.local/share")));
+    }
+
+    /// Una variable definida pero vacía es lo mismo que no tenerla: es lo que
+    /// dice la especificación, y si no `"".split(':')` metía un directorio
+    /// llamado `applications` colgando de la raíz.
+    #[test]
+    fn una_variable_vacia_es_como_no_tenerla() {
+        let con_vacias = ordenar_directorios(
+            Some(String::new()),
+            Some(PathBuf::from("/home/alguien")),
+            Some(String::new()),
+        );
+        let sin_ellas = ordenar_directorios(None, Some(PathBuf::from("/home/alguien")), None);
+
+        assert_eq!(con_vacias, sin_ellas);
+        assert!(!con_vacias.contains(&apps("")));
+    }
+
+    /// `/usr/local/share` antes que `/usr/share`, que es el orden de XDG. La
+    /// lista de reserva los tenía al revés.
+    #[test]
+    fn la_lista_de_reserva_sigue_el_orden_de_xdg() {
+        let dirs = ordenar_directorios(None, Some(PathBuf::from("/home/alguien")), None);
+
+        assert_eq!(
+            dirs,
+            vec![
+                apps("/home/alguien/.local/share"),
+                apps("/usr/local/share"),
+                apps("/usr/share"),
+            ]
+        );
+    }
+
+    #[test]
+    fn sin_casa_quedan_solo_los_del_sistema() {
+        let dirs = ordenar_directorios(None, None, Some("/usr/share".into()));
+
+        assert_eq!(dirs, vec![apps("/usr/share")]);
+    }
+
+    /// Un directorio repetido en `XDG_DATA_DIRS` no puede aparecer dos veces:
+    /// no cambia qué gana, pero hace que cada entrada de ahí se lea dos veces.
+    #[test]
+    fn no_se_repiten_directorios() {
+        let dirs = ordenar_directorios(
+            Some("/casa".into()),
+            None,
+            Some("/casa:/usr/share:/usr/share".into()),
+        );
+
+        assert_eq!(dirs, vec![apps("/casa"), apps("/usr/share")]);
     }
 }
