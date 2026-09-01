@@ -20,8 +20,14 @@ export interface NotificationGroupData {
 	has_unread: boolean;
 }
 
-export type NotificationDelta =
-	| { action: 'added'; notification: Notification; dropped_id: number | null }
-	| { action: 'removed'; id: number }
-	| { action: 'batch_update'; added: Notification[]; removed: number[] }
-	| { action: 'cleared' };
+/**
+ * Lo que manda Rust cuando el demonio avisa un cambio: la lista entera, en un
+ * solo evento.
+ *
+ * Eran cuatro formas —`added`, `removed`, `batch_update`, `cleared`—, pero la
+ * única que se emitía era `cleared` seguida de un `batch_update` con todo de
+ * nuevo. Como son dos eventos, la lista quedaba vacía entre uno y otro y
+ * borrar una notificación hacía que las demás repitieran la animación de
+ * entrada. Con una sola foto se reemplaza de una sola vez.
+ */
+export type NotificationDelta = { action: 'snapshot'; items: Notification[] };

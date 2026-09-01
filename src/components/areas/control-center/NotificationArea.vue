@@ -39,7 +39,7 @@
       <p class="mt-1 text-sm">{{ t('components.NotificationArea.empty') }}</p>
     </div>
 
-    <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-active-class="transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)] [&>.notification-item]:animate-pulse-notification" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-from-class="opacity-0 translate-x-full scale-90" leave-to-class="opacity-0 translate-x-[-30%] scale-95" tag="div" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-1">
+    <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-active-class="transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)]" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-from-class="opacity-0 translate-x-full scale-90" leave-to-class="opacity-0 translate-x-[-30%] scale-95" tag="div" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-1">
       <NotificationGroupCard
         v-for="group in groupedNotifications"
         :key="group.app_name"
@@ -69,40 +69,16 @@ import {
 } from '@/services/notification.service';
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
+import { agruparNotificaciones } from '@/tools/notificaciones';
 
 const { t } = useI18n();
 
 const notifications = ref<Notification[]>([]);
 const emptyIcon = useSymbol('preferences-desktop-notification');
 
-// Computed para agrupar notificaciones por aplicación
-const groupedNotifications = computed<NotificationGroupData[]>(() => {
-	const groups = new Map<string, NotificationGroupData>();
-
-	notifications.value.forEach((notification) => {
-		const appName = notification.app_name;
-
-		if (!groups.has(appName)) {
-			groups.set(appName, {
-				app_name: appName,
-				app_icon: notification.app_icon,
-				notifications: [],
-				count: 0,
-				latest_timestamp: 0,
-				has_unread: false,
-			});
-		}
-
-		// biome-ignore lint/style/noNonNullAssertion: <Is necessary for dinamic grouping>
-		const group = groups.get(appName)!;
-		group.notifications.push(notification);
-		group.count = group.notifications.length;
-		group.latest_timestamp = Math.max(group.latest_timestamp, notification.timestamp);
-		group.has_unread = group.has_unread || !notification.seen;
-	});
-
-	return Array.from(groups.values()).sort((a, b) => b.latest_timestamp - a.latest_timestamp);
-});
+const groupedNotifications = computed<NotificationGroupData[]>(() =>
+	agruparNotificaciones(notifications.value)
+);
 
 async function loadNotifications() {
 	try {
@@ -133,30 +109,13 @@ onMounted(async () => {
 	await loadNotifications();
 });
 
+// Una foto entera reemplaza la lista de una sola vez. Nada de vaciarla primero:
+// entre el vaciado y el relleno Vue alcanza a dibujar, y las notificaciones que
+// sobrevivían a un borrado se desmontaban y volvían a montarse repitiendo la
+// animación de entrada. Asignando una vez, las claves que siguen estando se
+// reconocen y sólo se anima lo que de verdad entró o salió.
 useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
-	switch (delta.action) {
-		case 'added':
-			notifications.value.unshift(delta.notification);
-			if (delta.dropped_id != null) {
-				notifications.value = notifications.value.filter((n) => n.id !== delta.dropped_id);
-			}
-			break;
-		case 'removed':
-			notifications.value = notifications.value.filter((n) => n.id !== delta.id);
-			break;
-		case 'batch_update':
-			if (delta.added.length > 0) {
-				notifications.value = [...delta.added, ...notifications.value];
-			}
-			if (delta.removed.length > 0) {
-				const removedSet = new Set(delta.removed);
-				notifications.value = notifications.value.filter((n) => !removedSet.has(n.id));
-			}
-			break;
-		case 'cleared':
-			notifications.value = [];
-			break;
-	}
+	notifications.value = delta.items;
 });
 </script>
 
