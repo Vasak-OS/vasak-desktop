@@ -50,6 +50,41 @@ pub struct ConnectApp {
     pub icon: String,
 }
 
+/// A camera on a phone.
+///
+/// `sizes` and `fps` come from the sensor, not from a list of common modes:
+/// asking for a mode the camera does not have is how the stream opens and dies
+/// half a second later.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct ConnectCamera {
+    /// scrcpy's camera id. Opaque, and only unique within one phone.
+    pub id: String,
+    /// `back`, `front` or `external`. The only thing that tells a person which
+    /// camera they are picking — an id of `0` or `2` means nothing to anybody.
+    pub facing: String,
+    /// Capture sizes the sensor accepts, largest first, as `1280x720`.
+    pub sizes: Vec<String>,
+    pub fps: Vec<u32>,
+}
+
+/// What the webcam bridge is doing.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Type)]
+pub struct ConnectWebcamState {
+    pub active: bool,
+    /// The device other applications open, e.g. `/dev/video42`.
+    ///
+    /// Empty means the v4l2loopback module is not loaded. That is reported
+    /// outside `active` because it is the one failure a person can fix, and
+    /// they need to see it *before* pressing anything.
+    pub device: String,
+    /// Which phone is feeding it. Empty unless `active`.
+    pub serial: String,
+    /// Empty unless `active`.
+    pub camera_id: String,
+    /// Empty unless `active`.
+    pub size: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ConnectRunningApp {
     pub serial: String,
@@ -142,6 +177,62 @@ pub async fn connect_list_running(app: AppHandle) -> Vec<ConnectRunningApp> {
         .unwrap_or_default()
 }
 
+/// The cameras a phone has.
+///
+/// Cached by the daemon after the first call, like the app list. `refresh`
+/// forces it to ask the phone again.
+#[tauri::command]
+pub async fn connect_list_cameras(
+    app: AppHandle,
+    serial: String,
+    refresh: bool,
+) -> Result<Vec<ConnectCamera>, String> {
+    call(&app, "ListCameras", &(serial, refresh)).await
+}
+
+/// Starts writing a phone camera into the loopback device.
+///
+/// Returns the device path other applications should open. `size` may be empty
+/// and `fps` zero to let the phone choose; anything else should come from
+/// [`connect_list_cameras`].
+///
+/// The error is passed through instead of swallowed, unlike the listing
+/// commands: this one runs because somebody pressed a switch, and a switch that
+/// silently goes back to off is the worst of the three possible outcomes.
+#[tauri::command]
+pub async fn connect_start_webcam(
+    app: AppHandle,
+    serial: String,
+    camera_id: String,
+    size: String,
+    fps: u32,
+) -> Result<String, String> {
+    call(&app, "StartWebcam", &(serial, camera_id, size, fps)).await
+}
+
+/// Stops the stream. `false` means there was nothing streaming.
+#[tauri::command]
+pub async fn connect_stop_webcam(app: AppHandle) -> Result<bool, String> {
+    call::<(), bool>(&app, "StopWebcam", &()).await
+}
+
+/// What the webcam bridge is doing, and whether it could run at all.
+///
+/// Falls back to the default — inactive, no device — when the service cannot be
+/// reached, which is the same shape as "the module is not loaded". The panel
+/// only asks while a phone is visible, and a phone is only visible when the
+/// daemon is running, so the two cases cannot be confused in practice.
+#[tauri::command]
+pub async fn connect_webcam_state(app: AppHandle) -> ConnectWebcamState {
+    match call::<(), ConnectWebcamState>(&app, "WebcamState", &()).await {
+        Ok(state) => state,
+        Err(err) => {
+            logger::log_info(&format!("vasak-connect: no se pudo leer el estado de la webcam: {err}"));
+            ConnectWebcamState::default()
+        }
+    }
+}
+
 /// Forwards the service's signals to the panel as Tauri events.
 ///
 /// Without this the panel would have to poll to notice a phone, which is the
@@ -204,6 +295,15 @@ pub async fn watch_signals(app: AppHandle) -> Result<(), Box<dyn std::error::Err
                     if let Ok((serial, package)) = message.body().deserialize::<(String, String)>()
                     {
                         let _ = app.emit("connect-app-closed", (serial, package));
+                    }
+                }
+                // The stream can stop without anybody asking: the phone locks,
+                // or one of its own apps takes the camera. A switch left
+                // showing "on" after that is worse than no switch, because the
+                // person believes there is a camera feeding the call.
+                "WebcamChanged" => {
+                    if let Ok(state) = message.body().deserialize::<ConnectWebcamState>() {
+                        let _ = app.emit("connect-webcam-changed", state);
                     }
                 }
                 _ => {}

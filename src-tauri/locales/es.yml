@@ -73,6 +73,13 @@ views:
     close: Cerrar
     openApps: "{0} en ejecución"
     connecting: Conectando…
+    webcam: Usar la cámara como webcam
+    webcamHint: Prendela antes de abrir la videollamada.
+    webcamActive: "Encendida · {0}"
+    webcamWorking: Un momento…
+    webcamNoModule: Falta el módulo v4l2loopback. Si actualizaste el kernel, reiniciá.
+    webcamBusy: La está usando otro teléfono.
+    webcamNoCameras: El teléfono no informó ninguna cámara.
   panel:
     menuAlt: Menú
     settingsAlt: Configuración

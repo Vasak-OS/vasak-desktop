@@ -40,3 +40,41 @@ export interface ConnectRunningApp {
 	label: string;
 	pid: number;
 }
+
+/**
+ * Which way a camera points.
+ *
+ * The only thing that tells a person which camera they are picking: an id of
+ * `0` or `2` means nothing to anybody. `external` also covers a word the
+ * daemon did not recognise, so the camera is still listed — just without a
+ * promise about where it points.
+ */
+export type ConnectCameraFacing = 'back' | 'front' | 'external';
+
+export interface ConnectCamera {
+	/** scrcpy's camera id. Opaque, and only unique within one phone. */
+	id: string;
+	facing: ConnectCameraFacing;
+	/** Capture sizes the sensor accepts, largest first, as `1280x720`. */
+	sizes: string[];
+	fps: number[];
+}
+
+/** What the webcam bridge is doing. */
+export interface ConnectWebcamState {
+	active: boolean;
+	/**
+	 * The device other applications open, e.g. `/dev/video42`.
+	 *
+	 * Empty means the v4l2loopback module is not loaded — reported outside
+	 * `active` because it is the one failure a person can fix, and they have to
+	 * see it before pressing anything.
+	 */
+	device: string;
+	/** Which phone is feeding it. Empty unless `active`. */
+	serial: string;
+	/** Empty unless `active`. */
+	camera_id: string;
+	/** Empty unless `active`. */
+	size: string;
+}
