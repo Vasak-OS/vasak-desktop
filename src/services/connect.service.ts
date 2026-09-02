@@ -62,6 +62,12 @@ export const startConnectWebcam = (
 /** Stops the stream. `false` means there was nothing streaming. */
 export const stopConnectWebcam = (): Promise<boolean> => invoke<boolean>('connect_stop_webcam');
 
-/** What the bridge is doing, and whether it could run at all. */
+/**
+ * What the bridge is doing, and whether it could run at all.
+ *
+ * Rejects rather than answering with an empty state: an empty `device` already
+ * means "the v4l2loopback module is not loaded", and returning that for a call
+ * that merely failed would send somebody to reboot over a bus timeout.
+ */
 export const connectWebcamState = (): Promise<ConnectWebcamState> =>
 	invoke<ConnectWebcamState>('connect_webcam_state');

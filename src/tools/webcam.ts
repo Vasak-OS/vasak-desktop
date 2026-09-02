@@ -41,6 +41,35 @@ export function encendidaEn(estado: ConnectWebcamState | null, serial?: string):
 	return estado?.active === true && !!serial && estado.serial === serial;
 }
 
+/**
+ * En qué situación está la cámara, para poder decirlo con una sola frase.
+ *
+ * `desconocido` existe y no es un detalle: mientras la respuesta del demonio
+ * viene en camino —o si la lectura falló— **no se sabe nada**, y hay que
+ * callarse. Sin este valor, un estado ausente se lee como uno vacío, un
+ * dispositivo vacío significa «falta el módulo v4l2loopback», y la tarjeta
+ * termina mandando a reiniciar por una consulta que simplemente no volvió.
+ */
+export type DiagnosticoWebcam = 'desconocido' | 'sin-modulo' | 'ocupada' | 'encendida' | 'lista';
+
+/**
+ * Qué le pasa a la cámara desde el punto de vista de este teléfono.
+ *
+ * El orden importa: sin módulo no hay nada más que decir —ni siquiera se puede
+ * estar transmitiendo—, y «encendida» se decide antes que «ocupada» porque
+ * ocupada significa «la tiene otro».
+ */
+export function diagnosticoWebcam(
+	estado: ConnectWebcamState | null,
+	serial?: string
+): DiagnosticoWebcam {
+	if (estado === null) return 'desconocido';
+	if (estado.device === '') return 'sin-modulo';
+	if (encendidaEn(estado, serial)) return 'encendida';
+	if (estado.active) return 'ocupada';
+	return 'lista';
+}
+
 /** Lo que hace falta saber para decidir si el interruptor se puede tocar. */
 export interface SituacionWebcam {
 	estado: ConnectWebcamState | null;

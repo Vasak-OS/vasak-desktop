@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { ConnectCamera, ConnectCameraFacing, ConnectWebcamState } from '@/interfaces/connect';
-import { camaraPorDefecto, encendidaEn, interruptorHabilitado } from './webcam';
+import { camaraPorDefecto, diagnosticoWebcam, encendidaEn, interruptorHabilitado } from './webcam';
 
 const camara = (id: string, facing: ConnectCameraFacing): ConnectCamera => ({
 	id,
@@ -168,5 +168,31 @@ describe('cuándo se puede tocar el interruptor', () => {
 				enCurso: false,
 			})
 		).toBe(false);
+	});
+});
+
+describe('el diagnóstico de la cámara', () => {
+	test('sin estado leído todavía, no se sabe nada', () => {
+		// La regla que importa: un estado ausente **no** es un estado vacío. Sin
+		// esto, la tarjeta anunciaba que falta el módulo del kernel mientras la
+		// respuesta venía en camino, o cuando la consulta al demonio falló, y el
+		// arreglo que ofrecía era reiniciar el equipo.
+		expect(diagnosticoWebcam(null, 'ABC123')).toBe('desconocido');
+	});
+
+	test('sin dispositivo, falta el módulo del kernel', () => {
+		expect(diagnosticoWebcam(apagada(''), 'ABC123')).toBe('sin-modulo');
+	});
+
+	test('lista cuando hay módulo y nada transmitiendo', () => {
+		expect(diagnosticoWebcam(apagada(), 'ABC123')).toBe('lista');
+	});
+
+	test('encendida cuando la alimenta este teléfono', () => {
+		expect(diagnosticoWebcam(transmitiendo('ABC123'), 'ABC123')).toBe('encendida');
+	});
+
+	test('ocupada cuando la alimenta otro', () => {
+		expect(diagnosticoWebcam(transmitiendo('XYZ789'), 'ABC123')).toBe('ocupada');
 	});
 });

@@ -17,7 +17,12 @@ import {
 } from '@/services/connect.service';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
-import { camaraPorDefecto, encendidaEn, interruptorHabilitado } from '@/tools/webcam';
+import {
+	camaraPorDefecto,
+	diagnosticoWebcam,
+	encendidaEn,
+	interruptorHabilitado,
+} from '@/tools/webcam';
 
 /**
  * The phone's state, in the notification centre.
@@ -38,9 +43,25 @@ const device = computed(() => devices.value[0]);
 const webcam: Ref<ConnectWebcamState | null> = ref(null);
 const cambiandoWebcam = ref(false);
 const errorWebcam = ref('');
+const errorEstadoWebcam = ref('');
 
+/**
+ * Relee lo que dice el demonio sobre la cámara.
+ *
+ * **Un fallo de lectura no se convierte en un estado.** Se conserva el último
+ * conocido en lugar de dar la cámara por apagada: si estaba encendida, el
+ * interruptor tiene que seguir pudiendo apagarla. Y sobre todo no se finge un
+ * estado vacío, porque un dispositivo vacío ya significa algo —falta el módulo
+ * v4l2loopback, se arregla con un `modprobe` o reiniciando— y decir eso por un
+ * error de bus manda a alguien a reiniciar al vacío.
+ */
 const refrescarWebcam = async () => {
-	webcam.value = await connectWebcamState();
+	try {
+		webcam.value = await connectWebcamState();
+		errorEstadoWebcam.value = '';
+	} catch (reason) {
+		errorEstadoWebcam.value = String(reason);
+	}
 };
 
 const refresh = async () => {
@@ -58,28 +79,8 @@ const close = async (app: ConnectRunningApp) => {
 
 // ── La cámara como webcam ───────────────────────────────────────────────────
 
-/**
- * Si el módulo del kernel está cargado.
- *
- * Se pregunta por la ruta del dispositivo y no por `active`: el demonio la
- * informa aunque no haya nada transmitiendo, justamente para poder decir esto
- * *antes* de que alguien toque el interruptor.
- */
-const hayLoopback = computed(() => (webcam.value?.device ?? '') !== '');
-
 /** Si la está usando este teléfono. */
 const webcamEncendida = computed(() => encendidaEn(webcam.value, device.value?.serial));
-
-/**
- * Si la está usando otro teléfono.
- *
- * El dispositivo de vídeo admite un solo productor, así que un segundo teléfono
- * no sumaría una cámara: arruinaría la primera. Mejor decirlo que dejar que el
- * demonio conteste `WebcamBusy`.
- */
-const webcamDeOtroTelefono = computed(
-	() => webcam.value?.active === true && !webcamEncendida.value
-);
 
 /**
  * Cuándo se muestra la fila de la webcam.
@@ -110,12 +111,21 @@ const interruptorHabilitadoAhora = computed(() =>
  */
 const detalleWebcam = computed(() => {
 	if (cambiandoWebcam.value) return t('views.connect.webcamWorking');
-	if (!hayLoopback.value) return t('views.connect.webcamNoModule');
-	if (webcamDeOtroTelefono.value) return t('views.connect.webcamBusy');
-	if (webcamEncendida.value) {
-		return t('views.connect.webcamActive').replace('{0}', webcam.value?.device ?? '');
+
+	switch (diagnosticoWebcam(webcam.value, device.value?.serial)) {
+		// Callarse hasta saber: sin estado leído no se puede afirmar nada, y el
+		// que estaría más a mano —«falta el módulo»— manda a reiniciar el equipo.
+		case 'desconocido':
+			return '';
+		case 'sin-modulo':
+			return t('views.connect.webcamNoModule');
+		case 'ocupada':
+			return t('views.connect.webcamBusy');
+		case 'encendida':
+			return t('views.connect.webcamActive').replace('{0}', webcam.value?.device ?? '');
+		default:
+			return t('views.connect.webcamHint');
 	}
-	return t('views.connect.webcamHint');
 });
 
 const alternarWebcam = async (encender: boolean) => {
@@ -127,6 +137,12 @@ const alternarWebcam = async (encender: boolean) => {
 
 	try {
 		if (!encender) {
+			// `StopWebcam` no lleva serial: corta lo que esté transmitiendo,
+			// porque el dispositivo de vídeo admite un solo productor. Así que se
+			// relee antes de cortar — si entre que se dibujó el interruptor y el
+			// clic la cámara pasó a ser de otro teléfono, apagaríamos la de él.
+			await refrescarWebcam();
+			if (!encendidaEn(webcam.value, serial)) return;
 			await stopConnectWebcam();
 		} else {
 			// Las cámaras se piden acá y no al abrir la tarjeta: la primera
@@ -237,8 +253,13 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
           @toggle="alternarWebcam"
         />
       </div>
-      <p v-if="errorWebcam" class="text-status-error text-xs">{{ errorWebcam }}</p>
-      <p v-else class="text-tx-muted text-xs">{{ detalleWebcam }}</p>
+      <!-- El error de una acción primero, y el de la lectura del estado
+           después: los dos son texto del demonio y ninguno se puede reemplazar
+           por el consejo del módulo, que sería un diagnóstico inventado. -->
+      <p v-if="errorWebcam || errorEstadoWebcam" class="text-status-error text-xs">
+        {{ errorWebcam || errorEstadoWebcam }}
+      </p>
+      <p v-else-if="detalleWebcam" class="text-tx-muted text-xs">{{ detalleWebcam }}</p>
     </div>
   </div>
 </template>

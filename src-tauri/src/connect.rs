@@ -68,7 +68,7 @@ pub struct ConnectCamera {
 }
 
 /// What the webcam bridge is doing.
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ConnectWebcamState {
     pub active: bool,
     /// The device other applications open, e.g. `/dev/video42`.
@@ -218,19 +218,15 @@ pub async fn connect_stop_webcam(app: AppHandle) -> Result<bool, String> {
 
 /// What the webcam bridge is doing, and whether it could run at all.
 ///
-/// Falls back to the default — inactive, no device — when the service cannot be
-/// reached, which is the same shape as "the module is not loaded". The panel
-/// only asks while a phone is visible, and a phone is only visible when the
-/// daemon is running, so the two cases cannot be confused in practice.
+/// **The error is passed through**, unlike the listing commands. For those, "no
+/// service" and "nothing to show" are the same empty list. Here they are not:
+/// the default state carries an empty `device`, and an empty `device` already
+/// means something specific — the v4l2loopback module is not loaded, fix it with
+/// a `modprobe` or a reboot. Returning it for a call that merely failed sends
+/// somebody to reboot over a D-Bus timeout.
 #[tauri::command]
-pub async fn connect_webcam_state(app: AppHandle) -> ConnectWebcamState {
-    match call::<(), ConnectWebcamState>(&app, "WebcamState", &()).await {
-        Ok(state) => state,
-        Err(err) => {
-            logger::log_info(&format!("vasak-connect: no se pudo leer el estado de la webcam: {err}"));
-            ConnectWebcamState::default()
-        }
-    }
+pub async fn connect_webcam_state(app: AppHandle) -> Result<ConnectWebcamState, String> {
+    call::<(), ConnectWebcamState>(&app, "WebcamState", &()).await
 }
 
 /// Forwards the service's signals to the panel as Tauri events.
