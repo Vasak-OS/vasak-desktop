@@ -73,6 +73,13 @@ views:
     close: Close
     openApps: "{0} running"
     connecting: Connecting…
+    webcam: Use the camera as a webcam
+    webcamHint: Turn it on before opening the video call.
+    webcamActive: "On · {0}"
+    webcamWorking: One moment…
+    webcamNoModule: The v4l2loopback module is missing. If you updated the kernel, restart.
+    webcamBusy: Another phone is using it.
+    webcamNoCameras: The phone reported no cameras.
   panel:
     menuAlt: Menu
     settingsAlt: Settings

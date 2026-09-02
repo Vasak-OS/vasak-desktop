@@ -1,5 +1,11 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ConnectApp, ConnectDevice, ConnectRunningApp } from '@/interfaces/connect';
+import type {
+	ConnectApp,
+	ConnectCamera,
+	ConnectDevice,
+	ConnectRunningApp,
+	ConnectWebcamState,
+} from '@/interfaces/connect';
 
 /**
  * The phones connected right now.
@@ -31,3 +37,37 @@ export const listConnectRunning = (): Promise<ConnectRunningApp[]> =>
 	invoke<ConnectRunningApp[]>('connect_list_running');
 
 export const toggleConnectMenu = (): Promise<void> => invoke<void>('toggle_connect_menu');
+
+/** The cameras a phone has. Cached by the daemon; `refresh` re-asks the phone. */
+export const listConnectCameras = (serial: string, refresh = false): Promise<ConnectCamera[]> =>
+	invoke<ConnectCamera[]>('connect_list_cameras', { serial, refresh });
+
+/**
+ * Starts writing a phone camera into the loopback device.
+ *
+ * Resolves to the device path other applications open. An empty `size` and a
+ * zero `fps` let the phone choose, which is what the control centre does — the
+ * modes belong in the settings screen, where there is room for three selects.
+ *
+ * Rejects, unlike the listing calls: this runs because somebody pressed a
+ * switch, and a switch that silently returns to off explains nothing.
+ */
+export const startConnectWebcam = (
+	serial: string,
+	cameraId: string,
+	size = '',
+	fps = 0
+): Promise<string> => invoke<string>('connect_start_webcam', { serial, cameraId, size, fps });
+
+/** Stops the stream. `false` means there was nothing streaming. */
+export const stopConnectWebcam = (): Promise<boolean> => invoke<boolean>('connect_stop_webcam');
+
+/**
+ * What the bridge is doing, and whether it could run at all.
+ *
+ * Rejects rather than answering with an empty state: an empty `device` already
+ * means "the v4l2loopback module is not loaded", and returning that for a call
+ * that merely failed would send somebody to reboot over a bus timeout.
+ */
+export const connectWebcamState = (): Promise<ConnectWebcamState> =>
+	invoke<ConnectWebcamState>('connect_webcam_state');

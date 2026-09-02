@@ -62,8 +62,9 @@ mod windows_apps;
 use tauri::{Listener, Manager};
 use commands::*;
 use connect::{
-    connect_launch_app, connect_list_apps, connect_list_devices, connect_list_running,
-    connect_stop_app,
+    connect_launch_app, connect_list_apps, connect_list_cameras, connect_list_devices,
+    connect_list_running, connect_start_webcam, connect_stop_app, connect_stop_webcam,
+    connect_webcam_state,
 };
 use dbus_pool::DbusPool;
 use eventloops::{
@@ -209,6 +210,10 @@ pub fn run() {
             connect_launch_app,
             connect_stop_app,
             connect_list_running,
+            connect_list_cameras,
+            connect_start_webcam,
+            connect_stop_webcam,
+            connect_webcam_state,
             toggle_connect_menu
         ])
         .setup(move |app| {
