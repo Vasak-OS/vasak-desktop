@@ -74,6 +74,36 @@ impl DesktopService {
                     log_error(&format!("D-Bus: no se pudo avisar al fondo: {}", e));
                 }
             }
+            // Traer al frente la ventana de una aplicación.
+            //
+            // Existe acá y no en cada componente porque en Wayland sólo el
+            // compositor puede hacerlo, y de todo el escritorio el único que le
+            // habla es este proceso. Lo usan el daemon de notificaciones —al
+            // hacer clic en una— y la configuración cuando se le pide una
+            // sección con la ventana ya abierta.
+            //
+            // No contesta, como el resto de los métodos de este servicio: quien
+            // llama tiene que usar `--no-reply` o no esperar. Y no falla si la
+            // aplicación no está abierta; eso es un caso normal, no un error.
+            "PresentApp" => {
+                match msg.body().deserialize::<String>() {
+                    Ok(pedido) => {
+                        log_info(&format!("D-Bus: trayendo al frente «{}»", pedido));
+                        tauri::async_runtime::spawn(async move {
+                            if !crate::window_manager::present::present_app(&pedido).await {
+                                log_debug(&format!(
+                                    "D-Bus: no hay ninguna ventana de «{}» para mostrar",
+                                    pedido
+                                ));
+                            }
+                        });
+                    }
+                    Err(e) => log_warning(&format!(
+                        "D-Bus: PresentApp sin un nombre de aplicación válido: {}",
+                        e
+                    )),
+                }
+            }
             _ => {
                 log::warn!("D-Bus: Unknown method called: {}", member);
                 log_warning(&format!("D-Bus: Método desconocido: {}", member));
