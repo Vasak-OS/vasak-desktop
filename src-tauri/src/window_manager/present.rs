@@ -68,6 +68,9 @@ pub fn puntaje(app_id: &str, pedido: &str) -> u8 {
 /// `org.telegram.desktop` da `orgtelegramdesktop`, `telegramdesktop` y
 /// `telegram`: el completo, el que queda sin el dominio invertido —que es como
 /// lo nombra la gente— y el del programa. `firefox` da sólo `firefox`.
+/// Últimos segmentos que no nombran al programa, sólo dicen qué clase de cosa es.
+const GENERICOS: &[&str] = &["desktop", "app", "client", "gui", "ui"];
+
 fn nombres_posibles(app_id: &str) -> Vec<String> {
     let segmentos: Vec<&str> = app_id.split('.').collect();
     let mut nombres = vec![normalizar(app_id)];
@@ -76,7 +79,18 @@ fn nombres_posibles(app_id: &str) -> Vec<String> {
     // Con dos —`vasak.settings`— no se puede distinguir el dominio del programa.
     if segmentos.len() >= 3 {
         nombres.push(normalizar(&segmentos[1..].join(".")));
+        // El del fabricante: `org.telegram.desktop` es Telegram.
         nombres.push(normalizar(segmentos[1]));
+        // Y el último, porque en la otra convención el programa va ahí:
+        // `com.anthropic.Claude` es Claude. Salvo que sea una de las palabras
+        // que no nombran a nadie — `org.telegram.desktop` no es «escritorio»—,
+        // que es la trampa por la que Telegram salía en el panel con el icono
+        // de una carpeta.
+        if let Some(ultimo) = segmentos.last() {
+            if !GENERICOS.contains(&ultimo.to_lowercase().as_str()) {
+                nombres.push(normalizar(ultimo));
+            }
+        }
     }
 
     nombres.retain(|n| !n.is_empty());
@@ -177,6 +191,43 @@ mod tests {
     fn pedir_desktop_no_trae_telegram() {
         let vistas = [vista(1, "org.telegram.desktop", 10)];
         assert!(elegir(&vistas, "desktop").is_none());
+    }
+
+    /// Con los identificadores reales de un escritorio andando.
+    ///
+    /// Los de arriba son casos armados; estos salieron de `list-views` sobre una
+    /// sesión de verdad, y los nombres son los que esas aplicaciones ponen en
+    /// `app_name` al mandar una notificación. Es la prueba que dice si esto
+    /// sirve para lo que se hizo.
+    #[test]
+    fn los_identificadores_de_un_escritorio_de_verdad() {
+        let vistas = [
+            vista(1, "com.anthropic.Claude", 10),
+            vista(2, "discord", 20),
+            vista(3, "google-chrome", 30),
+            vista(4, "org.telegram.desktop", 40),
+            vista(5, "vasak-file-manager", 50),
+            vista(6, "vasak-terminal", 60),
+        ];
+
+        for (pedido, esperado) in [
+            ("Telegram Desktop", 4),
+            ("Telegram", 4),
+            ("Discord", 2),
+            ("Google Chrome", 3),
+            ("Claude", 1),
+            ("vasak-terminal", 6),
+            ("vasak-file-manager", 5),
+        ] {
+            assert_eq!(
+                elegir(&vistas, pedido).map(|v| v.id),
+                Some(esperado),
+                "«{pedido}» tendría que traer la ventana {esperado}"
+            );
+        }
+
+        // Y lo que no está abierto no trae cualquier otra cosa.
+        assert!(elegir(&vistas, "Thunderbird").is_none());
     }
 
     #[test]
