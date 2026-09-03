@@ -22,7 +22,28 @@
 //! llamador consiga y pase un token, que es más trabajo y **no cubre** el caso
 //! de invocar desde una terminal, donde no hay foco del que sacarlo.
 
+use std::sync::OnceLock;
+
+use tokio::sync::Semaphore;
+
 use super::wayfire_ipc::{get_wayfire_client, View};
+
+/// Cuántos pedidos de traer al frente pueden estar en curso a la vez.
+///
+/// `PresentApp` lo puede llamar cualquiera del bus de sesión, y cada pedido
+/// hace ida y vuelta con el compositor. Sin techo, un programa que llame en
+/// bucle acumula tareas pendientes contra wayfire.
+///
+/// El número es chico a propósito: traer una ventana al frente es instantáneo
+/// desde donde la persona lo mira, así que una fila de pedidos no le sirve a
+/// nadie. Los que no entran se descartan en vez de encolarse — el que llega
+/// tarde pediría lo mismo que el que ya está corriendo.
+const PEDIDOS_A_LA_VEZ: usize = 4;
+
+fn cupo() -> &'static Semaphore {
+    static CUPO: OnceLock<Semaphore> = OnceLock::new();
+    CUPO.get_or_init(|| Semaphore::new(PEDIDOS_A_LA_VEZ))
+}
 
 /// Cuánto se parece un `app-id` a lo que se pidió. Cero es que no.
 ///
@@ -138,6 +159,9 @@ pub fn elegir<'a>(vistas: &'a [View], pedido: &str) -> Option<&'a View> {
 /// minimizada la deja enfocada y sin dibujar, que desde afuera se ve igual que
 /// no haber hecho nada.
 pub async fn present_app(pedido: &str) -> bool {
+    let Ok(_permiso) = cupo().try_acquire() else {
+        return false;
+    };
     let Some(cliente) = get_wayfire_client().await else {
         return false;
     };
@@ -148,8 +172,13 @@ pub async fn present_app(pedido: &str) -> bool {
         return false;
     };
 
-    if vista.minimized.unwrap_or(false) {
-        let _ = cliente.set_minimized(vista.id as u64, false).await;
+    // Y si no se pudo desminimizar, no se sigue: enfocarla igual la dejaría
+    // enfocada y sin dibujar, y devolver `true` diría que se mostró algo que
+    // nadie puede ver.
+    if vista.minimized.unwrap_or(false)
+        && cliente.set_minimized(vista.id as u64, false).await.is_err()
+    {
+        return false;
     }
     cliente.set_focus(vista.id as u64).await.is_ok()
 }
@@ -279,6 +308,23 @@ mod tests {
 
         let vistas = [panel, oculta, sin_foco, real];
         assert_eq!(elegir(&vistas, "vasak-desktop").map(|v| v.id), Some(4));
+    }
+
+    /// El techo de pedidos simultáneos, que es lo que evita acumular tareas.
+    ///
+    /// `PresentApp` lo puede llamar cualquiera del bus de sesión y cada pedido
+    /// va y vuelve con el compositor. Los que no entran se descartan en vez de
+    /// encolarse: el que llega tarde pediría lo mismo que el que ya corre.
+    #[test]
+    fn los_pedidos_de_mas_se_descartan_en_vez_de_encolarse() {
+        let tomados: Vec<_> = (0..PEDIDOS_A_LA_VEZ)
+            .map(|_| cupo().try_acquire().expect("hasta el techo entran"))
+            .collect();
+
+        assert!(cupo().try_acquire().is_err(), "el que sobra no entra");
+
+        drop(tomados);
+        assert!(cupo().try_acquire().is_ok(), "y al liberarse vuelve a entrar");
     }
 
     #[test]
