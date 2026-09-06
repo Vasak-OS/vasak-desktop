@@ -38,7 +38,6 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import type { Store } from 'pinia';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import { useReactiveSymbol } from '@/tools/composables/useReactiveIcon';
 import { cancelRunningThemeTransitions } from '@/tools/theme.utils';
@@ -57,10 +56,7 @@ const themeIcon = useReactiveSymbol(
 );
 
 onMounted(() => {
-	configStore.value = useConfigStore() as Store<
-		'config',
-		{ config: any; loadConfig: () => Promise<void> }
-	>;
+	configStore.value = useConfigStore();
 });
 
 const toggleTheme = async () => {

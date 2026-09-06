@@ -4,9 +4,8 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { useConfigStore, type VSKConfig } from '@vasakgroup/plugin-config-manager';
+import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import type { Store } from 'pinia';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import WidgetLayer from '@/components/widgets/WidgetLayer.vue';
@@ -26,10 +25,7 @@ const isSecondaryMonitor = computed(() => {
 	return !!monitorParam && monitorParam !== 'desktop' && monitorParam.startsWith('desktop_');
 });
 
-const configStore = useConfigStore() as Store<
-	'config',
-	{ config: VSKConfig; loadConfig: () => Promise<void> }
->;
+const configStore = useConfigStore();
 
 // Computados reactivos que leen directamente de la configuración del store
 const DEFAULT_WALLPAPER = '/usr/share/backgrounds/cutefishos/wallpaper-9.jpg';

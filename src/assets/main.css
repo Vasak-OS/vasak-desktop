@@ -8,6 +8,17 @@
   /* general */
   --corner-radius: 10px;
 
+  /* Las tres fuentes que se eligen en Configuración: la del título, la de las
+     aplicaciones y la de la terminal. Estos valores rigen hasta que el gestor
+     de configuración escribe los de verdad sobre el elemento raíz, y son los
+     que quedan si esa lectura falla — que es el punto de declararlos acá: un
+     `var()` sin valor descarta la regla entera, así que sin este piso una
+     configuración ilegible dejaría a la aplicación sin ninguna fuente. */
+  --vsk-font-apps: sans-serif;
+  --vsk-font-title: sans-serif;
+  --vsk-font-terminal: monospace;
+
+
   /* Colores de Marca */
   --primary: #dd7878;
   --secondary: #8839ef;
@@ -133,6 +144,16 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  /* Las tres fuentes, como utilidades de Tailwind.
+
+     `font-sans` es además la que Tailwind aplica al documento sin que se
+     escriba ninguna clase, así que atarla acá hace que toda la aplicación siga
+     lo configurado por defecto. `font-title` para los títulos de ventana y
+     `font-mono` para la terminal y todo lo que se alinee por columnas. */
+  --font-sans: var(--vsk-font-apps);
+  --font-title: var(--vsk-font-title);
+  --font-mono: var(--vsk-font-terminal);
+
   /* radius */
   --radius-corner: var(--corner-radius);
   /* El radio chico, para lo que no es una tarjeta: chips, insignias, el pulgar de

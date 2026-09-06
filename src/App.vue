@@ -1,7 +1,6 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: imports used in template */
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
-import type { Store } from 'pinia';
 import { onMounted } from 'vue';
 import { RouterView } from 'vue-router';
 import { useSharedEvent } from '@/tools/event.bus';
@@ -11,10 +10,7 @@ import { logDebug, logError, logInfo } from '@/utils/logger';
 onMounted(async () => {
 	logInfo('App.vue montado, cargando configuración');
 	try {
-		const configStore = useConfigStore() as Store<
-			'config',
-			{ config: any; loadConfig: () => Promise<void> }
-		>;
+		const configStore = useConfigStore();
 		await configStore.loadConfig();
 		logDebug('Configuración cargada correctamente');
 	} catch (error: any) {
@@ -24,10 +20,7 @@ onMounted(async () => {
 
 useSharedEvent('config-changed', (payload: any) => {
 	logInfo('Evento config-changed recibido, recargando configuración');
-	const configStore = useConfigStore() as Store<
-		'config',
-		{ config: any; loadConfig: () => Promise<void> }
-	>;
+	const configStore = useConfigStore();
 
 	// Only use View Transition for user-initiated theme switches
 	if (payload?.key === 'theme' || payload?.type === 'theme') {
