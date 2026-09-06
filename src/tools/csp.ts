@@ -31,16 +31,18 @@ export const MARCADORES_CSP = new Set([
 ]);
 
 /**
- * Los esquemas cuyo contenido después de `:` es una ruta y no una carga útil.
+ * Los esquemas cuyo contenido después de `:` **puede** ser una ruta.
  *
- * Para el resto se registra sólo el esquema. La razón es que `new URL` acepta
- * cualquier cosa con dos puntos como un esquema opaco: `user:token@sitio/x`
- * parsea bien, con `username` **vacío** y el token entero en `href`. O sea que
- * limpiar `username` y `password` no alcanza — para un esquema opaco esos
- * campos ni existen, y el token viaja en lo que la URL llama «ruta».
+ * «Puede» y no «es»: que el esquema esté en esta lista no alcanza, porque el
+ * mismo esquema admite las dos formas. `asset://sitio/x` es jerárquico y
+ * `asset:user:token@sitio` es opaco, y el segundo mete el token en lo que la
+ * URL llama «ruta», donde limpiar `username` y `password` no hace nada — para
+ * un esquema opaco esos campos ni existen. Por eso además se comprueba que la
+ * dirección tenga autoridad de verdad.
  *
- * Recortar no pierde lo que sirve: para depurar un bloqueo de CSP lo que
- * importa es qué esquema se bloqueó, no qué había adentro.
+ * `blob:` está afuera a propósito aunque parezca jerárquico: su contenido es
+ * otra URL entera —`blob:https://usuario:token@sitio/x`— y esa no la ve
+ * `new URL` como autoridad suya.
  */
 const ESQUEMAS_CON_RUTA = new Set([
 	'http:',
@@ -49,12 +51,32 @@ const ESQUEMAS_CON_RUTA = new Set([
 	'wss:',
 	'ftp:',
 	'file:',
-	'blob:',
 	// Los que usa Tauri para servir la aplicación y hablar con el backend.
 	'tauri:',
 	'asset:',
 	'ipc:',
 ]);
+
+/**
+ * Si la dirección tiene autoridad, o sea si su parte después del esquema es
+ * una ruta y no una carga útil.
+ *
+ * `file:` es la excepción: sus direcciones son `file:///ruta`, sin sitio, y no
+ * pueden llevar credenciales porque la especificación no se lo permite.
+ * Recortarlas perdería la ruta, que es justo lo que sirve para depurar.
+ */
+function esJerarquica(url: URL): boolean {
+	return url.host !== '' || url.protocol === 'file:';
+}
+
+/**
+ * Si la dirección declara una autoridad, aunque no se haya podido parsear.
+ *
+ * Se usa para no caer al respaldo con algo que puede llevar credenciales.
+ * Mirar sólo si hay un `@` no serviría: una ruta relativa como
+ * `/assets/@vite/client.js` tiene uno y es de las más comunes que hay.
+ */
+const CON_AUTORIDAD = /^(?:[a-z][a-z0-9+.-]*:)?\/\//i;
 
 /** Un esquema inventado para poder parsear una URL sin esquema propio. */
 const ESQUEMA_PRESTADO = 'https:';
@@ -91,21 +113,29 @@ export function sanearUrl(valor: string | null | undefined): string {
 	if (valor.startsWith('//')) {
 		try {
 			const url = sinCredenciales(new URL(`${ESQUEMA_PRESTADO}${valor}`));
-			return `//${url.host}${url.pathname}`;
+			// `new URL` completa una ruta ausente con «/», y eso cambia la forma
+			// de lo que llegó: `//sitio` volvía como `//sitio/`. Se devuelve
+			// como vino.
+			const sinRuta = url.pathname === '/' && !valor.split(/[?#]/)[0].endsWith('/');
+			return sinRuta ? `//${url.host}` : `//${url.host}${url.pathname}`;
 		} catch {
-			// Ni con esquema prestado: no es una URL. Cae al corte de abajo.
+			// Ni con esquema prestado. No se cae al respaldo: lo que declara una
+			// autoridad puede llevar credenciales, y el respaldo sólo corta la
+			// query y el fragmento.
+			return '';
 		}
 	}
 
 	try {
 		const url = new URL(valor);
-		if (!ESQUEMAS_CON_RUTA.has(url.protocol)) {
+		if (!ESQUEMAS_CON_RUTA.has(url.protocol) || !esJerarquica(url)) {
 			return `${url.protocol}(recortado)`;
 		}
 		return sinCredenciales(url).href;
 	} catch {
-		// Una ruta relativa. No puede llevar credenciales —eso necesita una
-		// autoridad— así que alcanza con quitarle la query y el fragmento.
-		return valor.split(/[?#]/)[0];
+		// Sin autoridad no puede haber credenciales —requieren una— así que
+		// alcanza con quitar la query y el fragmento. Con autoridad no se
+		// arriesga: si no se pudo parsear, no se registra.
+		return CON_AUTORIDAD.test(valor) ? '' : valor.split(/[?#]/)[0];
 	}
 }

@@ -93,4 +93,62 @@ describe('sanearUrl', () => {
 			expect(autoridad).not.toContain('@');
 		}
 	});
+
+	/**
+	 * Un esquema jerárquico también admite forma opaca, y ahí las credenciales
+	 * viajan en lo que la URL llama «ruta» — donde limpiar `username` no hace
+	 * nada, porque para un esquema opaco ese campo ni existe.
+	 *
+	 * `blob:` es el caso más claro: su contenido es **otra URL entera**.
+	 */
+	test('un esquema conocido en forma opaca tampoco deja pasar nada', () => {
+		for (const entrada of [
+			'blob:https://user:token@example.test/path',
+			'tauri:user:token@example.test',
+			'asset:user:token@example.test',
+			'ipc:user:token@example.test',
+		]) {
+			expect(sanearUrl(entrada)).not.toContain('token');
+		}
+		expect(sanearUrl('blob:https://user:token@example.test/x')).toBe('blob:(recortado)');
+	});
+
+	test('y en forma jerárquica el mismo esquema sí conserva sitio y ruta', () => {
+		expect(sanearUrl('asset://user:token@example.test/path')).toBe('asset://example.test/path');
+	});
+
+	/**
+	 * `new URL` completa una ruta ausente con «/». Eso cambia la forma de lo
+	 * que llegó, y lo que se registra tiene que parecerse a lo que se bloqueó.
+	 */
+	test('una autoridad sola no gana una barra que no tenía', () => {
+		expect(sanearUrl('//example.test')).toBe('//example.test');
+		expect(sanearUrl('//example.test?x=1')).toBe('//example.test');
+		// Y la que sí la tenía la conserva.
+		expect(sanearUrl('//example.test/')).toBe('//example.test/');
+	});
+
+	/**
+	 * Si algo declara autoridad y no se pudo parsear, no se registra.
+	 *
+	 * El respaldo sólo corta la query y el fragmento, así que dejaría pasar las
+	 * credenciales enteras. Perder la línea del diario es mejor que dejar un
+	 * token escrito ahí para siempre.
+	 */
+	test('lo que declara autoridad y no parsea no se registra', () => {
+		expect(sanearUrl('//user:token@[malformado/x')).toBe('');
+		expect(sanearUrl('https://user:token@[malformado/x')).toBe('');
+	});
+
+	/**
+	 * Y la razón por la que no alcanza con rechazar todo lo que tenga un `@`:
+	 * las rutas de Vite lo llevan, y son de las más frecuentes que hay.
+	 */
+	test('una ruta relativa con arroba sobrevive', () => {
+		expect(sanearUrl('/assets/@vite/client.js')).toBe('/assets/@vite/client.js');
+		expect(sanearUrl('/node_modules/.vite/deps/@vue_devtools.js?v=1')).toBe(
+			'/node_modules/.vite/deps/@vue_devtools.js'
+		);
+	});
+
 });
