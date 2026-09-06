@@ -1,5 +1,4 @@
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
-import type { Store } from 'pinia';
 import { computed } from 'vue';
 
 /**
@@ -11,7 +10,7 @@ import { computed } from 'vue';
  * la ausencia de la clave significa «mostralo», no «escondelo».
  */
 export function usePanelConfig() {
-	const configStore = useConfigStore() as Store<'config', { config: any }>;
+	const configStore = useConfigStore();
 
 	const seccion = computed(() => (configStore as any).config?.panel ?? {});
 
