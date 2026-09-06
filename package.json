@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "bunx --bun vite",
-    "build": "vue-tsc --noEmit && bunx --bun vite build",
+    "build": "bunx --bun vue-tsc --noEmit && bunx --bun vite build",
     "preview": "bunx --bun vite preview",
     "tauri": "tauri",
     "tauri:build": "tauri build",
