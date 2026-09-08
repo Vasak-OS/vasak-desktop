@@ -1,0 +1,12 @@
+# Los chequeos viven en el repositorio `.github` de la organización, así que
+# acá sólo se los llama. Cambiarlos es cambiarlos en un solo lugar.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  app:
+    uses: Vasak-OS/.github/.github/workflows/app.yml@main
