@@ -69,9 +69,12 @@ function permitidos(): Set<string> {
  * como estado propio, y sólo fuera de ellas un `//` o un `/*` empieza un
  * comentario.
  *
- * Las de comillas simples y dobles terminan también con el fin de línea, que es
- * lo que dice la especificación: así una apóstrofe en el texto de una plantilla
- * —`don't`— no se puede comer el resto del archivo.
+ * Y una comilla simple o doble abre cadena sólo si cierra en su misma línea, que
+ * es lo único que la especificación permite. Así la apóstrofe del texto de una
+ * plantilla —`don't`— no abre nada: si abriera, el resto de la línea se
+ * copiaría tal cual, y un `<!-- … -->` que viniera después en esa línea
+ * quedaría sin filtrar. No alcanzaba con cortar la cadena en el fin de línea,
+ * porque lo copiado hasta ahí es justamente lo que había que sacar.
  *
  * Lo quitado se reemplaza por espacios y saltos en lugar de sacarse, para no
  * pegar dos trozos que estaban separados.
@@ -81,6 +84,19 @@ export function sinComentarios(fuente: string): string {
 	let i = 0;
 
 	const hueco = (c: string) => (c === '\n' ? '\n' : ' ');
+
+	/** Si hay una comilla igual —sin escapar— antes de que termine la línea. */
+	const cierraEnLaLinea = (desde: number, comilla: string) => {
+		for (let j = desde; j < fuente.length; j++) {
+			if (fuente[j] === '\\') {
+				j++;
+				continue;
+			}
+			if (fuente[j] === '\n') return false;
+			if (fuente[j] === comilla) return true;
+		}
+		return false;
+	};
 
 	while (i < fuente.length) {
 		const dos = fuente.slice(i, i + 2);
@@ -118,6 +134,19 @@ export function sinComentarios(fuente: string): string {
 		const comilla = fuente[i];
 
 		if (comilla === '"' || comilla === "'" || comilla === '`') {
+			// Sin pareja no es una cadena: es una apóstrofe del texto de una
+			// plantilla. Se copia y se sigue mirando lo que viene, que puede ser
+			// un comentario. La pareja se busca en la línea para las comillas y
+			// en el resto del archivo para las plantillas, que sí cruzan líneas.
+			const pareja =
+				comilla === '`' ? fuente.indexOf('`', i + 1) !== -1 : cierraEnLaLinea(i + 1, comilla);
+
+			if (!pareja) {
+				salida += comilla;
+				i++;
+				continue;
+			}
+
 			salida += comilla;
 			i++;
 
@@ -127,7 +156,6 @@ export function sinComentarios(fuente: string): string {
 					i += 2;
 					continue;
 				}
-				if (comilla !== '`' && fuente[i] === '\n') break;
 
 				salida += fuente[i];
 				i++;
@@ -238,6 +266,21 @@ describe('política de contenido', () => {
 		const fuente = ["<span>don't</span>", "fetch('https://api.open-meteo.com/x');"].join('\n');
 
 		expect(sinComentarios(fuente)).toContain('https://api.open-meteo.com/x');
+	});
+
+	test('una apóstrofe de texto no le abre la puerta a un comentario sin filtrar', () => {
+		// Lo que encontró la revisión de #67: en una plantilla, la apóstrofe de
+		// `don't` no tiene pareja, así que si abriera una cadena el resto de la
+		// línea se copiaría tal cual —comentario incluido— y `usuario` volvería a
+		// aparecer como servidor. Una cadena de verdad cierra en su misma línea;
+		// una apóstrofe de texto, no.
+		const fuente = "<span>don't</span> <!-- blob:https://usuario:token@sitio/x -->";
+
+		const encontrados = [
+			...sinComentarios(fuente).matchAll(/https:\/\/[a-zA-Z0-9._-]+(?::\d+)?/g),
+		].map(([origen]) => origen);
+
+		expect(encontrados).toEqual([]);
 	});
 
 	test('no permite servidores que nadie consulta', () => {
