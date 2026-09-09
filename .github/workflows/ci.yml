@@ -9,4 +9,13 @@ on:
 
 jobs:
   app:
+    # Sólo lectura. Estos chequeos clonan, instalan dependencias y comprueban:
+    # no comentan, no etiquetan, no publican.
+    #
+    # El workflow llamado declara lo mismo en su trabajo, que es donde el
+    # permiso se aplica; esto lo escribe también acá porque el análisis
+    # estático de este repositorio no puede ver el otro archivo, y ahí un
+    # trabajo sin `permissions` se lee como permisos por omisión.
+    permissions:
+      contents: read
     uses: Vasak-OS/.github/.github/workflows/app.yml@main
