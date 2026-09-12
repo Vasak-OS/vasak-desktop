@@ -22,7 +22,12 @@ export default defineConfig({
 
 	// Optimización de build
 	build: {
-		target: 'es2020',
+		// es2022 y no es2020 por el `await` de nivel superior de `main.ts`, que se
+		// usa para tener las traducciones antes de montar: con es2020 esbuild lo
+		// rechaza. Es la única aplicación del escritorio con un target explícito
+		// —las demás usan el de Vite, que ya lo admite— y el WebView es el mismo
+		// en todas, así que no hay nada nuevo que pueda no entenderlo.
+		target: 'es2022',
 		minify: 'terser',
 		terserOptions: {
 			compress: {
