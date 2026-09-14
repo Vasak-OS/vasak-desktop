@@ -160,6 +160,13 @@ const alternarWebcam = async (encender: boolean) => {
 			// pedirle uno, elige el máximo de su sensor, y ése no pasa por su
 			// propio codificador. Los cuadros por segundo sí quedan a su
 			// criterio, y los modos finos se eligen en Ajustes.
+			//
+			// Si el teléfono no enumeró ningún tamaño usable, `tamanioPorDefecto`
+			// devuelve la cadena vacía y **se intenta igual**, que es lo que el
+			// demonio entiende como «elegí vos». No se aborta a propósito: sin
+			// lista no hay nada mejor que pedir, y negarse convertiría un
+			// arranque que quizá funciona en uno que seguro no. Si falla, el
+			// motivo lo pone el teléfono y se ve acá abajo.
 			await startConnectWebcam(serial, elegida.id, tamanioPorDefecto(elegida));
 		}
 	} catch (reason) {

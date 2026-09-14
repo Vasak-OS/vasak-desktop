@@ -244,8 +244,13 @@ describe('el tamaño por defecto', () => {
 	});
 
 	test('sin cámara o sin tamaños se deja elegir al teléfono', () => {
-		// Cadena vacía es lo que el demonio entiende como «elegí vos». Inventar
-		// una resolución que el teléfono no enumeró falla igual de feo.
+		// Cadena vacía es lo que el demonio entiende como «elegí vos», y es
+		// deliberado: sin lista enumerada no hay nada mejor que pedir. Inventar
+		// una resolución que el teléfono no contestó falla igual de feo —un
+		// tamaño que el sensor no tiene se cae como uno que el codificador no
+		// acepta—, y negarse a arrancar convertiría un intento que quizá
+		// funciona en uno que seguro no. El caso es el único en el que esto
+		// queda igual que antes del arreglo, no peor.
 		expect(tamanioPorDefecto(undefined)).toBe('');
 		expect(tamanioPorDefecto(conTamanios([]))).toBe('');
 	});
