@@ -46,8 +46,12 @@ export const listConnectCameras = (serial: string, refresh = false): Promise<Con
  * Starts writing a phone camera into the loopback device.
  *
  * Resolves to the device path other applications open. An empty `size` and a
- * zero `fps` let the phone choose, which is what the control centre does — the
- * modes belong in the settings screen, where there is room for three selects.
+ * zero `fps` let the phone choose.
+ *
+ * The control centre leaves `fps` to the phone but **passes a size**: left to
+ * choose, the phone picks its sensor's maximum, which its own encoder cannot
+ * configure. See `tamanioPorDefecto`. The full set of modes belongs in the
+ * settings screen, where there is room for three selects.
  *
  * Rejects, unlike the listing calls: this runs because somebody pressed a
  * switch, and a switch that silently returns to off explains nothing.

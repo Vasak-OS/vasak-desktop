@@ -22,6 +22,7 @@ import {
 	diagnosticoWebcam,
 	encendidaEn,
 	interruptorHabilitado,
+	tamanioPorDefecto,
 } from '@/tools/webcam';
 
 /**
@@ -155,9 +156,11 @@ const alternarWebcam = async (encender: boolean) => {
 				errorWebcam.value = t('views.connect.webcamNoCameras');
 				return;
 			}
-			// Sin tamaño ni cuadros por segundo: que elija el teléfono. Los
-			// modos reales se eligen en Ajustes, donde hay lugar para mostrarlos.
-			await startConnectWebcam(serial, elegida.id);
+			// El tamaño se elige acá y no se deja en manos del teléfono: sin
+			// pedirle uno, elige el máximo de su sensor, y ése no pasa por su
+			// propio codificador. Los cuadros por segundo sí quedan a su
+			// criterio, y los modos finos se eligen en Ajustes.
+			await startConnectWebcam(serial, elegida.id, tamanioPorDefecto(elegida));
 		}
 	} catch (reason) {
 		// El demonio explica bien sus fallos —falta el módulo, otra aplicación

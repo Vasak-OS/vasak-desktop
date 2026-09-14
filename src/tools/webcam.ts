@@ -31,6 +31,63 @@ export function camaraPorDefecto(camaras: readonly ConnectCamera[]): ConnectCame
 }
 
 /**
+ * Lo más grande que conviene pedirle a la cámara del teléfono.
+ *
+ * Esto es una webcam: se mira dentro de una videollamada, que reescala a 720p
+ * de todas formas. Cada píxel de más es latencia y batería del teléfono, y no
+ * se ve.
+ */
+const TOPE_DE_ANCHO = 1920;
+const TOPE_DE_ALTO = 1080;
+
+/** `1280x720` → `[1280, 720]`, o `undefined` si no tiene esa forma. */
+function medidas(tamanio: string): [number, number] | undefined {
+	const [ancho, alto] = tamanio.split('x');
+	const w = Number(ancho);
+	const h = Number(alto);
+	if (!Number.isInteger(w) || !Number.isInteger(h) || w <= 0 || h <= 0) return undefined;
+	return [w, h];
+}
+
+/**
+ * El tamaño con el que arrancar, de los que el teléfono enumeró.
+ *
+ * **Hay que pedir uno.** Sin tamaño, el teléfono elige el máximo de su sensor, y
+ * ése no pasa por su propio codificador de vídeo: en un motorola edge 40 la
+ * trasera da `4096x3072` y scrcpy muere con `IllegalArgumentException` en
+ * `MediaCodec.configure`. El teléfono elige por la cámara, no por el
+ * codificador, y nadie comprueba que lo elegido se pueda codificar — así que el
+ * interruptor no prendía en ningún teléfono cuyo modo máximo supere lo que su
+ * codificador acepta, que hoy es casi cualquiera.
+ *
+ * **De la lista enumerada y no de una tabla de resoluciones comunes.** Un tamaño
+ * que el sensor no tiene falla igual de feo que uno que el codificador no
+ * acepta, y la lista es justo lo que el teléfono contestó cuando se le preguntó.
+ *
+ * Si todos los modos pasan el tope se devuelve el más chico: es lo único que
+ * queda por intentar, y es mejor que rendirse antes de probar.
+ */
+export function tamanioPorDefecto(camara: ConnectCamera | undefined): string {
+	const medidos = (camara?.sizes ?? [])
+		.map((tamanio) => ({ tamanio, medidas: medidas(tamanio) }))
+		.flatMap(({ tamanio, medidas }) => (medidas ? [{ tamanio, pixeles: medidas }] : []));
+
+	if (medidos.length === 0) return '';
+
+	const entran = medidos.filter(
+		({ pixeles: [ancho, alto] }) => ancho <= TOPE_DE_ANCHO && alto <= TOPE_DE_ALTO
+	);
+
+	const area = ({ pixeles: [ancho, alto] }: (typeof medidos)[number]) => ancho * alto;
+
+	if (entran.length > 0) {
+		return entran.reduce((mayor, uno) => (area(uno) > area(mayor) ? uno : mayor)).tamanio;
+	}
+
+	return medidos.reduce((menor, uno) => (area(uno) < area(menor) ? uno : menor)).tamanio;
+}
+
+/**
  * Si la webcam la está alimentando **este** teléfono.
  *
  * El serial importa: con dos teléfonos enchufados, el que transmite es uno solo
