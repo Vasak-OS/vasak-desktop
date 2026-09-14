@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 import type { ConnectCamera, ConnectCameraFacing, ConnectWebcamState } from '@/interfaces/connect';
-import { camaraPorDefecto, diagnosticoWebcam, encendidaEn, interruptorHabilitado } from './webcam';
+import {
+	camaraPorDefecto,
+	diagnosticoWebcam,
+	encendidaEn,
+	interruptorHabilitado,
+	tamanioPorDefecto,
+} from './webcam';
 
 const camara = (id: string, facing: ConnectCameraFacing): ConnectCamera => ({
 	id,
@@ -194,5 +200,65 @@ describe('el diagnóstico de la cámara', () => {
 
 	test('ocupada cuando la alimenta otro', () => {
 		expect(diagnosticoWebcam(transmitiendo('XYZ789'), 'ABC123')).toBe('ocupada');
+	});
+});
+
+describe('el tamaño por defecto', () => {
+	/** Una cámara con los tamaños que contestó un motorola edge 40. */
+	const conTamanios = (sizes: string[]): ConnectCamera => ({
+		id: '0',
+		facing: 'back',
+		sizes,
+		fps: [30],
+	});
+
+	test('no devuelve el máximo del sensor', () => {
+		// Es el fallo que esto viene a arreglar: sin pedir tamaño, el teléfono
+		// elegía 4096x3072 y su propio codificador no podía configurarse con
+		// eso. El interruptor no prendía nunca.
+		const elegido = tamanioPorDefecto(
+			conTamanios(['4096x3072', '3840x2160', '1920x1080', '1280x720'])
+		);
+
+		expect(elegido).not.toBe('4096x3072');
+		expect(elegido).toBe('1920x1080');
+	});
+
+	test('es el mayor que entra en el tope, no el primero que entra', () => {
+		// La lista viene de mayor a menor, así que tomar el primero que entra
+		// funcionaría por casualidad. Se la da desordenada para que no.
+		expect(tamanioPorDefecto(conTamanios(['640x480', '1920x1080', '1280x720']))).toBe('1920x1080');
+	});
+
+	test('un modo más alto que el tope no entra aunque sea angosto', () => {
+		// 1080x1920 es vertical: el ancho entra y el alto no. Mirar sólo el
+		// ancho lo dejaría pasar, y son los mismos píxeles que el codificador
+		// rechaza.
+		expect(tamanioPorDefecto(conTamanios(['1080x1920', '1280x720']))).toBe('1280x720');
+	});
+
+	test('si ninguno entra se pide el más chico, que es lo único que queda', () => {
+		// Rendirse antes de probar sería peor: el tope es una preferencia
+		// nuestra, no un límite del teléfono.
+		expect(tamanioPorDefecto(conTamanios(['4096x3072', '2560x1920']))).toBe('2560x1920');
+	});
+
+	test('sin cámara o sin tamaños se deja elegir al teléfono', () => {
+		// Cadena vacía es lo que el demonio entiende como «elegí vos», y es
+		// deliberado: sin lista enumerada no hay nada mejor que pedir. Inventar
+		// una resolución que el teléfono no contestó falla igual de feo —un
+		// tamaño que el sensor no tiene se cae como uno que el codificador no
+		// acepta—, y negarse a arrancar convertiría un intento que quizá
+		// funciona en uno que seguro no. El caso es el único en el que esto
+		// queda igual que antes del arreglo, no peor.
+		expect(tamanioPorDefecto(undefined)).toBe('');
+		expect(tamanioPorDefecto(conTamanios([]))).toBe('');
+	});
+
+	test('un tamaño con forma rara no se pasa como argumento', () => {
+		// Los tamaños salen de parsear la salida de scrcpy, y de ahí va derecho
+		// a una opción de línea de comandos.
+		expect(tamanioPorDefecto(conTamanios(['grande', '1280x720']))).toBe('1280x720');
+		expect(tamanioPorDefecto(conTamanios(['x720', '-1x-1']))).toBe('');
 	});
 });
