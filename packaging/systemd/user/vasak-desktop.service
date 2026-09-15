@@ -1,0 +1,57 @@
+# El escritorio: fondo, panel y centro de control.
+#
+# # Por qué es una unidad y no una línea en `wayfire.ini`
+#
+# Lo lanzaba el `[autostart]` de wayfire, o sea fuera de systemd, y eso costaba
+# tres cosas:
+#
+#   1. **Nada se podía ordenar respecto del escritorio.**
+#      `xdg-desktop-autostart.target` sale cuando el *compositor* está listo, que
+#      no es cuando el *escritorio* lo está. Medido el 15/09/2026: wayfire a los
+#      14,3 s, el escritorio a los 15,3 s, todo el inicio automático a los 16,0 s
+#      y el escritorio recién terminando de inicializar a los 32,0 s. El mismo
+#      binario tarda 467 ms con la máquina tranquila y 16.700 ms peleándola con
+#      Claude, Twingate y compañía. En un equipo con Steam en el inicio
+#      automático, Steam se dibujaba antes que el fondo.
+#   2. **Arrancaba antes de que el entorno estuviera exportado.** `uwsm finalize`
+#      terminó a los 16,0 s y el escritorio había arrancado a los 15,3 s. Andaba
+#      por herencia de wayfire, pero cualquier cosa que el escritorio lance
+#      quedaba del lado equivocado de esa línea.
+#   3. **No estaba supervisado.** Si se caía, no volvía.
+#
+# # El aviso de listo
+#
+# `Type=notify`, y el `READY=1` lo manda el escritorio cuando el panel **pintó**
+# —el evento `panel-ready`, el mismo que destraba el arranque diferido de
+# applets—. No cuando se creó la ventana: cuando se dibujó.
+#
+# Si el panel no reporta, el escritorio avisa igual a los veinte segundos y lo
+# anota. `TimeoutStartSec` está por encima de eso a propósito, para que ese
+# respaldo gane siempre y systemd no mate un escritorio que estaba tardando.
+
+[Unit]
+Description=Escritorio de VasakOS
+Documentation=https://github.com/Vasak-OS/vasak-desktop
+PartOf=graphical-session.target
+After=graphical-session.target
+# Lo que este archivo viene a arreglar: nada del inicio automático se dibuja
+# antes que el escritorio.
+Before=xdg-desktop-autostart.target
+# Cinco reintentos en un minuto y para. Un escritorio que no arranca no se
+# arregla reintentando para siempre, y el bucle taparía el motivo en el diario.
+# Van en [Unit] y no en [Service]: ahí systemd los ignora con un aviso.
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/usr/bin/vasak-desktop
+# Treinta y cinco, no treinta: el respaldo del propio escritorio avisa a los
+# veinte, así que acá sólo se llega si el proceso no arrancó en absoluto.
+TimeoutStartSec=35
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

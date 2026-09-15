@@ -3,6 +3,7 @@ mod app_url;
 mod constants;
 mod dbus_pool;
 mod error;
+mod listo;
 mod logger;
 mod structs;
 
@@ -47,19 +48,18 @@ fn default_locale() -> String {
     }
 }
 
-mod menu_manager;
 mod desktop_watcher;
+mod gtk_utils;
 mod inotify_rafaga;
+mod menu_manager;
 mod menu_watcher;
 mod monitor_manager;
 mod notifications;
 mod tray;
 mod utils;
-mod gtk_utils;
 mod window_manager;
 mod windows_apps;
 
-use tauri::{Listener, Manager};
 use commands::*;
 use connect::{
     connect_launch_app, connect_list_apps, connect_list_cameras, connect_list_devices,
@@ -67,17 +67,15 @@ use connect::{
     connect_webcam_state,
 };
 use dbus_pool::DbusPool;
-use eventloops::{
-    setup_dbus_service,
-    setup_windows_monitoring,
-};
+use eventloops::{setup_dbus_service, setup_windows_monitoring};
+use monitor_manager::watch_monitor_changes;
 use std::sync::{Arc, RwLock};
 use structs::SystrayPopupState;
 use structs::WMState;
+use tauri::{Listener, Manager};
 use tokio::sync::watch;
 use tray::create_tray_manager;
 use window_manager::WindowManager;
-use monitor_manager::watch_monitor_changes;
 use windows_apps::*;
 
 /// Shared latch signaled by the frontend when the panel has painted.
@@ -85,24 +83,24 @@ use windows_apps::*;
 pub(crate) struct PanelReadyLatch(pub(crate) watch::Sender<bool>);
 
 use applets::{
-    manager::{AppletManager, AppletPriority},
     audio::AudioApplet,
     battery::BatteryApplet,
     bluetooth::BluetoothApplet,
     brightness::BrightnessApplet,
     connect::ConnectApplet,
     keyboard_leds::KeyboardLedsApplet,
+    manager::{AppletManager, AppletPriority},
     music::MusicApplet,
     network::NetworkApplet,
     network_rate::NetworkRateApplet,
-    notifications::NotificationApplet, 
-    tray::TrayApplet
+    notifications::NotificationApplet,
+    tray::TrayApplet,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     logger::log_info("Vasak Desktop iniciando...");
-    
+
     let window_manager = Arc::new(RwLock::new(
         WindowManager::new().expect("Failed to initialize window manager"),
     ));
@@ -264,10 +262,50 @@ pub fn run() {
             // the deferred-applet task registers its own listener.
             let (ready_tx, _) = watch::channel(false);
             let ready_tx_clone = ready_tx.clone();
+
+            // Y el mismo evento es el que le avisa a systemd. El escritorio es
+            // una unidad `Type=notify` ordenada delante del inicio automático:
+            // hasta que no diga que está listo, no arranca nada más. `panel-ready`
+            // es la señal correcta porque la emite el panel **cuando pintó**, no
+            // cuando se lo creó.
+            //
+            // Una sola vez: el evento puede repetirse si el panel se recrea —al
+            // cambiar de monitores, por ejemplo— y avisar de nuevo no aporta
+            // nada. `Ordering::SeqCst` y no `Relaxed` porque acá lo barato es la
+            // garantía y lo caro sería depurar un aviso perdido.
+            let ya_aviso = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let ya_aviso_panel = ya_aviso.clone();
+
             app.listen("panel-ready", move |_| {
                 let _ = ready_tx_clone.send(true);
+                if !ya_aviso_panel.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                    listo::avisar_que_esta_listo();
+                    logger::log_info("Listo: el panel pintó, se avisó a systemd");
+                }
             });
             app.manage(PanelReadyLatch(ready_tx));
+
+            // El respaldo. Un `Type=notify` que nunca avisa es una unidad que
+            // systemd da por fallida y mata a los treinta segundos: sería
+            // cambiar «el fondo tarda» por «no hay escritorio». Si el panel no
+            // reportó en este plazo se avisa igual y queda anotado por qué.
+            //
+            // Veinte segundos: el arranque medido con el sistema tranquilo es de
+            // 467 ms, así que llegar acá ya significa que algo anda mal. El tope
+            // de la unidad está por encima para que este camino gane siempre.
+            {
+                let ya_aviso = ya_aviso.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+                    if !ya_aviso.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                        listo::avisar_que_esta_listo();
+                        logger::log_warning(
+                            "Listo: el panel no reportó en 20 s; se avisa a systemd igual \
+                             para no dejar la sesión sin abrir nada",
+                        );
+                    }
+                });
+            }
 
             let handle = app.handle().clone();
             let _ = create_desktops(&handle);
