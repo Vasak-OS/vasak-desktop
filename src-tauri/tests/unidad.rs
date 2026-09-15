@@ -101,3 +101,63 @@ fn el_tope_de_la_unidad_le_da_lugar_al_respaldo_del_codigo() {
         "TimeoutStartSec={tope} no le deja lugar al respaldo de 20 s del propio escritorio"
     );
 }
+
+/// El volcado periódico tiene que arrancar **antes** de construir Tauri.
+///
+/// Todo lo que pasa después —los plugins, el setup— es justo el tramo que no
+/// llegaba al archivo cuando el proceso moría, y es el que alguien quiere leer
+/// cuando el escritorio no aparece. Arrancarlo después dejaría ese tramo sin
+/// cubrir y no fallaría nada.
+#[test]
+fn el_volcado_periodico_arranca_antes_que_tauri() {
+    let fuente =
+        std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/lib.rs"))
+            .expect("no se pudo leer src/lib.rs");
+
+    let volcado = fuente
+        .find("logger::volcar_cada_tanto()")
+        .expect("nadie arranca el volcado periódico del registro");
+    let builder = fuente
+        .find("tauri::Builder::default()")
+        .expect("no se encontró la construcción de Tauri");
+
+    assert!(
+        volcado < builder,
+        "el volcado periódico arranca después de construir Tauri: el tramo que se pierde \
+         es justo el que hay que poder leer"
+    );
+}
+
+/// Y la traza del arranque se vuelca a mano al terminar el setup, sin esperar
+/// hasta cinco segundos. Es una escritura por sesión.
+#[test]
+fn el_setup_vuelca_su_traza_al_terminar() {
+    let fuente =
+        std::fs::read_to_string(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/lib.rs"))
+            .expect("no se pudo leer src/lib.rs");
+
+    let fin_del_setup = fuente
+        .find("Setup callback completed")
+        .expect("no se encontró el final del setup");
+
+    assert!(
+        fuente[fin_del_setup..].contains("logger::flush()"),
+        "el setup no vuelca su traza al terminar"
+    );
+
+    // Y el volcado tiene que ir **después** de la última línea del setup. Antes
+    // deja fuera la que dice que el arranque terminó bien, que es la que
+    // distingue «no llegó a configurarse» de «se configuró y murió después».
+    let ultima = fuente
+        .find("Aplicación Tauri configurada correctamente")
+        .expect("no se encontró la última línea del setup");
+    let volcado = fin_del_setup
+        + fuente[fin_del_setup..]
+            .find("logger::flush()")
+            .expect("no se encontró el volcado del setup");
+
+    assert!(
+        volcado > ultima,
+        "el volcado va antes de la última línea del setup, así que esa línea se queda en el búfer"
+    );
+}

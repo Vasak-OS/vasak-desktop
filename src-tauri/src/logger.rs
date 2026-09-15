@@ -1,10 +1,11 @@
+use chrono::Local;
 use std::fs::{File, OpenOptions};
 use std::io::BufWriter;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
-use chrono::Local;
 use std::sync::LazyLock;
+use std::sync::Mutex;
+use std::time::Duration;
 
 /// Nivel de log
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -61,15 +62,15 @@ impl VasakLogger {
     /// Crea una nueva instancia del logger
     pub fn new() -> Self {
         let is_dev_mode = cfg!(debug_assertions);
-        
+
         // Determinar la ruta del archivo de log
         let log_path = Self::get_log_path();
-        
+
         // Crear el directorio si no existe
         if let Some(parent) = log_path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
-        
+
         // Abrir o crear el archivo de log
         Self::prune_old_logs(&log_path);
 
@@ -79,51 +80,60 @@ impl VasakLogger {
             .open(&log_path)
             .ok()
             .map(BufWriter::new);
-        
+
         if log_file.is_none() {
             eprintln!("⚠️ No se pudo crear el archivo de log en: {:?}", log_path);
         }
-        
+
         let mut logger = Self {
             log_file,
             log_path,
             is_dev_mode,
         };
-        
+
         // Escribir encabezado de sesión
         logger.log_session_start();
-        
+
         logger
     }
-    
+
     /// Obtiene la ruta del archivo de log
     fn get_log_path() -> PathBuf {
         // Usar XDG_DATA_HOME o ~/.local/share como base
-        let base_dir = dirs::data_local_dir()
-            .unwrap_or_else(|| {
-                let home = dirs::home_dir().expect("No se pudo obtener el directorio home");
-                home.join(".local/share")
-            });
-        
+        let base_dir = dirs::data_local_dir().unwrap_or_else(|| {
+            let home = dirs::home_dir().expect("No se pudo obtener el directorio home");
+            home.join(".local/share")
+        });
+
         let log_dir = base_dir.join("vasak-desktop").join("logs");
-        
+
         // Nombre del archivo con fecha
         let date = Local::now().format("%Y-%m-%d");
         log_dir.join(format!("vasak-desktop-{}.log", date))
     }
-    
+
     /// Escribe el encabezado de inicio de sesión
     fn log_session_start(&mut self) {
-        let mode = if self.is_dev_mode { "DESARROLLO" } else { "PRODUCCIÓN" };
+        let mode = if self.is_dev_mode {
+            "DESARROLLO"
+        } else {
+            "PRODUCCIÓN"
+        };
         let separator = "=".repeat(80);
-        
+
         self.write_to_file(&format!("\n{}\n", separator), false);
-        self.write_to_file(&format!("Nueva sesión iniciada: {}\n", Local::now().format("%Y-%m-%d %H:%M:%S")), false);
+        self.write_to_file(
+            &format!(
+                "Nueva sesión iniciada: {}\n",
+                Local::now().format("%Y-%m-%d %H:%M:%S")
+            ),
+            false,
+        );
         self.write_to_file(&format!("Modo: {}\n", mode), false);
         self.write_to_file(&format!("Archivo de log: {:?}\n", self.log_path), false);
         self.write_to_file(&format!("{}\n\n", separator), true);
     }
-    
+
     /// Escribe un mensaje en el archivo.
     ///
     /// Only errors and warnings are flushed immediately; anything else rides in
@@ -147,7 +157,9 @@ impl VasakLogger {
         const MAX_AGE: std::time::Duration = std::time::Duration::from_secs(7 * 24 * 60 * 60);
 
         let Some(dir) = log_path.parent() else { return };
-        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
 
         for entry in entries.flatten() {
             let path = entry.path();
@@ -167,7 +179,7 @@ impl VasakLogger {
             }
         }
     }
-    
+
     /// Registra un mensaje
     pub fn log(&mut self, level: LogLevel, source: LogSource, message: &str) {
         // En producción se omiten solo los Debug.
@@ -183,11 +195,11 @@ impl VasakLogger {
             source.as_str(),
             message
         );
-        
+
         // Escribir al archivo (errores y avisos se vuelcan al instante)
         let urgent = matches!(level, LogLevel::Error | LogLevel::Warning);
         self.write_to_file(&formatted_message, urgent);
-        
+
         // En modo desarrollo, también imprimir en consola
         if self.is_dev_mode {
             match level {
@@ -197,7 +209,7 @@ impl VasakLogger {
             }
         }
     }
-    
+
     /// Obtiene la ruta actual del log
     pub fn get_current_log_path(&self) -> PathBuf {
         self.log_path.clone()
@@ -324,13 +336,53 @@ pub fn log_from_js(level: &str, message: &str) {
         "ERROR" => LogLevel::Error,
         _ => LogLevel::Info,
     };
-    
+
     if let Ok(mut logger) = LOGGER.lock() {
         logger.log(log_level, LogSource::JavaScript, message);
     }
 }
 
 /// Obtiene la ruta del archivo de log actual
+/// Vuelca al archivo lo que quede en el búfer.
+///
+/// `Info` y `Debug` viajan en un búfer de 8 KB —volcar por línea convertía cada
+/// `console.log` del frontend en una escritura sincrónica desde el hilo
+/// principal— y un arranque entero no llega a llenarlo. O sea que **si el
+/// proceso no termina limpio, el arranque no llega nunca al archivo**: pasó,
+/// tres instancias dejaron la cabecera de sesión y ninguna línea más.
+///
+/// Y duele justo cuando importa: el arranque es lo que se mira cuando el
+/// escritorio no aparece, y ése es exactamente el caso en que el proceso no sale
+/// limpio.
+pub fn flush() {
+    if let Ok(mut logger) = LOGGER.lock() {
+        logger.flush();
+    }
+}
+
+/// Cada cuánto se vuelca solo.
+///
+/// Acota a cinco segundos lo que se puede perder en cualquier momento, no sólo
+/// en el arranque. Sale gratis cuando no hay nada: `BufWriter::flush` con el
+/// búfer vacío no llega a tocar el disco, y `File::flush` no hace nada.
+const CADA_CUANTO_SE_VUELCA: Duration = Duration::from_secs(5);
+
+/// Arranca el volcado periódico.
+///
+/// Se llama lo más temprano posible —antes de construir Tauri— para que un
+/// pánico mientras arranca un plugin pierda a lo sumo cinco segundos. Es un hilo
+/// propio y no una tarea del runtime a propósito: el runtime todavía no existe
+/// en ese momento, y el punto es cubrir justamente ese rato.
+pub fn volcar_cada_tanto() {
+    std::thread::Builder::new()
+        .name("volcado-del-registro".into())
+        .spawn(|| loop {
+            std::thread::sleep(CADA_CUANTO_SE_VUELCA);
+            flush();
+        })
+        .ok();
+}
+
 pub fn get_log_file_path() -> String {
     if let Ok(logger) = LOGGER.lock() {
         logger.get_current_log_path().to_string_lossy().to_string()
@@ -361,6 +413,55 @@ mod tests {
     fn test_log_sources() {
         assert_eq!(LogSource::Rust.as_str(), "RUST");
         assert_eq!(LogSource::JavaScript.as_str(), "JS");
+    }
+}
+
+#[cfg(test)]
+mod volcado_tests {
+    use super::*;
+
+    /// Lo que este arreglo viene a garantizar: que una línea de `Info` llegue al
+    /// archivo sin esperar a que el proceso termine bien.
+    ///
+    /// `Info` viaja en un búfer de 8 KB que un arranque entero no llena, así que
+    /// antes de esto un proceso que moría se llevaba toda su traza de inicio —y
+    /// el arranque es justo lo que se mira cuando el escritorio no aparece,
+    /// que es justo cuando el proceso no sale limpio—.
+    #[test]
+    fn una_linea_de_info_llega_al_archivo_despues_de_volcar() {
+        let ruta = match LOGGER.lock() {
+            Ok(logger) => logger.get_current_log_path(),
+            Err(_) => return,
+        };
+
+        let marca = format!("volcado-vasak-prueba-{}", std::process::id());
+        log_info(&marca);
+        flush();
+
+        let contenido = std::fs::read_to_string(&ruta).unwrap_or_default();
+        assert!(
+            contenido.contains(&marca),
+            "la línea de Info no llegó a {} después de volcar",
+            ruta.display()
+        );
+    }
+
+    /// Volcar sin nada pendiente no puede fallar ni costar: es lo que hace el
+    /// hilo periódico la mayor parte del tiempo.
+    #[test]
+    fn volcar_dos_veces_seguidas_no_rompe_nada() {
+        flush();
+        flush();
+    }
+
+    /// Cinco segundos acota lo que se puede perder. Si alguien lo sube a un
+    /// minuto, vuelve el problema en casi toda su magnitud sin que nada falle.
+    #[test]
+    fn el_volcado_periodico_es_frecuente() {
+        assert!(
+            CADA_CUANTO_SE_VUELCA <= Duration::from_secs(10),
+            "con {CADA_CUANTO_SE_VUELCA:?} entre volcados se pierde demasiado de lo último que hizo el escritorio"
+        );
     }
 }
 

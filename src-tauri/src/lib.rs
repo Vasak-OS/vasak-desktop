@@ -99,6 +99,12 @@ use applets::{
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Antes que nada: desde acá el registro se vuelca solo cada pocos segundos.
+    //
+    // Va primero porque lo que viene después —construir Tauri, arrancar los
+    // plugins— es justo el tramo que no llegaba al archivo cuando el proceso
+    // moría, y es el que se quiere leer cuando el escritorio no aparece.
+    logger::volcar_cada_tanto();
     logger::log_info("Vasak Desktop iniciando...");
 
     let window_manager = Arc::new(RwLock::new(
@@ -388,8 +394,21 @@ pub fn run() {
                 logger::log_info("Todos los applets iniciados correctamente");
             });
 
-            logger::log_info(&format!("Setup callback completed in {:?}", setup_start.elapsed()));
+            logger::log_info(&format!(
+                "Setup callback completed in {:?}",
+                setup_start.elapsed()
+            ));
             logger::log_info("Aplicación Tauri configurada correctamente");
+
+            // Y acá, a mano, además del volcado periódico: la traza del arranque
+            // entera queda en el archivo apenas termina, sin esperar hasta cinco
+            // segundos. Es una escritura por sesión.
+            //
+            // **Después de la última línea del setup, no antes.** Volcar antes
+            // deja fuera justamente la que dice que el arranque terminó bien, que
+            // es la que distingue «no llegó a configurarse» de «se configuró y
+            // murió después».
+            logger::flush();
             Ok(())
         })
         .run(tauri::generate_context!())
