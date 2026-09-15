@@ -144,4 +144,20 @@ fn el_setup_vuelca_su_traza_al_terminar() {
         fuente[fin_del_setup..].contains("logger::flush()"),
         "el setup no vuelca su traza al terminar"
     );
+
+    // Y el volcado tiene que ir **después** de la última línea del setup. Antes
+    // deja fuera la que dice que el arranque terminó bien, que es la que
+    // distingue «no llegó a configurarse» de «se configuró y murió después».
+    let ultima = fuente
+        .find("Aplicación Tauri configurada correctamente")
+        .expect("no se encontró la última línea del setup");
+    let volcado = fin_del_setup
+        + fuente[fin_del_setup..]
+            .find("logger::flush()")
+            .expect("no se encontró el volcado del setup");
+
+    assert!(
+        volcado > ultima,
+        "el volcado va antes de la última línea del setup, así que esa línea se queda en el búfer"
+    );
 }

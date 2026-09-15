@@ -398,11 +398,17 @@ pub fn run() {
                 "Setup callback completed in {:?}",
                 setup_start.elapsed()
             ));
+            logger::log_info("Aplicación Tauri configurada correctamente");
+
             // Y acá, a mano, además del volcado periódico: la traza del arranque
             // entera queda en el archivo apenas termina, sin esperar hasta cinco
             // segundos. Es una escritura por sesión.
+            //
+            // **Después de la última línea del setup, no antes.** Volcar antes
+            // deja fuera justamente la que dice que el arranque terminó bien, que
+            // es la que distingue «no llegó a configurarse» de «se configuró y
+            // murió después».
             logger::flush();
-            logger::log_info("Aplicación Tauri configurada correctamente");
             Ok(())
         })
         .run(tauri::generate_context!())
