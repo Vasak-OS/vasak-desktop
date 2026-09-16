@@ -39,6 +39,10 @@ const routes = [
 				component: () => import('@/views/applets/TrayPopupView.vue'),
 			},
 			{
+				path: 'privacidad',
+				component: () => import('@/views/applets/PrivacidadAppletView.vue'),
+			},
+			{
 				path: 'twingate',
 				component: () => import('@/views/applets/TwingateAppletView.vue'),
 			},

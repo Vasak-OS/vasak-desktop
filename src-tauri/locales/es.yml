@@ -52,6 +52,15 @@ common:
   retry: Reintentar
 
 views:
+  privacidadApplet:
+    title: Cámara, micrófono y pantalla
+    subtitle: Qué está usando cada cosa ahora mismo.
+    nobody: Nadie está usando la cámara, el micrófono ni la pantalla.
+    camera: Cámara
+    microphone: Micrófono
+    screen: Pantalla
+    stop: Dejar de compartir
+    stopping: Cortando…
   menu:
     configuration: Configuración
     shutdown: Apagar
@@ -238,7 +247,7 @@ components:
   TrayIconPrivacy:
     camera: Cámara en uso
     microphone: Micrófono en uso
-    both: Cámara y micrófono en uso
+    screen: Pantalla compartida
     usedBy: "{0} — {1}"
   TrayIconSound:
     mute: Silenciar

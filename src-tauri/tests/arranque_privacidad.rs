@@ -7,6 +7,7 @@
 const LIB: &str = include_str!("../src/lib.rs");
 const APPLET: &str = include_str!("../src/applets/privacidad.rs");
 const COMPONENTE: &str = include_str!("../../src/components/buttons/TrayIconPrivacy.vue");
+const COMANDOS: &str = include_str!("../src/commands/privacidad.rs");
 
 /// La línea donde se registra un applet.
 fn registro_de(applet: &str) -> &'static str {
@@ -86,7 +87,7 @@ fn cada_vigilante_toca_solo_su_campo() {
 
     assert_eq!(
         llamadas.len(),
-        4,
+        7,
         "cambió la cantidad de anuncios: {llamadas:?}"
     );
 
@@ -96,4 +97,24 @@ fn cada_vigilante_toca_solo_su_campo() {
             "este anuncio manda el estado entero en vez de su campo: {llamada}"
         );
     }
+}
+
+/// El botón de cortar del applet llama a un comando que tiene que existir del
+/// otro lado. Tauri rechaza la llamada entera si no está, y eso se ve recién al
+/// apretarlo — que es el peor momento, porque es cuando alguien quiere dejar de
+/// compartir su pantalla.
+#[test]
+fn el_comando_para_cortar_esta_registrado() {
+    assert!(
+        COMANDOS.contains("pub async fn privacidad_cortar"),
+        "el comando no existe"
+    );
+    assert!(
+        LIB.contains("privacidad_cortar,"),
+        "el comando no está en el `invoke_handler`"
+    );
+    assert!(
+        LIB.contains("toggle_privacidad_applet,"),
+        "el comando que abre el applet no está en el `invoke_handler`"
+    );
 }

@@ -52,6 +52,15 @@ common:
   retry: Retry
 
 views:
+  privacidadApplet:
+    title: Camera, microphone and screen
+    subtitle: What is using each one right now.
+    nobody: Nothing is using the camera, the microphone or the screen.
+    camera: Camera
+    microphone: Microphone
+    screen: Screen
+    stop: Stop sharing
+    stopping: Stopping…
   menu:
     configuration: Settings
     shutdown: Shut down
@@ -238,7 +247,7 @@ components:
   TrayIconPrivacy:
     camera: Camera in use
     microphone: Microphone in use
-    both: Camera and microphone in use
+    screen: Screen shared
     usedBy: "{0} — {1}"
   TrayIconSound:
     mute: Mute

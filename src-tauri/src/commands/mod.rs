@@ -43,7 +43,7 @@ pub use notifications::{
 };
 pub use osd::show_osd;
 pub use panel::show_panel;
-pub use privacidad::privacidad_en_uso;
+pub use privacidad::{privacidad_cortar, privacidad_en_uso, toggle_privacidad_applet};
 pub use runner::{open_app, open_settings, open_settings_section};
 pub use search::{execute_search_result, global_search};
 pub use search_window::toggle_search;
