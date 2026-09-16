@@ -8,6 +8,7 @@ import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
 import TrayIconCapsLock from '@/components/buttons/TrayIconCapsLock.vue';
 import TrayIconMicrophone from '@/components/buttons/TrayIconMicrophone.vue';
 import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
+import TrayIconPrivacy from '@/components/buttons/TrayIconPrivacy.vue';
 import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import TrayIconTwingate from '@/components/buttons/TrayIconTwingate.vue';
 import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
@@ -29,7 +30,7 @@ import { useSharedEvent } from '@/tools/event.bus';
 import { logError, logWarning } from '@/utils/logger';
 
 // Qué partes del panel están encendidas en la configuración.
-const { showWeather, showMusic, showTransfer, showTray } = usePanelConfig();
+const { showWeather, showMusic, showTransfer, showTray, showPrivacy } = usePanelConfig();
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
@@ -179,6 +180,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
         <!-- Status indicator -->
         <div v-if="item.status === 'NeedsAttention'" class="absolute -top-1 -right-1 w-2 h-2 bg-status-error rounded-full animate-pulse shadow-lg shadow-red-500/50" />
       </div>
+      <TrayIconPrivacy v-if="showPrivacy" key="icon-privacy" />
       <TrayIconSound key="icon-sound" />
       <TrayIconBattery v-if="existBattery" key="icon-battery" />
       <TrayIconCapsLock key="icon-capslock" />

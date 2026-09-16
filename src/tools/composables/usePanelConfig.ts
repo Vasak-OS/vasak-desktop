@@ -19,5 +19,6 @@ export function usePanelConfig() {
 		showMusic: computed(() => seccion.value.music !== false),
 		showTransfer: computed(() => seccion.value.transfer !== false),
 		showTray: computed(() => seccion.value.tray !== false),
+		showPrivacy: computed(() => seccion.value.privacy !== false),
 	};
 }

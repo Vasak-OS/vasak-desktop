@@ -32,6 +32,18 @@ export const batteryExists = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('battery_exists', args);
 };
 
+/**
+ * Qué está usando la cámara o el micrófono ahora mismo.
+ *
+ * El panel se destruye y se vuelve a crear cuando cambian los monitores, y el
+ * componente nuevo nace vacío. El escritorio no repite un anuncio igual al
+ * anterior, así que sin esta consulta el indicador se quedaría invisible con la
+ * cámara encendida hasta el próximo cambio.
+ */
+export const privacyInUse = <T = any>(args?: any): Promise<T> => {
+	return invoke<T>('privacidad_en_uso', args);
+};
+
 export const logFromFrontend = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('log_from_frontend', args);
 };
