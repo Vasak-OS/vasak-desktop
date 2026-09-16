@@ -94,6 +94,7 @@ use applets::{
     network::NetworkApplet,
     network_rate::NetworkRateApplet,
     notifications::NotificationApplet,
+    privacidad::PrivacidadApplet,
     tray::TrayApplet,
 };
 
@@ -389,6 +390,10 @@ pub fn run() {
                 // The phone service: nothing on screen depends on it, and most
                 // sessions never plug one in.
                 manager.register(ConnectApplet, AppletPriority::Deferred).await;
+                // Quién te mira y quién te escucha: nadie abre la cámara en el
+                // primer segundo de sesión, y recorrer /proc no tiene por qué
+                // competir con lo que dibuja el panel.
+                manager.register(PrivacidadApplet, AppletPriority::Deferred).await;
                 
                 manager.start_phased(app_handle).await;
                 logger::log_info("Todos los applets iniciados correctamente");

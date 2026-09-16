@@ -15,6 +15,7 @@ pub mod music;
 pub mod network;
 pub mod network_rate;
 pub mod notifications;
+pub mod privacidad;
 pub mod tray;
 
 #[async_trait]

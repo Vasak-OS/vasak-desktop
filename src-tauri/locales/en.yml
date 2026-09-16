@@ -235,6 +235,11 @@ components:
     networkDisconnected: Network disconnected
     vpnConnected: VPN connected
     vpnDisconnected: VPN disconnected
+  TrayIconPrivacy:
+    camera: Camera in use
+    microphone: Microphone in use
+    both: Camera and microphone in use
+    usedBy: "{0} — {1}"
   TrayIconSound:
     mute: Mute
     unmute: Unmute
