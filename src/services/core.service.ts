@@ -44,6 +44,22 @@ export const privacyInUse = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('privacidad_en_uso', args);
 };
 
+/**
+ * Corta una captura de pantalla en curso.
+ *
+ * Lo único de los tres que se puede retirar: la cámara y el micrófono los abre
+ * la aplicación contra el dispositivo y no hay nada en el medio que pueda
+ * quitárselos.
+ */
+export const privacyStopScreen = <T = any>(args?: any): Promise<T> => {
+	return invoke<T>('privacidad_cortar', args);
+};
+
+/** Abre o cierra el applet que lista todo y deja cortar. */
+export const togglePrivacyApplet = <T = any>(args?: any): Promise<T> => {
+	return invoke<T>('toggle_privacidad_applet', args);
+};
+
 export const logFromFrontend = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('log_from_frontend', args);
 };

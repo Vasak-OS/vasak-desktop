@@ -3,84 +3,107 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
- * El indicador de cámara y micrófono en uso.
+ * El indicador de cámara, micrófono y pantalla.
  *
- * Lo que se fija acá no son detalles de pintura: son las tres promesas que el
- * icono le hace a quien lo mira —aparece sólo si pasa algo, distingue los tres
- * casos, y nombra a todos los que están usando el dispositivo, no al primero.
+ * Lo que se fija acá no son detalles de pintura: son las promesas que el icono
+ * le hace a quien lo mira —aparece sólo si pasa algo, distingue los tres
+ * dispositivos, y nombra a todos los que los están usando, no al primero— y la
+ * que hace el applet, que es la única que se puede incumplir de forma peligrosa:
+ * decir que dejaste de compartir sin que sea cierto.
  */
 
 const RAIZ = join(import.meta.dir, '..', '..', '..');
 const COMPONENTE = readFileSync(join(import.meta.dir, 'TrayIconPrivacy.vue'), 'utf8');
+const APPLET = readFileSync(
+	join(RAIZ, 'src', 'views', 'applets', 'PrivacidadAppletView.vue'),
+	'utf8'
+);
 const PANEL = readFileSync(
 	join(RAIZ, 'src', 'components', 'areas', 'panel', 'TrayBarArea.vue'),
 	'utf8'
 );
 const CONFIG = readFileSync(join(RAIZ, 'src', 'tools', 'composables', 'usePanelConfig.ts'), 'utf8');
+const RUTAS = readFileSync(join(RAIZ, 'src', 'routes', 'index.ts'), 'utf8');
 
-describe('quién te mira y quién te escucha', () => {
-	test('sólo aparece cuando hay algo usando la cámara o el micrófono', () => {
-		expect(COMPONENTE).toContain('camara.value.length > 0 || microfono.value.length > 0');
+describe('quién te mira, te escucha y te ve la pantalla', () => {
+	test('sólo aparece cuando hay algo en uso', () => {
+		expect(COMPONENTE).toContain('const visible = computed(() => simbolos.value.length > 0);');
 		expect(COMPONENTE).toContain('v-if="visible"');
 	});
 
-	test('los tres casos tienen tres símbolos distintos', () => {
-		const simbolos = [...COMPONENTE.matchAll(/return '([a-z-]+)';/g)].map(([, s]) => s);
+	test('los tres dispositivos tienen su propio símbolo', () => {
+		// Un glifo combinado por caso serían siete dibujos —las siete
+		// combinaciones de tres— y a 16 píxeles no se distinguen entre sí.
+		const simbolos = [...COMPONENTE.matchAll(/useSymbol\('([a-z-]+)'\)/g)].map(([, s]) => s);
 
-		expect(simbolos).toEqual([
-			'vsk-camera-microphone',
-			'camera-web',
-			'microphone-sensitivity-high',
-		]);
+		expect(simbolos).toEqual(['camera-web', 'microphone-sensitivity-high', 'video-display']);
 		expect(new Set(simbolos).size).toBe(3);
 	});
 
-	test('nombra a todas las aplicaciones, no a la primera', () => {
-		// Pueden ser varias a la vez: una videollamada y un grabador encima.
-		expect(COMPONENTE).toContain('[...camara.value, ...microfono.value].map');
+	test('se dibuja uno por dispositivo en uso, no uno solo', () => {
+		expect(COMPONENTE).toContain('v-for="simbolo in simbolos"');
 	});
 
-	test('pregunta el estado al montarse, no sólo escucha', () => {
-		// El panel se destruye y se vuelve a crear cuando cambian los monitores.
-		// El componente nuevo nace vacío y el escritorio no repite un anuncio
-		// igual al anterior, así que quedaría invisible con la cámara encendida.
-		expect(COMPONENTE).toContain('onMounted(');
-		expect(COMPONENTE).toContain('await privacyInUse<');
+	test('nombra a todas las aplicaciones de las tres listas', () => {
+		expect(COMPONENTE).toContain('[...camara.value, ...microfono.value, ...pantalla.value].map');
 	});
 
-	test('la respuesta de esa consulta no pisa un anuncio más nuevo', () => {
+	test('ahora sí se puede hacer clic, y abre el applet', () => {
+		// Antes no: no había nada que revocar. Con la captura de pantalla sí lo
+		// hay, y el diálogo del portal lo viene prometiendo.
+		expect(COMPONENTE).toContain('@click="abrir"');
+		expect(COMPONENTE).toContain('togglePrivacyApplet');
+		expect(RUTAS).toContain("path: 'privacidad'");
+	});
+
+	test('la respuesta de la consulta inicial no pisa un anuncio más nuevo', () => {
 		const montaje = COMPONENTE.slice(COMPONENTE.indexOf('onMounted('));
 
 		expect(montaje).toContain('if (yaLlegoUnAnuncio.value) return;');
 	});
 
-	test('no se puede hacer clic, porque no hay nada que revocar', () => {
-		expect(COMPONENTE).toContain(':interactive="false"');
-	});
-
 	test('se puede apagar desde la configuración del panel', () => {
-		expect(CONFIG).toContain('showPrivacy');
-		// Ausente significa «mostralo», como el resto del panel: si esto se
-		// leyera `=== true`, el indicador no aparecería en una instalación
-		// nueva y nadie sabría que existe.
 		expect(CONFIG).toContain('seccion.value.privacy !== false');
-	});
-
-	test('el panel lo respeta', () => {
 		expect(PANEL).toContain('<TrayIconPrivacy v-if="showPrivacy"');
 	});
 
 	test('los textos están en los dos idiomas', () => {
-		const claves = ['camera:', 'microphone:', 'both:', 'usedBy:'];
-
 		for (const idioma of ['es', 'en']) {
 			const yml = readFileSync(join(RAIZ, 'src-tauri', 'locales', `${idioma}.yml`), 'utf8');
-			const bloque = yml.slice(yml.indexOf('  TrayIconPrivacy:'));
+			const bloque = yml.slice(yml.indexOf('  TrayIconPrivacy:'), yml.indexOf('  TrayIconSound:'));
 
-			expect(bloque).toContain('  TrayIconPrivacy:');
-			for (const clave of claves) {
-				expect(bloque.slice(0, bloque.indexOf('  TrayIconSound:'))).toContain(clave);
+			for (const clave of ['camera:', 'microphone:', 'screen:', 'usedBy:']) {
+				expect(bloque).toContain(clave);
 			}
+			expect(yml).toContain('  privacidadApplet:');
 		}
+	});
+});
+
+describe('el applet', () => {
+	test('sólo la pantalla se puede cortar', () => {
+		// La cámara y el micrófono los abre la aplicación contra el dispositivo:
+		// no hay nada en el medio que pueda quitárselos, y un botón que no
+		// funciona es peor que no tenerlo.
+		const botones = [...APPLET.matchAll(/@click="cortar\(/g)];
+
+		expect(botones.length).toBe(1);
+		expect(APPLET.slice(APPLET.indexOf('pantalla.length > 0'))).toContain('@click="cortar(');
+	});
+
+	test('no saca la sesión de la lista por su cuenta', () => {
+		// Creerle a la interfaz antes que al agente es exactamente cómo se
+		// termina diciendo que dejaste de compartir sin que sea cierto.
+		const cortar = APPLET.slice(APPLET.indexOf('const cortar ='), APPLET.indexOf('const cerrar'));
+
+		expect(cortar).toContain('privacyStopScreen');
+		expect(cortar).not.toContain('pantalla.value =');
+		expect(cortar).not.toContain('.splice(');
+		expect(cortar).not.toContain('.filter(');
+	});
+
+	test('vuelve a preguntar al reabrirse', () => {
+		// Esconder no destruye el webview, así que Vue no se monta de nuevo.
+		expect(APPLET).toContain("useSharedEvent('window-shown', cargar)");
 	});
 });

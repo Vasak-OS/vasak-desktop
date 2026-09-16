@@ -56,6 +56,12 @@ pub struct Uso {
 pub struct EnUso {
     pub camara: Vec<Uso>,
     pub microfono: Vec<Uso>,
+    /// Las capturas de pantalla en curso, según el agente de permisos.
+    ///
+    /// Esta lista viene de otro proceso y no de mirar el sistema: quien sabe
+    /// qué se está capturando es el backend del portal, que es el que concedió
+    /// el permiso. Y es la única de las tres que se puede cortar desde acá.
+    pub pantalla: Vec<Uso>,
 }
 
 // ─── L a   c á m a r a ───────────────────────────────────────────────────────
@@ -289,6 +295,130 @@ async fn mirar_los_microfonos() -> Vec<Uso> {
         .unwrap_or_default()
 }
 
+// ─── L a   p a n t a l l a ───────────────────────────────────────────────────
+
+/// Dónde vive el agente de permisos en el bus de sesión.
+const AGENTE: &str = "org.freedesktop.impl.portal.desktop.vasak";
+const RUTA_DE_CAPTURAS: &str = "/ar/net/vasak/os/Captura";
+const INTERFAZ_DE_CAPTURAS: &str = "ar.net.vasak.os.Captura";
+
+/// Le pregunta al agente qué se está capturando.
+async fn preguntar_las_capturas(conexion: &zbus::Connection) -> Option<Vec<Uso>> {
+    let respuesta = conexion
+        .call_method(
+            Some(AGENTE),
+            RUTA_DE_CAPTURAS,
+            Some(INTERFAZ_DE_CAPTURAS),
+            "Sesiones",
+            &(),
+        )
+        .await
+        .ok()?;
+
+    let sesiones: Vec<(String, String)> = respuesta.body().deserialize().ok()?;
+
+    Some(
+        sesiones
+            .into_iter()
+            .map(|(sesion, app_id)| Uso {
+                // El nombre que la aplicación declara de sí misma. Puede venir
+                // vacío —una aplicación sin sandbox puede no declararlo— y ahí
+                // vale más decir «una aplicación» que dejar el renglón mudo.
+                aplicacion: if app_id.is_empty() {
+                    String::from("?")
+                } else {
+                    app_id
+                },
+                // El identificador de la sesión del portal, que es lo que hay
+                // que mandar de vuelta para cortarla.
+                detalle: sesion,
+            })
+            .collect(),
+    )
+}
+
+/// Sigue las capturas de pantalla.
+///
+/// Se pregunta al conectar y después se escucha la señal. Preguntar no es
+/// redundante: el agente pudo haber concedido capturas antes de que el
+/// escritorio arrancara —o después de que este vigilante se reconectara— y la
+/// señal sólo cuenta lo que cambia.
+async fn vigilar_las_capturas(app: AppHandle, ultimo: Ultimo) {
+    use futures_util::StreamExt;
+
+    let mut espera = std::time::Duration::from_secs(2);
+
+    loop {
+        let Ok(conexion) = zbus::Connection::session().await else {
+            tokio::time::sleep(espera).await;
+            espera = (espera * 2).min(std::time::Duration::from_secs(60));
+            continue;
+        };
+
+        // Si el agente todavía no publicó su interfaz, esto falla y se
+        // reintenta: el agente es diferido igual que este applet, y cuál de
+        // los dos llega primero no está garantizado.
+        let Some(pantalla) = preguntar_las_capturas(&conexion).await else {
+            tokio::time::sleep(espera).await;
+            espera = (espera * 2).min(std::time::Duration::from_secs(60));
+            continue;
+        };
+
+        espera = std::time::Duration::from_secs(2);
+        anunciar(&app, &ultimo, |estado| estado.pantalla = pantalla).await;
+
+        let regla = zbus::MatchRule::builder()
+            .msg_type(zbus::message::Type::Signal)
+            .sender(AGENTE)
+            .and_then(|constructor| constructor.path(RUTA_DE_CAPTURAS))
+            .and_then(|constructor| constructor.interface(INTERFAZ_DE_CAPTURAS))
+            .and_then(|constructor| constructor.member("Cambiaron"))
+            .map(|constructor| constructor.build());
+
+        let Ok(regla) = regla else {
+            tokio::time::sleep(espera).await;
+            continue;
+        };
+
+        let Ok(mut avisos) = zbus::MessageStream::for_match_rule(regla, &conexion, None).await
+        else {
+            tokio::time::sleep(espera).await;
+            continue;
+        };
+
+        while avisos.next().await.is_some() {
+            let Some(pantalla) = preguntar_las_capturas(&conexion).await else {
+                break;
+            };
+            anunciar(&app, &ultimo, |estado| estado.pantalla = pantalla).await;
+        }
+
+        // Se cayó el agente o el bus: lo que había deja de ser cierto.
+        anunciar(&app, &ultimo, |estado| estado.pantalla = Vec::new()).await;
+        tokio::time::sleep(espera).await;
+    }
+}
+
+/// Corta una captura en curso.
+pub async fn cortar_la_captura(sesion: &str) -> Result<(), String> {
+    let conexion = zbus::Connection::session()
+        .await
+        .map_err(|error| format!("no se pudo abrir el bus de sesión: {error}"))?;
+
+    conexion
+        .call_method(
+            Some(AGENTE),
+            RUTA_DE_CAPTURAS,
+            Some(INTERFAZ_DE_CAPTURAS),
+            "Cerrar",
+            &(sesion,),
+        )
+        .await
+        .map_err(|error| format!("el agente no pudo cerrar la sesión: {error}"))?;
+
+    Ok(())
+}
+
 // ─── E l   a p p l e t ───────────────────────────────────────────────────────
 
 pub struct PrivacidadApplet;
@@ -509,6 +639,12 @@ impl Applet for PrivacidadApplet {
             let app = app.clone();
             let ultimo = ultimo.clone();
             tokio::spawn(async move { vigilar_las_camaras(app, ultimo).await });
+        }
+
+        {
+            let app = app.clone();
+            let ultimo = ultimo.clone();
+            tokio::spawn(async move { vigilar_las_capturas(app, ultimo).await });
         }
 
         tokio::spawn(async move { vigilar_los_microfonos(app, ultimo).await });

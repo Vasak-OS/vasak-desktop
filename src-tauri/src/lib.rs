@@ -148,6 +148,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             batch_invoke,
             privacidad_en_uso,
+            privacidad_cortar,
+            toggle_privacidad_applet,
             weather_cached,
             weather_claim,
             weather_place,
