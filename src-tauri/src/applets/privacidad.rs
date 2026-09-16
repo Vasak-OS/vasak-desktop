@@ -27,7 +27,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::Mutex;
 
 /// El proceso que puentea la cámara del teléfono hacia el dispositivo virtual.
@@ -294,16 +294,31 @@ async fn mirar_los_microfonos() -> Vec<Uso> {
 pub struct PrivacidadApplet;
 
 /// Lo último que se le contó al panel, para no repetirlo.
-type Ultimo = Arc<Mutex<EnUso>>;
+pub type Ultimo = Arc<Mutex<EnUso>>;
+
+/// El estado compartido, para que el panel pueda preguntarlo al montarse.
+pub struct EstadoDePrivacidad(pub Ultimo);
 
 /// Publica el estado si cambió algo.
-async fn anunciar(app: &AppHandle, ultimo: &Ultimo, nuevo: EnUso) {
+///
+/// El cambio llega como una función que toca **un solo campo** a propósito. Son
+/// dos vigilantes independientes, y la forma anterior —leer el campo del otro y
+/// mandar la foto entera— le daba a cada uno la oportunidad de pisar con su
+/// copia vieja lo que el otro acababa de escribir. El indicador se quedaba
+/// mintiendo hasta el siguiente evento.
+///
+/// El candado tampoco se suelta antes de emitir: si se soltara, dos tareas
+/// podrían publicar sus fotos en el orden inverso al que las guardaron.
+async fn anunciar(app: &AppHandle, ultimo: &Ultimo, cambio: impl FnOnce(&mut EnUso)) {
     let mut guardado = ultimo.lock().await;
+
+    let mut nuevo = guardado.clone();
+    cambio(&mut nuevo);
+
     if *guardado == nuevo {
         return;
     }
     *guardado = nuevo.clone();
-    drop(guardado);
 
     if let Err(error) = app.emit(EVENTO, &nuevo) {
         log::error!("No se pudo anunciar el uso de cámara o micrófono: {error}");
@@ -369,8 +384,7 @@ async fn vigilar_las_camaras(app: AppHandle, ultimo: Ultimo) {
 
     // El estado al arrancar: puede haber algo grabando desde antes.
     let camara = quien_usa_la_camara();
-    let microfono = ultimo.lock().await.microfono.clone();
-    anunciar(&app, &ultimo, EnUso { camara, microfono }).await;
+    anunciar(&app, &ultimo, |estado| estado.camara = camara).await;
 
     let buffer = [0u8; 4096];
     let mut eventos = match inotify.into_event_stream(buffer) {
@@ -385,17 +399,23 @@ async fn vigilar_las_camaras(app: AppHandle, ultimo: Ultimo) {
         let Ok(evento) = evento else { continue };
 
         // Un nodo nuevo hay que empezar a vigilarlo; si no, la cámara recién
-        // enchufada queda muda para siempre.
+        // enchufada queda muda para siempre. Y uno borrado hay que olvidarlo:
+        // el kernel ya soltó su vigilancia, así que si el mismo `/dev/videoN`
+        // vuelve —desenchufar y volver a enchufar la misma webcam— habría que
+        // pedirla de nuevo, y con el nombre todavía en la lista se salteaba.
         if let Some(nombre) = evento.name.as_ref().and_then(|n| n.to_str()) {
             let ruta = PathBuf::from("/dev").join(nombre);
             if ruta.to_str().is_some_and(es_nodo_de_video) {
-                vigilar(&ruta, &mut vigilados);
+                if evento.mask.contains(inotify::EventMask::DELETE) {
+                    vigilados.remove(&ruta);
+                } else {
+                    vigilar(&ruta, &mut vigilados);
+                }
             }
         }
 
         let camara = quien_usa_la_camara();
-        let microfono = ultimo.lock().await.microfono.clone();
-        anunciar(&app, &ultimo, EnUso { camara, microfono }).await;
+        anunciar(&app, &ultimo, |estado| estado.camara = camara).await;
     }
 }
 
@@ -409,9 +429,8 @@ async fn vigilar_los_microfonos(app: AppHandle, ultimo: Ultimo) {
     use tokio::io::{AsyncBufReadExt, BufReader};
     use tokio::process::Command;
 
-    let camara = ultimo.lock().await.camara.clone();
     let microfono = mirar_los_microfonos().await;
-    anunciar(&app, &ultimo, EnUso { camara, microfono }).await;
+    anunciar(&app, &ultimo, |estado| estado.microfono = microfono).await;
 
     let mut espera = std::time::Duration::from_secs(1);
 
@@ -433,29 +452,44 @@ async fn vigilar_los_microfonos(app: AppHandle, ultimo: Ultimo) {
             }
         };
 
-        espera = std::time::Duration::from_secs(1);
-
         let Some(stdout) = hijo.stdout.take() else {
             let _ = hijo.kill().await;
+            tokio::time::sleep(espera).await;
+            espera = (espera * 2).min(std::time::Duration::from_secs(30));
             continue;
         };
 
         let mut lineas = BufReader::new(stdout).lines();
+        // La espera se reinicia cuando **llegó una línea**, no cuando el
+        // proceso arrancó: `spawn` tiene éxito antes de que pactl se conecte,
+        // y sin servidor de audio el proceso se muere enseguida sin escribir
+        // nada. Reiniciándola en el arranque, eso era un lanzador de procesos
+        // a toda velocidad durante el resto de la sesión.
+        let mut hubo_salida = false;
 
         // Cuando esto deja de dar líneas —se cayó el servidor de audio, o el
         // proceso murió— se sale a reconectar en vez de quedarse sordo.
         while let Ok(Some(linea)) = lineas.next_line().await {
+            if !hubo_salida {
+                hubo_salida = true;
+                espera = std::time::Duration::from_secs(1);
+            }
+
             // Sólo los flujos de captura pueden cambiar quién escucha.
             if !linea.contains("source-output") {
                 continue;
             }
 
-            let camara = ultimo.lock().await.camara.clone();
             let microfono = mirar_los_microfonos().await;
-            anunciar(&app, &ultimo, EnUso { camara, microfono }).await;
+            anunciar(&app, &ultimo, |estado| estado.microfono = microfono).await;
         }
 
         let _ = hijo.kill().await;
+
+        if !hubo_salida {
+            tokio::time::sleep(espera).await;
+            espera = (espera * 2).min(std::time::Duration::from_secs(30));
+        }
     }
 }
 
@@ -467,6 +501,9 @@ impl Applet for PrivacidadApplet {
 
     async fn start(&self, app: AppHandle) -> Result<(), Box<dyn Error>> {
         let ultimo: Ultimo = Arc::new(Mutex::new(EnUso::default()));
+
+        // Para que un panel recién creado pueda preguntar en vez de esperar.
+        app.manage(EstadoDePrivacidad(ultimo.clone()));
 
         {
             let app = app.clone();

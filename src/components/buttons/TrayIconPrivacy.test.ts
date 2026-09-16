@@ -40,6 +40,20 @@ describe('quién te mira y quién te escucha', () => {
 		expect(COMPONENTE).toContain('[...camara.value, ...microfono.value].map');
 	});
 
+	test('pregunta el estado al montarse, no sólo escucha', () => {
+		// El panel se destruye y se vuelve a crear cuando cambian los monitores.
+		// El componente nuevo nace vacío y el escritorio no repite un anuncio
+		// igual al anterior, así que quedaría invisible con la cámara encendida.
+		expect(COMPONENTE).toContain('onMounted(');
+		expect(COMPONENTE).toContain('await privacyInUse<');
+	});
+
+	test('la respuesta de esa consulta no pisa un anuncio más nuevo', () => {
+		const montaje = COMPONENTE.slice(COMPONENTE.indexOf('onMounted('));
+
+		expect(montaje).toContain('if (yaLlegoUnAnuncio.value) return;');
+	});
+
 	test('no se puede hacer clic, porque no hay nada que revocar', () => {
 		expect(COMPONENTE).toContain(':interactive="false"');
 	});

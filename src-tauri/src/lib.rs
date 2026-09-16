@@ -147,6 +147,7 @@ pub fn run() {
         .plugin(tauri_plugin_vsk_contextual_menu::init())
         .invoke_handler(tauri::generate_handler![
             batch_invoke,
+            privacidad_en_uso,
             weather_cached,
             weather_claim,
             weather_place,
