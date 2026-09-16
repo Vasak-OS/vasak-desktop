@@ -16,16 +16,11 @@ const PANEL = readFileSync(
 	join(RAIZ, 'src', 'components', 'areas', 'panel', 'TrayBarArea.vue'),
 	'utf8'
 );
-const CONFIG = readFileSync(
-	join(RAIZ, 'src', 'tools', 'composables', 'usePanelConfig.ts'),
-	'utf8'
-);
+const CONFIG = readFileSync(join(RAIZ, 'src', 'tools', 'composables', 'usePanelConfig.ts'), 'utf8');
 
 describe('quién te mira y quién te escucha', () => {
 	test('sólo aparece cuando hay algo usando la cámara o el micrófono', () => {
-		expect(COMPONENTE).toContain(
-			'camara.value.length > 0 || microfono.value.length > 0'
-		);
+		expect(COMPONENTE).toContain('camara.value.length > 0 || microfono.value.length > 0');
 		expect(COMPONENTE).toContain('v-if="visible"');
 	});
 

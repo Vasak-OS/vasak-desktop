@@ -56,7 +56,7 @@ const detalle = computed(() => {
 	const lineas = [...camara.value, ...microfono.value].map((uso) =>
 		t('components.TrayIconPrivacy.usedBy')
 			.replace('{0}', uso.aplicacion)
-			.replace('{1}', uso.detalle),
+			.replace('{1}', uso.detalle)
 	);
 	return [titulo.value, ...lineas].join('\n');
 });
