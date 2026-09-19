@@ -29,8 +29,12 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { fileURLToPath } from 'node:url';
 
-const raiz = new URL('..', import.meta.url).pathname;
+// `fileURLToPath` y no `.pathname`: éste deja los caracteres escapados, así que
+// un checkout en una ruta con espacios mandaría a `Bun.Glob`, `Bun.file` y
+// `Bun.spawn` a una carpeta que no existe.
+const raiz = fileURLToPath(new URL('..', import.meta.url));
 
 const fuentes = await Array.fromAsync(new Bun.Glob('src/**/*.{ts,d.ts,vue}').scan({ cwd: raiz }));
 
@@ -54,6 +58,13 @@ async function chequear(tsconfig: string): Promise<{ codigo: number; salida: str
 }
 
 describe('los tipos de la librería', () => {
+	test('y las dos pruebas que siguen miran archivos de verdad', () => {
+		// Las dos buscan algo que no tiene que aparecer, así que pasan solas si
+		// la lista viene vacía —una `raiz` mal armada y no hay nada que mirar—.
+		expect(fuentes).toContain('src/vite-env.d.ts');
+		expect(fuentes.length).toBeGreaterThan(50);
+	});
+
 	test('no los redeclara ningún archivo de la aplicación', async () => {
 		// Cualquier `declare module` de un paquete instalado, no sólo el de
 		// `vue-libvasak`: el problema es la forma, y la de al lado
@@ -69,13 +80,18 @@ describe('los tipos de la librería', () => {
 		// Hasta la 0.2.x el paquete apuntaba `types` a una declaración escrita a
 		// mano; los generados con `vue-tsc` empiezan en la 0.4. Volver a aquella
 		// línea deja el chequeo como estaba aunque no vuelva ningún archivo.
-		const manifiesto = (await Bun.file(`${raiz}package.json`).json()) as {
-			dependencies: Record<string, string>;
-		};
-		const rango = manifiesto.dependencies['@vasakgroup/vue-libvasak'] ?? '';
-		const menor = Number(rango.match(/^\D*0\.(\d+)\./)?.[1] ?? -1);
+		//
+		// Se mira la versión instalada y no el rango del manifiesto: es la que
+		// se está comprobando, y leerla evita interpretar a mano un `^`, un `~`
+		// o un salto de mayor —`^1.0.0` es más nueva que la 0.6 y publica los
+		// tipos igual—.
+		const instalada = (
+			(await Bun.file(`${raiz}node_modules/@vasakgroup/vue-libvasak/package.json`).json()) as {
+				version: string;
+			}
+		).version;
 
-		expect(menor).toBeGreaterThanOrEqual(6);
+		expect(Bun.semver.satisfies(instalada, '>=0.6.0')).toBe(true);
 	});
 
 	test('y se comprueban: el uso correcto pasa', async () => {
