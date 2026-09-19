@@ -28,13 +28,18 @@ describe('el chequeo de tipos', () => {
 		expect(ciegos).toEqual([]);
 	});
 
-	test('y sigue estando', () => {
-		// Sacar el `--bun` quitando la llamada entera también «arregla» esta
-		// prueba, y deja la aplicación sin comprobar los tipos.
-		const llama = Object.values(manifiesto.scripts).some((orden) =>
-			orden.includes('vue-tsc --noEmit')
-		);
+	test('y el build lo sigue llamando', () => {
+		// Sacar el `--bun` quitando la llamada entera también «arregla» la
+		// prueba de arriba, y deja la aplicación sin comprobar los tipos.
+		//
+		// Se mira `build` y no cualquier script: lo que empaqueta es ése, y con
+		// la llamada viva en otro lado la prueba pasaba mientras el build se
+		// saltaba el chequeo.
+		//
+		// Y como orden y no como texto: `echo vue-tsc --noEmit` contiene la
+		// misma cadena y no comprueba nada.
+		const build = manifiesto.scripts.build ?? '';
 
-		expect(llama).toBe(true);
+		expect(build).toMatch(/(^|&&|\|\||;)\s*(bunx\s+)?vue-tsc\s+--noEmit/);
 	});
 });
