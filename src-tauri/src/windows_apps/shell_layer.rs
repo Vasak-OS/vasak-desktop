@@ -56,6 +56,65 @@ impl Default for LayerSpec {
     }
 }
 
+/// Dónde se ancla una superficie, cuánto mide y cuánto se aparta de los bordes.
+///
+/// Aparte de [`LayerSpec`] porque es lo único que cambia en caliente: el panel
+/// se mueve de un lado a otro de la pantalla sin volver a crearse, y el centro
+/// de control se corre para no quedar debajo. Lo demás —la capa, el espacio de
+/// nombres, el teclado— se decide una vez y no vuelve a tocarse.
+pub struct Geometria {
+    /// Bordes anclados: (izquierda, derecha, arriba, abajo).
+    pub anchors: (bool, bool, bool, bool),
+    /// Lo que mide, en píxeles lógicos.
+    pub size: (f64, f64),
+    /// Separación de cada borde anclado, en el mismo orden que `anchors`.
+    pub margins: (i32, i32, i32, i32),
+    /// `None` reserva espacio automáticamente; `Some(-1)` no reserva nada.
+    pub exclusive_zone: Option<i32>,
+}
+
+/// Deja la superficie anclada, con su tamaño y sus márgenes.
+///
+/// Se aplica igual al crearla y al moverla: `gtk-layer-shell` acepta los cuatro
+/// cambios en caliente, así que cambiar de lado es esto y nada más.
+fn aplicar_geometria(layer_win: &gtk::Window, geo: &Geometria) {
+    let (left, right, top, bottom) = geo.anchors;
+    let (width, height) = geo.size;
+
+    // Layer-shell asks the compositor for the surface size on every axis that is
+    // not anchored to both of its edges, and it takes that size from this
+    // window. `inner_size` on the builder applies to the throwaway toplevel, not
+    // to this one, so without a request here the axis collapses to what WebKit
+    // asks for, which is nothing: that is how the control centre ended up as a
+    // sliver in the corner. -1 is GTK for "no request", and leaves the stretched
+    // axes to the compositor.
+    layer_win.set_size_request(
+        if left && right { -1 } else { width as i32 },
+        if top && bottom { -1 } else { height as i32 },
+    );
+
+    layer_win.set_anchor(Edge::Left, left);
+    layer_win.set_anchor(Edge::Right, right);
+    layer_win.set_anchor(Edge::Top, top);
+    layer_win.set_anchor(Edge::Bottom, bottom);
+
+    let (margin_left, margin_right, margin_top, margin_bottom) = geo.margins;
+    layer_win.set_layer_shell_margin(Edge::Left, margin_left);
+    layer_win.set_layer_shell_margin(Edge::Right, margin_right);
+    layer_win.set_layer_shell_margin(Edge::Top, margin_top);
+    layer_win.set_layer_shell_margin(Edge::Bottom, margin_bottom);
+
+    match geo.exclusive_zone {
+        // Se vuelve a pedir en cada acomodo, no sólo al crear: la zona
+        // automática se calcula a partir del borde anclado, así que un panel que
+        // pasa de arriba a la izquierda tiene que reservar una franja vertical.
+        // Sin esto las ventanas maximizadas seguirían esquivando la franja de
+        // antes y quedarían tapadas por la de ahora.
+        None => layer_win.auto_exclusive_zone_enable(),
+        Some(zone) => layer_win.set_exclusive_zone(zone),
+    }
+}
+
 /// Builds a Tauri webview, moves it into a layer-shell window pinned to
 /// `gdk_monitor`, and registers it so it can be torn down later.
 ///
@@ -87,40 +146,20 @@ pub fn spawn_layer_window(
     let layer_win = gtk::Window::new(gtk::WindowType::Toplevel);
     layer_win.set_decorated(false);
 
-    let (left, right, top, bottom) = spec.anchors;
-
-    // Layer-shell asks the compositor for the surface size on every axis that is
-    // not anchored to both of its edges, and it takes that size from this
-    // window. `inner_size` above applies to the throwaway toplevel, not to this
-    // one, so without a request here the axis collapses to what WebKit asks for,
-    // which is nothing: that is how the control centre ended up as a sliver in
-    // the corner. -1 is GTK for "no request", and leaves the stretched axes to
-    // the compositor.
-    layer_win.set_size_request(
-        if left && right { -1 } else { width as i32 },
-        if top && bottom { -1 } else { height as i32 },
-    );
-
     layer_win.init_layer_shell();
     layer_win.set_monitor(gdk_monitor);
     layer_win.set_namespace(spec.namespace);
     layer_win.set_layer(spec.layer);
 
-    layer_win.set_anchor(Edge::Left, left);
-    layer_win.set_anchor(Edge::Right, right);
-    layer_win.set_anchor(Edge::Top, top);
-    layer_win.set_anchor(Edge::Bottom, bottom);
-
-    let (margin_left, margin_right, margin_top, margin_bottom) = spec.margins;
-    layer_win.set_layer_shell_margin(Edge::Left, margin_left);
-    layer_win.set_layer_shell_margin(Edge::Right, margin_right);
-    layer_win.set_layer_shell_margin(Edge::Top, margin_top);
-    layer_win.set_layer_shell_margin(Edge::Bottom, margin_bottom);
-
-    match spec.exclusive_zone {
-        Some(zone) => layer_win.set_exclusive_zone(zone),
-        None => layer_win.auto_exclusive_zone_enable(),
-    }
+    aplicar_geometria(
+        &layer_win,
+        &Geometria {
+            anchors: spec.anchors,
+            size,
+            margins: spec.margins,
+            exclusive_zone: spec.exclusive_zone,
+        },
+    );
     layer_win.set_keyboard_mode(spec.keyboard);
 
     reparent_webview(&gtk_window, &layer_win)?;
@@ -163,7 +202,9 @@ fn reparent_webview(
     gtk_window: &gtk::ApplicationWindow,
     layer_win: &gtk::Window,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let child = gtk_window.child().ok_or("Tauri window has no child widget")?;
+    let child = gtk_window
+        .child()
+        .ok_or("Tauri window has no child widget")?;
 
     let container = child
         .dynamic_cast_ref::<gtk::Container>()
@@ -199,6 +240,32 @@ fn apply_transparency(layer_win: &gtk::Window) {
             .style_context()
             .add_provider(&css, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
     }
+}
+
+/// Vuelve a anclar una superficie que ya existe, sin volver a crearla.
+///
+/// Es lo que mueve el panel de un lado de la pantalla al otro cuando cambia la
+/// configuración. Recrearlo también funcionaría —es lo que hace el cambio de
+/// monitores—, pero se lleva puesto el webview: la barra parpadea, vuelve a
+/// cargar la página y pierde lo que tuviera a medio hacer. `gtk-layer-shell`
+/// acepta cambiar anclas, tamaño y márgenes sobre una superficie mapeada, así
+/// que no hace falta.
+///
+/// Devuelve `false` si esa superficie no está construida. Sólo tiene sentido en
+/// el hilo principal de GTK, que es donde vive el registro: desde cualquier
+/// otro hilo el registro se ve vacío y la respuesta sería `false` esté o no la
+/// ventana en pantalla.
+pub fn reubicar_layer_window(label: &str, geo: &Geometria) -> bool {
+    LAYER_WINDOWS
+        .try_with(|windows| {
+            let windows = windows.borrow();
+            let Some(window) = windows.get(label) else {
+                return false;
+            };
+            aplicar_geometria(window, geo);
+            true
+        })
+        .unwrap_or(false)
 }
 
 /// Tears down every shell surface whose label starts with one of `prefixes`,
@@ -277,14 +344,15 @@ pub fn hide_layer_window(label: &str) {
 /// callers on another thread get `None` and should toggle blind rather than
 /// guess.
 pub fn layer_window_visible(label: &str) -> Option<bool> {
-    LAYER_WINDOWS.try_with(|windows| {
-        windows
-            .borrow()
-            .get(label)
-            .map(gtk::prelude::WidgetExt::is_visible)
-    })
-    .ok()
-    .flatten()
+    LAYER_WINDOWS
+        .try_with(|windows| {
+            windows
+                .borrow()
+                .get(label)
+                .map(gtk::prelude::WidgetExt::is_visible)
+        })
+        .ok()
+        .flatten()
 }
 
 /// Whether the surface was built.

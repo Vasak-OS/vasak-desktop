@@ -13,7 +13,7 @@ pub use applets::{
 };
 pub use applications::{create_osd_window, create_search_window, create_session_popup_window};
 pub use connect::create_connect_window;
-pub use control_center::create_control_center_window;
+pub use control_center::{create_control_center_window, reubicar_control_center};
 pub use desktop::create_desktops;
 pub use menu::create_menu_window;
-pub use panel::create_panels;
+pub use panel::{create_panels, reubicar_panel};

@@ -55,6 +55,7 @@ mod menu_manager;
 mod menu_watcher;
 mod monitor_manager;
 mod notifications;
+mod posicion_del_panel;
 mod tray;
 mod utils;
 mod window_manager;
@@ -328,6 +329,7 @@ pub fn run() {
                 crate::logger::log_error(&format!("[control_center] no se pudo crear: {error}"));
             }
             watch_monitor_changes(&handle);
+            seguir_la_posicion_del_panel(app.handle().clone());
             menu_watcher::watch_application_dirs(&handle);
             // La carpeta del escritorio, para que el widget de archivos deje de
             // releerla cada diez segundos sin motivo.
@@ -421,4 +423,58 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Sigue a `panel.position`: mover el panel en Configuración lo mueve en el acto.
+///
+/// El gestor de configuración vigila el archivo y emite `config-changed` cuando
+/// cambia, así que acá sólo hay que volver a leer de qué lado va y acomodar las
+/// dos superficies que dependen de eso: el panel, que se ancla al borde nuevo, y
+/// el centro de control, que se aparta del panel a mano porque le pasa por
+/// encima.
+///
+/// # Por qué se compara con la anterior
+///
+/// `config-changed` se emite por **cualquier** cambio del archivo —el tema, la
+/// fuente, un interruptor del panel—, y son muchos más que los cambios de
+/// posición. Sin la comparación, cada uno reacomodaría las dos superficies para
+/// dejarlas donde ya estaban.
+///
+/// # Y por qué el trabajo se marshalla al hilo principal
+///
+/// El evento llega desde una tarea de Tokio, y lo que hay que tocar son objetos
+/// de GTK: el registro de superficies es un `thread_local` del hilo principal, y
+/// desde cualquier otro se ve vacío. Hacerlo en el hilo equivocado no falla con
+/// un error, no hace nada.
+fn seguir_la_posicion_del_panel(app: tauri::AppHandle) {
+    let ultima = Arc::new(std::sync::Mutex::new(posicion_del_panel::leer()));
+    let para_el_oyente = app.clone();
+
+    app.listen("config-changed", move |_| {
+        let nueva = posicion_del_panel::leer();
+
+        {
+            let Ok(mut ultima) = ultima.lock() else {
+                logger::log_error("[panel] el candado de la posición quedó envenenado");
+                return;
+            };
+            if *ultima == nueva {
+                return;
+            }
+            *ultima = nueva;
+        }
+
+        logger::log_info(&format!(
+            "[panel] la configuración lo manda a {}",
+            nueva.clave()
+        ));
+
+        let app = para_el_oyente.clone();
+        unsafe {
+            gtk_utils::invoke_on_main(move || {
+                reubicar_panel(&app, nueva);
+                reubicar_control_center(&app, nueva);
+            });
+        }
+    });
 }
