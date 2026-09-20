@@ -29,19 +29,52 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+
+/** Un `declare module '*.vue'`, con cualquiera de las dos comillas. */
+const COMODIN = /declare\s+module\s+['"]\*\.vue['"]/;
+/** Un `declare module` a mano de un paquete del ecosistema. */
+const PAQUETE = /declare\s+module\s+['"]@vasakgroup\//;
 
 // `fileURLToPath` y no `.pathname`: éste deja los caracteres escapados, así que
 // un checkout en una ruta con espacios mandaría a `Bun.Glob`, `Bun.file` y
 // `Bun.spawn` a una carpeta que no existe.
 const raiz = fileURLToPath(new URL('..', import.meta.url));
 
-const fuentes = await Array.fromAsync(new Bun.Glob('src/**/*.{ts,d.ts,vue}').scan({ cwd: raiz }));
+/** Este mismo archivo, relativo a la raíz. */
+const propio = fileURLToPath(import.meta.url).slice(raiz.length);
 
-async function conteniendo(patron: RegExp): Promise<string[]> {
+/**
+ * Todo lo que el chequeo de tipos mira, no sólo `src`.
+ *
+ * El `tsconfig` de la raíz mira `src/**` y el de node los archivos de
+ * configuración sueltos; `tests/` se suma porque una declaración puesta ahí
+ * taparía los tipos igual en cuanto alguien amplíe el `include`. Con el patrón
+ * angosto que había, las dos pruebas de abajo pasaban sin haberla visto.
+ */
+async function escanear(cwd: string): Promise<string[]> {
+	const listas = await Promise.all(
+		['src/**/*.{ts,tsx,mts,cts,vue}', 'tests/**/*.{ts,tsx,vue}', '*.{ts,mts,cts}'].map(
+			async (patron) => await Array.fromAsync(new Bun.Glob(patron).scan({ cwd })),
+		),
+	);
+	return listas.flat();
+}
+
+const fuentes = (await escanear(raiz))
+	// Menos este archivo. Los patrones que busca los lleva escritos adentro,
+	// así que al ampliar el escaneo a `tests/` empezó a encontrarse a sí mismo.
+	.filter((ruta) => ruta !== propio);
+
+async function conteniendo(
+	patron: RegExp,
+	archivos: string[] = fuentes,
+	base: string = raiz,
+): Promise<string[]> {
 	const hallados: string[] = [];
-	for (const ruta of fuentes) {
-		if (patron.test(await Bun.file(`${raiz}${ruta}`).text())) hallados.push(ruta);
+	for (const ruta of archivos) {
+		if (patron.test(await Bun.file(`${base}${ruta}`).text())) hallados.push(ruta);
 	}
 	return hallados.sort();
 }
@@ -62,18 +95,55 @@ describe('los tipos de la librería', () => {
 		// Las dos buscan algo que no tiene que aparecer, así que pasan solas si
 		// la lista viene vacía —una `raiz` mal armada y no hay nada que mirar—.
 		expect(fuentes).toContain('src/vite-env.d.ts');
+		expect(fuentes).toContain('src/main.ts');
+		// Y que los tres patrones traigan algo: el de `tests` y el de la raíz se
+		// suman porque el de `src` solo deja huecos, y un patrón que no encuentra
+		// nada los deja igual.
+		expect(fuentes.some((ruta) => ruta.startsWith('tests/'))).toBe(true);
+		expect(fuentes).toContain('vite.config.ts');
 		expect(fuentes.length).toBeGreaterThan(50);
+	});
+
+	test('y los dos patrones encuentran lo que buscan', async () => {
+		// El caso positivo, sobre un repositorio de mentira armado aparte. Sin
+		// esto, un patrón que dejó de matchear —o un `conteniendo` que siempre
+		// devuelve `[]`— deja las dos pruebas de ausencia en verde sin haber
+		// mirado nada. No es hipotético: vasak-session-manager se salvó del
+		// barrido que sacó el comodín justo así, porque el patrón buscaba
+		// comillas simples y ahí estaba escrito con dobles.
+		const falso = `${tmpdir()}/vsk-guardia-${Bun.randomUUIDv7()}/`;
+		try {
+			// Las dos comillas en el comodín, una en cada archivo.
+			await Bun.write(`${falso}src/dobles.d.ts`, 'declare module "*.vue" {}\n');
+			await Bun.write(`${falso}src/simples.d.ts`, "declare module '*.vue' {}\n");
+			await Bun.write(
+				`${falso}src/paquete.d.ts`,
+				"declare module '@vasakgroup/vue-libvasak' {}\n",
+			);
+			await Bun.write(`${falso}src/inocente.ts`, 'export const nada = 1;\n');
+
+			const archivos = await escanear(falso);
+			expect(archivos.length).toBe(4);
+
+			expect(await conteniendo(COMODIN, archivos, falso)).toEqual([
+				'src/dobles.d.ts',
+				'src/simples.d.ts',
+			]);
+			expect(await conteniendo(PAQUETE, archivos, falso)).toEqual(['src/paquete.d.ts']);
+		} finally {
+			await Bun.$`rm -rf ${falso}`.quiet();
+		}
 	});
 
 	test('no los redeclara ningún archivo de la aplicación', async () => {
 		// Cualquier `declare module` de un paquete instalado, no sólo el de
 		// `vue-libvasak`: el problema es la forma, y la de al lado
 		// (`@vasakgroup/plugin-*`) taparía sus tipos igual.
-		expect(await conteniendo(/declare\s+module\s+['"]@vasakgroup\//)).toEqual([]);
+		expect(await conteniendo(PAQUETE)).toEqual([]);
 	});
 
 	test('no los aplana ningún comodín de .vue', async () => {
-		expect(await conteniendo(/declare\s+module\s+['"]\*\.vue['"]/)).toEqual([]);
+		expect(await conteniendo(COMODIN)).toEqual([]);
 	});
 
 	test('vienen de una versión que los genera', async () => {
