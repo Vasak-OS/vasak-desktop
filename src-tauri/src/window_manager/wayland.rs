@@ -1,9 +1,11 @@
 use super::app_icon;
-use super::{wayfire_ipc::{get_wayfire_client, View}, WindowInfo, WindowManagerBackend};
+use super::{
+    wayfire_ipc::{get_wayfire_client, View},
+    WindowInfo, WindowManagerBackend,
+};
 use std::sync::mpsc::Sender;
 
-pub struct WaylandManager {
-}
+pub struct WaylandManager {}
 
 impl WaylandManager {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
@@ -17,8 +19,9 @@ impl WaylandManager {
         match tokio::runtime::Handle::try_current() {
             Ok(handle) => tokio::task::block_in_place(|| handle.block_on(f))
                 .map_err(|e| -> Box<dyn std::error::Error> { e }),
-            Err(_) => tauri::async_runtime::block_on(f)
-                .map_err(|e| -> Box<dyn std::error::Error> { e }),
+            Err(_) => {
+                tauri::async_runtime::block_on(f).map_err(|e| -> Box<dyn std::error::Error> { e })
+            }
         }
     }
 
@@ -76,24 +79,21 @@ impl WaylandManager {
             return true;
         }
 
-        view
-            .type_field
-            .as_deref()
-            .is_some_and(|value| {
-                let lower = value.to_lowercase();
-                matches!(
-                    lower.as_str(),
-                    "panel"
-                        | "desktop"
-                        | "dock"
-                        | "background"
-                        | "bottom"
-                        | "top"
-                        | "overlay"
-                        | "layer-shell"
-                        | "layershell"
-                ) || lower.contains("layer-shell")
-            })
+        view.type_field.as_deref().is_some_and(|value| {
+            let lower = value.to_lowercase();
+            matches!(
+                lower.as_str(),
+                "panel"
+                    | "desktop"
+                    | "dock"
+                    | "background"
+                    | "bottom"
+                    | "top"
+                    | "overlay"
+                    | "layer-shell"
+                    | "layershell"
+            ) || lower.contains("layer-shell")
+        })
     }
 
     /// El nombre del icono: la clave `Icon` de la entrada `.desktop` de la
@@ -130,7 +130,9 @@ impl WaylandManager {
             return None;
         }
 
-        let title = Self::field(view.title.as_deref()).unwrap_or_default().to_string();
+        let title = Self::field(view.title.as_deref())
+            .unwrap_or_default()
+            .to_string();
         let icon = Self::icon_name(view);
 
         if title.is_empty() && icon == app_icon::FALLBACK_ICON {
@@ -150,9 +152,12 @@ impl WaylandManager {
 impl WindowManagerBackend for WaylandManager {
     fn get_window_list(&self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
         let windows = Self::block_on_async(async {
-            let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
+            let client = get_wayfire_client()
+                .await
+                .ok_or("Unable to connect to Wayfire IPC")?;
             let views = client.list_views_typed().await?;
-            let mut windows: Vec<WindowInfo> = views.iter().filter_map(Self::view_to_window_info).collect();
+            let mut windows: Vec<WindowInfo> =
+                views.iter().filter_map(Self::view_to_window_info).collect();
             windows.sort_by(|left, right| {
                 let l = left.id.parse::<u64>().unwrap_or(u64::MAX);
                 let r = right.id.parse::<u64>().unwrap_or(u64::MAX);
@@ -191,12 +196,48 @@ impl WindowManagerBackend for WaylandManager {
         Ok(())
     }
 
-    fn toggle_window(&self, win_id: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let view_id = win_id.parse::<u64>().map_err(|error| format!("invalid Wayfire view id {win_id}: {error}"))?;
-        let view_id_i64 = i64::try_from(view_id).map_err(|error| format!("Wayfire view id out of range {win_id}: {error}"))?;
+    fn present_window(&self, win_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let view_id = win_id
+            .parse::<u64>()
+            .map_err(|error| format!("invalid Wayfire view id {win_id}: {error}"))?;
+        let view_id_i64 = i64::try_from(view_id)
+            .map_err(|error| format!("Wayfire view id out of range {win_id}: {error}"))?;
 
         Self::block_on_async(async move {
-            let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
+            let client = get_wayfire_client()
+                .await
+                .ok_or("Unable to connect to Wayfire IPC")?;
+            let views = client.list_views_typed().await?;
+            let view = views
+                .into_iter()
+                .find(|candidate| candidate.id == view_id_i64)
+                .ok_or_else(|| format!("Wayfire view not found: {view_id}"))?;
+
+            match crate::window_manager::para_presentar(view.minimized.unwrap_or(false)) {
+                crate::window_manager::ParaPresentar::RestaurarYEnfocar => {
+                    client.set_minimized(view_id, false).await?;
+                    client.set_focus(view_id).await.map(|_| ())
+                }
+                crate::window_manager::ParaPresentar::Enfocar => {
+                    client.set_focus(view_id).await.map(|_| ())
+                }
+            }
+        })?;
+
+        Ok(())
+    }
+
+    fn toggle_window(&self, win_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let view_id = win_id
+            .parse::<u64>()
+            .map_err(|error| format!("invalid Wayfire view id {win_id}: {error}"))?;
+        let view_id_i64 = i64::try_from(view_id)
+            .map_err(|error| format!("Wayfire view id out of range {win_id}: {error}"))?;
+
+        Self::block_on_async(async move {
+            let client = get_wayfire_client()
+                .await
+                .ok_or("Unable to connect to Wayfire IPC")?;
             let views = client.list_views_typed().await?;
             let view = views
                 .into_iter()
@@ -227,7 +268,14 @@ mod tests {
     use super::*;
 
     /// Una vista como las que manda Wayfire, con lo mínimo para decidir.
-    fn vista(id: i64, app_id: &str, title: &str, role: &str, type_field: &str, layer: &str) -> View {
+    fn vista(
+        id: i64,
+        app_id: &str,
+        title: &str,
+        role: &str,
+        type_field: &str,
+        layer: &str,
+    ) -> View {
         View {
             activated: false,
             app_id: Some(app_id.to_string()),
@@ -279,10 +327,38 @@ mod tests {
     #[test]
     fn ninguna_superficie_del_escritorio_va_al_panel() {
         let superficies = [
-            vista(1749, "vasak-desktop", "layer-shell", "desktop-environment", "background", "background"),
-            vista(1751, "vasak-panel", "layer-shell", "desktop-environment", "panel", "top"),
-            vista(1800, "vasak", "layer-shell", "desktop-environment", "panel", "top"),
-            vista(1801, "vasak-control-center", "layer-shell", "desktop-environment", "overlay", "overlay"),
+            vista(
+                1749,
+                "vasak-desktop",
+                "layer-shell",
+                "desktop-environment",
+                "background",
+                "background",
+            ),
+            vista(
+                1751,
+                "vasak-panel",
+                "layer-shell",
+                "desktop-environment",
+                "panel",
+                "top",
+            ),
+            vista(
+                1800,
+                "vasak",
+                "layer-shell",
+                "desktop-environment",
+                "panel",
+                "top",
+            ),
+            vista(
+                1801,
+                "vasak-control-center",
+                "layer-shell",
+                "desktop-environment",
+                "overlay",
+                "overlay",
+            ),
             vista(3, "nil", "nil", "unmanaged", "unmanaged", "none"),
         ];
 
@@ -423,18 +499,28 @@ mod prueba_en_vivo {
             .collect();
 
         for ventana in &ventanas {
-            println!("{} · icono {} · {}", ventana.id, ventana.icon, ventana.title);
+            println!(
+                "{} · icono {} · {}",
+                ventana.id, ventana.icon, ventana.title
+            );
         }
 
         // Ninguna superficie del escritorio: ni el panel, ni el fondo, ni los
         // carteles de notificación.
         for ventana in &ventanas {
-            assert_ne!(ventana.title, "layer-shell", "una superficie de capa llegó al panel");
+            assert_ne!(
+                ventana.title, "layer-shell",
+                "una superficie de capa llegó al panel"
+            );
         }
 
         // Y ningún icono adivinado por el último tramo del identificador.
         for ventana in &ventanas {
-            assert_ne!(ventana.icon, "desktop", "{} quedó con el icono de la carpeta", ventana.title);
+            assert_ne!(
+                ventana.icon, "desktop",
+                "{} quedó con el icono de la carpeta",
+                ventana.title
+            );
         }
     }
 }
