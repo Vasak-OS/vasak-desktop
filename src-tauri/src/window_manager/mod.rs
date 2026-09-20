@@ -1,8 +1,8 @@
 pub mod app_icon;
 pub mod delta;
 pub mod present;
-pub mod wayland;
 pub mod wayfire_ipc;
+pub mod wayland;
 
 use serde::{Deserialize, Serialize};
 use std::sync::mpsc::Sender;

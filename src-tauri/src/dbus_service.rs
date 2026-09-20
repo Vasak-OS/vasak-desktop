@@ -1,6 +1,6 @@
 use crate::commands::{toggle_control_center, toggle_menu, toggle_search, toggle_session_popup};
 use crate::constants::DBUS_SERVICE_NAME;
-use crate::logger::{log_info, log_error, log_warning, log_debug};
+use crate::logger::{log_debug, log_error, log_info, log_warning};
 use futures_util::TryStreamExt;
 use tauri::{AppHandle, Emitter, Manager};
 use zbus::{Connection, Message, Result as ZbusResult};
@@ -45,7 +45,10 @@ impl DesktopService {
                 if let Err(e) = self.app_handle.run_on_main_thread(move || {
                     let _ = toggle_control_center(app_handle);
                 }) {
-                    log_error(&format!("D-Bus: no se pudo alternar el centro de control: {}", e));
+                    log_error(&format!(
+                        "D-Bus: no se pudo alternar el centro de control: {}",
+                        e
+                    ));
                 }
             }
             "OpenSearch" | "ToggleSearch" => {
@@ -90,25 +93,23 @@ impl DesktopService {
             // No contesta, como el resto de los métodos de este servicio: quien
             // llama tiene que usar `--no-reply` o no esperar. Y no falla si la
             // aplicación no está abierta; eso es un caso normal, no un error.
-            "PresentApp" => {
-                match msg.body().deserialize::<String>() {
-                    Ok(pedido) => {
-                        log_info(&format!("D-Bus: trayendo al frente «{}»", pedido));
-                        tauri::async_runtime::spawn(async move {
-                            if !crate::window_manager::present::present_app(&pedido).await {
-                                log_debug(&format!(
-                                    "D-Bus: no hay ninguna ventana de «{}» para mostrar",
-                                    pedido
-                                ));
-                            }
-                        });
-                    }
-                    Err(e) => log_warning(&format!(
-                        "D-Bus: PresentApp sin un nombre de aplicación válido: {}",
-                        e
-                    )),
+            "PresentApp" => match msg.body().deserialize::<String>() {
+                Ok(pedido) => {
+                    log_info(&format!("D-Bus: trayendo al frente «{}»", pedido));
+                    tauri::async_runtime::spawn(async move {
+                        if !crate::window_manager::present::present_app(&pedido).await {
+                            log_debug(&format!(
+                                "D-Bus: no hay ninguna ventana de «{}» para mostrar",
+                                pedido
+                            ));
+                        }
+                    });
                 }
-            }
+                Err(e) => log_warning(&format!(
+                    "D-Bus: PresentApp sin un nombre de aplicación válido: {}",
+                    e
+                )),
+            },
             // Las ventanas abiertas, para quien las quiera listar sin hablarle
             // al compositor. De todo el escritorio, este proceso es el único que
             // le habla, y el protocolo que haría falta para enumerarlas
@@ -200,9 +201,12 @@ pub async fn start_dbus_service(app_handle: AppHandle) -> ZbusResult<()> {
 
     // Solicitar el nombre del servicio
     connection.request_name(DBUS_SERVICE_NAME).await?;
-    
+
     log::info!("D-Bus service registered as: {}", DBUS_SERVICE_NAME);
-    log_info(&format!("Servicio D-Bus registrado como: {}", DBUS_SERVICE_NAME));
+    log_info(&format!(
+        "Servicio D-Bus registrado como: {}",
+        DBUS_SERVICE_NAME
+    ));
 
     // Procesar mensajes D-Bus usando stream
     let mut stream = zbus::MessageStream::from(&connection);
