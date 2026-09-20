@@ -2,9 +2,9 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { SliderControl } from '@vasakgroup/vue-libvasak';
 import { onMounted } from 'vue';
 import { useVolumeState } from '@/tools/composables/useVolumeState';
-import SliderControl from '../forms/SliderControl.vue';
 
 const { t } = useI18n();
 

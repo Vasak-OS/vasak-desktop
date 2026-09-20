@@ -2,6 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { SliderControl } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import {
 	getBrightnessInfo as fetchBrightnessInfo,
@@ -10,7 +11,6 @@ import {
 import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
-import SliderControl from '../forms/SliderControl.vue';
 
 interface BrightnessInfo {
 	current: number;

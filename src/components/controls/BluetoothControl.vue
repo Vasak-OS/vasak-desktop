@@ -3,11 +3,11 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import { computed, type Ref, ref } from 'vue';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
-import ToggleControl from '../forms/ToggleControl.vue';
 
 const { t } = useI18n();
 

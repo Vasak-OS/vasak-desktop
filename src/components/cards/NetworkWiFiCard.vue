@@ -3,6 +3,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { TextInput } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref } from 'vue';
 import {
 	connectToWifi,
@@ -120,11 +121,15 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
       <h3 class="text-base font-semibold text-tx-main">
         {{ t('components.NetworkWiFiCard.connectTo').replace('{0}', String(props.ssid)) }}
       </h3>
-      <input
+      <!-- `ariaLabel` además del marcador: un marcador no es un nombre —se
+           borra al escribir, y un lector de pantalla no tiene por qué leerlo—,
+           así que este campo no tenía ninguno. -->
+      <TextInput
         v-model="password"
         type="password"
+        autocomplete="current-password"
         :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
-        class="border border-ui-border rounded-corner p-2 text-tx-main bg-ui-surface/50 focus:border-primary/40"
+        :ariaLabel="t('components.NetworkWiFiCard.passwordPlaceholder')"
         :disabled="connecting"
       />
       <div v-if="errorMsg" class="text-status-error text-sm">{{ errorMsg }}</div>

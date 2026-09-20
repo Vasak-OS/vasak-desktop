@@ -5,13 +5,13 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { SearchField } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
 import MenuArea from '@/components/areas/menu/MenuArea.vue';
 import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
 import SessionButton from '@/components/buttons/SessionButton.vue';
 import UserMenuCard from '@/components/cards/UserMenuCard.vue';
-import SearchMenuComponent from '@/components/SearchMenuComponent.vue';
 import WidgetSlot from '@/components/widgets/WidgetSlot.vue';
 import { getMenuItems, openApp } from '@/services/app.service';
 import { openSettings, toggleSessionPopup } from '@/services/window.service';
@@ -205,7 +205,16 @@ const onBlur = () => {
     >
       <UserMenuCard />
 
-      <SearchMenuComponent v-model:filter="filter" :disabled="isMenuEmpty" class="search-component" />
+      <!-- `grow` acá y no `search-component`, que no estaba definida en ningún
+           lado: lo que el campo necesitaba de esa clase era ocupar la fila, y
+           eso lo traía en sus propias clases. El foco al abrir lo hace el
+           campo, que antes lo resolvía una directiva con un temporizador. -->
+      <SearchField
+        v-model="filter"
+        :label="t('components.SearchMenuComponent.placeholder')"
+        :disabled="isMenuEmpty"
+        autofocus
+        class="grow" />
 
       <div class="flex items-center gap-2">
         <SessionButton

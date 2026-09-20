@@ -38,11 +38,11 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import { useReactiveSymbol } from '@/tools/composables/useReactiveIcon';
 import { cancelRunningThemeTransitions } from '@/tools/theme.utils';
 import { logError } from '@/utils/logger';
-import ToggleControl from '../forms/ToggleControl.vue';
 
 const { t } = useI18n();
 
