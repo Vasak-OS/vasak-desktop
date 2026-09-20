@@ -13,9 +13,9 @@ import {
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { SwitchToggle } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
-import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
 import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
@@ -129,13 +129,11 @@ const disconnect = async (device: any) => {
   <div class="flex flex-col h-full">
     <div class="flex items-center mb-4">
       <SwitchToggle :label="t('components.BluetoothControl.toggle')"
-        :is-on="isBluetoothOn || false"
+        :model-value="isBluetoothOn || false"
         :disabled="isTogglingBluetooth"
         size="medium"
-        active-class="bg-primary"
-        inactive-class="bg-tx-muted"
-        custom-class="mr-2 focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-        @toggle="toggleBT"
+        class="mr-2"
+        @update:model-value="toggleBT"
       />
       <img :src="bluetoothIcon" alt="Bluetooth" class="h-8 w-auto mr-3" />
       <span class="font-bold text-2xl flex-1">Bluetooth</span>

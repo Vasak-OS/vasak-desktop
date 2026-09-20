@@ -5,9 +5,9 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { SearchField, SwitchToggle } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
 import ConnectAppButton from '@/components/buttons/ConnectAppButton.vue';
-import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import type { ConnectApp, ConnectDevice, ConnectRunningApp } from '@/interfaces/connect';
 import {
 	launchConnectApp,
@@ -223,13 +223,7 @@ onBeforeUnmount(() => {
       </div>
 
       <template v-else>
-        <input
-          v-model="filter"
-          type="search"
-          :placeholder="t('views.connect.search')"
-          :aria-label="t('views.connect.search')"
-          class="form-control w-full rounded-corner border border-ui-border bg-ui-bg/80 p-2 shadow-none focus:ring-0"
-        />
+        <SearchField v-model="filter" :label="t('views.connect.search')" class="w-full" />
 
         <div v-if="loading" class="flex flex-1 items-center justify-center">
           <p class="text-tx-muted">{{ t('views.connect.loading') }}</p>
@@ -265,7 +259,7 @@ onBeforeUnmount(() => {
 
         <div class="flex items-center justify-between gap-2 text-xs text-tx-muted">
           <span>{{ t('views.connect.showSystem') }}</span>
-          <SwitchToggle :label="t('views.connect.showSystem')" :is-on="showSystem" @toggle="showSystem = $event" />
+          <SwitchToggle :label="t('views.connect.showSystem')" :model-value="showSystem" @update:model-value="showSystem = $event" />
         </div>
       </template>
     </div>

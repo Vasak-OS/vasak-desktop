@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
+import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import { onMounted } from 'vue';
 import { toggleNetworkApplet } from '@/services/window.service';
 import { useNetworkState } from '@/tools/composables/useNetworkState';
-import ToggleControl from '../forms/ToggleControl.vue';
 
 const {
 	networkState,

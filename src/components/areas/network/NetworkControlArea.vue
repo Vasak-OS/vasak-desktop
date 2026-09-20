@@ -85,8 +85,8 @@
 
       <SwitchToggle :label="t('components.NetworkControlArea.wifiToggle')"
         v-if="wifiAvailable"
-        :is-on="wifiEnabled"
-        @toggle="toggleWifi"
+        :model-value="wifiEnabled"
+        @update:model-value="toggleWifi"
       />
     </div>
 
@@ -176,9 +176,9 @@
 
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { SwitchToggle } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
-import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import {
 	getCurrentNetworkState,
 	getNetworkStats,

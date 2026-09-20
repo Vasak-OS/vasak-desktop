@@ -2,8 +2,8 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { SwitchToggle } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
-import SwitchToggle from '@/components/forms/SwitchToggle.vue';
 import type { ConnectDevice, ConnectRunningApp, ConnectWebcamState } from '@/interfaces/connect';
 import {
 	connectWebcamState,
@@ -258,9 +258,9 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
         <span class="min-w-0 flex-1 text-sm text-tx-main">{{ t('views.connect.webcam') }}</span>
         <SwitchToggle
           :label="t('views.connect.webcam')"
-          :is-on="webcamEncendida"
+          :model-value="webcamEncendida"
           :disabled="!interruptorHabilitadoAhora"
-          @toggle="alternarWebcam"
+          @update:model-value="alternarWebcam"
         />
       </div>
       <!-- El error de una acción primero, y el de la lectura del estado
