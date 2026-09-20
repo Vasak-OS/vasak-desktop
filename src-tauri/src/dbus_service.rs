@@ -139,17 +139,38 @@ impl DesktopService {
             // Traerla al frente. **Nunca** minimiza, que es la diferencia con el
             // botón del panel: elegir una ventana en una lista de resultados no
             // puede esconderla.
+            //
+            // Éste **contesta**, a diferencia de los de más arriba. No es un
+            // gusto: quien lo llama está esperando para esconder su propia
+            // ventana, y un método que no contesta lo deja colgado hasta que
+            // expira el tiempo de D-Bus — veinticinco segundos con el lanzador
+            // en pantalla después de haber elegido algo.
             "PresentWindow" => match msg.body().deserialize::<String>() {
                 Ok(id) => {
                     log_info(&format!("D-Bus: presentando la ventana {}", id));
-                    if let Err(error) = self.presentar(&id) {
-                        log_warning(&format!("D-Bus: no se pudo presentar {}: {}", id, error));
-                    }
+                    match self.presentar(&id) {
+                        Ok(()) => conexion.reply(msg, &()).await?,
+                        Err(error) => {
+                            log_warning(&format!("D-Bus: no se pudo presentar {}: {}", id, error));
+                            conexion
+                                .reply_error(msg, "org.vasak.os.Desktop.Error", &error)
+                                .await?
+                        }
+                    };
                 }
-                Err(e) => log_warning(&format!(
-                    "D-Bus: PresentWindow sin un identificador válido: {}",
-                    e
-                )),
+                Err(e) => {
+                    log_warning(&format!(
+                        "D-Bus: PresentWindow sin un identificador válido: {}",
+                        e
+                    ));
+                    conexion
+                        .reply_error(
+                            msg,
+                            "org.freedesktop.DBus.Error.InvalidArgs",
+                            &"PresentWindow espera el identificador de la ventana".to_string(),
+                        )
+                        .await?;
+                }
             },
             _ => {
                 log::warn!("D-Bus: Unknown method called: {}", member);
