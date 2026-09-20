@@ -191,6 +191,32 @@ impl WindowManagerBackend for WaylandManager {
         Ok(())
     }
 
+    fn present_window(&self, win_id: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let view_id = win_id.parse::<u64>().map_err(|error| format!("invalid Wayfire view id {win_id}: {error}"))?;
+        let view_id_i64 = i64::try_from(view_id).map_err(|error| format!("Wayfire view id out of range {win_id}: {error}"))?;
+
+        Self::block_on_async(async move {
+            let client = get_wayfire_client().await.ok_or("Unable to connect to Wayfire IPC")?;
+            let views = client.list_views_typed().await?;
+            let view = views
+                .into_iter()
+                .find(|candidate| candidate.id == view_id_i64)
+                .ok_or_else(|| format!("Wayfire view not found: {view_id}"))?;
+
+            match crate::window_manager::para_presentar(view.minimized.unwrap_or(false)) {
+                crate::window_manager::ParaPresentar::RestaurarYEnfocar => {
+                    client.set_minimized(view_id, false).await?;
+                    client.set_focus(view_id).await.map(|_| ())
+                }
+                crate::window_manager::ParaPresentar::Enfocar => {
+                    client.set_focus(view_id).await.map(|_| ())
+                }
+            }
+        })?;
+
+        Ok(())
+    }
+
     fn toggle_window(&self, win_id: &str) -> Result<(), Box<dyn std::error::Error>> {
         let view_id = win_id.parse::<u64>().map_err(|error| format!("invalid Wayfire view id {win_id}: {error}"))?;
         let view_id_i64 = i64::try_from(view_id).map_err(|error| format!("Wayfire view id out of range {win_id}: {error}"))?;

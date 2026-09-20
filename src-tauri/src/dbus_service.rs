@@ -2,7 +2,7 @@ use crate::commands::{toggle_control_center, toggle_menu, toggle_search, toggle_
 use crate::constants::DBUS_SERVICE_NAME;
 use crate::logger::{log_info, log_error, log_warning, log_debug};
 use futures_util::TryStreamExt;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use zbus::{Connection, Message, Result as ZbusResult};
 
 /// Servicio D-Bus simplificado para controlar la aplicación Vasak Desktop
@@ -16,7 +16,12 @@ impl DesktopService {
     }
 
     /// Maneja llamadas a métodos D-Bus
-    pub async fn handle_method_call(&self, msg: &Message) -> ZbusResult<()> {
+    ///
+    /// La conexión entra porque hay métodos que **contestan**. Los que hubo acá
+    /// hasta ahora no contestaban ninguno —quien llamaba usaba `--no-reply`— y
+    /// eso alcanzaba mientras todo fuera «abrí esto». Preguntar qué ventanas hay
+    /// es otra cosa: sin respuesta no sirve de nada.
+    pub async fn handle_method_call(&self, conexion: &Connection, msg: &Message) -> ZbusResult<()> {
         let header = msg.header();
         let member = header.member().map(|m| m.as_str()).unwrap_or("Unknown");
 
@@ -104,6 +109,47 @@ impl DesktopService {
                     )),
                 }
             }
+            // Las ventanas abiertas, para quien las quiera listar sin hablarle
+            // al compositor. De todo el escritorio, este proceso es el único que
+            // le habla, y el protocolo que haría falta para enumerarlas
+            // —`foreign_toplevel`— está repartido por permiso: dárselo a otro
+            // programa es darle también los títulos de todo lo que hay abierto.
+            //
+            // Va en JSON y no como una estructura de D-Bus porque del otro lado
+            // se deserializa con serde igual, y una firma de tipos para cinco
+            // campos que todavía pueden cambiar es trabajo que se paga dos veces.
+            "ListWindows" => {
+                let ventanas = self.ventanas_abiertas();
+                log_debug(&format!(
+                    "D-Bus: ListWindows devolvió {} ventanas",
+                    ventanas.len()
+                ));
+
+                let cuerpo = serde_json::to_string(&ventanas).unwrap_or_else(|error| {
+                    log_error(&format!(
+                        "D-Bus: no se pudieron serializar las ventanas: {}",
+                        error
+                    ));
+                    "[]".to_string()
+                });
+
+                conexion.reply(msg, &cuerpo).await?;
+            }
+            // Traerla al frente. **Nunca** minimiza, que es la diferencia con el
+            // botón del panel: elegir una ventana en una lista de resultados no
+            // puede esconderla.
+            "PresentWindow" => match msg.body().deserialize::<String>() {
+                Ok(id) => {
+                    log_info(&format!("D-Bus: presentando la ventana {}", id));
+                    if let Err(error) = self.presentar(&id) {
+                        log_warning(&format!("D-Bus: no se pudo presentar {}: {}", id, error));
+                    }
+                }
+                Err(e) => log_warning(&format!(
+                    "D-Bus: PresentWindow sin un identificador válido: {}",
+                    e
+                )),
+            },
             _ => {
                 log::warn!("D-Bus: Unknown method called: {}", member);
                 log_warning(&format!("D-Bus: Método desconocido: {}", member));
@@ -111,6 +157,34 @@ impl DesktopService {
         }
 
         Ok(())
+    }
+
+    /// Las ventanas que hay, o ninguna si no se pudieron leer.
+    ///
+    /// Sin lista es un caso normal —el compositor puede estar ocupado— y no un
+    /// error que valga la pena devolver: quien preguntó muestra las demás cosas
+    /// que encontró y listo.
+    fn ventanas_abiertas(&self) -> Vec<crate::window_manager::WindowInfo> {
+        let estado = self.app_handle.state::<crate::structs::WMState>();
+        let Ok(gestor) = estado.window_manager.try_read() else {
+            log_debug("D-Bus: el gestor de ventanas está ocupado");
+            return Vec::new();
+        };
+
+        gestor.get_window_list().unwrap_or_else(|error| {
+            log_error(&format!("D-Bus: no se pudo listar las ventanas: {}", error));
+            Vec::new()
+        })
+    }
+
+    fn presentar(&self, id: &str) -> Result<(), String> {
+        let estado = self.app_handle.state::<crate::structs::WMState>();
+        let gestor = estado
+            .window_manager
+            .try_read()
+            .map_err(|_| "el gestor de ventanas está ocupado".to_string())?;
+
+        gestor.present_window(id).map_err(|error| error.to_string())
     }
 }
 
@@ -137,7 +211,7 @@ pub async fn start_dbus_service(app_handle: AppHandle) -> ZbusResult<()> {
         // Verificar si es para nuestro servicio
         if msg.header().destination().map(|d| d.as_str()) == Some(DBUS_SERVICE_NAME) {
             // Manejar la llamada al método
-            if let Err(e) = service.handle_method_call(&msg).await {
+            if let Err(e) = service.handle_method_call(&connection, &msg).await {
                 log::error!("Error handling D-Bus method call: {}", e);
                 log_error(&format!("Error al manejar llamada D-Bus: {}", e));
             }
