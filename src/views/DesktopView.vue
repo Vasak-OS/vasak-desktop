@@ -306,7 +306,7 @@ useSharedEvent('config-changed', async () => {
   <video v-if="videoUrl" ref="videoElement" :src="videoUrl"
     style="border-radius: 0px; will-change: transform"
     class="w-screen h-screen object-cover absolute z-10" loop autoplay muted playsinline
-    preload="auto" disablepictureinpicture disableremoteplayback
+    preload="auto" disablePictureInPicture disableRemotePlayback
     @error="onVideoError"></video>
   <img v-else :src="imageBackground" :alt="t('views.desktop.backgroundAlt')" class="w-screen h-screen object-cover absolute z-10"
     style="border-radius: 0px" />

@@ -208,3 +208,175 @@ describe('los tipos de la librería', () => {
 		}
 	}, 120_000);
 });
+
+/**
+ * El `tsconfig` sin sus comentarios.
+ *
+ * Es JSONC, así que `.json()` se cae con «Unrecognized token '/'». Y quitar los
+ * comentarios con una expresión regular tampoco alcanza: el alias `"@/*"` lleva
+ * un `/*` adentro de las comillas, y el quitador se come desde ahí hasta el
+ * próximo cierre, dejando el JSON partido. Por eso éste recorre el texto
+ * sabiendo cuándo está dentro de una cadena.
+ */
+function sinComentarios(crudo: string): string {
+	let salida = '';
+	let enCadena = false;
+	let escapado = false;
+	for (let i = 0; i < crudo.length; i++) {
+		const caracter = crudo[i];
+		if (enCadena) {
+			salida += caracter;
+			if (escapado) escapado = false;
+			else if (caracter === '\\') escapado = true;
+			else if (caracter === '"') enCadena = false;
+			continue;
+		}
+		if (caracter === '"') {
+			enCadena = true;
+			salida += caracter;
+			continue;
+		}
+		if (caracter === '/' && crudo[i + 1] === '/') {
+			while (i < crudo.length && crudo[i] !== '\n') i++;
+			salida += '\n';
+			continue;
+		}
+		if (caracter === '/' && crudo[i + 1] === '*') {
+			i += 2;
+			while (i < crudo.length && !(crudo[i] === '*' && crudo[i + 1] === '/')) i++;
+			i++;
+			continue;
+		}
+		salida += caracter;
+	}
+	return salida;
+}
+
+/**
+ * Y sin sus comas finales, que JSONC permite y `JSON.parse` no.
+ *
+ * Un `"strict": true,` antes de la llave de cierre es un `tsconfig` válido —y
+ * lo que escribe medio editor al reordenar—, pero tumba el `JSON.parse` y con
+ * él toda esta suite. Lo marcó la revisión. Va aparte del quitador de
+ * comentarios para poder mirar la coma y la llave sin un comentario en el
+ * medio.
+ */
+function sinComasFinales(texto: string): string {
+	let salida = '';
+	let enCadena = false;
+	let escapado = false;
+	for (let i = 0; i < texto.length; i++) {
+		const caracter = texto[i];
+		if (enCadena) {
+			salida += caracter;
+			if (escapado) escapado = false;
+			else if (caracter === '\\') escapado = true;
+			else if (caracter === '"') enCadena = false;
+			continue;
+		}
+		if (caracter === '"') {
+			enCadena = true;
+			salida += caracter;
+			continue;
+		}
+		if (caracter === ',') {
+			let j = i + 1;
+			while (j < texto.length && /\s/.test(texto[j])) j++;
+			if (texto[j] === '}' || texto[j] === ']') continue;
+		}
+		salida += caracter;
+	}
+	return salida;
+}
+
+async function leerTsconfig(): Promise<{
+	vueCompilerOptions?: { strictTemplates?: boolean };
+}> {
+	const crudo = await Bun.file(`${raiz}tsconfig.json`).text();
+	return JSON.parse(sinComasFinales(sinComentarios(crudo)));
+}
+
+describe('el chequeo de las plantillas', () => {
+	test('mira cada atributo, no sólo los que reconoce', async () => {
+		// Sin `strictTemplates`, `vue-tsc` comprueba el tipo de las propiedades
+		// que **sí** existen y no dice nada de una que no existe, de un evento
+		// que el componente no emite, ni de un atributo inventado sobre un
+		// elemento. Un `@click` sobre un componente sin `defineEmits` funciona
+		// por caída de atributos y nunca se nota; un `:size` sobre un `<img>` no
+		// hace nada y tampoco.
+		const tsconfig = await leerTsconfig();
+
+		expect(tsconfig.vueCompilerOptions?.strictTemplates).toBe(true);
+	});
+
+	test('y el `tsconfig` se lee aunque lleve comentarios, alias y comas finales', () => {
+		// Las tres cosas son JSONC válido y las tres rompen `JSON.parse`. El
+		// alias es el caso que tumbó al primer quitador: el `/*` va adentro de
+		// las comillas.
+		const crudo = `{
+			// una línea
+			"vueCompilerOptions": { "strictTemplates": true },
+			/* y un bloque */
+			"compilerOptions": {
+				"paths": { "@/*": ["./src/*"] },
+				"lib": ["ES2024", "DOM"],
+			},
+		}`;
+
+		const leido = JSON.parse(sinComasFinales(sinComentarios(crudo)));
+
+		expect(leido.vueCompilerOptions.strictTemplates).toBe(true);
+		expect(leido.compilerOptions.paths['@/*']).toEqual(['./src/*']);
+		expect(leido.compilerOptions.lib).toEqual(['ES2024', 'DOM']);
+	});
+
+	test('y los `data-*` siguen permitidos: se comprueba compilando', async () => {
+		// HTML los permite todos, y acá marcan nodos que después se buscan con
+		// `closest()` o `querySelector()`.
+		//
+		// Se compila un `.vue` con un `data-*` inventado en vez de buscar el
+		// texto de la declaración: buscarlo pasa igual si el texto quedó en un
+		// comentario o en otra interfaz, y no dice nada de si la declaración
+		// llega a aplicarse. Lo marcó la revisión.
+		const { codigo, salida } = await chequear('tests/fixtures/tsconfig-data.json');
+
+		expect(salida).toBe('');
+		expect(codigo).toBe(0);
+	}, 120_000);
+
+	test('y sin la declaración, ese mismo `data-*` falla', async () => {
+		// La otra mitad: sin esto, lo de arriba pasaría también si
+		// `strictTemplates` no llegara al fixture, o si Vue permitiera los
+		// `data-*` por su cuenta. Se compila el mismo archivo con el mismo
+		// `tsconfig` menos la declaración.
+		const tsconfig = JSON.parse(
+			await Bun.file(`${raiz}tests/fixtures/tsconfig-data.json`).text()
+		) as { include: string[] };
+		const sinDeclaracion = tsconfig.include.filter((ruta) => !ruta.endsWith('.d.ts'));
+		expect(sinDeclaracion.length).toBe(tsconfig.include.length - 1);
+
+		const carpeta = `${raiz}tests/fixtures/.sin-declaracion-${Bun.randomUUIDv7()}`;
+		try {
+			await Bun.write(
+				`${carpeta}/tsconfig.json`,
+				JSON.stringify({ ...tsconfig, include: sinDeclaracion })
+			);
+			await Bun.write(
+				`${carpeta}/UsoDeDataAttr.vue`,
+				await Bun.file(`${raiz}tests/fixtures/UsoDeDataAttr.vue`).text()
+			);
+
+			const { codigo, salida } = await chequear(
+				`tests/fixtures/${carpeta.split('/').pop()}/tsconfig.json`
+			);
+
+			// Con posición y sobre el archivo: un `tsconfig` que no mire nada
+			// también termina con error —«No inputs were found»— y daría por
+			// buena la prueba sin haber compilado el `data-*`.
+			expect(salida).toMatch(/UsoDeDataAttr\.vue\(\d+,\d+\): error TS\d+/);
+			expect(codigo).not.toBe(0);
+		} finally {
+			await Bun.$`rm -rf ${carpeta}`.quiet();
+		}
+	}, 120_000);
+});

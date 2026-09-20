@@ -15,6 +15,12 @@ const props = defineProps<{
 	isConnecting?: boolean;
 }>();
 
+// Declarado y no por caída de atributos: sin esto, el `onAction` del padre
+// además cae sobre el `DeviceCard` de adentro —que sí declara `action`—, y el
+// manejador del padre corre **dos veces** por clic. Comprobado montando el
+// patrón con @vue/test-utils: sin declarar, dos; declarándolo, una.
+defineEmits<{ action: [] }>();
+
 const icon = useIcon(computed(() => props.device.icon || 'bluetooth'));
 const batteryIcon = useSymbol('battery-good-symbolic');
 const signalIcon = useSymbol('network-wireless-signal-excellent-symbolic');

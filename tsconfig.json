@@ -1,4 +1,5 @@
 {
+  "vueCompilerOptions": { "strictTemplates": true },
   "compilerOptions": {
     "target": "ES2024",
     "useDefineForClassFields": true,
