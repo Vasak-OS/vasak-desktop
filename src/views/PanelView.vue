@@ -18,12 +18,26 @@ import type {
 import { listConnectDevices, toggleConnectMenu } from '@/services/connect.service';
 import { getAllNotifications } from '@/services/notification.service';
 import { toggleControlCenter, toggleMenu } from '@/services/window.service';
+import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { hayNotificacionesNuevas } from '@/tools/notificaciones';
+import { CLASES_DE_LA_BARRA } from '@/tools/posicion-del-panel';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
+
+/**
+ * De qué lado va el panel, y por lo tanto cómo se acomoda lo de adentro.
+ *
+ * El backend ancla la superficie al borde que diga la configuración; acá se
+ * decide el sentido de la fila. A los costados la barra mide 38 píxeles de
+ * ancho y todo pasa a ser una columna: una fila de iconos ahí no entra.
+ *
+ * Es reactivo, así que mover el panel en Configuración lo acomoda en el acto,
+ * al mismo tiempo que la superficie se reancla.
+ */
+const { posicion, vertical } = usePanelConfig();
 
 /**
  * El clic derecho del panel: sólo cosas del panel.
@@ -206,10 +220,16 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 </script>
 
 <template>
-	<nav @contextmenu.prevent="abrirMenuDelPanel" class="relative z-20 flex w-[calc(100%-8px)] justify-between items-center mx-1 h-9 mt-0.5 overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80 px-3">
-    <div class="flex items-center gap-1">
+	<nav
+		@contextmenu.prevent="abrirMenuDelPanel"
+		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80"
+		:class="CLASES_DE_LA_BARRA[posicion]"
+	>
+    <div class="flex items-center gap-1" :class="vertical ? 'flex-col' : ''">
       <img :src="menuIcon" :alt="t('views.panel.menuAlt')" @click="openMenu" class="h-7 w-7 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out" />
-			<div class="w-1 h-7 bg-ui-bg/80"></div>
+			<!-- El separador gira con la barra: de costado, una raya vertical de
+			     un píxel de ancho entre dos iconos apilados no separa nada. -->
+			<div class="bg-ui-bg/80" :class="vertical ? 'h-1 w-7' : 'w-1 h-7'"></div>
       <img
         :src="configIcon"
         :alt="t('views.panel.settingsAlt')"
@@ -241,7 +261,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       </div>
     </div>
     <WindowsArea />
-    <div class="flex content-center items-center">
+    <div class="flex content-center items-center" :class="vertical ? 'flex-col' : ''">
       <TrayBarArea />
       <PanelClockwidget />
       <div class="relative cursor-pointer" @click="openNotificationCenter">

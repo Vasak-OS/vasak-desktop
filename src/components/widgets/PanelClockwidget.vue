@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
+import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 
 interface TimeData {
 	day: string;
@@ -8,6 +9,15 @@ interface TimeData {
 	hour: string;
 	minute: string;
 }
+
+/**
+ * De costado la hora va apilada sobre los minutos.
+ *
+ * «12:34» son cinco caracteres: en una barra de 36 píxeles de ancho no entran
+ * en una línea, y encogerlos hasta que entren los deja ilegibles. Dos líneas de
+ * dos dígitos sí entran, y el día completo sigue estando en el `title`.
+ */
+const { vertical } = usePanelConfig();
 
 const timeData = ref<TimeData>({
 	day: '00',
@@ -59,12 +69,23 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex items-center p-1 font-mono text-sm">
-    <span 
+  <div
+    class="flex items-center justify-center p-1 font-mono"
+    :class="vertical ? 'flex-col text-xs leading-tight' : 'text-sm'"
+  >
+    <span
       :title="`${timeData.day}/${timeData.month}/${timeData.year}`"
       class="cursor-default"
     >
-      {{ timeData.hour }}:{{ timeData.minute }}
+      <template v-if="vertical">{{ timeData.hour }}</template>
+      <template v-else>{{ timeData.hour }}:{{ timeData.minute }}</template>
+    </span>
+    <span
+      v-if="vertical"
+      :title="`${timeData.day}/${timeData.month}/${timeData.year}`"
+      class="cursor-default"
+    >
+      {{ timeData.minute }}
     </span>
   </div>
 </template>

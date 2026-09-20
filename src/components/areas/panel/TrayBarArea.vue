@@ -29,8 +29,9 @@ import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError, logWarning } from '@/utils/logger';
 
-// Qué partes del panel están encendidas en la configuración.
-const { showWeather, showMusic, showTransfer, showTray, showPrivacy } = usePanelConfig();
+// Qué partes del panel están encendidas, y de qué lado va la barra: a los
+// costados los iconos se apilan en lugar de alinearse.
+const { showWeather, showMusic, showTransfer, showTray, showPrivacy, vertical } = usePanelConfig();
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
@@ -143,7 +144,10 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
 </script>
 
 <template>
-  <div class="flex items-center gap-1 px-2 h-full">
+  <div
+    class="flex items-center gap-1"
+    :class="vertical ? 'flex-col py-2 w-full' : 'px-2 h-full'"
+  >
     <TransitionGroup
       :move-class="shouldAnimate ? 'transition-transform duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
       :enter-active-class="shouldAnimate ? 'transition-all duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
@@ -152,6 +156,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
       :leave-to-class="shouldAnimate ? 'opacity-0 translate-x-5 scale-80 rotate-12' : ''"
       tag="div"
       class="flex items-center gap-1"
+      :class="vertical ? 'flex-col' : ''"
     >
       <TrayNetworkRateControl v-if="showTransfer" key="network-rate" />
       <TrayWeatherControl v-if="showWeather" key="weather" />

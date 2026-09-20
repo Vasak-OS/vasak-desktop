@@ -6,6 +6,7 @@ import { onMounted, ref } from 'vue';
 import WindowPanelButton from '@/components/buttons/WindowPanelButton.vue';
 import type { WindowInfo } from '@/interfaces/window';
 import { getWindows } from '@/services/window.service';
+import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -14,6 +15,10 @@ interface WindowDelta {
 	removed: string[];
 	modified: WindowInfo[];
 }
+
+// De costado las ventanas se apilan, y lo que sobra scrollea a lo largo de la
+// barra en vez de desbordarse fuera de la pantalla.
+const { vertical } = usePanelConfig();
 
 const windows = ref<WindowInfo[]>([]);
 
@@ -59,11 +64,17 @@ useSharedEvent<WindowDelta>('window-delta', applyDelta);
 </script>
 
 <template>
-  <div class="flex items-center justify-center px-3 overflow-x-auto overflow-y-hidden">
+  <div
+    class="flex items-center justify-center"
+    :class="vertical
+      ? 'flex-col min-h-0 flex-1 py-3 overflow-y-auto overflow-x-hidden'
+      : 'px-3 overflow-x-auto overflow-y-hidden'"
+  >
     <TransitionGroup 
       move-class="transition-transform duration-300 ease-in-out" enter-active-class="transition-all duration-300 ease-in-out" leave-active-class="transition-all duration-300 ease-in-out" enter-from-class="opacity-0 translate-y-[30px]" leave-to-class="opacity-0 translate-y-[30px]"
       tag="div"
       class="flex items-center justify-center gap-0.5"
+      :class="vertical ? 'flex-col' : ''"
     >
       <WindowPanelButton
         v-for="window in windows"
