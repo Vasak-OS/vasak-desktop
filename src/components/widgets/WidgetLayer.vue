@@ -348,7 +348,6 @@ defineExpose({ abrirEdicion });
 				:min-size="WIDGETS[puesto.type].min"
 				:max-size="WIDGETS[puesto.type].max"
 				class="pointer-events-auto"
-				data-widget
 				@move="(posicion) => mover(puesto.id, posicion)"
 				@resize="(tamano) => redimensionar(puesto.id, tamano)"
 				@commit="guardar()"

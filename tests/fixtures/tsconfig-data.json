@@ -1,0 +1,14 @@
+{
+  "vueCompilerOptions": { "strictTemplates": true },
+  "compilerOptions": {
+    "target": "ES2024",
+    "module": "ESNext",
+    "lib": ["ES2024", "DOM"],
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "jsx": "preserve"
+  },
+  "include": ["UsoDeDataAttr.vue", "../../src/tipos-de-plantilla.d.ts"]
+}

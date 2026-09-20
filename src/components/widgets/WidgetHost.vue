@@ -139,7 +139,15 @@ function empezarRedimensionado(evento: PointerEvent) {
 </script>
 
 <template>
+	<!--
+	  El marcador va acá y no en cada llamada: todo `WidgetHost` **es** un
+	  puesto de widget, y `WidgetLayer` lo busca con `closest('[data-widget]')`
+	  para no empezar un arrastre del escritorio encima de uno. Puesto desde
+	  afuera dependía de que el atributo cayera al nodo raíz, que es justo lo
+	  que `strictTemplates` no deja comprobar.
+	-->
 	<div
+		data-widget
 		:style="style"
 		class="relative"
 		:class="[
