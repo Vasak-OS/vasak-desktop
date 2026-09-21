@@ -2,7 +2,7 @@ use freedesktop_entry_parser::parse_entry;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 use crate::logger::log_info;
 use crate::structs::{AppEntry, CategoryInfo};
@@ -69,10 +69,15 @@ fn ordenar_directorios(
 ) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
 
+    // Absoluta o nada. Filtraba la cadena **vacía** y no la **relativa**, que
+    // tiene la misma consecuencia —una ruta respecto del directorio de trabajo—
+    // y que el estándar manda ignorar igual. Una regla en vez de dos: la cadena
+    // vacía tampoco es absoluta, así que los dos casos salen de la misma
+    // comprobación.
     let base_del_usuario = data_home
-        .filter(|valor| !valor.is_empty())
         .map(PathBuf::from)
-        .or_else(|| home.map(|casa| casa.join(".local/share")));
+        .filter(|base| base.is_absolute())
+        .or_else(|| home.filter(|casa| casa.is_absolute()).map(|casa| casa.join(".local/share")));
 
     if let Some(base) = base_del_usuario {
         dirs.push(base.join("applications"));
@@ -86,7 +91,9 @@ fn ordenar_directorios(
         .as_deref()
         .unwrap_or(DATA_DIRS_POR_OMISION)
         .split(':')
-        .filter(|dir| !dir.is_empty())
+        // Lo mismo para cada entrada de la lista: una relativa se ignora, y la
+        // vacía es un caso de esa misma regla.
+        .filter(|dir| Path::new(dir).is_absolute())
     {
         let apps_dir = PathBuf::from(dir).join("applications");
         if !dirs.contains(&apps_dir) {
@@ -408,4 +415,36 @@ mod tests {
 
         assert_eq!(dirs, vec![apps("/casa"), apps("/usr/share")]);
     }
+
+    #[test]
+    fn una_base_relativa_del_usuario_no_entra() {
+        // Filtraba la cadena vacía y no una ruta relativa, que tiene la misma
+        // consecuencia: se resolvería contra el directorio de trabajo del
+        // proceso, que en el escritorio no es el home de nadie.
+        //
+        // Las cuatro formas de no ser absoluta; la del nombre suelto es la que
+        // se escapa cuando uno se acuerda sólo de la vacía.
+        for relativa in ["", "datos", "./datos", "../datos"] {
+            let dirs = ordenar_directorios(Some(relativa.into()), None, Some("/usr/share".into()));
+            assert_eq!(
+                dirs,
+                vec![PathBuf::from("/usr/share/applications")],
+                "«{relativa}» no tiene que aportar un directorio"
+            );
+        }
+    }
+
+    #[test]
+    fn un_hogar_relativo_tampoco() {
+        let dirs = ordenar_directorios(None, Some(PathBuf::from("casa")), Some("/usr/share".into()));
+        assert_eq!(dirs, vec![PathBuf::from("/usr/share/applications")]);
+    }
+
+    #[test]
+    fn una_entrada_relativa_de_la_lista_del_sistema_se_ignora() {
+        // Un `.` acá sería «el directorio desde el que se lanzó el escritorio».
+        let dirs = ordenar_directorios(None, None, Some(".:..:relativo:/usr/share".into()));
+        assert_eq!(dirs, vec![PathBuf::from("/usr/share/applications")]);
+    }
+
 }
