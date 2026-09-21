@@ -1,11 +1,11 @@
+use crate::logger::log_info;
+use crate::structs::{AppEntry, CategoryInfo};
 use freedesktop_entry_parser::parse_entry;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
-use crate::logger::log_info;
-use crate::structs::{AppEntry, CategoryInfo};
 
 /// Parsed menu, kept until something changes on disk.
 ///
@@ -77,7 +77,10 @@ fn ordenar_directorios(
     let base_del_usuario = data_home
         .map(PathBuf::from)
         .filter(|base| base.is_absolute())
-        .or_else(|| home.filter(|casa| casa.is_absolute()).map(|casa| casa.join(".local/share")));
+        .or_else(|| {
+            home.filter(|casa| casa.is_absolute())
+                .map(|casa| casa.join(".local/share"))
+        });
 
     if let Some(base) = base_del_usuario {
         dirs.push(base.join("applications"));
@@ -160,12 +163,24 @@ fn normalize_category(categories: &str) -> String {
 
     for category in categories.iter() {
         match *category {
-            "Development" | "IDE" | "GUIDesigner" | "Programming" | "WebDevelopment" | "Building" | "Debugger" => return "develop".to_string(),
-            "Network" | "Internet" | "Email" | "WebBrowser" | "InstantMessaging" | "Chat" | "FileTransfer" | "HamRadio" | "News" | "P2P" | "RemoteAccess" | "Telephony" | "VideoConference" | "Web" => return "network".to_string(),
-            "Settings" | "System" | "Administration" | "DesktopSettings" | "HardwareSettings" | "Preferences" | "Security" => return "settings".to_string(),
-            "AudioVideo" | "Audio" | "Video" | "Graphics" | "Music" | "Player" | "Recorder" | "DiscBurning" | "Photography" => return "media".to_string(),
-            "Game" | "Games" | "Amusement" | "ActionGame" | "AdventureGame" | "ArcadeGame" | "BoardGame" | "BlocksGame" | "CardGame" | "KidsGame" | "LogicGame" | "RolePlaying" | "Shooter" | "Simulation" | "SportsGame" | "StrategyGame" => return "games".to_string(),
-            "Utility" | "Accessories" | "TextEditor" | "Calculator" | "Core" | "FileManager" | "Terminal" | "TrayIcon" | "Archive" | "Compression" | "FileTools" | "Viewer" => return "utility".to_string(),
+            "Development" | "IDE" | "GUIDesigner" | "Programming" | "WebDevelopment"
+            | "Building" | "Debugger" => return "develop".to_string(),
+            "Network" | "Internet" | "Email" | "WebBrowser" | "InstantMessaging" | "Chat"
+            | "FileTransfer" | "HamRadio" | "News" | "P2P" | "RemoteAccess" | "Telephony"
+            | "VideoConference" | "Web" => return "network".to_string(),
+            "Settings" | "System" | "Administration" | "DesktopSettings" | "HardwareSettings"
+            | "Preferences" | "Security" => return "settings".to_string(),
+            "AudioVideo" | "Audio" | "Video" | "Graphics" | "Music" | "Player" | "Recorder"
+            | "DiscBurning" | "Photography" => return "media".to_string(),
+            "Game" | "Games" | "Amusement" | "ActionGame" | "AdventureGame" | "ArcadeGame"
+            | "BoardGame" | "BlocksGame" | "CardGame" | "KidsGame" | "LogicGame"
+            | "RolePlaying" | "Shooter" | "Simulation" | "SportsGame" | "StrategyGame" => {
+                return "games".to_string()
+            }
+            "Utility" | "Accessories" | "TextEditor" | "Calculator" | "Core" | "FileManager"
+            | "Terminal" | "TrayIcon" | "Archive" | "Compression" | "FileTools" | "Viewer" => {
+                return "utility".to_string()
+            }
             _ => continue,
         }
     }
@@ -179,13 +194,18 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
     let mut seen_names: HashSet<String> = HashSet::new();
     let locales = locale_keys();
 
-    let categories = ["all", "develop", "network", "settings", "media", "games", "utility"];
+    let categories = [
+        "all", "develop", "network", "settings", "media", "games", "utility",
+    ];
     for &category in categories.iter() {
-        menu_items.insert(category.to_string(), CategoryInfo {
-            icon: get_category_icon(category),
-            description: get_category_description(category),
-            apps: Vec::new(),
-        });
+        menu_items.insert(
+            category.to_string(),
+            CategoryInfo {
+                icon: get_category_icon(category),
+                description: get_category_description(category),
+                apps: Vec::new(),
+            },
+        );
     }
 
     for apps_dir in get_applications_dirs() {
@@ -436,7 +456,8 @@ mod tests {
 
     #[test]
     fn un_hogar_relativo_tampoco() {
-        let dirs = ordenar_directorios(None, Some(PathBuf::from("casa")), Some("/usr/share".into()));
+        let dirs =
+            ordenar_directorios(None, Some(PathBuf::from("casa")), Some("/usr/share".into()));
         assert_eq!(dirs, vec![PathBuf::from("/usr/share/applications")]);
     }
 
@@ -446,5 +467,4 @@ mod tests {
         let dirs = ordenar_directorios(None, None, Some(".:..:relativo:/usr/share".into()));
         assert_eq!(dirs, vec![PathBuf::from("/usr/share/applications")]);
     }
-
 }
