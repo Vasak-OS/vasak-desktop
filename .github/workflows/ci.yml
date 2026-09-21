@@ -19,3 +19,7 @@ jobs:
     permissions:
       contents: read
     uses: Vasak-OS/.github/.github/workflows/app.yml@main
+    with:
+      # Este repositorio ya está al día con las bibliotecas propias, así
+      # que quedarse atrás pasa a cortar en vez de sólo avisar.
+      bibliotecas_cortan: true
