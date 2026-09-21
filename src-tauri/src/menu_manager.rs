@@ -1,11 +1,11 @@
+use crate::logger::log_info;
+use crate::structs::{AppEntry, CategoryInfo};
 use freedesktop_entry_parser::parse_entry;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::RwLock;
-use crate::logger::log_info;
-use crate::structs::{AppEntry, CategoryInfo};
 
 /// Parsed menu, kept until something changes on disk.
 ///
@@ -69,10 +69,18 @@ fn ordenar_directorios(
 ) -> Vec<PathBuf> {
     let mut dirs = Vec::new();
 
+    // Absoluta o nada. Filtraba la cadena **vacía** y no la **relativa**, que
+    // tiene la misma consecuencia —una ruta respecto del directorio de trabajo—
+    // y que el estándar manda ignorar igual. Una regla en vez de dos: la cadena
+    // vacía tampoco es absoluta, así que los dos casos salen de la misma
+    // comprobación.
     let base_del_usuario = data_home
-        .filter(|valor| !valor.is_empty())
         .map(PathBuf::from)
-        .or_else(|| home.map(|casa| casa.join(".local/share")));
+        .filter(|base| base.is_absolute())
+        .or_else(|| {
+            home.filter(|casa| casa.is_absolute())
+                .map(|casa| casa.join(".local/share"))
+        });
 
     if let Some(base) = base_del_usuario {
         dirs.push(base.join("applications"));
@@ -86,7 +94,9 @@ fn ordenar_directorios(
         .as_deref()
         .unwrap_or(DATA_DIRS_POR_OMISION)
         .split(':')
-        .filter(|dir| !dir.is_empty())
+        // Lo mismo para cada entrada de la lista: una relativa se ignora, y la
+        // vacía es un caso de esa misma regla.
+        .filter(|dir| Path::new(dir).is_absolute())
     {
         let apps_dir = PathBuf::from(dir).join("applications");
         if !dirs.contains(&apps_dir) {
@@ -153,12 +163,24 @@ fn normalize_category(categories: &str) -> String {
 
     for category in categories.iter() {
         match *category {
-            "Development" | "IDE" | "GUIDesigner" | "Programming" | "WebDevelopment" | "Building" | "Debugger" => return "develop".to_string(),
-            "Network" | "Internet" | "Email" | "WebBrowser" | "InstantMessaging" | "Chat" | "FileTransfer" | "HamRadio" | "News" | "P2P" | "RemoteAccess" | "Telephony" | "VideoConference" | "Web" => return "network".to_string(),
-            "Settings" | "System" | "Administration" | "DesktopSettings" | "HardwareSettings" | "Preferences" | "Security" => return "settings".to_string(),
-            "AudioVideo" | "Audio" | "Video" | "Graphics" | "Music" | "Player" | "Recorder" | "DiscBurning" | "Photography" => return "media".to_string(),
-            "Game" | "Games" | "Amusement" | "ActionGame" | "AdventureGame" | "ArcadeGame" | "BoardGame" | "BlocksGame" | "CardGame" | "KidsGame" | "LogicGame" | "RolePlaying" | "Shooter" | "Simulation" | "SportsGame" | "StrategyGame" => return "games".to_string(),
-            "Utility" | "Accessories" | "TextEditor" | "Calculator" | "Core" | "FileManager" | "Terminal" | "TrayIcon" | "Archive" | "Compression" | "FileTools" | "Viewer" => return "utility".to_string(),
+            "Development" | "IDE" | "GUIDesigner" | "Programming" | "WebDevelopment"
+            | "Building" | "Debugger" => return "develop".to_string(),
+            "Network" | "Internet" | "Email" | "WebBrowser" | "InstantMessaging" | "Chat"
+            | "FileTransfer" | "HamRadio" | "News" | "P2P" | "RemoteAccess" | "Telephony"
+            | "VideoConference" | "Web" => return "network".to_string(),
+            "Settings" | "System" | "Administration" | "DesktopSettings" | "HardwareSettings"
+            | "Preferences" | "Security" => return "settings".to_string(),
+            "AudioVideo" | "Audio" | "Video" | "Graphics" | "Music" | "Player" | "Recorder"
+            | "DiscBurning" | "Photography" => return "media".to_string(),
+            "Game" | "Games" | "Amusement" | "ActionGame" | "AdventureGame" | "ArcadeGame"
+            | "BoardGame" | "BlocksGame" | "CardGame" | "KidsGame" | "LogicGame"
+            | "RolePlaying" | "Shooter" | "Simulation" | "SportsGame" | "StrategyGame" => {
+                return "games".to_string()
+            }
+            "Utility" | "Accessories" | "TextEditor" | "Calculator" | "Core" | "FileManager"
+            | "Terminal" | "TrayIcon" | "Archive" | "Compression" | "FileTools" | "Viewer" => {
+                return "utility".to_string()
+            }
             _ => continue,
         }
     }
@@ -172,13 +194,18 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
     let mut seen_names: HashSet<String> = HashSet::new();
     let locales = locale_keys();
 
-    let categories = ["all", "develop", "network", "settings", "media", "games", "utility"];
+    let categories = [
+        "all", "develop", "network", "settings", "media", "games", "utility",
+    ];
     for &category in categories.iter() {
-        menu_items.insert(category.to_string(), CategoryInfo {
-            icon: get_category_icon(category),
-            description: get_category_description(category),
-            apps: Vec::new(),
-        });
+        menu_items.insert(
+            category.to_string(),
+            CategoryInfo {
+                icon: get_category_icon(category),
+                description: get_category_description(category),
+                apps: Vec::new(),
+            },
+        );
     }
 
     for apps_dir in get_applications_dirs() {
@@ -407,5 +434,37 @@ mod tests {
         );
 
         assert_eq!(dirs, vec![apps("/casa"), apps("/usr/share")]);
+    }
+
+    #[test]
+    fn una_base_relativa_del_usuario_no_entra() {
+        // Filtraba la cadena vacía y no una ruta relativa, que tiene la misma
+        // consecuencia: se resolvería contra el directorio de trabajo del
+        // proceso, que en el escritorio no es el home de nadie.
+        //
+        // Las cuatro formas de no ser absoluta; la del nombre suelto es la que
+        // se escapa cuando uno se acuerda sólo de la vacía.
+        for relativa in ["", "datos", "./datos", "../datos"] {
+            let dirs = ordenar_directorios(Some(relativa.into()), None, Some("/usr/share".into()));
+            assert_eq!(
+                dirs,
+                vec![PathBuf::from("/usr/share/applications")],
+                "«{relativa}» no tiene que aportar un directorio"
+            );
+        }
+    }
+
+    #[test]
+    fn un_hogar_relativo_tampoco() {
+        let dirs =
+            ordenar_directorios(None, Some(PathBuf::from("casa")), Some("/usr/share".into()));
+        assert_eq!(dirs, vec![PathBuf::from("/usr/share/applications")]);
+    }
+
+    #[test]
+    fn una_entrada_relativa_de_la_lista_del_sistema_se_ignora() {
+        // Un `.` acá sería «el directorio desde el que se lanzó el escritorio».
+        let dirs = ordenar_directorios(None, None, Some(".:..:relativo:/usr/share".into()));
+        assert_eq!(dirs, vec![PathBuf::from("/usr/share/applications")]);
     }
 }
