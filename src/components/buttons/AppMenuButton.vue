@@ -1,9 +1,8 @@
 
 <script lang="ts" setup>
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { computed } from 'vue';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { openApp as sysOpenApp } from '@/services/app.service';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const props = defineProps({
@@ -17,7 +16,6 @@ const props = defineProps({
 	},
 });
 
-const appIcon = useIcon(computed(() => props.app.icon));
 const appWindow = getCurrentWindow();
 
 const openApp = async () => {
@@ -40,7 +38,7 @@ const openApp = async () => {
       selected ? 'bg-primary/20 border border-secondary scale-110' : ''
     ]"
   >
-    <img :src="appIcon" class="h-10 m-2" :alt="app.name" :title="app.name" />
+    <ThemeIcon :name="app.icon" :size="40" class="m-2" :alt="app.name" />
     <span style="display: none">{{ app.name }}</span>
     <span style="display: none">{{ app.description }}</span>
     <span style="display: none">{{ app.keywords }}</span>

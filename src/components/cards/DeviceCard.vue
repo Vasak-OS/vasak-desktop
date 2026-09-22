@@ -5,7 +5,7 @@
     @click="handleClick"
   >
     <div class="flex items-center gap-3 flex-1 min-w-0">
-      <img :src="icon" :alt="title" class="h-7 w-7 shrink-0" />
+      <ThemeIcon :name="icon" :size="28" :alt="title" />
       <div class="min-w-0">
         <div class="font-semibold truncate">
           {{ title }}
@@ -18,7 +18,7 @@
         </div>
         <div v-if="extraInfo && extraInfo.length > 0" class="text-xs text-tx-muted flex gap-3 mt-1 flex-wrap">
           <span v-for="(info, index) in extraInfo" :key="index" class="inline-flex items-center gap-1">
-            <img :src="info.icon" alt="" class="w-3.5 h-3.5" />
+            <ThemeIcon :name="info.icon" type="symbol" :size="14" />
             {{ info.text }}
           </span>
         </div>
@@ -44,6 +44,7 @@
 
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 
 const { t } = useI18n();
 

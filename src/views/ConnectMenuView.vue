@@ -5,7 +5,7 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SearchField, SwitchToggle } from '@vasakgroup/vue-libvasak';
+import { SearchField, SwitchToggle, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
 import ConnectAppButton from '@/components/buttons/ConnectAppButton.vue';
 import type { ConnectApp, ConnectDevice, ConnectRunningApp } from '@/interfaces/connect';
@@ -16,7 +16,6 @@ import {
 	listConnectRunning,
 	stopConnectApp,
 } from '@/services/connect.service';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -31,11 +30,6 @@ const showSystem = ref(false);
 const loading = ref(false);
 const errorMessage = ref('');
 const leaving = ref(false);
-
-const { phoneIcon, refreshIcon } = useIcons({
-	phoneIcon: 'smartphone',
-	refreshIcon: 'view-refresh',
-});
 
 const device = computed(() => devices.value.find((d) => d.serial === selected.value));
 
@@ -171,7 +165,7 @@ onBeforeUnmount(() => {
       ]"
     >
       <header class="flex items-center gap-3">
-        <img :src="phoneIcon" alt="" class="h-8 w-8" />
+        <ThemeIcon name="smartphone" :size="32" />
         <div class="min-w-0 flex-1">
           <!-- A native <select> is drawn by GTK, not by the stylesheet, so its
                popup ignores the session's colours entirely. With one phone —
@@ -205,7 +199,7 @@ onBeforeUnmount(() => {
           :title="t('views.connect.refresh')"
           @click="loadApps(true)"
           class="rounded-corner p-2 hover:bg-primary" :aria-label="t('views.connect.refresh')">
-          <img :src="refreshIcon" alt="" class="h-5 w-5" />
+          <ThemeIcon name="view-refresh" :size="20" />
         </button>
       </header>
 

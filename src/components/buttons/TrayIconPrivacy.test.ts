@@ -34,7 +34,12 @@ describe('quién te mira, te escucha y te ve la pantalla', () => {
 	test('los tres dispositivos tienen su propio símbolo', () => {
 		// Un glifo combinado por caso serían siete dibujos —las siete
 		// combinaciones de tres— y a 16 píxeles no se distinguen entre sí.
-		const simbolos = [...COMPONENTE.matchAll(/useSymbol\('([a-z-]+)'\)/g)].map(([, s]) => s);
+		// Los nombres salen de la lista que arma el componente, que es donde
+		// viven desde que el icono se pide por nombre y lo dibuja `ThemeIcon`.
+		// Antes se leían de las llamadas a `useSymbol('…')`, que ya no existen:
+		// con el patrón viejo esta prueba habría pasado sobre una lista vacía,
+		// porque `toEqual([])` contra `[]` es verdad.
+		const simbolos = [...COMPONENTE.matchAll(/icono: '([a-z-]+)'/g)].map(([, s]) => s);
 
 		expect(simbolos).toEqual(['camera-web', 'microphone-sensitivity-high', 'video-display']);
 		expect(new Set(simbolos).size).toBe(3);
@@ -42,6 +47,12 @@ describe('quién te mira, te escucha y te ve la pantalla', () => {
 
 	test('se dibuja uno por dispositivo en uso, no uno solo', () => {
 		expect(COMPONENTE).toContain('v-for="simbolo in simbolos"');
+	});
+
+	test('y cada uno pide el glifo monocromo, no el de color', () => {
+		// A dieciséis píxeles en la bandeja, el icono a color es una mancha. Y
+		// pedir la variante que no está **no falla**: dibuja otra cosa.
+		expect(COMPONENTE).toContain('type="symbol"');
 	});
 
 	test('nombra a todas las aplicaciones de las tres listas', () => {

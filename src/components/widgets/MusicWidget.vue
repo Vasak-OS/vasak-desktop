@@ -3,6 +3,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 
@@ -170,17 +171,18 @@ watch(
         class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] flex-1 items-center justify-center rounded-corner bg-ui-surface/60 transition-colors hover:bg-ui-surface"
         :title="t('components.MusicWidget.previous')"
         @click.prevent="onPrev" :aria-label="t('components.MusicWidget.previous')">
-        <img :src="prevIcon" :alt="t('components.MusicWidget.previous')" class="h-[55%] w-auto" />
+        <ThemeIcon :name="prevIcon" type="symbol" :size="20" :alt="t('components.MusicWidget.previous')" />
       </button>
 
       <button
         class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] flex-[1.4] items-center justify-center rounded-corner bg-primary/80 transition-colors hover:bg-primary"
         :title="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
         @click.prevent="onPlayPause" :aria-label="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')">
-        <img
-          :src="isPlaying ? pauseIcon : playIcon"
+        <ThemeIcon
+          :name="isPlaying ? pauseIcon : playIcon"
+          type="symbol"
+          :size="22"
           :alt="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
-          class="h-[60%] w-auto"
         />
       </button>
 
@@ -188,7 +190,7 @@ watch(
         class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] flex-1 items-center justify-center rounded-corner bg-ui-surface/60 transition-colors hover:bg-ui-surface"
         :title="t('components.MusicWidget.next')"
         @click.prevent="onNext" :aria-label="t('components.MusicWidget.next')">
-        <img :src="nextIcon" :alt="t('components.MusicWidget.next')" class="h-[55%] w-auto" />
+        <ThemeIcon :name="nextIcon" type="symbol" :size="20" :alt="t('components.MusicWidget.next')" />
       </button>
     </div>
 

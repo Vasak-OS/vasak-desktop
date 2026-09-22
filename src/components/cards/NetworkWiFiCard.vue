@@ -3,20 +3,18 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { TextInput } from '@vasakgroup/vue-libvasak';
+import { TextInput, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref } from 'vue';
 import {
 	connectToWifi,
 	type NetworkInfo,
 	type WiFiConnectionConfig,
 } from '@/services/network.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import ActionButton from '../buttons/ActionButton.vue';
 import ListCard from './ListCard.vue';
 
 const props = defineProps<NetworkInfo>();
 const { t } = useI18n();
-const netIcon = useSymbol(computed(() => props.icon));
 
 const showModal = ref(false);
 const password = ref('');
@@ -71,7 +69,7 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
   >
     <div class="flex items-center gap-3 flex-1 min-w-0">
       <div class="rounded-full bg-primary/10 p-2 border border-ui-border">
-        <img :src="netIcon" :alt="props.ssid" class="w-4 h-4" />
+        <ThemeIcon :name="props.icon" type="symbol" :size="16" :alt="props.ssid" />
       </div>
 
       <div class="min-w-0">

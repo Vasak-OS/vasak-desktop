@@ -2,6 +2,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { onMounted, ref } from 'vue';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 
@@ -88,7 +89,7 @@ onMounted(async () => {
         @click.prevent="onPrev"
         class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
         :title="t('components.TrayMusicControl.previous')" :aria-label="t('components.TrayMusicControl.previous')">
-        <img :src="prevIcon" :alt="t('components.TrayMusicControl.previous')" class="w-4 h-4" />
+        <ThemeIcon :name="prevIcon" type="symbol" :size="16" :alt="t('components.TrayMusicControl.previous')" />
       </button>
 
       <button
@@ -99,12 +100,13 @@ onMounted(async () => {
           : t('components.TrayMusicControl.play')" :aria-label="isPlaying
           ? t('components.TrayMusicControl.pause')
           : t('components.TrayMusicControl.play')">
-        <img
-          :src="isPlaying ? pauseIcon : playIcon"
+        <ThemeIcon
+          :name="isPlaying ? pauseIcon : playIcon"
+          type="symbol"
+          :size="16"
           :alt="isPlaying
             ? t('components.TrayMusicControl.pause')
             : t('components.TrayMusicControl.play')"
-          class="w-4 h-4"
         />
       </button>
 
@@ -112,7 +114,7 @@ onMounted(async () => {
         @click.prevent="onNext"
         class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
         :title="t('components.TrayMusicControl.next')" :aria-label="t('components.TrayMusicControl.next')">
-        <img :src="nextIcon" :alt="t('components.TrayMusicControl.next')" class="w-4 h-4" />
+        <ThemeIcon :name="nextIcon" type="symbol" :size="16" :alt="t('components.TrayMusicControl.next')" />
       </button>
     </div>
   </div>

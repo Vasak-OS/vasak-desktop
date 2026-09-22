@@ -3,9 +3,9 @@
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useReactiveIcon } from '@/tools/composables/useReactiveIcon';
 
 const currentWindow = getCurrentWindow();
 const route = useRoute();
@@ -32,7 +32,6 @@ const displayLabel = computed(() => {
 	return translated.replace('{0}', String(percent));
 });
 const visible = ref(false);
-const iconSrc = useReactiveIcon(iconName);
 
 let hideTimeout: ReturnType<typeof setTimeout> | null = null;
 let hideWindowTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -104,7 +103,7 @@ onUnmounted(() => {
 			class="w-screen h-screen flex flex-col items-center justify-center gap-3 bg-ui-bg/80 border border-ui-border rounded-corner-window overflow-hidden px-8 py-6"
 		>
 			<div class="w-16 h-16 flex items-center justify-center">
-				<img :src="iconSrc" :alt="displayLabel" class="w-14 h-14" />
+				<ThemeIcon :name="iconName" :size="56" :alt="displayLabel" />
 			</div>
 			<span class="text-sm font-medium text-tx-main text-center whitespace-nowrap">{{ displayLabel }}</span>
 			<div

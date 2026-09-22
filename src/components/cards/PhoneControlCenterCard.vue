@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SwitchToggle } from '@vasakgroup/vue-libvasak';
+import { SwitchToggle, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import type { ConnectDevice, ConnectRunningApp, ConnectWebcamState } from '@/interfaces/connect';
 import {
@@ -15,7 +15,6 @@ import {
 	stopConnectWebcam,
 	toggleConnectMenu,
 } from '@/services/connect.service';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import {
 	camaraPorDefecto,
@@ -36,8 +35,6 @@ const { t } = useI18n();
 
 const devices: Ref<ConnectDevice[]> = ref([]);
 const running: Ref<ConnectRunningApp[]> = ref([]);
-
-const { phoneIcon } = useIcons({ phoneIcon: 'smartphone' });
 
 const device = computed(() => devices.value[0]);
 
@@ -198,7 +195,7 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
 <template>
   <div v-if="device" class="flex flex-col gap-2 rounded-corner bg-ui-surface/40 p-3 text-tx-main">
     <button type="button" class="flex items-center gap-3 text-left" @click="toggleConnectMenu()">
-      <img :src="phoneIcon" alt="" class="h-8 w-8 shrink-0" />
+      <ThemeIcon name="smartphone" :size="32" />
       <div class="min-w-0 flex-1">
         <p class="truncate font-semibold text-tx-main">{{ device.model }}</p>
         <p class="truncate text-xs text-tx-muted">

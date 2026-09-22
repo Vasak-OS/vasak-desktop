@@ -2,10 +2,10 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { globalSearch } from '@/services/core.service';
 import { executeSearchResult } from '@/services/search.service';
-import { useIcon, useReactiveSymbols } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 interface SearchResult {
@@ -27,14 +27,6 @@ const selectedIndex = ref(0);
 const loading = ref(false);
 const leaving = ref(false);
 const currentWindow = getCurrentWindow();
-
-const searchIconSrc = useIcon(computed(() => 'search'));
-
-const { appIconSrc, fileIconSrc, actionIconSrc } = useReactiveSymbols({
-	appIconSrc: 'applications-all',
-	fileIconSrc: 'text-x-generic',
-	actionIconSrc: 'system-run',
-});
 
 let debounceTimer: number | null = null;
 
@@ -159,16 +151,15 @@ function resultText(result: { category: string }, value: string): string {
 	return result.category === 'action' ? t(value) : value;
 }
 
+/** El **nombre** del icono de cada clase de resultado, no su ruta. */
 function getCategoryIcon(category: string): string {
 	switch (category) {
-		case 'application':
-			return appIconSrc.value;
 		case 'file':
-			return fileIconSrc.value;
+			return 'text-x-generic';
 		case 'action':
-			return actionIconSrc.value;
+			return 'system-run';
 		default:
-			return appIconSrc.value;
+			return 'applications-all';
 	}
 }
 
@@ -202,7 +193,7 @@ function getCategoryLabel(category: string): string {
         <div
           class="flex items-center gap-4 px-6 py-5 border-b border-primary/10 relative z-10"
         >
-          <img :src="searchIconSrc" :alt="t('views.search.iconAlt')" class="w-7 h-7 shrink-0" />
+          <ThemeIcon name="search" :size="28" :alt="t('views.search.iconAlt')" />
           <input
             v-model="query"
             type="text"
@@ -233,10 +224,10 @@ function getCategoryLabel(category: string): string {
             <div
               class="w-14 h-14 shrink-0 flex items-center justify-center rounded-corner bg-primary/10 border border-primary/20"
             >
-              <img
-                :src="getCategoryIcon(result.category)"
-                alt=""
-                class="w-8 h-8"
+              <ThemeIcon
+                :name="getCategoryIcon(result.category)"
+                type="symbol"
+                :size="32"
               />
             </div>
             <div class="flex-1 min-w-0">

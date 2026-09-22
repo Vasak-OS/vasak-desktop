@@ -8,7 +8,7 @@
     <div
       class="group/grupo flex items-center gap-2 px-2 py-1.5 bg-ui-surface rounded-t-corner cursor-pointer"
       @click="toggleExpanded" :class="{ 'rounded-corner': !isExpanded }">
-      <img :src="iconSrc" :alt="group.app_name" class="w-5 h-5 shrink-0 object-contain" />
+      <ThemeIcon :name="group.app_icon" :size="20" :alt="group.app_name" class="object-contain" />
 
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
@@ -35,7 +35,7 @@
           :title="t('components.NotificationGroupCard.removeGroup')"
           class="flex items-center justify-center w-4 h-4 rounded-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/grupo:opacity-100 focus-visible:opacity-100 hover:text-status-error"
           @click.stop="removeAllFromGroup" :aria-label="t('components.NotificationGroupCard.removeGroup')">
-          <img :src="closeIconSrc" :alt="t('components.NotificationGroupCard.removeGroup')" class="w-2.5 h-2.5" />
+          <ThemeIcon name="window-close-symbolic" type="symbol" :size="10" :alt="t('components.NotificationGroupCard.removeGroup')" />
         </button>
         <div class="w-4 h-4 flex items-center justify-center text-tx-muted transition-transform duration-200"
           :class="{ 'rotate-180': isExpanded }">
@@ -66,9 +66,9 @@
 
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import NotificationCard from '@/components/cards/NotificationCard.vue';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
 
 const { t } = useI18n();
 
@@ -103,11 +103,6 @@ const emit = defineEmits<{
 }>();
 
 const isExpanded = ref(false);
-const { iconSrc, closeIconSrc } = useIcons({
-	iconSrc: computed(() => props.group.app_icon),
-	closeIconSrc: 'window-close-symbolic',
-});
-
 // Auto-expandir si hay notificaciones no leídas
 const shouldAutoExpand = computed(() => {
 	return props.group.has_unread && props.group.count <= 3;

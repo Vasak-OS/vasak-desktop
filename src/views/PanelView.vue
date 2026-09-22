@@ -6,6 +6,7 @@ import { emit } from '@tauri-apps/api/event';
 import { Command } from '@tauri-apps/plugin-shell';
 import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
@@ -19,7 +20,6 @@ import { listConnectDevices, toggleConnectMenu } from '@/services/connect.servic
 import { getAllNotifications } from '@/services/notification.service';
 import { toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { hayNotificacionesNuevas } from '@/tools/notificaciones';
 import { CLASES_DE_LA_BARRA } from '@/tools/posicion-del-panel';
@@ -95,14 +95,6 @@ const abrirMenuDelPanel = async (evento: MouseEvent) => {
 const notifications = ref<AppNotification[]>([]);
 const hasNewNotifications = ref(false);
 let notificationResetTimer: ReturnType<typeof setTimeout> | undefined;
-
-const { menuIcon, notifyIcon, configIcon, fileManagerIcon, phoneIcon } = useIcons({
-	menuIcon: 'start-here',
-	notifyIcon: 'preferences-desktop-notification',
-	configIcon: 'preferences-system',
-	fileManagerIcon: 'system-file-manager',
-	phoneIcon: 'smartphone',
-});
 
 /**
  * Phones the device service can see.
@@ -226,33 +218,52 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 		:class="CLASES_DE_LA_BARRA[posicion]"
 	>
     <div class="flex items-center gap-1" :class="vertical ? 'flex-col' : ''">
-      <img :src="menuIcon" :alt="t('views.panel.menuAlt')" @click="openMenu" class="h-7 w-7 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out" />
+      <!-- Un botón y no una imagen con `@click`: así se alcanza con el teclado
+           y se anuncia como lo que es. Antes eran `img` clicables, que no
+           reciben foco ni salen en la lista de controles. -->
+      <button
+        type="button"
+        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        :title="t('views.panel.menuAlt')"
+        :aria-label="t('views.panel.menuAlt')"
+        @click="openMenu"
+      >
+        <ThemeIcon name="start-here" :size="28" />
+      </button>
 			<!-- El separador gira con la barra: de costado, una raya vertical de
 			     un píxel de ancho entre dos iconos apilados no separa nada. -->
 			<div class="bg-ui-bg/80" :class="vertical ? 'h-1 w-7' : 'w-1 h-7'"></div>
-      <img
-        :src="configIcon"
-        :alt="t('views.panel.settingsAlt')"
+      <button
+        type="button"
+        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        :title="t('views.panel.settingsAlt')"
+        :aria-label="t('views.panel.settingsAlt')"
         @click="openConfig"
-        class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-      />
-      <img
-        :src="fileManagerIcon"
-        :alt="t('views.panel.filesAlt')"
+      >
+        <ThemeIcon name="preferences-system" :size="24" />
+      </button>
+      <button
+        type="button"
+        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        :title="t('views.panel.filesAlt')"
+        :aria-label="t('views.panel.filesAlt')"
         @click="openFileManager"
-        class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-      />
+      >
+        <ThemeIcon name="system-file-manager" :size="24" />
+      </button>
       <!-- Only while a phone is connected: a permanent button for hardware
            most people never plug in is clutter in the one strip of screen that
            is always on top of everything else. -->
       <div v-if="hasPhone" class="relative">
-        <img
-          :src="phoneIcon"
-          :alt="t('views.connect.menuAlt')"
-          :title="t('views.connect.menuAlt')"
-          @click="openPhoneMenu"
-          class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-        />
+        <button
+        type="button"
+        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        :title="t('views.connect.menuAlt')"
+        :aria-label="t('views.connect.menuAlt')"
+        @click="openPhoneMenu"
+      >
+        <ThemeIcon name="smartphone" :size="24" />
+      </button>
         <div
           v-if="phoneNeedsAuth"
           :title="t('views.connect.unauthorized')"
@@ -264,17 +275,24 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
     <div class="flex content-center items-center" :class="vertical ? 'flex-col' : ''">
       <TrayBarArea />
       <PanelClockwidget />
-      <div class="relative cursor-pointer" @click="openNotificationCenter">
-        <img
-          :src="notifyIcon"
+      <button
+        type="button"
+        class="relative cursor-pointer"
+        :title="t('views.panel.notificationsAlt')"
+        :aria-label="t('views.panel.notificationsAlt')"
+        @click="openNotificationCenter"
+      >
+        <ThemeIcon
+          name="preferences-desktop-notification"
+          :size="24"
           :alt="t('views.panel.notificationsAlt')"
-          class="h-6 w-6 cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+          class="p-0.5"
           :class="{ 'animate-bell-shake': hasNewNotifications }"
         />
         <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary text-tx-on-primary rounded-full min-w-3 h-3 flex items-center justify-center text-[8px] font-semibold leading-none px-0.5">
           {{ notifications.length > 99 ? "99+" : notifications.length }}
         </div>
-      </div>
+      </button>
     </div>
   </nav>
 </template>

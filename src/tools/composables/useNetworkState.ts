@@ -6,7 +6,6 @@ import {
 	type NetworkInfo,
 	type VpnStatus,
 } from '@/services/network.service';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -24,7 +23,15 @@ export function useNetworkState() {
 		is_connected: false,
 	});
 	const vpnStatus = ref<VpnStatus | null>(null);
-	const networkIconSrc = useIcon(computed(() => networkState.value.icon));
+	/**
+	 * El **nombre** del icono, no su ruta.
+	 *
+	 * Un composable no puede devolver un componente, así que lo que sale de acá
+	 * es el nombre y quien lo dibuja es `ThemeIcon` en la vista. Antes salía la
+	 * ruta ya resuelta, y con eso cada consumidor arrastraba un icono que había
+	 * que volver a pedir a mano cuando cambiaba el tema.
+	 */
+	const networkIconName = computed(() => networkState.value.icon);
 
 	const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 
@@ -68,7 +75,7 @@ export function useNetworkState() {
 	return {
 		networkState,
 		vpnStatus,
-		networkIconSrc,
+		networkIconName,
 		vpnConnected,
 		networkAlt,
 		getCurrentNetwork,

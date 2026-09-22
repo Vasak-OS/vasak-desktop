@@ -7,7 +7,6 @@ import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { VolumeInfo } from '@/interfaces/volume';
 import { getAudioVolume } from '@/services/core.service';
 import { toggleAudioApplet } from '@/services/window.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
@@ -24,8 +23,8 @@ const currentVolume = ref(0);
 const volumePercentage = computed(() =>
 	calculateVolumePercentage(volumeInfo.value, currentVolume.value)
 );
-const currentIcon = useSymbol(
-	computed(() => getVolumeIconName(volumeInfo.value.is_muted, volumePercentage.value))
+const currentIcon = computed(() =>
+	getVolumeIconName(volumeInfo.value.is_muted, volumePercentage.value)
 );
 
 async function getVolumeInfo(): Promise<void> {
@@ -61,7 +60,7 @@ useSharedEvent<VolumeInfo>(
 </script>
 <template>
   <TrayIconButton
-    :icon="currentIcon"
+    :name="currentIcon"
     :tooltip="volumeInfo.is_muted
       ? t('components.TrayIconSound.unmute')
       : t('components.TrayIconSound.mute')"

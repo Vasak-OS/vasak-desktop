@@ -6,7 +6,6 @@ import { computed, onMounted, ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { getBatteryInfo } from '@/services/core.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -58,8 +57,6 @@ const batteryIconName = computed(() => {
 	return isCharging ? `${baseName}-charging` : baseName;
 });
 
-const batteryIconSrc = useSymbol(batteryIconName);
-
 async function getBatteryInfoComp() {
 	try {
 		const info: BatteryInfo | null = await getBatteryInfo();
@@ -97,7 +94,7 @@ useSharedEvent<BatteryInfo>('battery-update', (payload) => {
 
 <template>
   <TrayIconButton
-    :icon="batteryIconSrc"
+    :name="batteryIconName"
     :alt="batteryAltText"
     :tooltip="batteryAltText"
     :show-custom-tooltip="batteryInfo.has_battery"

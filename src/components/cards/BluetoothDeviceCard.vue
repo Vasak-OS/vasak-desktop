@@ -3,7 +3,6 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
 import { computed, onMounted, type Ref, ref } from 'vue';
-import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 import DeviceCard from './DeviceCard.vue';
 
@@ -21,10 +20,15 @@ const props = defineProps<{
 // patrón con @vue/test-utils: sin declarar, dos; declarándolo, una.
 defineEmits<{ action: [] }>();
 
-const icon = useIcon(computed(() => props.device.icon || 'bluetooth'));
-const batteryIcon = useSymbol('battery-good-symbolic');
-const signalIcon = useSymbol('network-wireless-signal-excellent-symbolic');
-const tagIcon = useSymbol('emblem-system-symbolic');
+/**
+ * Los **nombres** de los iconos, no sus rutas.
+ *
+ * Lo que va en `extraInfo` viaja como dato hasta `DeviceCard`, que es quien lo
+ * dibuja con `ThemeIcon`. Antes viajaba la ruta ya resuelta, así que este
+ * componente tenía que resolver cuatro iconos y volver a pedirlos al cambiar de
+ * tema.
+ */
+const icon = computed(() => props.device.icon || 'bluetooth');
 
 const deviceTitle = computed(() => props.device.alias || props.device.name || props.device.address);
 
@@ -42,13 +46,16 @@ interface ExtraInfoItem {
 const deviceExtraInfo = computed<ExtraInfoItem[]>(() => {
 	const info: ExtraInfoItem[] = [];
 	if (extraInfo.value.battery !== undefined) {
-		info.push({ icon: batteryIcon.value, text: `${extraInfo.value.battery}%` });
+		info.push({ icon: 'battery-good-symbolic', text: `${extraInfo.value.battery}%` });
 	}
 	if (props.device.rssi) {
-		info.push({ icon: signalIcon.value, text: `${props.device.rssi} dBm` });
+		info.push({
+			icon: 'network-wireless-signal-excellent-symbolic',
+			text: `${props.device.rssi} dBm`,
+		});
 	}
 	if (extraInfo.value.manufacturer) {
-		info.push({ icon: tagIcon.value, text: extraInfo.value.manufacturer });
+		info.push({ icon: 'emblem-system-symbolic', text: extraInfo.value.manufacturer });
 	}
 	return info;
 });

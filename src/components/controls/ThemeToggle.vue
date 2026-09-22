@@ -16,7 +16,7 @@
           (configStore?.config as any)?.style?.darkmode,
       }"></div>
 
-    <ToggleControl :icon="themeIcon" :label="(configStore?.config as any)?.style?.darkmode
+    <ToggleControl :name="themeIcon" type="symbol" :label="(configStore?.config as any)?.style?.darkmode
         ? t('components.ThemeToggle.toLight')
         : t('components.ThemeToggle.toDark')
       " :pressed="Boolean((configStore?.config as any)?.style?.darkmode)" :is-active="true" :is-loading="isSwitching" :custom-class="{
@@ -40,7 +40,6 @@ import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
-import { useReactiveSymbol } from '@/tools/composables/useReactiveIcon';
 import { cancelRunningThemeTransitions } from '@/tools/theme.utils';
 import { logError } from '@/utils/logger';
 
@@ -49,10 +48,8 @@ const { t } = useI18n();
 const configStore = ref<any>(null);
 const isSwitching: Ref<boolean> = ref(false);
 
-const themeIcon = useReactiveSymbol(
-	computed(() =>
-		configStore.value?.config?.style?.darkmode ? 'weather-clear' : 'weather-clear-night'
-	)
+const themeIcon = computed(() =>
+	configStore.value?.config?.style?.darkmode ? 'weather-clear' : 'weather-clear-night'
 );
 
 onMounted(() => {

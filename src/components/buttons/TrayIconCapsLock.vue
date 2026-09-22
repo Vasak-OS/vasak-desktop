@@ -4,14 +4,11 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ref } from 'vue';
 import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useEventListener } from '@/tools/event.listener';
 
 const { t } = useI18n();
 
 const capsLockOn = ref(false);
-
-const capsLockIcon = useSymbol('capslock-enabled-symbolic');
 
 useEventListener<{ active: boolean }>('caps-lock-changed', (event) => {
 	capsLockOn.value = event.payload.active;
@@ -21,7 +18,7 @@ useEventListener<{ active: boolean }>('caps-lock-changed', (event) => {
 <template>
   <TrayIconButton
     v-if="capsLockOn"
-    :icon="capsLockIcon"
+    name="capslock-enabled-symbolic"
     :tooltip="t('components.TrayIconCapsLock.capsLock')"
     :alt="t('components.TrayIconCapsLock.capsLock')"
     :interactive="false"

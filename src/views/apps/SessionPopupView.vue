@@ -4,6 +4,7 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import {
@@ -13,7 +14,6 @@ import {
 	shutdown as sysShutdown,
 	suspend as sysSuspend,
 } from '@/services/system.service';
-import { useReactiveIcon } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const currentWindow = getCurrentWindow();
@@ -24,20 +24,18 @@ const leaving = ref(false);
 const confirming = ref(false);
 const closing = ref(false);
 
-const actionImg = useReactiveIcon(
-	computed(() => {
-		switch (action.value) {
-			case 'shutdown':
-				return 'system-shutdown';
-			case 'reboot':
-				return 'system-reboot';
-			case 'logout':
-				return 'system-log-out';
-			case 'suspend':
-				return 'system-suspend';
-		}
-	})
-);
+const actionImg = computed(() => {
+	switch (action.value) {
+		case 'shutdown':
+			return 'system-shutdown';
+		case 'reboot':
+			return 'system-reboot';
+		case 'logout':
+			return 'system-log-out';
+		case 'suspend':
+			return 'system-suspend';
+	}
+});
 
 const titleText = computed(() => {
 	switch (action.value) {
@@ -158,7 +156,7 @@ onUnmounted(() => {
       >
         <div class="flex flex-col items-center gap-4 px-8 pt-8 pb-4">
           <div class="w-20 h-20 rounded-full bg-primary/15 flex items-center justify-center">
-            <img :src="actionImg" :alt="titleText" class="w-12 h-12" />
+            <ThemeIcon :name="actionImg ?? ''" :size="48" :alt="titleText" />
           </div>
           <h2 class="text-xl font-bold text-vsk-text text-center">{{ titleText }}</h2>
           <p class="text-sm text-vsk-text/70 text-center leading-relaxed">{{ descriptionText }}</p>

@@ -11,7 +11,6 @@ import {
 	toggleNetworkApplet,
 	type VpnStatus,
 } from '@/services/network.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -29,7 +28,7 @@ const networkState = ref<NetworkInfo>({
 	is_connected: false,
 });
 const vpnStatus = ref<VpnStatus | null>(null);
-const networkIconSrc = useSymbol(computed(() => networkState.value.icon));
+const networkIconName = computed(() => networkState.value.icon);
 
 const vpnConnected = computed(() => vpnStatus.value?.state === 'connected');
 
@@ -83,7 +82,7 @@ useSharedEvent('vpn-changed', refreshVpnStatus);
 <template>
   <div class="flex items-center gap-1">
 	<TrayIconButton
-	  :icon="networkIconSrc"
+	  :name="networkIconName"
 	  :alt="networkAlt"
 	  :tooltip="networkAlt"
 	  :custom-class="{ 'relative': true }"

@@ -1,5 +1,7 @@
 <template>
-  <div
+  <component
+    :is="interactive ? 'button' : 'div'"
+    v-bind="interactive ? { type: 'button', 'aria-label': nombreAccesible } : {}"
     class="theme-transition p-1 rounded-corner relative group transition-all duration-300"
     :class="[customClass, interactive ? 'cursor-pointer hover:bg-primary' : '']"
     :title="tooltip"
@@ -7,10 +9,12 @@
     @mouseenter="showTooltip = true"
     @mouseleave="showTooltip = false"
   >
-    <img
-      :src="icon"
+    <ThemeIcon
+      :name="name"
+      :type="type"
+      :size="22"
       :alt="alt"
-      class="m-auto h-5.5 w-auto transition-all duration-300"
+      class="m-auto transition-all duration-300"
       :class="iconClass"
     />
     
@@ -39,15 +43,28 @@
 
     <!-- Slot para contenido adicional personalizado -->
     <slot></slot>
-  </div>
+  </component>
 </template>
 
 <script setup lang="ts">
+/**
+ * Un icono de la bandeja del panel.
+ *
+ * El icono se pide por **nombre** y no por ruta: antes recibía la ruta ya
+ * resuelta, así que cada botón tenía que resolverla por su cuenta y volver a
+ * pedirla al cambiar el tema. `ThemeIcon` hace eso una sola vez para toda la
+ * ventana, y además entra en el planificador de recarga: el que está en pantalla
+ * se recarga antes que el que no.
+ */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <User in template> */
-import { ref } from 'vue';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { computed, ref } from 'vue';
 
 interface Props {
-	icon: string;
+	/** El nombre del icono en el tema del escritorio. */
+	name: string;
+	/** Cuál de las dos variantes del tema. La bandeja usa el glifo monocromo. */
+	type?: 'icon' | 'symbol';
 	alt?: string;
 	tooltip?: string;
 	badge?: number | null;
@@ -66,7 +83,8 @@ interface Props {
 	interactive?: boolean;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
+	type: 'symbol',
 	alt: '',
 	tooltip: '',
 	badge: null,
@@ -81,6 +99,14 @@ withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	click: [];
 }>();
+
+/**
+ * Cómo se llama el botón para quien no ve el icono.
+ *
+ * El dibujo es todo el contenido: sin esto el lector de pantalla anuncia un
+ * botón vacío. Se usa el `alt` del icono, y si no hay, el texto del tooltip.
+ */
+const nombreAccesible = computed(() => props.alt || props.tooltip || undefined);
 
 const showTooltip = ref(false);
 
