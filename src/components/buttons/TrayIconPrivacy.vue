@@ -2,9 +2,9 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import { privacyInUse, togglePrivacyApplet } from '@/services/core.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useEventListener } from '@/tools/event.listener';
 import { logWarning } from '@/utils/logger';
 
@@ -66,29 +66,34 @@ onMounted(async () => {
 	}
 });
 
-const iconoCamara = useSymbol('camera-web');
-const iconoMicrofono = useSymbol('microphone-sensitivity-high');
-const iconoPantalla = useSymbol('video-display');
-
-/** Un símbolo por dispositivo en uso, en orden fijo. */
+/**
+ * Un símbolo por dispositivo en uso, en orden fijo.
+ *
+ * Cada uno tiene el suyo y no hay un glifo combinado: las tres clases dan siete
+ * combinaciones, y a dieciséis píxeles no se distinguen entre sí.
+ *
+ * Lo que se guarda es el **nombre** del icono y no su ruta: lo resuelve
+ * `ThemeIcon` en la plantilla, que además lo vuelve a pedir cuando la persona
+ * cambia de tema.
+ */
 const simbolos = computed(() => {
 	const puestos: { clave: string; icono: string; texto: string }[] = [];
 	if (camara.value.length > 0)
 		puestos.push({
 			clave: 'camara',
-			icono: iconoCamara.value,
+			icono: 'camera-web',
 			texto: t('components.TrayIconPrivacy.camera'),
 		});
 	if (microfono.value.length > 0)
 		puestos.push({
 			clave: 'microfono',
-			icono: iconoMicrofono.value,
+			icono: 'microphone-sensitivity-high',
 			texto: t('components.TrayIconPrivacy.microphone'),
 		});
 	if (pantalla.value.length > 0)
 		puestos.push({
 			clave: 'pantalla',
-			icono: iconoPantalla.value,
+			icono: 'video-display',
 			texto: t('components.TrayIconPrivacy.screen'),
 		});
 	return puestos;
@@ -123,12 +128,14 @@ const abrir = async () => {
     :title="detalle"
     @click="abrir"
   >
-    <img
+    <ThemeIcon
       v-for="simbolo in simbolos"
       :key="simbolo.clave"
-      :src="simbolo.icono"
+      :name="simbolo.icono"
+      type="symbol"
+      :size="22"
       :alt="simbolo.texto"
-      class="h-5.5 w-auto transition-all duration-300"
+      class="transition-all duration-300"
     />
   </div>
 </template>

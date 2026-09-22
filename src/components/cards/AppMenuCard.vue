@@ -2,9 +2,8 @@ import { openApp } from '@/services/app.service';
 
 <script lang="ts" setup>
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { computed } from 'vue';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { openApp as sysOpenApp } from '@/services/app.service';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const props = defineProps({
@@ -14,7 +13,6 @@ const props = defineProps({
 	},
 });
 
-const appIcon = useIcon(computed(() => props.app.icon));
 const appWindow = getCurrentWindow();
 
 const openApp = async (path: string) => {
@@ -34,11 +32,11 @@ const openApp = async (path: string) => {
     @click="openApp(app.path)"
     :title="app.description"
   >
-    <img
-      :src="appIcon"
+    <ThemeIcon
+      :name="app.icon"
+      :size="40"
       :alt="app.name"
-      :title="app.name"
-      class="img-fluid h-10"
+      class="img-fluid"
     />
     <div class="col-10 app-card-info ps-2 text-left">
       {{ app.name }}

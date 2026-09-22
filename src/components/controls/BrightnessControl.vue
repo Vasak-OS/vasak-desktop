@@ -8,7 +8,6 @@ import {
 	getBrightnessInfo as fetchBrightnessInfo,
 	setBrightnessInfo,
 } from '@/services/core.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -40,13 +39,11 @@ const brightnessLabel = computed(() =>
 	t('components.BrightnessControl.brightness').replace('{0}', String(brightnessPercentage.value))
 );
 
-const currentIcon = useSymbol(
-	computed(() => {
-		if (brightnessPercentage.value > 66) return 'display-brightness-high-symbolic';
-		if (brightnessPercentage.value > 33) return 'display-brightness-medium-symbolic';
-		return 'display-brightness-low-symbolic';
-	})
-);
+const currentIcon = computed(() => {
+	if (brightnessPercentage.value > 66) return 'display-brightness-high-symbolic';
+	if (brightnessPercentage.value > 33) return 'display-brightness-medium-symbolic';
+	return 'display-brightness-low-symbolic';
+});
 
 async function getBrightnessInfo() {
 	try {
@@ -111,7 +108,8 @@ useSharedEvent<Record<string, number>>(
 
 <template>
   <SliderControl
-    :icon="currentIcon"
+    :name="currentIcon"
+    type="symbol"
     :label="brightnessLabel"
     v-model="currentBrightness"
     :min="brightnessInfo.min"

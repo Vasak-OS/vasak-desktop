@@ -9,7 +9,7 @@ import { useNetworkState } from '@/tools/composables/useNetworkState';
 
 const {
 	networkState,
-	networkIconSrc,
+	networkIconName,
 	vpnConnected,
 	networkAlt,
 	getCurrentNetwork,
@@ -45,7 +45,7 @@ onMounted(async () => {
 		</div>
 
 		<ToggleControl
-			:icon="networkIconSrc"
+			:name="networkIconName"
 			:label="networkAlt"
 			:is-active="networkState.is_connected"
 			:custom-class="{

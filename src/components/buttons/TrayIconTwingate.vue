@@ -7,7 +7,6 @@ import {
 	type TwingateInfo,
 	toggleTwingateApplet,
 } from '@/services/twingate.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -26,9 +25,7 @@ const { t } = useI18n();
 
 const info = ref<TwingateInfo | null>(null);
 
-const icon = useSymbol(
-	computed(() => (info.value?.connected ? 'network-vpn' : 'network-vpn-disconnected'))
-);
+const icon = computed(() => (info.value?.connected ? 'network-vpn' : 'network-vpn-disconnected'));
 
 const cargar = async () => {
 	try {
@@ -65,7 +62,7 @@ const tooltip = computed(() => {
 <template>
   <TrayIconButton
     v-if="info?.installed"
-    :icon="icon"
+    :name="icon"
     :alt="tooltip"
     :tooltip="tooltip"
     :custom-class="{ relative: true }"

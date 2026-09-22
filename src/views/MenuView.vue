@@ -15,7 +15,6 @@ import UserMenuCard from '@/components/cards/UserMenuCard.vue';
 import WidgetSlot from '@/components/widgets/WidgetSlot.vue';
 import { getMenuItems, openApp } from '@/services/app.service';
 import { openSettings, toggleSessionPopup } from '@/services/window.service';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -28,14 +27,6 @@ const selectedIndex = ref(0);
 const menuLoadFailed = ref(false);
 const menuWindow = getCurrentWindow();
 let unlistenFocus: (() => void) | null = null;
-
-const { logoutImg, shutdownImg, rebootImg, suspendImg, settingsImg } = useIcons({
-	logoutImg: 'system-log-out',
-	shutdownImg: 'system-shutdown',
-	rebootImg: 'system-reboot',
-	suspendImg: 'system-suspend',
-	settingsImg: 'settings',
-});
 
 const setMenu = async () => {
 	try {
@@ -221,17 +212,17 @@ const onBlur = () => {
           v-for="(action, index) in [
             {
               title: t('views.menu.configuration'),
-              img: settingsImg,
+              icono: 'settings',
               handler: openConfiguration,
             },
-            { title: t('views.menu.shutdown'), img: shutdownImg, handler: () => openSessionPopup('shutdown') },
-            { title: t('views.menu.reboot'), img: rebootImg, handler: () => openSessionPopup('reboot') },
-            { title: t('views.menu.logout'), img: logoutImg, handler: () => openSessionPopup('logout') },
-            { title: t('views.menu.suspend'), img: suspendImg, handler: () => openSessionPopup('suspend') },
+            { title: t('views.menu.shutdown'), icono: 'system-shutdown', handler: () => openSessionPopup('shutdown') },
+            { title: t('views.menu.reboot'), icono: 'system-reboot', handler: () => openSessionPopup('reboot') },
+            { title: t('views.menu.logout'), icono: 'system-log-out', handler: () => openSessionPopup('logout') },
+            { title: t('views.menu.suspend'), icono: 'system-suspend', handler: () => openSessionPopup('suspend') },
           ]"
           :key="index"
           :title="action.title"
-          :img="action.img"
+          :icono="action.icono"
           @click="action.handler"
           class="w-10 h-10 hover:bg-primary rounded-corner p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3"
         />

@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { onMounted, type Ref, ref } from 'vue';
 import { getAudioDevices, setAudioDevice } from '@/services/core.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -19,7 +19,6 @@ interface AudioDevice {
 
 const devices: Ref<AudioDevice[]> = ref([]);
 const selectedDeviceId = ref('');
-const speakerIcon = useSymbol('audio-speakers-symbolic');
 const isLoading = ref(false);
 
 async function loadDevices() {
@@ -77,7 +76,7 @@ function getDeviceName(device: AudioDevice): string {
 <template>
   <div class="space-y-2">
     <div class="flex items-center gap-2 text-sm font-medium text-ui-surface">
-      <img v-if="speakerIcon" :src="speakerIcon" :alt="t('components.AudioDeviceSelector.speakerAlt')" class="w-4 h-4" />
+      <ThemeIcon name="audio-speakers-symbolic" type="symbol" :size="16" :alt="t('components.AudioDeviceSelector.speakerAlt')" />
       <span>{{ t('components.AudioDeviceSelector.title') }}</span>
     </div>
 

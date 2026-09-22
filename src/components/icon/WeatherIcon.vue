@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, type Ref, ref } from 'vue';
 import weatherCodesData from '@/data/weatherCodes.json';
 import type { CodeDataType, WeatherInfo } from '@/interfaces/weather';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 
 const { t } = useI18n();
 
@@ -24,26 +24,29 @@ const props = defineProps<{
 	sizeClass?: string;
 }>();
 
-const iconPath = useIcon(
-	computed(() => {
-		weatherInfo.value = codeData[String(props.code)];
-		if (weatherInfo.value) {
-			return weatherInfo.value[props.dayOrNight].image;
-		}
-		return 'weather-severe-alert';
-	})
+const iconName = computed(() => {
+	weatherInfo.value = codeData[String(props.code)];
+	if (weatherInfo.value) {
+		return weatherInfo.value[props.dayOrNight].image;
+	}
+	return 'weather-severe-alert';
+});
+
+const descripcion = computed(() =>
+	weatherInfo.value
+		? weatherInfo.value[props.dayOrNight].description
+		: t('components.WeatherIcon.unknown')
 );
 </script>
 
 <template>
   <transition enter-active-class="transition-opacity duration-300 ease-in-out" leave-active-class="transition-opacity duration-300 ease-in-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
-	<img
-	  v-if="iconPath"
-	  :src="iconPath"
-	  :alt="weatherInfo ? weatherInfo[dayOrNight].description : t('components.WeatherIcon.unknown')"
-	  :title="weatherInfo ? weatherInfo[dayOrNight].description : t('components.WeatherIcon.unknown')"
-	  :class="['img-fluid', props.sizeClass ?? 'h-16 w-16']"
-	/>
+	<!-- El `title` va en un envoltorio y no en el icono: `strictTemplates` no
+	     acepta atributos sueltos sobre un componente, y un tooltip sobre el
+	     dibujo tapa menos que sobre toda la caja. -->
+	<span :title="descripcion" :class="['img-fluid inline-flex', props.sizeClass ?? 'h-16 w-16']">
+	  <ThemeIcon :name="iconName" :size="64" :alt="descripcion" class="h-full w-full" />
+	</span>
   </transition>
 </template>
 

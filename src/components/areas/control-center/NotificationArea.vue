@@ -35,7 +35,7 @@
       v-if="groupedNotifications.length === 0"
       class="text-center transition-opacity duration-300 ease-in-out text-tx-muted py-6"
     >
-      <img :src="emptyIcon" alt="" class="w-6 h-6 opacity-60 mx-auto" />
+      <ThemeIcon name="preferences-desktop-notification" type="symbol" :size="24" class="opacity-60 mx-auto" />
       <p class="mt-1 text-sm">{{ t('components.NotificationArea.empty') }}</p>
     </div>
 
@@ -55,6 +55,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
 import type {
@@ -67,14 +68,12 @@ import {
 	deleteNotification,
 	getAllNotifications,
 } from '@/services/notification.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { agruparNotificaciones } from '@/tools/notificaciones';
 
 const { t } = useI18n();
 
 const notifications = ref<Notification[]>([]);
-const emptyIcon = useSymbol('preferences-desktop-notification');
 
 const groupedNotifications = computed<NotificationGroupData[]>(() =>
 	agruparNotificaciones(notifications.value)

@@ -7,10 +7,12 @@
     @mouseenter="showTooltip = true"
     @mouseleave="showTooltip = false"
   >
-    <img
-      :src="icon"
+    <ThemeIcon
+      :name="name"
+      :type="type"
+      :size="22"
       :alt="alt"
-      class="m-auto h-5.5 w-auto transition-all duration-300"
+      class="m-auto transition-all duration-300"
       :class="iconClass"
     />
     
@@ -43,11 +45,24 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Un icono de la bandeja del panel.
+ *
+ * El icono se pide por **nombre** y no por ruta: antes recibía la ruta ya
+ * resuelta, así que cada botón tenía que resolverla por su cuenta y volver a
+ * pedirla al cambiar el tema. `ThemeIcon` hace eso una sola vez para toda la
+ * ventana, y además entra en el planificador de recarga: el que está en pantalla
+ * se recarga antes que el que no.
+ */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <User in template> */
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { ref } from 'vue';
 
 interface Props {
-	icon: string;
+	/** El nombre del icono en el tema del escritorio. */
+	name: string;
+	/** Cuál de las dos variantes del tema. La bandeja usa el glifo monocromo. */
+	type?: 'icon' | 'symbol';
 	alt?: string;
 	tooltip?: string;
 	badge?: number | null;
@@ -67,6 +82,7 @@ interface Props {
 }
 
 withDefaults(defineProps<Props>(), {
+	type: 'symbol',
 	alt: '',
 	tooltip: '',
 	badge: null,

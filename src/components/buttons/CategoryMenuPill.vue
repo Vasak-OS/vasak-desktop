@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { computed } from 'vue';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 
 const emit = defineEmits(['update:categorySelected']);
 
@@ -13,8 +12,6 @@ const props = defineProps<{
 	categorySelected: string;
 	large?: boolean;
 }>();
-
-const appIcon = useIcon(computed(() => props.image));
 
 const setCategory = (category: string) => {
 	emit('update:categorySelected', category);
@@ -34,7 +31,7 @@ const setCategory = (category: string) => {
       : 'bg-transparent border border-transparent hover:bg-ui-surface/60'
   ]"
   >
-    <img :src="appIcon" alt="" :class="large ? 'h-14' : 'h-10'" />
+    <ThemeIcon :name="image" :size="large ? 56 : 40" />
   </button>
 </template>
 

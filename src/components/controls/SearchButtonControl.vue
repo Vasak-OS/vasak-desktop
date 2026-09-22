@@ -1,13 +1,11 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { toggleSearch } from '@/services/window.service';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
-
-const iconSrc = useIcon('search');
 
 const openSearch = async () => {
 	try {
@@ -30,10 +28,11 @@ const openSearch = async () => {
       style="opacity: 0"
     ></div>
 
-    <img
-      :src="iconSrc"
+    <ThemeIcon
+      name="search"
+      :size="48"
       :alt="t('components.SearchButtonControl.searchAlt')"
-      class="m-auto w-12 h-12 transition-all duration-500 group-hover:scale-110 relative z-10 drop-shadow-lg group-hover:drop-shadow-xl"
+      class="m-auto transition-all duration-500 group-hover:scale-110 relative z-10 drop-shadow-lg group-hover:drop-shadow-xl"
     />
   </button>
 </template>

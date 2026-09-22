@@ -3,11 +3,11 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import AppletFrame from '@/components/layouts/AppletFrame.vue';
 import type { SystrayPopupPayload, TrayMenu } from '@/interfaces/tray';
 import { getTrayPopupData, trayPopupClick } from '@/services/tray.service';
-import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -15,8 +15,6 @@ const { t } = useI18n();
 const currentWindow = getCurrentWindow();
 const data = ref<SystrayPopupPayload | null>(null);
 const leaving = ref(false);
-const fallbackIcon = useIcon('applications-other');
-const checkIcon = useSymbol('object-select-symbolic');
 
 const popupIcon = computed(() => {
 	if (!data.value?.icon_data) return null;
@@ -112,10 +110,11 @@ onBeforeUnmount(() => {
               class="w-full h-full object-contain p-2"
               :alt="t('views.applets.tray.iconAlt')"
             />
-            <img
+            <ThemeIcon
               v-else
-              :src="fallbackIcon"
-              class="w-full h-full object-contain p-2"
+              name="applications-other"
+              :size="48"
+              class="object-contain p-2"
               :alt="t('views.applets.tray.iconAlt')"
             />
           </div>
@@ -182,7 +181,7 @@ onBeforeUnmount(() => {
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2 min-w-0" :style="item.depth > 0 ? { paddingLeft: '0.25rem' } : undefined">
                     <span class="text-sm font-medium text-vsk-text truncate">{{ item.label }}</span>
-                    <img v-if="item.checked" :src="checkIcon" alt="✓" class="w-3.5 h-3.5" />
+                    <ThemeIcon v-if="item.checked" name="object-select-symbolic" type="symbol" :size="14" alt="✓" />
                   </div>
                   <p class="mt-1 text-xs text-vsk-text/55 truncate">
                     <span v-if="item.icon">{{ item.icon }}</span>

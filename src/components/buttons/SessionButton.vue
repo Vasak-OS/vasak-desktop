@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+
 // A plain <button>, not an <a href="#">.
 //
 // The router uses hash history, so clicking an href="#" anchor cleared
@@ -6,7 +8,8 @@
 // window rendering nothing.
 defineProps({
 	title: String,
-	img: String,
+	/** El nombre del icono en el tema del escritorio, no una ruta. */
+	icono: String,
 });
 
 // El clic va declarado y cableado a mano. Venía llegando por caída de atributos
@@ -18,6 +21,6 @@ const emit = defineEmits<{ click: [MouseEvent] }>();
 
 <template>
   <button type="button" :title="title" class="theme-transition" @click="emit('click', $event)">
-    <img :src="img" :alt="title" />
+    <ThemeIcon :name="icono ?? ''" :size="32" :alt="title" />
   </button>
 </template>

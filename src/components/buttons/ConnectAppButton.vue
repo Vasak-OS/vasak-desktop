@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import type { ConnectApp } from '@/interfaces/connect';
 import { initialFor, themeIconFor } from '@/tools/androidIcon';
-import { useIcon } from '@/tools/composables/useReactiveIcon';
 
 const props = defineProps<{
 	app: ConnectApp;
@@ -15,18 +15,15 @@ const emit = defineEmits<{
 }>();
 
 /**
- * The icon is resolved per row with `useIcon`, the same way the application menu
- * resolves each of its entries: the list is built from data, so a fixed map of
- * names at setup — what `useIcons` takes — cannot cover it.
+ * Tres fuentes, y el orden importa.
  *
- * An empty name resolves to nothing, which is the case for every app without a
- * mapping. The template shows the initial then.
+ * La ruta que manda el servicio gana: es el icono de verdad de la aplicación y
+ * no uno parecido. Si no hay, se prueba el nombre del tema, que dibuja
+ * `ThemeIcon` —así sigue al tema y entra en el planificador de recarga—. Y si no
+ * hay ninguno de los dos queda la inicial, que es el caso de toda aplicación sin
+ * mapeo.
  */
 const themeName = computed(() => themeIconFor(props.app.package) ?? '');
-const themeIcon = useIcon(themeName);
-
-/** A path sent by the service wins: it is the app's real icon, not a lookalike. */
-const iconSrc = computed(() => props.app.icon || (themeName.value ? themeIcon.value : ''));
 
 const initial = computed(() => initialFor(props.app.label, props.app.package));
 </script>
@@ -34,7 +31,8 @@ const initial = computed(() => initialFor(props.app.label, props.app.package));
 <template>
   <div class="group flex items-center gap-3 rounded-corner p-2 hover:bg-primary/20">
     <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" @click="emit('open')">
-      <img v-if="iconSrc" :src="iconSrc" alt="" class="h-8 w-8 shrink-0" />
+      <img v-if="app.icon" :src="app.icon" alt="" class="h-8 w-8 shrink-0" />
+      <ThemeIcon v-else-if="themeName" :name="themeName" :size="32" />
       <span
         v-else
         aria-hidden="true"

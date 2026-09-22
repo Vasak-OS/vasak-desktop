@@ -25,7 +25,8 @@ onMounted(async () => {
 
 <template>
   <SliderControl
-    :icon="currentIcon"
+    :name="currentIcon"
+    type="symbol"
     :label="t('components.VolumeControl.volume')"
     :button-label="volumeInfo.is_muted
       ? t('components.VolumeControl.unmute')

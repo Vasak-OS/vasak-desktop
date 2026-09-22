@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
+import { getIconSource } from '@vasakgroup/plugin-vicons';
 import { computed, ref, watch } from 'vue';
 import type { MusicInfo } from '@/interfaces/music';
 import { musicNowPlaying } from '@/services/core.service';
-import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { processImageUrl } from '@/utils/image';
 import { logError } from '@/utils/logger';
@@ -16,10 +16,16 @@ export function useMusicPlayer() {
 		status: '',
 	});
 	const imgSrc = ref('');
-	const prevIcon = useSymbol(computed(() => 'media-seek-backward'));
-	const nextIcon = useSymbol(computed(() => 'media-skip-forward'));
-	const playIcon = useSymbol(computed(() => 'media-playback-start'));
-	const pauseIcon = useSymbol(computed(() => 'media-playback-pause'));
+	/**
+	 * Los **nombres** de los iconos del transporte, no sus rutas.
+	 *
+	 * Un composable no puede devolver un componente: de acá salen los nombres y
+	 * los dibuja `ThemeIcon` en cada vista que los use.
+	 */
+	const prevIcon = 'media-seek-backward';
+	const nextIcon = 'media-skip-forward';
+	const playIcon = 'media-playback-start';
+	const pauseIcon = 'media-playback-pause';
 
 	const isPlaying = computed(
 		() => String(musicInfo.value?.status || '').toLowerCase() === 'playing'
@@ -51,15 +57,31 @@ export function useMusicPlayer() {
 		sendCommand('music_play_pause');
 	}
 
-	const fallbackIconRef = useIcon(computed(() => 'applications-multimedia'));
+	/**
+	 * La tapa de respaldo, cuando no hay carátula o la que hay no carga.
+	 *
+	 * Acá sí hace falta una **ruta** y no un nombre: `imgSrc` es la carátula que
+	 * manda el reproductor y se dibuja con un `img` común, así que el respaldo
+	 * tiene que ser algo que ese mismo `img` pueda mostrar. Es el único lugar
+	 * del escritorio donde sigue haciendo falta resolver a mano.
+	 */
+	const tapaDeRespaldo = ref('');
+
+	async function resolverLaTapaDeRespaldo(): Promise<void> {
+		if (!tapaDeRespaldo.value) {
+			tapaDeRespaldo.value = (await getIconSource('applications-multimedia')) || '';
+		}
+	}
 
 	async function onImgError(): Promise<void> {
-		imgSrc.value = fallbackIconRef.value || 'applications-multimedia';
+		await resolverLaTapaDeRespaldo();
+		imgSrc.value = tapaDeRespaldo.value;
 	}
 
 	async function initIcons(): Promise<void> {
+		await resolverLaTapaDeRespaldo();
 		if (!imgSrc.value) {
-			imgSrc.value = fallbackIconRef.value || 'applications-multimedia';
+			imgSrc.value = tapaDeRespaldo.value;
 		}
 	}
 
@@ -72,14 +94,10 @@ export function useMusicPlayer() {
 	}
 
 	watch(
-		[() => musicInfo.value?.artUrl, fallbackIconRef],
-		([newUrl, _fallback]) => {
+		[() => musicInfo.value?.artUrl, tapaDeRespaldo],
+		([newUrl, respaldo]) => {
 			const processedUrl = processImageUrl(newUrl);
-			if (processedUrl) {
-				imgSrc.value = processedUrl;
-			} else {
-				imgSrc.value = _fallback || 'applications-multimedia';
-			}
+			imgSrc.value = processedUrl || respaldo;
 		},
 		{ immediate: true }
 	);

@@ -13,11 +13,10 @@ import {
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SwitchToggle } from '@vasakgroup/vue-libvasak';
+import { SwitchToggle, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
-import { useIcon, useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -26,7 +25,6 @@ const { t } = useI18n();
 const connectedDevices = ref<any[]>([]);
 const availableDevices = ref<any[]>([]);
 const isTogglingBluetooth = ref(false);
-const syncIcon = useSymbol(computed(() => 'refreshstructure'));
 const defaultAdapter = ref<AdapterInfo | null>(null);
 const connectedDevicesCount = ref(0);
 const loading = ref(true);
@@ -82,12 +80,10 @@ const scanDevices = async () => {
 	isScanning.value = false;
 };
 
-const bluetoothIcon = useIcon(
-	computed(() => {
-		connectedDevicesCount.value = connectedDevices.value.length;
-		return resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
-	})
-);
+const bluetoothIcon = computed(() => {
+	connectedDevicesCount.value = connectedDevices.value.length;
+	return resolveBluetoothIconName(isBluetoothOn.value, connectedDevicesCount.value);
+});
 
 onMounted(async () => {
 	defaultAdapter.value = await getDefaultAdapter();
@@ -135,16 +131,17 @@ const disconnect = async (device: any) => {
         class="mr-2"
         @update:model-value="toggleBT"
       />
-      <img :src="bluetoothIcon" alt="Bluetooth" class="h-8 w-auto mr-3" />
+      <ThemeIcon :name="bluetoothIcon" :size="32" alt="Bluetooth" class="mr-3" />
       <span class="font-bold text-2xl flex-1">Bluetooth</span>
       <button
         class="bg-primary text-white rounded-corner px-1 py-0.5 active:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
         @click="scanDevices"
         :disabled="!isBluetoothOn || isScanning" :aria-label="t('components.BluetoothControlArea.scanAlt')">
-        <img
-          :src="syncIcon"
+        <ThemeIcon
+          name="refreshstructure"
+          type="symbol"
+          :size="24"
           :alt="t('components.BluetoothControlArea.scanAlt')"
-          class="h-6 w-6"
           :class="{ 'animate-spin': isScanning }"
         />
       </button>

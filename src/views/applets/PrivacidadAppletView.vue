@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import AppletFrame from '@/components/layouts/AppletFrame.vue';
 import { privacyInUse, privacyStopScreen } from '@/services/core.service';
-import { useSymbol } from '@/tools/composables/useReactiveIcon';
 import { useSharedEvent } from '@/tools/event.bus';
 import { useEventListener } from '@/tools/event.listener';
 import { logError } from '@/utils/logger';
@@ -32,10 +32,6 @@ const camara = ref<Uso[]>([]);
 const microfono = ref<Uso[]>([]);
 const pantalla = ref<Uso[]>([]);
 const cortando = ref<string | null>(null);
-
-const iconoCamara = useSymbol('camera-web');
-const iconoMicrofono = useSymbol('microphone-sensitivity-high');
-const iconoPantalla = useSymbol('video-display');
 
 const aplicar = (estado: { camara?: Uso[]; microfono?: Uso[]; pantalla?: Uso[] } | null) => {
 	camara.value = estado?.camara ?? [];
@@ -106,7 +102,7 @@ const cerrar = () => {
 			<div v-else class="flex min-h-0 flex-col gap-4 overflow-y-auto">
 				<section v-if="camara.length > 0" class="flex flex-col gap-2">
 					<div class="flex items-center gap-2">
-						<img :src="iconoCamara" alt="" class="h-4 w-4" />
+						<ThemeIcon name="camera-web" type="symbol" :size="16" />
 						<h3 class="text-sm font-medium text-tx-main">
 							{{ t('views.privacidadApplet.camera') }}
 						</h3>
@@ -123,7 +119,7 @@ const cerrar = () => {
 
 				<section v-if="microfono.length > 0" class="flex flex-col gap-2">
 					<div class="flex items-center gap-2">
-						<img :src="iconoMicrofono" alt="" class="h-4 w-4" />
+						<ThemeIcon name="microphone-sensitivity-high" type="symbol" :size="16" />
 						<h3 class="text-sm font-medium text-tx-main">
 							{{ t('views.privacidadApplet.microphone') }}
 						</h3>
@@ -140,7 +136,7 @@ const cerrar = () => {
 
 				<section v-if="pantalla.length > 0" class="flex flex-col gap-2">
 					<div class="flex items-center gap-2">
-						<img :src="iconoPantalla" alt="" class="h-4 w-4" />
+						<ThemeIcon name="video-display" type="symbol" :size="16" />
 						<h3 class="text-sm font-medium text-tx-main">
 							{{ t('views.privacidadApplet.screen') }}
 						</h3>

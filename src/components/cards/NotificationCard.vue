@@ -13,7 +13,7 @@
     }" :data-urgency="notification.urgency?.toLowerCase()"
     :title="hasDefaultAction ? t('components.NotificationCard.openHint') : undefined"
     @click="handleDefaultAction">
-    <img :src="iconSrc" :alt="notification.app_name" class="w-4 h-4 mt-0.5 shrink-0 object-contain" />
+    <ThemeIcon :name="notification.app_icon" :size="16" :alt="notification.app_name" class="mt-0.5 object-contain" />
     <div class="flex-1 min-w-0">
       <div class="flex items-start justify-between gap-2">
         <h3 class="text-sm font-medium text-tx-main truncate">{{ notification.summary }}</h3>
@@ -22,7 +22,7 @@
           <button @click.stop="$emit('seen', notification.id)"
             :title="t('common.close')"
             class="flex items-center justify-center w-4 h-4 rounded-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/nc:opacity-100 focus-visible:opacity-100 hover:text-status-error" :aria-label="t('common.close')">
-            <img :src="closeIconSrc" :alt="t('common.close')" class="w-2.5 h-2.5" />
+            <ThemeIcon name="window-close-symbolic" type="symbol" :size="10" :alt="t('common.close')" />
           </button>
         </div>
       </div>
@@ -49,9 +49,9 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import { invokeNotificationAction } from '@/services/notification.service';
-import { useIcons } from '@/tools/composables/useReactiveIcon';
 import { logError } from '@/utils/logger';
 import ActionButton from '../buttons/ActionButton.vue';
 
@@ -75,11 +75,6 @@ const props = defineProps<{
 defineEmits<{
 	seen: [id: number];
 }>();
-
-const { iconSrc, closeIconSrc } = useIcons({
-	iconSrc: computed(() => props.notification.app_icon),
-	closeIconSrc: 'window-close-symbolic',
-});
 
 /**
  * La acción que se ejecuta al hacer clic en la notificación misma.
