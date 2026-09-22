@@ -122,10 +122,12 @@ const abrir = async () => {
 </script>
 
 <template>
-  <div
+  <button
     v-if="visible"
+    type="button"
     class="theme-transition p-1 rounded-corner relative flex items-center gap-1 cursor-pointer hover:bg-primary transition-all duration-300"
     :title="detalle"
+    :aria-label="detalle"
     @click="abrir"
   >
     <ThemeIcon
@@ -137,5 +139,5 @@ const abrir = async () => {
       :alt="simbolo.texto"
       class="transition-all duration-300"
     />
-  </div>
+  </button>
 </template>

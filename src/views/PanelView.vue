@@ -275,7 +275,13 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
     <div class="flex content-center items-center" :class="vertical ? 'flex-col' : ''">
       <TrayBarArea />
       <PanelClockwidget />
-      <div class="relative cursor-pointer" @click="openNotificationCenter">
+      <button
+        type="button"
+        class="relative cursor-pointer"
+        :title="t('views.panel.notificationsAlt')"
+        :aria-label="t('views.panel.notificationsAlt')"
+        @click="openNotificationCenter"
+      >
         <ThemeIcon
           name="preferences-desktop-notification"
           :size="24"
@@ -286,7 +292,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary text-tx-on-primary rounded-full min-w-3 h-3 flex items-center justify-center text-[8px] font-semibold leading-none px-0.5">
           {{ notifications.length > 99 ? "99+" : notifications.length }}
         </div>
-      </div>
+      </button>
     </div>
   </nav>
 </template>

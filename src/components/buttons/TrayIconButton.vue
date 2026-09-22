@@ -1,5 +1,7 @@
 <template>
-  <div
+  <component
+    :is="interactive ? 'button' : 'div'"
+    v-bind="interactive ? { type: 'button', 'aria-label': nombreAccesible } : {}"
     class="theme-transition p-1 rounded-corner relative group transition-all duration-300"
     :class="[customClass, interactive ? 'cursor-pointer hover:bg-primary' : '']"
     :title="tooltip"
@@ -41,7 +43,7 @@
 
     <!-- Slot para contenido adicional personalizado -->
     <slot></slot>
-  </div>
+  </component>
 </template>
 
 <script setup lang="ts">
@@ -56,7 +58,7 @@
  */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <User in template> */
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 interface Props {
 	/** El nombre del icono en el tema del escritorio. */
@@ -81,7 +83,7 @@ interface Props {
 	interactive?: boolean;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	type: 'symbol',
 	alt: '',
 	tooltip: '',
@@ -97,6 +99,14 @@ withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	click: [];
 }>();
+
+/**
+ * Cómo se llama el botón para quien no ve el icono.
+ *
+ * El dibujo es todo el contenido: sin esto el lector de pantalla anuncia un
+ * botón vacío. Se usa el `alt` del icono, y si no hay, el texto del tooltip.
+ */
+const nombreAccesible = computed(() => props.alt || props.tooltip || undefined);
 
 const showTooltip = ref(false);
 
