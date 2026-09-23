@@ -20,27 +20,6 @@ menu:
     utility: Utilidades
     other: Otras aplicaciones
 
-search:
-  actions:
-    shutdown:
-      title: Apagar
-      description: Apagar el sistema
-    reboot:
-      title: Reiniciar
-      description: Reiniciar el sistema
-    suspend:
-      title: Suspender
-      description: Suspender el sistema
-    lock:
-      title: Bloquear
-      description: Bloquear la pantalla
-    logout:
-      title: Cerrar sesión
-      description: Cerrar la sesión actual
-    settings:
-      title: Configuración
-      description: Abrir configuración del sistema
-
 common:
   save: Guardar cambios
   saving: Guardando…
@@ -98,18 +77,6 @@ views:
     backgroundAlt: Fondo de pantalla
     videoWallpaperPowerTitle: El fondo en movimiento consume más
     videoWallpaperPowerBody: Un video de fondo mantiene el sistema trabajando todo el tiempo y gasta más batería que una imagen. Se puede pausar automáticamente con batería desde Configuración › Apariencia › Fondo.
-  search:
-    keyEnter: Intro
-    keyEsc: Esc
-    iconAlt: Buscar
-    placeholder: Buscar aplicaciones, archivos y acciones...
-    hint: Escribe para buscar aplicaciones, archivos o acciones
-    categoryApplication: App
-    categoryFile: Archivo
-    categoryAction: Acción
-    keyNavigate: Navegar
-    keyExecute: Ejecutar
-    keyClose: Cerrar
   sessionPopup:
     shutdownTitle: Apagar el sistema
     rebootTitle: Reiniciar el sistema
@@ -217,7 +184,7 @@ components:
     empty: Sin notificaciones
     now: ahora
   SearchButtonControl:
-    openSearch: Abrir búsqueda global
+    openSearch: Abrir el lanzador
     searchAlt: Buscar
   SearchMenuComponent:
     placeholder: Buscar

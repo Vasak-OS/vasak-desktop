@@ -13,7 +13,6 @@
     "applet_audio",
     "applet_twingate",
     "app_terminal",
-    "app_search",
     "systray_popup",
     "session_popup",
     "osd_popup"
@@ -37,6 +36,11 @@
         {
           "name": "vasak-settings",
           "cmd": "/usr/bin/vasak-settings",
+          "args": true
+        },
+        {
+          "name": "vasak-prism",
+          "cmd": "/usr/bin/vasak-prism",
           "args": true
         }
       ]

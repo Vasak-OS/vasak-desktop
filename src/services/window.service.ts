@@ -20,10 +20,6 @@ export const toggleWindow = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('toggle_window', args);
 };
 
-export const toggleSearch = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('toggle_search', args);
-};
-
 export const toggleControlCenter = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('toggle_control_center', args);
 };

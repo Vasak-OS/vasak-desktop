@@ -44,7 +44,6 @@ const FILAS_ENTERAS = new Set([
 	'components/cards/NotificationCard.vue',
 	'components/cards/NotificationGroupCard.vue',
 	'components/controls/AudioDeviceSelector.vue',
-	'views/apps/SearchView.vue',
 ]);
 
 /** Etiquetas nativas que no hacen nada por sí solas al recibir un clic. */

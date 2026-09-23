@@ -298,7 +298,7 @@ mod tests {
         // cambio de monitor esperaría a que se cierre un menú contextual que no
         // tiene nada que ver, y el shell no se rehace hasta que se agoten los
         // intentos.
-        let etiquetas = ["vsk_context_menu", "app_search", "connect"];
+        let etiquetas = ["vsk_context_menu", "app_terminal", "connect"];
 
         assert!(ocupadas(etiquetas.into_iter(), &SUPERFICIES).is_empty());
     }

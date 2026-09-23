@@ -76,10 +76,6 @@ export const getLastLogLines = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('get_last_log_lines', args);
 };
 
-export const globalSearch = <T = any>(args: any): Promise<T> => {
-	return invoke<T>('global_search', args);
-};
-
 export const getAudioVolume = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('get_audio_volume', args);
 };
