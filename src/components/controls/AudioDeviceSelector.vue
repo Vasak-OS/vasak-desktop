@@ -80,9 +80,22 @@ function getDeviceName(device: AudioDevice): string {
       <span>{{ t('components.AudioDeviceSelector.title') }}</span>
     </div>
 
-    <div v-if="!isLoading && devices.length > 0" class="space-y-1">
-      <div v-for="device in devices" :key="device.id"
-        class="flex items-center gap-2 p-2 rounded-corner cursor-pointer transition-colors" :class="[
+    <!--
+      Elegir una salida de audio es elegir una de varias, no apretar botones
+      sueltos: por eso el grupo es un `radiogroup` y cada fila un `radio`. Así
+      se anuncia cuál está puesta —que es lo que el punto de la izquierda dibuja
+      y un lector de pantalla no puede ver— en vez de leer cinco botones
+      iguales.
+
+      Acá sí va un `<button>` de verdad, y no `role="button"` sobre un `<div>`
+      como en las tarjetas: esta fila no tiene ningún botón adentro, así que no
+      hay nada que anidar.
+    -->
+    <div v-if="!isLoading && devices.length > 0" class="space-y-1" role="radiogroup"
+      :aria-label="t('components.AudioDeviceSelector.title')">
+      <button v-for="device in devices" :key="device.id" type="button" role="radio"
+        :aria-checked="selectedDeviceId === device.id"
+        class="flex w-full items-center gap-2 p-2 rounded-corner cursor-pointer transition-colors text-left" :class="[
           selectedDeviceId === device.id
             ? 'bg-primary text-tx-on-primary ring-1 ring-secondary'
             : 'bg-bg-ui-bg/80 hover:bg-primary ',
@@ -112,7 +125,7 @@ function getDeviceName(device: AudioDevice): string {
           class="px-2 py-0.5 bg-primary rounded-corner text-xs font-medium text-primary">
           {{ t('components.AudioDeviceSelector.default') }}
         </div>
-      </div>
+      </button>
     </div>
 
     <div v-else-if="isLoading" class="text-xs text-ui-surface">

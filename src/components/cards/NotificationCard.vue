@@ -12,7 +12,16 @@
       'cursor-pointer': hasDefaultAction,
     }" :data-urgency="notification.urgency?.toLowerCase()"
     :title="hasDefaultAction ? t('components.NotificationCard.openHint') : undefined"
-    @click="handleDefaultAction">
+    :role="hasDefaultAction ? 'button' : undefined"
+    :tabindex="hasDefaultAction ? 0 : undefined"
+    @click="handleDefaultAction"
+    @keydown.enter.prevent="handleDefaultAction"
+    @keydown.space.prevent="handleDefaultAction">
+    <!-- `role="button"` y no un `<button>`: adentro están el de descartar y los
+         de las acciones de la notificación, y un botón dentro de otro no es
+         HTML válido. Sólo cuando hay acción por omisión, que es lo mismo que
+         decide el cursor y el tooltip: si no la hay, el clic tampoco hace nada
+         y anunciarlo como botón promete algo que no pasa. -->
     <ThemeIcon :name="notification.app_icon" :size="16" :alt="notification.app_name" class="mt-0.5 object-contain" />
     <div class="flex-1 min-w-0">
       <div class="flex items-start justify-between gap-2">

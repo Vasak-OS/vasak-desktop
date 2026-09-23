@@ -5,9 +5,18 @@
          degradado a azul y violeta que había acá no son del sistema y se veían
          de juguete. Lo que indica que la fila responde al clic es el cursor y
          el giro de la flecha, que alcanza. -->
+    <!-- Esto despliega y repliega, así que además de abrirse con el teclado
+         tiene que **decir** en qué estado está: sin `aria-expanded`, un lector
+         de pantalla anuncia un botón y no que hay algo plegado detrás.
+         `role="button"` y no un `<button>` porque adentro está el de descartar
+         el grupo entero. -->
     <div
       class="group/grupo flex items-center gap-2 px-2 py-1.5 bg-ui-surface rounded-t-corner cursor-pointer"
-      @click="toggleExpanded" :class="{ 'rounded-corner': !isExpanded }">
+      role="button" tabindex="0" :aria-expanded="isExpanded"
+      @click="toggleExpanded"
+      @keydown.enter.prevent="toggleExpanded"
+      @keydown.space.prevent="toggleExpanded"
+      :class="{ 'rounded-corner': !isExpanded }">
       <ThemeIcon :name="group.app_icon" :size="20" :alt="group.app_name" class="object-contain" />
 
       <div class="flex-1 min-w-0">
