@@ -1,7 +1,7 @@
 {
   "name": "vasak-desktop",
   "private": true,
-  "version": "1.11.1",
+  "version": "1.11.2",
   "type": "module",
   "engines": {
     "bun": ">=1.2.21"
@@ -24,14 +24,14 @@
     "@tauri-apps/plugin-opener": "~2.5.5",
     "@tauri-apps/plugin-shell": "~2.3.6",
     "@vasakgroup/plugin-bluetooth-manager": "^2.0.3",
-    "@vasakgroup/plugin-config-manager": "^2.6.1",
+    "@vasakgroup/plugin-config-manager": "~2.6.1",
     "@vasakgroup/plugin-network-manager": "^2.2.0",
     "@vasakgroup/plugin-user-data": "^2.1.0",
     "@vasakgroup/plugin-vicons": "^2.2.1",
     "@vasakgroup/plugin-vsk-contextual-menu": "2.0.2",
     "@vasakgroup/plugin-vsk-journal": "^2.0.0",
     "@vasakgroup/tauri-plugin-i18n": "^2.3.0",
-    "@vasakgroup/vue-libvasak": "^1.4.0",
+    "@vasakgroup/vue-libvasak": "^1.5.0",
     "pinia": "^3.0.4",
     "vue": "^3.5.43",
     "vue-router": "^5.3.1"
@@ -48,5 +48,10 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.6",
     "vue-tsc": "^3.3.11"
+  },
+  "vasak": {
+    "bibliotecasAtrasadas": {
+      "@vasakgroup/plugin-config-manager": "La 2.7.0 declara pinia ^4 y esta aplicación está en pinia 3: subir el rango arrastra un salto mayor ajeno. Por eso el rango es ~2.6.1 y no ^2.6.1, que alcanzaría una versión que no se puede instalar. Se saca al subir a pinia 4."
+    }
   }
 }
