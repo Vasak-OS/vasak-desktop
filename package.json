@@ -1,7 +1,7 @@
 {
   "name": "vasak-desktop",
   "private": true,
-  "version": "1.11.0",
+  "version": "1.11.1",
   "type": "module",
   "engines": {
     "bun": ">=1.2.21"
@@ -40,7 +40,7 @@
     "@biomejs/biome": "^2.5.14",
     "@tailwindcss/postcss": "^4.3.3",
     "@tauri-apps/cli": "^2.11.5",
-    "@types/node": "^25.9.5",
+    "@types/node": "^25.9.8",
     "@vitejs/plugin-vue": "^6.0.9",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",

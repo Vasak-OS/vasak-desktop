@@ -4,7 +4,14 @@ export interface FileEntry {
 	isDirectory: boolean;
 	isHidden: boolean;
 	size?: string;
-	icon?: string;
+	/**
+	 * El **nombre** del icono en el tema, no una ruta ni un `data:`.
+	 *
+	 * Guardar acá el icono ya resuelto es lo que hacía que los iconos del
+	 * escritorio se quedaran con los del tema anterior: el dato no se entera de
+	 * que el tema cambió. Lo dibuja `ThemeIcon`, que sí se entera.
+	 */
+	icon: string;
 	previewUrl?: string;
 	mimeType?: string;
 	loadError?: boolean;

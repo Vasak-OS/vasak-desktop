@@ -4,6 +4,7 @@ import { homeDir } from '@tauri-apps/api/path';
 import { Command } from '@tauri-apps/plugin-shell';
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { FileEntry } from '@/interfaces/file';
 import { getUserDirectories, loadDirectory } from '@/tools/file.controller';
@@ -127,13 +128,13 @@ watch(showHidden, () => void cargar());
 					@keydown.enter.prevent="abrir(file)"
 					@keydown.space.prevent="abrir(file)"
 				>
-					<img
-						v-if="file.icon"
-						:src="file.icon"
-						:alt="file.name"
-						class="mb-1 shrink-0"
-						:style="{ width: `${iconSize}px`, height: `${iconSize}px` }"
-					/>
+					<!--
+						Sin `alt`, que en `ThemeIcon` es vacío por omisión: el
+						nombre del archivo ya está acá abajo como texto, y
+						repetirlo en el icono se lo hace decir dos veces al lector
+						de pantalla.
+					-->
+					<ThemeIcon :name="file.icon" :size="iconSize" class="mb-1" />
 					<span
 						class="max-w-full break-words px-1 text-center text-tx-main"
 						:style="{ fontSize: `${Math.max(12, iconSize / 6)}px` }"

@@ -1,7 +1,6 @@
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { join } from '@tauri-apps/api/path';
 import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
-import { getIconSource } from '@vasakgroup/plugin-vicons';
 import type { FileEntry, FileIconMapping, UserDirectory } from '@/interfaces/file';
 
 const iconMappings: FileIconMapping[] = [
@@ -45,24 +44,6 @@ export function getIconNameForFile(filename: string, isDir: boolean): string {
 	return mapping?.icon || 'text-x-generic';
 }
 
-export async function getFileIconSource(
-	filename: string,
-	isDir: boolean
-): Promise<string | undefined> {
-	const iconName = getIconNameForFile(filename, isDir);
-
-	try {
-		const source = await getIconSource(iconName);
-		if (source?.startsWith('/')) {
-			return convertFileSrc(source);
-		}
-		return source;
-	} catch (e) {
-		console.warn(`Failed to load icon ${iconName}`, e);
-		return undefined;
-	}
-}
-
 export function isImageFile(filename: string): boolean {
 	return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename);
 }
@@ -87,18 +68,12 @@ export function getFileMimeType(
 }
 
 /**
- * Enriches a file entry with icon and preview data
- * @param fileEntry - The file entry to enrich
- * @returns The enriched file entry
+ * Le agrega a una entrada la vista previa, cuando la tiene.
+ *
+ * El icono ya no se resuelve acá: `icon` es el **nombre** del icono del tema y
+ * lo dibuja `ThemeIcon`. Ver el comentario de `FileEntry.icon`.
  */
-async function enrichFileEntry(fileEntry: FileEntry): Promise<FileEntry> {
-	// Load icon
-	try {
-		fileEntry.icon = await getFileIconSource(fileEntry.name, fileEntry.isDirectory);
-	} catch (e) {
-		console.warn(`Failed to load icon for ${fileEntry.name}`, e);
-	}
-
+function enrichFileEntry(fileEntry: FileEntry): FileEntry {
 	// Generate preview for images and videos
 	if (!fileEntry.isDirectory) {
 		if (isImageFile(fileEntry.name)) {
@@ -130,6 +105,7 @@ export async function loadDirectory(
 						path: filePath,
 						isDirectory: entry.isDirectory,
 						isHidden: entry.name.startsWith('.'),
+						icon: getIconNameForFile(entry.name, entry.isDirectory),
 					};
 
 					return enrichFileEntry(fileEntry);
