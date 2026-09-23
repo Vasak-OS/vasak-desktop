@@ -36,6 +36,16 @@ const fuentes = await Promise.all(
 
 const leer = (ruta: string) => fuentes.find((f) => f.ruta === ruta)?.texto ?? '';
 
+/**
+ * El borde de un atributo.
+ *
+ * Sin él, `size="auto"` también encuentra a `data-size="auto"` y `class="…"` a
+ * `data-class="…"`: la prueba pasaría con el icono **sin** la propiedad puesta,
+ * que es justamente la regresión que vigila. El nombre de un atributo empieza
+ * después de un espacio, así que alcanza con exigirlo.
+ */
+const BORDE = String.raw`[^>]*\s`;
+
 /** Cada etiqueta `<ThemeIcon …>` del repositorio, con el archivo donde vive. */
 function cadaIcono(): { ruta: string; etiqueta: string }[] {
 	const salida: { ruta: string; etiqueta: string }[] = [];
@@ -58,16 +68,17 @@ describe('el icono del clima', () => {
 	test('pide el tamaño a su caja y no en píxeles', () => {
 		const clima = leer('components/icon/WeatherIcon.vue');
 
-		expect(clima).toMatch(/<ThemeIcon[^>]*size="auto"/s);
-		// El número que estaba: si vuelve, vuelve el recorte.
-		expect(clima).not.toMatch(/<ThemeIcon[^>]*:size="\d/s);
+		expect(clima).toMatch(new RegExp(`<ThemeIcon${BORDE}size="auto"`, 's'));
+		// El número que estaba: si vuelve, vuelve el recorte. `v-bind:size`
+		// también, que es lo mismo escrito largo.
+		expect(clima).not.toMatch(new RegExp(`<ThemeIcon${BORDE}(?:v-bind)?:size="\\d`, 's'));
 	});
 
 	test('y la caja sigue diciendo cuánto mide', () => {
 		// `size="auto"` sin clases deja al icono en su tamaño natural, que es
 		// otro problema con la misma cara. Las dos mitades van juntas.
 		expect(leer('components/icon/WeatherIcon.vue')).toMatch(
-			/<ThemeIcon[^>]*class="[^"]*\bh-full\b[^"]*\bw-full\b/s
+			new RegExp(`<ThemeIcon${BORDE}class="[^"]*\\bh-full\\b[^"]*\\bw-full\\b`, 's')
 		);
 	});
 });
@@ -78,8 +89,9 @@ describe('la trampa, para todo el repositorio', () => {
 		// en línea gana y la clase queda de adorno: nada falla, y se ve mal
 		// recién cuando la caja es más chica que el número.
 		const deTamano = /\b(h-full|w-full|size-full|h-\[|w-\[|size-\d)/;
+		const enPixeles = new RegExp(String.raw`\s(?:v-bind)?:size="\d`);
 		const culpables = cadaIcono()
-			.filter(({ etiqueta }) => /:size="\d/.test(etiqueta) && deTamano.test(etiqueta))
+			.filter(({ etiqueta }) => enPixeles.test(etiqueta) && deTamano.test(etiqueta))
 			.map(({ ruta }) => ruta);
 
 		expect(culpables).toEqual([]);
