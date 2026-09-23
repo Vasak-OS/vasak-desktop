@@ -14,8 +14,6 @@ pub mod osd;
 mod panel;
 mod privacidad;
 pub mod runner;
-mod search;
-mod search_window;
 mod session;
 mod session_popup;
 mod tray;
@@ -45,8 +43,6 @@ pub use osd::show_osd;
 pub use panel::show_panel;
 pub use privacidad::{privacidad_cortar, privacidad_en_uso, toggle_privacidad_applet};
 pub use runner::{open_app, open_settings, open_settings_section};
-pub use search::{execute_search_result, global_search};
-pub use search_window::toggle_search;
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};
 pub use session_popup::toggle_session_popup;
 pub use tray::{

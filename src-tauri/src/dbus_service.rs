@@ -1,4 +1,4 @@
-use crate::commands::{toggle_control_center, toggle_menu, toggle_search, toggle_session_popup};
+use crate::commands::{toggle_control_center, toggle_menu, toggle_session_popup};
 use crate::constants::DBUS_SERVICE_NAME;
 use crate::logger::{log_debug, log_error, log_info, log_warning};
 use futures_util::TryStreamExt;
@@ -51,11 +51,26 @@ impl DesktopService {
                     ));
                 }
             }
+            // La búsqueda global ya no vive acá: se fue a `vasak-prism`, que
+            // como aplicación aparte puede crecer y quedarse residente, que es
+            // lo que la hace instantánea.
+            //
+            // Esto queda como **reenvío** y no se borra junto con lo demás:
+            // cualquier cosa que llame a este nombre —un atajo viejo, un script,
+            // una configuración que nadie migró— seguiría llamándolo, y sin
+            // reenvío no pasaría nada de nada. Un método que no existe en este
+            // servicio no falla con estrépito: se anota «método desconocido» en
+            // un registro que no mira nadie y el atajo queda muerto.
             "OpenSearch" | "ToggleSearch" => {
-                log_info("D-Bus: Alternando búsqueda");
-                let app_handle = self.app_handle.clone();
+                log_info("D-Bus: reenviando la búsqueda a vasak-prism");
+                let conexion = conexion.clone();
                 tauri::async_runtime::spawn(async move {
-                    let _ = toggle_search(app_handle).await;
+                    if let Err(error) = reenviar_a_prism(&conexion).await {
+                        log_error(&format!(
+                            "D-Bus: no se pudo alternar el lanzador: {}",
+                            error
+                        ));
+                    }
                 });
             }
             "OpenSessionPopup" | "PowerButtonPressed" => {
@@ -210,6 +225,33 @@ impl DesktopService {
     }
 }
 
+/// El nombre que toma el lanzador en el bus de sesión, y dónde vive su objeto.
+///
+/// Escritos acá y no importados: `vasak-prism` es otro paquete y otro proceso,
+/// y lo único que los une es este nombre. Depender de su crate para tres cadenas
+/// ataría la compilación de todo el escritorio a la del lanzador.
+const PRISM_NOMBRE: &str = "ar.net.vasak.Prism";
+const PRISM_RUTA: &str = "/ar/net/vasak/Prism";
+
+/// Le pide al lanzador que aparezca o se esconda.
+///
+/// No hace falta que esté corriendo: el paquete instala su archivo de activación
+/// por D-Bus, así que el bus lo levanta con esta misma llamada. Lo que sí puede
+/// fallar es que no esté instalado, y eso se anota — no se cae nada.
+async fn reenviar_a_prism(conexion: &Connection) -> ZbusResult<()> {
+    conexion
+        .call_method(
+            Some(PRISM_NOMBRE),
+            PRISM_RUTA,
+            Some(PRISM_NOMBRE),
+            "Toggle",
+            &(),
+        )
+        .await?;
+
+    Ok(())
+}
+
 /// Inicia el servicio D-Bus en un hilo separado
 pub async fn start_dbus_service(app_handle: AppHandle) -> ZbusResult<()> {
     log::info!("Starting D-Bus service...");
@@ -244,4 +286,31 @@ pub async fn start_dbus_service(app_handle: AppHandle) -> ZbusResult<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// El nombre del lanzador en el bus, escrito de tres formas que tienen que
+    /// decir lo mismo.
+    ///
+    /// Son tres cadenas sueltas de otro paquete: nada las comprueba al
+    /// compilar, y un nombre mal escrito no falla acá — falla en la máquina de
+    /// alguien, con el atajo viejo sin abrir nada y un renglón en el diario que
+    /// no mira nadie. Esto ata al menos que las tres sean coherentes entre sí,
+    /// que es el error que de verdad pasa: cambiar una y olvidarse de la otra.
+    #[test]
+    fn el_nombre_y_la_ruta_del_lanzador_se_corresponden() {
+        assert_eq!(PRISM_RUTA, format!("/{}", PRISM_NOMBRE.replace('.', "/")));
+    }
+
+    /// Y es el del lanzador, no el de este escritorio.
+    ///
+    /// Reenviarse a sí mismo sería un bucle: el método vuelve a entrar acá, y
+    /// el escritorio se queda hablando solo hasta que expira el tiempo de D-Bus.
+    #[test]
+    fn el_reenvio_no_apunta_a_este_mismo_servicio() {
+        assert_ne!(PRISM_NOMBRE, DBUS_SERVICE_NAME);
+    }
 }

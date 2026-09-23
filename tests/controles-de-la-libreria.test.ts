@@ -41,19 +41,17 @@ describe('no hay controles propios', () => {
 		expect(conteniendo(/role="switch"/)).toEqual([]);
 	});
 
-	test('ningún campo de texto escrito acá, salvo la búsqueda global', () => {
+	test('ningún campo de texto escrito acá', () => {
 		// Eran tres: el del menú —un `<input>` suelto con una directiva propia
 		// para el foco—, la clave del Wi-Fi —que no tenía nombre accesible: un
 		// marcador no es un nombre, se borra al escribir— y el filtro del menú
 		// de conexiones.
 		//
-		// `SearchView` se queda con el suyo **a propósito**: es la búsqueda
-		// global, un campo sin borde y de veinte píxeles adentro de su propia
-		// caja, no un campo de formulario. Imponerle el aspecto compartido sería
-		// volverla otra cosa. Es la única excepción, y está nombrada acá para
-		// que agregar una segunda tenga que pasar por esta prueba.
-		const EXCEPCION = 'views/apps/SearchView.vue';
-		expect(conteniendo(/<input(?![^>]*type="range")/)).toEqual([EXCEPCION]);
+		// Había una excepción nombrada, `SearchView`: la búsqueda global, un
+		// campo sin borde adentro de su propia caja, que imponerle el aspecto
+		// compartido volvía otra cosa. Esa ventana se fue a `vasak-prism`, así
+		// que la excepción se va con ella y no quedan campos escritos acá.
+		expect(conteniendo(/<input(?![^>]*type="range")/)).toEqual([]);
 	});
 
 	test('ni una directiva de foco propia', () => {

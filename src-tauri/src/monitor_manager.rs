@@ -171,7 +171,10 @@ fn recrear_cuando_se_liberen(app: AppHandle, intento: u32) {
     }
 
     if let Err(error) = create_desktops(&app) {
-        log_error(&format!("No se pudieron recrear los escritorios: {}", error));
+        log_error(&format!(
+            "No se pudieron recrear los escritorios: {}",
+            error
+        ));
     }
     if let Err(error) = create_panels(&app) {
         log_error(&format!("No se pudieron recrear los paneles: {}", error));
@@ -186,7 +189,10 @@ fn recrear_cuando_se_liberen(app: AppHandle, intento: u32) {
     // El menú, en cambio, se crea solo la próxima vez que se abra, que es su ciclo
     // normal: recrearlo ahora sería levantar una ventana que nadie pidió.
     if let Err(error) = create_control_center_window(&app) {
-        log_error(&format!("No se pudo recrear el centro de control: {}", error));
+        log_error(&format!(
+            "No se pudo recrear el centro de control: {}",
+            error
+        ));
     }
 }
 
@@ -286,7 +292,12 @@ mod tests {
     fn las_ventanas_que_no_son_del_shell_no_frenan_nada() {
         // Un applet, el popup de la bandeja o el menú contextual no tienen nada que
         // ver con rehacer las superficies: esperarlos sería esperar para siempre.
-        let etiquetas = ["applet_network", "systray_popup", "osd_popup", "session_popup"];
+        let etiquetas = [
+            "applet_network",
+            "systray_popup",
+            "osd_popup",
+            "session_popup",
+        ];
 
         assert!(ocupadas(etiquetas.into_iter(), &SUPERFICIES).is_empty());
     }
@@ -298,7 +309,7 @@ mod tests {
         // cambio de monitor esperaría a que se cierre un menú contextual que no
         // tiene nada que ver, y el shell no se rehace hasta que se agoten los
         // intentos.
-        let etiquetas = ["vsk_context_menu", "app_search", "connect"];
+        let etiquetas = ["vsk_context_menu", "app_terminal", "connect"];
 
         assert!(ocupadas(etiquetas.into_iter(), &SUPERFICIES).is_empty());
     }

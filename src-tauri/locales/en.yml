@@ -20,27 +20,6 @@ menu:
     utility: Utilities
     other: Other applications
 
-search:
-  actions:
-    shutdown:
-      title: Shut down
-      description: Shut down the system
-    reboot:
-      title: Restart
-      description: Restart the system
-    suspend:
-      title: Suspend
-      description: Suspend the system
-    lock:
-      title: Lock
-      description: Lock the screen
-    logout:
-      title: Log out
-      description: Log out of the current session
-    settings:
-      title: Settings
-      description: Open system settings
-
 common:
   save: Save changes
   saving: Saving…
@@ -98,18 +77,6 @@ views:
     backgroundAlt: Wallpaper
     videoWallpaperPowerTitle: A moving wallpaper uses more power
     videoWallpaperPowerBody: A video wallpaper keeps the system working all the time and drains more battery than an image. It can pause automatically on battery from Settings › Appearance › Wallpaper.
-  search:
-    keyEnter: Enter
-    keyEsc: Esc
-    iconAlt: Search
-    placeholder: Search apps, files and actions...
-    hint: Type to search apps, files or actions
-    categoryApplication: App
-    categoryFile: File
-    categoryAction: Action
-    keyNavigate: Navigate
-    keyExecute: Run
-    keyClose: Close
   sessionPopup:
     shutdownTitle: Shut down the system
     rebootTitle: Restart the system
@@ -217,7 +184,7 @@ components:
     empty: No notifications
     now: now
   SearchButtonControl:
-    openSearch: Open global search
+    openSearch: Open the launcher
     searchAlt: Search
   SearchMenuComponent:
     placeholder: Search
