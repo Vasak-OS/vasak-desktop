@@ -45,7 +45,14 @@ const descripcion = computed(() =>
 	     acepta atributos sueltos sobre un componente, y un tooltip sobre el
 	     dibujo tapa menos que sobre toda la caja. -->
 	<span :title="descripcion" :class="['img-fluid inline-flex', props.sizeClass ?? 'h-16 w-16']">
-	  <ThemeIcon :name="iconName" :size="64" :alt="descripcion" class="h-full w-full" />
+	  <!-- `size="auto"` y no un número: con un número, `ThemeIcon` escribe el
+	       alto y el ancho **en línea**, y una regla en línea le gana a
+	       `h-full w-full`. Por eso el dibujo se quedaba en 64 píxeles adentro de
+	       una caja de 22cqmin —o de `h-5` en la bandeja— y se salía. Con `auto`
+	       no escribe nada y el tamaño sale de la caja, que es la única forma de
+	       dibujar un icono que se mide en unidades de contenedor.
+	       Necesita `@vasakgroup/vue-libvasak` 1.5.0. -->
+	  <ThemeIcon :name="iconName" size="auto" :alt="descripcion" class="h-full w-full" />
 	</span>
   </transition>
 </template>
