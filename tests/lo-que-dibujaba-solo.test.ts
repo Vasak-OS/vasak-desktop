@@ -41,25 +41,23 @@ const fuentes = [...new Glob('**/*.{vue,ts}').scanSync(FUENTE)].filter(
 /**
  * Los dos que siguen resolviendo a mano, y por qué.
  *
+ * `tools/file.controller.ts` estaba acá y se fue. Resolvía el icono de cada
+ * archivo y lo guardaba **en el dato**, con una rama para pasarlo por
+ * `convertFileSrc` cuando lo que volvía era una ruta absoluta. Esa rama nunca
+ * corrió: `getIconSource` devuelve siempre un `data:` —lo arma el propio
+ * complemento, en `guest-js`— o la cadena vacía. Sin ella no quedaba nada que
+ * `ThemeIcon` no hiciera, así que el widget pasó a recibir el **nombre** del
+ * icono y a dibujarlo con el componente, que es lo que lo hace seguir al tema.
+ *
  * - `tools/composables/useMusicPlayer.ts`: la tapa de respaldo del reproductor.
  *   Ahí hace falta una **ruta** y no un nombre, porque `imgSrc` es la carátula
  *   que manda el reproductor y se dibuja con un `img` común: el respaldo tiene
  *   que ser algo que ese mismo `img` pueda mostrar.
- * - `tools/file.controller.ts`: resuelve el icono de cada archivo y lo guarda
- *   **en el dato**, porque además tiene que pasar por `convertFileSrc` cuando lo
- *   que vuelve es una ruta absoluta —la política de contenido no deja cargar
- *   rutas del disco—. Eso `ThemeIcon` no lo hace. Queda anotado que por eso los
- *   iconos del widget de archivos **no siguen al tema**: ver el issue del
- *   repositorio.
  * - `main.ts`: el menú contextual del escritorio no dibuja con Vue, pide una
  *   **función** que resuelva el nombre a una ruta porque lo pinta el
  *   complemento fuera de esta ventana.
  */
-const EXCEPCIONES = new Set([
-	'tools/composables/useMusicPlayer.ts',
-	'tools/file.controller.ts',
-	'main.ts',
-]);
+const EXCEPCIONES = new Set(['tools/composables/useMusicPlayer.ts', 'main.ts']);
 
 describe('el composable de iconos propio', () => {
 	test('hay algo que mirar', () => {
