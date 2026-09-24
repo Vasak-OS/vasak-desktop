@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
-import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import {
 	getTwingateInfo,
 	type TwingateInfo,
