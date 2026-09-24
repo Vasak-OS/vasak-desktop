@@ -12,12 +12,12 @@ import WidgetHost from '@/components/widgets/WidgetHost.vue';
 import {
 	CELL_GAP,
 	CELL_SIZE,
-	defaultLayout,
 	firstFreeSlot,
 	fitAll,
 	GRID_PADDING,
 	gridSize,
 	overlaps,
+	resolveLayout,
 	WIDGETS,
 	type WidgetPlacement,
 	type WidgetType,
@@ -35,27 +35,39 @@ const props = defineProps<{ config: any }>();
 
 const { t } = useI18n();
 
-const componentes: Record<WidgetType, unknown> = {
+const widgetComponents: Record<WidgetType, unknown> = {
 	clock: DesktopClockWidget,
 	music: MusicWidget,
 	weather: WeatherWidget,
 	files: FilesWidget,
 };
 
-const contenedor = ref<HTMLElement | null>(null);
-const ancho = ref(0);
-const alto = ref(0);
+const container = ref<HTMLElement | null>(null);
+const width = ref(0);
+const height = ref(0);
 const editing = ref(false);
-const panelAbierto = ref(false);
+const panelOpen = ref(false);
 const placements = ref<WidgetPlacement[]>([]);
+/** Si lo que se ve es la disposición de siempre y no una guardada. */
+const fromDefault = ref(false);
 
-const grid = computed(() => gridSize(ancho.value, alto.value));
+/**
+ * Si ya se sabe cuánto mide la capa.
+ *
+ * Antes de medir, `gridSize(0, 0)` da una cuadrícula de 1×1, y acomodar ahí la
+ * disposición de siempre dejaba un reloj de una celda en la esquina —la hora no
+ * entraba y se cortaba— y descartaba la música por no tener lugar. Eso era lo
+ * que veía un escritorio nuevo, porque nada lo volvía a leer después.
+ */
+const measured = computed(() => width.value > 0 && height.value > 0);
 
-const disponibles = computed(() =>
-	Object.values(WIDGETS).filter((definicion) => {
-		if (!componentes[definicion.type]) return false;
-		if (!definicion.unique) return true;
-		return !placements.value.some((puesto) => puesto.type === definicion.type);
+const grid = computed(() => gridSize(width.value, height.value));
+
+const available = computed(() =>
+	Object.values(WIDGETS).filter((definition) => {
+		if (!widgetComponents[definition.type]) return false;
+		if (!definition.unique) return true;
+		return !placements.value.some((placement) => placement.type === definition.type);
 	})
 );
 
@@ -66,7 +78,7 @@ const disponibles = computed(() =>
  * grande con la semana entera. Son dos formas de agregarlo, no una que después
  * hay que descubrir redimensionando.
  */
-type OpcionDeWidget = {
+type WidgetOption = {
 	key: string;
 	type: WidgetType;
 	variant?: string;
@@ -75,37 +87,37 @@ type OpcionDeWidget = {
 	size: { w: number; h: number };
 };
 
-const opciones = computed<OpcionDeWidget[]>(() => {
-	const lista: OpcionDeWidget[] = [];
+const options = computed<WidgetOption[]>(() => {
+	const list: WidgetOption[] = [];
 
-	for (const definicion of disponibles.value) {
-		const variantes = definicion.variants ?? [];
+	for (const definition of available.value) {
+		const variants = definition.variants ?? [];
 
-		if (variantes.length > 1) {
-			for (const variante of variantes) {
-				lista.push({
-					key: `${definicion.type}:${variante.id}`,
-					type: definicion.type,
-					variant: variante.id,
-					label: `${t(definicion.labelKey)} · ${t(variante.labelKey)}`,
-					description: t(definicion.descriptionKey),
-					size: variante.size,
+		if (variants.length > 1) {
+			for (const variantItem of variants) {
+				list.push({
+					key: `${definition.type}:${variantItem.id}`,
+					type: definition.type,
+					variant: variantItem.id,
+					label: `${t(definition.labelKey)} · ${t(variantItem.labelKey)}`,
+					description: t(definition.descriptionKey),
+					size: variantItem.size,
 				});
 			}
 			continue;
 		}
 
-		lista.push({
-			key: definicion.type,
-			type: definicion.type,
-			variant: variantes[0]?.id,
-			label: t(definicion.labelKey),
-			description: t(definicion.descriptionKey),
-			size: definicion.default,
+		list.push({
+			key: definition.type,
+			type: definition.type,
+			variant: variants[0]?.id,
+			label: t(definition.labelKey),
+			description: t(definition.descriptionKey),
+			size: definition.default,
 		});
 	}
 
-	return lista;
+	return list;
 });
 
 /**
@@ -113,17 +125,21 @@ const opciones = computed<OpcionDeWidget[]>(() => {
  *
  * Siempre acomodado a la cuadrícula que hay ahora: una disposición guardada en
  * una pantalla más grande traía widgets fuera de borde, y acomodar de a uno los
- * dejaba pisados.
+ * dejaba pisados. Una lista guardada vacía es un escritorio libre, no uno sin
+ * configurar: ver `resolveLayout`.
  */
-function leerDeConfig(): WidgetPlacement[] {
-	const guardados = props.config?.desktop?.widgets;
+function applyConfig() {
+	if (!measured.value) return;
 
-	const crudos: WidgetPlacement[] =
-		Array.isArray(guardados) && guardados.length > 0
-			? guardados.filter((w: WidgetPlacement) => w?.type && componentes[w.type] !== undefined)
-			: defaultLayout(Boolean(props.config?.desktop?.showfiles));
+	const result = resolveLayout(
+		props.config?.desktop?.widgets,
+		Boolean(props.config?.desktop?.showfiles),
+		grid.value.columns,
+		grid.value.rows
+	);
 
-	return fitAll(crudos, grid.value.columns, grid.value.rows);
+	placements.value = result.placements;
+	fromDefault.value = result.fromDefault;
 }
 
 /**
@@ -134,78 +150,88 @@ function leerDeConfig(): WidgetPlacement[] {
  * sacar un widget. Antes sólo se guardaba al salir del modo edición: si la
  * sesión se cortaba antes, el trabajo de acomodar se perdía.
  */
-async function guardar() {
+async function save() {
 	try {
-		const actual = props.config ?? {};
+		const current = props.config ?? {};
 		await writeConfig({
-			...actual,
-			desktop: { ...(actual.desktop ?? {}), widgets: placements.value },
+			...current,
+			desktop: { ...(current.desktop ?? {}), widgets: placements.value },
 		});
+		// Desde acá la disposición es de la persona: aunque sea la de siempre
+		// tal cual, ya no se recalcula al cambiar la pantalla.
+		fromDefault.value = false;
 	} catch (error) {
 		logError(`No se pudo guardar la disposición de widgets: ${error}`);
 	}
 }
 
-function medir() {
-	const caja = contenedor.value?.getBoundingClientRect();
-	if (!caja) return;
+function measure() {
+	const box = container.value?.getBoundingClientRect();
+	if (!box) return;
 
-	ancho.value = caja.width;
-	alto.value = caja.height;
+	width.value = box.width;
+	height.value = box.height;
+
+	// La de siempre no es de nadie: se vuelve a calcular para la pantalla que
+	// hay, en vez de acomodarla y guardarla como si alguien la hubiera elegido.
+	if (fromDefault.value || placements.value.length === 0) {
+		applyConfig();
+		return;
+	}
 
 	// Una pantalla más chica que antes puede dejar widgets afuera: se acomodan
 	// en vez de quedar invisibles para siempre, y sin quedar uno encima de otro.
-	const acomodados = fitAll(placements.value, grid.value.columns, grid.value.rows);
+	const fitted = fitAll(placements.value, grid.value.columns, grid.value.rows);
 
-	if (JSON.stringify(acomodados) !== JSON.stringify(placements.value)) {
-		placements.value = acomodados;
-		void guardar();
+	if (JSON.stringify(fitted) !== JSON.stringify(placements.value)) {
+		placements.value = fitted;
+		void save();
 	}
 }
 
-function mover(id: string, posicion: { x: number; y: number }) {
-	const candidato = placements.value.map((puesto) =>
-		puesto.id === id ? { ...puesto, ...posicion } : puesto
+function move(id: string, position: { x: number; y: number }) {
+	const candidate = placements.value.map((placement) =>
+		placement.id === id ? { ...placement, ...position } : placement
 	);
 	// Sin el widget no hay nada que mover: con un id que no está en la
 	// cuadrícula, `find` devuelve undefined y seguir leería propiedades de
 	// nada. Antes eso iba tapado con un `!`.
-	const movido = candidato.find((puesto) => puesto.id === id);
-	if (!movido) return;
+	const moved = candidate.find((placement) => placement.id === id);
+	if (!moved) return;
 
 	// No se permite dejar un widget encima de otro: la cuadrícula pierde sentido
 	// si dos cosas ocupan la misma celda.
-	if (candidato.some((otro) => otro.id !== id && overlaps(movido, otro))) return;
+	if (candidate.some((other) => other.id !== id && overlaps(moved, other))) return;
 
-	placements.value = candidato;
+	placements.value = candidate;
 }
 
-function redimensionar(id: string, tamano: { w: number; h: number }) {
-	const candidato = placements.value.map((puesto) =>
-		puesto.id === id ? { ...puesto, ...tamano } : puesto
+function resize(id: string, size: { w: number; h: number }) {
+	const candidate = placements.value.map((placement) =>
+		placement.id === id ? { ...placement, ...size } : placement
 	);
 	// Sin el widget no hay nada que mover: con un id que no está en la
 	// cuadrícula, `find` devuelve undefined y seguir leería propiedades de
 	// nada. Antes eso iba tapado con un `!`.
-	const cambiado = candidato.find((puesto) => puesto.id === id);
-	if (!cambiado) return;
+	const changed = candidate.find((placement) => placement.id === id);
+	if (!changed) return;
 
-	if (candidato.some((otro) => otro.id !== id && overlaps(cambiado, otro))) return;
+	if (candidate.some((other) => other.id !== id && overlaps(changed, other))) return;
 
-	placements.value = candidato;
+	placements.value = candidate;
 }
 
-function quitar(id: string) {
-	placements.value = placements.value.filter((puesto) => puesto.id !== id);
-	void guardar();
+function remove(id: string) {
+	placements.value = placements.value.filter((placement) => placement.id !== id);
+	void save();
 }
 
-function agregar(type: WidgetType, variant?: string, tamano?: { w: number; h: number }) {
-	const definicion = WIDGETS[type];
-	const medida = tamano ?? definicion.default;
-	const hueco = firstFreeSlot(placements.value, medida, grid.value.columns, grid.value.rows);
+function add(type: WidgetType, variant?: string, size?: { w: number; h: number }) {
+	const definition = WIDGETS[type];
+	const widgetSize = size ?? definition.default;
+	const slot = firstFreeSlot(placements.value, widgetSize, grid.value.columns, grid.value.rows);
 
-	if (!hueco) {
+	if (!slot) {
 		logError(`No hay lugar en el escritorio para un widget de ${type}`);
 		return;
 	}
@@ -215,18 +241,18 @@ function agregar(type: WidgetType, variant?: string, tamano?: { w: number; h: nu
 		{
 			id: `${type}-${Date.now()}`,
 			type,
-			...hueco,
-			...medida,
-			variant: variant ?? definicion.variants?.[0]?.id,
+			...slot,
+			...widgetSize,
+			variant: variant ?? definition.variants?.[0]?.id,
 		},
 	];
-	void guardar();
+	void save();
 }
 
-function terminarEdicion() {
+function finishEditing() {
 	editing.value = false;
-	panelAbierto.value = false;
-	void guardar();
+	panelOpen.value = false;
+	void save();
 }
 
 /**
@@ -241,24 +267,24 @@ function terminarEdicion() {
  */
 // Si abrir el menú falla —o falla el comando que abre la configuración— hay que
 // verlo: una promesa suelta acá termina en un aviso del motor que nadie lee.
-const alClicDerecho = (evento: MouseEvent) => {
-	abrirEdicion(evento).catch((error) => {
+const onContextMenu = (event: MouseEvent) => {
+	openEditing(event).catch((error) => {
 		logError('No se pudo abrir el menú del escritorio:', error);
 	});
 };
 
-async function abrirEdicion(evento: MouseEvent) {
+async function openEditing(event: MouseEvent) {
 	// Sólo el clic derecho sobre el fondo. Si viene de un widget o del panel de
 	// edición, es asunto de ese componente: el día que los widgets tengan su
 	// propio menú contextual, este no se lo puede comer.
-	const destino = evento.target as HTMLElement | null;
+	const target = event.target as HTMLElement | null;
 
-	if (editing.value || destino?.closest('[data-widget], [data-widget-panel]')) return;
+	if (editing.value || target?.closest('[data-widget], [data-widget-panel]')) return;
 
 	// Antes el clic derecho entraba directo al modo edición. Eso escondía todo
 	// lo demás que uno quiere hacer parado en el escritorio —cambiar el fondo,
 	// abrir la configuración— y no había forma de descubrirlo.
-	const elegido = await showContextMenu(
+	const chosen = await showContextMenu(
 		[
 			{
 				id: 'widgets',
@@ -277,13 +303,13 @@ async function abrirEdicion(evento: MouseEvent) {
 				icon: 'preferences-system',
 			},
 		],
-		evento
+		event
 	);
 
-	switch (elegido?.id) {
+	switch (chosen?.id) {
 		case 'widgets':
 			editing.value = true;
-			panelAbierto.value = true;
+			panelOpen.value = true;
 			break;
 		case 'fondo':
 			await invoke('open_settings_section', { section: 'appearance-wallpaper' });
@@ -294,38 +320,41 @@ async function abrirEdicion(evento: MouseEvent) {
 	}
 }
 
-let observador: ResizeObserver | null = null;
+let observer: ResizeObserver | null = null;
 
 onMounted(() => {
-	placements.value = leerDeConfig();
-	medir();
-	window.addEventListener('contextmenu', alClicDerecho);
+	// Primero medir: leer la configuración antes acomodaba todo en una
+	// cuadrícula de 1×1. `measure` ya la aplica cuando no hay nada puesto.
+	measure();
+	window.addEventListener('contextmenu', onContextMenu);
 
-	if (contenedor.value) {
-		observador = new ResizeObserver(medir);
-		observador.observe(contenedor.value);
+	if (container.value) {
+		observer = new ResizeObserver(measure);
+		observer.observe(container.value);
 	}
 });
 
 onUnmounted(() => {
-	observador?.disconnect();
-	window.removeEventListener('contextmenu', alClicDerecho);
+	observer?.disconnect();
+	window.removeEventListener('contextmenu', onContextMenu);
 });
 
 // Si la configuración cambia desde otro lado —Ajustes, otro monitor— se relee.
+// Los archivos también: la configuración llega después de montar, y sin mirar
+// `showfiles` la disposición de siempre se quedaba sin ellos.
 watch(
-	() => props.config?.desktop?.widgets,
+	() => [props.config?.desktop?.widgets, props.config?.desktop?.showfiles],
 	() => {
-		if (!editing.value) placements.value = leerDeConfig();
+		if (!editing.value) applyConfig();
 	}
 );
 
-defineExpose({ abrirEdicion });
+defineExpose({ openEditing });
 </script>
 
 <template>
 	<div
-		ref="contenedor"
+		ref="container"
 		class="absolute inset-0 z-20"
 		:class="editing ? 'pointer-events-auto bg-black/20' : 'pointer-events-none'"
 	>
@@ -339,27 +368,27 @@ defineExpose({ abrirEdicion });
 			}"
 		>
 			<WidgetHost
-				v-for="puesto in placements"
-				:key="puesto.id"
-				:placement="puesto"
+				v-for="placement in placements"
+				:key="placement.id"
+				:placement="placement"
 				:editing="editing"
 				:columns="grid.columns"
 				:rows="grid.rows"
-				:min-size="WIDGETS[puesto.type].min"
-				:max-size="WIDGETS[puesto.type].max"
+				:min-size="WIDGETS[placement.type].min"
+				:max-size="WIDGETS[placement.type].max"
 				class="pointer-events-auto"
-				@move="(posicion) => mover(puesto.id, posicion)"
-				@resize="(tamano) => redimensionar(puesto.id, tamano)"
-				@commit="guardar()"
-				@remove="quitar(puesto.id)"
+				@move="(position) => move(placement.id, position)"
+				@resize="(size) => resize(placement.id, size)"
+				@commit="save()"
+				@remove="remove(placement.id)"
 			>
-				<component :is="componentes[puesto.type]" :variant="puesto.variant" />
+				<component :is="widgetComponents[placement.type]" :variant="placement.variant" />
 			</WidgetHost>
 		</div>
 
 		<!-- Panel de widgets disponibles, sólo mientras se edita. -->
 		<aside
-			v-if="editing && panelAbierto"
+			v-if="editing && panelOpen"
 			data-widget-panel
 			class="pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner border border-ui-border bg-ui-bg/90 p-4 shadow-2xl backdrop-blur-lg"
 		>
@@ -370,26 +399,26 @@ defineExpose({ abrirEdicion });
 				<button
 					type="button"
 					class="rounded-corner bg-primary px-3 py-1 text-sm font-semibold text-tx-on-primary"
-					@click="terminarEdicion"
+					@click="finishEditing"
 				>
 					{{ t('widgets.done') }}
 				</button>
 			</div>
 
-			<p v-if="opciones.length === 0" class="text-sm text-tx-muted">
+			<p v-if="options.length === 0" class="text-sm text-tx-muted">
 				{{ t('widgets.allPlaced') }}
 			</p>
 
 			<div v-else class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
 				<button
-					v-for="opcion in opciones"
-					:key="opcion.key"
+					v-for="option in options"
+					:key="option.key"
 					type="button"
 					class="rounded-corner border border-ui-border bg-ui-surface/40 p-3 text-left transition-colors hover:bg-ui-surface"
-					@click="agregar(opcion.type, opcion.variant, opcion.size)"
+					@click="add(option.type, option.variant, option.size)"
 				>
-					<span class="block text-sm font-medium text-tx-main">{{ opcion.label }}</span>
-					<span class="block text-xs text-tx-muted">{{ opcion.description }}</span>
+					<span class="block text-sm font-medium text-tx-main">{{ option.label }}</span>
+					<span class="block text-xs text-tx-muted">{{ option.description }}</span>
 				</button>
 			</div>
 		</aside>

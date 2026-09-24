@@ -50,7 +50,8 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
 		labelKey: 'widgets.clock.name',
 		descriptionKey: 'widgets.clock.description',
 		icon: 'clock-symbolic',
-		default: { w: 3, h: 2 },
+		// Cuatro de ancho: con tres, la hora en grande no entraba y se cortaba.
+		default: { w: 4, h: 2 },
 		min: { w: 2, h: 1 },
 		max: { w: 6, h: 3 },
 		unique: true,
@@ -98,33 +99,83 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
 /**
  * Con qué widgets arranca un escritorio que nunca se configuró.
  *
- * Son los dos que ya estaban —reloj y música— en el mismo lugar donde se
- * dibujaban antes, más los archivos si la persona los tenía habilitados: nadie
- * debería perder nada al actualizar.
+ * El reloj y la música van **arriba a la derecha**, calculado contra la
+ * cuadrícula que hay. Antes iban en columnas fijas —la 5, o la 7 con los
+ * archivos—, que en una pantalla de 14 columnas es un reloj flotando en el
+ * medio, a la izquierda del centro. Los archivos, si la persona los tenía a la
+ * vista, ocupan la izquierda, que es donde se buscan.
+ *
+ * Los tamaños son los del catálogo, no unos propios: la música iba de 3×2
+ * cuando su tamaño de siempre es 4×1.
  */
-export function defaultLayout(showFiles: boolean): WidgetPlacement[] {
-	// Con los archivos a la izquierda, el reloj y la música se corren a la
-	// derecha: en la columna 5 arrancaban justo encima del widget de archivos.
-	const columna = showFiles ? 7 : 5;
+export function defaultLayout(
+	showFiles: boolean,
+	columns: number,
+	rows: number
+): WidgetPlacement[] {
+	const clockSize = WIDGETS.clock.default;
+	const musicSize = WIDGETS.music.default;
+	const column = Math.max(1, columns - Math.max(clockSize.w, musicSize.w) + 1);
 
-	const inicial: WidgetPlacement[] = [
-		{ id: 'clock', type: 'clock', x: columna, y: 3, w: 3, h: 2 },
-		{ id: 'music', type: 'music', x: columna, y: 5, w: 3, h: 2 },
+	const initial: WidgetPlacement[] = [
+		{ id: 'clock', type: 'clock', x: column, y: 1, ...clockSize },
+		{ id: 'music', type: 'music', x: column, y: 1 + clockSize.h, ...musicSize },
 	];
 
 	if (showFiles) {
-		inicial.unshift({ id: 'files', type: 'files', x: 1, y: 1, w: 5, h: 6 });
+		initial.unshift({
+			id: 'files',
+			type: 'files',
+			x: 1,
+			y: 1,
+			w: WIDGETS.files.default.w,
+			h: Math.min(6, rows),
+		});
 	}
 
-	return inicial;
+	// En una pantalla angosta los archivos y la columna de la derecha se tocan:
+	// `fitAll` manda al que sobra al primer hueco en vez de dejarlo encima.
+	return fitAll(initial, columns, rows);
+}
+
+/**
+ * Qué disposición toca mostrar, a partir de lo guardado.
+ *
+ * La distinción que importa es entre **nada guardado** y **una lista vacía**.
+ * Nada guardado es un escritorio que nunca se configuró, y arranca con la
+ * disposición de siempre. Una lista vacía es alguien que sacó todos los
+ * widgets: el escritorio queda libre. Antes las dos cosas iban por el mismo
+ * lado —`length > 0`—, así que sacar el último widget lo devolvía todo en
+ * cuanto se releía la configuración.
+ *
+ * `fromDefault` dice cuál de las dos fue: la de siempre se recalcula cuando
+ * cambia la pantalla, porque no es de nadie; la guardada se acomoda y se
+ * respeta.
+ */
+export function resolveLayout(
+	saved: unknown,
+	showFiles: boolean,
+	columns: number,
+	rows: number
+): { placements: WidgetPlacement[]; fromDefault: boolean } {
+	if (!Array.isArray(saved)) {
+		return { placements: defaultLayout(showFiles, columns, rows), fromDefault: true };
+	}
+
+	const known = saved.filter(
+		(placement): placement is WidgetPlacement =>
+			typeof placement?.type === 'string' && Object.hasOwn(WIDGETS, placement.type)
+	);
+
+	return { placements: fitAll(known, columns, rows), fromDefault: false };
 }
 
 /** Cuántas celdas entran en un área, descontando los márgenes. */
 export function gridSize(width: number, height: number) {
 	const usable = (total: number) => Math.max(1, total - GRID_PADDING * 2 + CELL_GAP);
-	const celdas = (total: number) => Math.max(1, Math.floor(usable(total) / (CELL_SIZE + CELL_GAP)));
+	const cells = (total: number) => Math.max(1, Math.floor(usable(total) / (CELL_SIZE + CELL_GAP)));
 
-	return { columns: celdas(width), rows: celdas(height) };
+	return { columns: cells(width), rows: cells(height) };
 }
 
 /** Mete una posición adentro de la cuadrícula, sin cambiarle el tamaño. */
@@ -163,24 +214,24 @@ export function fitAll(
 	columns: number,
 	rows: number
 ): WidgetPlacement[] {
-	const ubicados: WidgetPlacement[] = [];
+	const placed: WidgetPlacement[] = [];
 
 	for (const placement of placements) {
-		const acomodado = clampToGrid(placement, columns, rows);
+		const fitted = clampToGrid(placement, columns, rows);
 
-		if (!ubicados.some((otro) => overlaps(acomodado, otro))) {
-			ubicados.push(acomodado);
+		if (!placed.some((other) => overlaps(fitted, other))) {
+			placed.push(fitted);
 			continue;
 		}
 
-		const hueco = firstFreeSlot(ubicados, { w: acomodado.w, h: acomodado.h }, columns, rows);
+		const slot = firstFreeSlot(placed, { w: fitted.w, h: fitted.h }, columns, rows);
 
-		if (hueco) {
-			ubicados.push({ ...acomodado, ...hueco });
+		if (slot) {
+			placed.push({ ...fitted, ...slot });
 		}
 	}
 
-	return ubicados;
+	return placed;
 }
 
 /** Si dos widgets se pisan. */
@@ -203,8 +254,8 @@ export function firstFreeSlot(
 ): { x: number; y: number } | null {
 	for (let y = 1; y <= rows - size.h + 1; y++) {
 		for (let x = 1; x <= columns - size.w + 1; x++) {
-			const candidato = { id: '', type: 'clock' as WidgetType, x, y, ...size };
-			if (!existing.some((otro) => overlaps(candidato, otro))) {
+			const candidate = { id: '', type: 'clock' as WidgetType, x, y, ...size };
+			if (!existing.some((other) => overlaps(candidate, other))) {
 				return { x, y };
 			}
 		}
