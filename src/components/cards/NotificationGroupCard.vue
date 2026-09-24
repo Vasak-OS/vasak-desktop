@@ -14,8 +14,8 @@
       class="group/grupo flex items-center gap-2 px-2 py-1.5 bg-ui-surface rounded-t-corner cursor-pointer"
       role="button" tabindex="0" :aria-expanded="isExpanded"
       @click="toggleExpanded"
-      @keydown.enter.prevent="toggleExpanded"
-      @keydown.space.prevent="toggleExpanded"
+      @keydown.enter.self.prevent="toggleExpanded"
+      @keydown.space.self.prevent="toggleExpanded"
       :class="{ 'rounded-corner': !isExpanded }">
       <ThemeIcon :name="group.app_icon" :size="20" :alt="group.app_name" class="object-contain" />
 

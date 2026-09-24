@@ -71,9 +71,10 @@ describe('nada que se pueda clickear queda fuera del teclado', () => {
  * sólo se nota probándolo con el teclado, que es lo que nadie hace.
  */
 describe('las filas que se abren enteras', () => {
+	// `ListCard` y `DeviceCard` ya no están acá: se fueron a la librería, con su
+	// teclado puesto. Ver Vasak-OS/vue-libvasak#22, que es el barrido de las
+	// copias.
 	const CON_BOTONES_ADENTRO = [
-		'components/cards/DeviceCard.vue',
-		'components/cards/ListCard.vue',
 		'components/cards/NotificationCard.vue',
 		'components/cards/NotificationGroupCard.vue',
 	];
@@ -83,10 +84,14 @@ describe('las filas que se abren enteras', () => {
 
 		expect(texto).toMatch(/(?::role="|\srole=")/);
 		expect(texto).toMatch(/(?::tabindex="|\stabindex=")/);
-		expect(texto).toContain('@keydown.enter.prevent');
-		// `.prevent` en la barra no es decoración: sin él la página se desplaza
-		// además de activar la fila.
-		expect(texto).toContain('@keydown.space.prevent');
+		// `.self` antes de `.prevent`, y las dos cosas importan. Sin `.self`, la
+		// tecla apretada sobre un botón de adentro **burbujea** hasta acá: se
+		// dispara además la acción de la fila entera y el `.prevent` le cancela
+		// al botón su propia activación. Sin `.prevent`, la barra desplaza la
+		// página además de activar. Lo del burbujeo lo encontró CodeRabbit en
+		// vue-libvasak#62, sobre el mismo patrón.
+		expect(texto).toContain('@keydown.enter.self.prevent');
+		expect(texto).toContain('@keydown.space.self.prevent');
 	});
 
 	test('el grupo de notificaciones dice si está desplegado', () => {
