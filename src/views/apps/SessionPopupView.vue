@@ -158,13 +158,13 @@ onUnmounted(() => {
           <div class="w-20 h-20 rounded-full bg-primary/15 flex items-center justify-center">
             <ThemeIcon :name="actionImg ?? ''" :size="48" :alt="titleText" />
           </div>
-          <h2 class="text-xl font-bold text-vsk-text text-center">{{ titleText }}</h2>
-          <p class="text-sm text-vsk-text/70 text-center leading-relaxed">{{ descriptionText }}</p>
+          <h2 class="text-xl font-bold text-tx-main text-center">{{ titleText }}</h2>
+          <p class="text-sm text-tx-main/70 text-center leading-relaxed">{{ descriptionText }}</p>
         </div>
 
         <div class="flex gap-3 px-8 pb-8 pt-2">
           <button
-            class="flex-1 px-5 py-3 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors text-sm font-medium text-vsk-text"
+            class="flex-1 px-5 py-3 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors text-sm font-medium text-tx-main"
             @click="closeAfterAnimation"
             :disabled="confirming"
           >
