@@ -8,13 +8,13 @@ use serde_json::json;
 use serde_json::Map as JsonMap;
 use serde_json::Value as JsonValue;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 use std::sync::Mutex;
 use tauri::{AppHandle, Emitter};
-use std::sync::LazyLock;
 use zbus::{
     fdo::DBusProxy as AsyncDBusProxy,
     zvariant::{ObjectPath, Value},
-    MessageStream, MessageType, Connection as AsyncConnection, Proxy as AsyncProxy,
+    Connection as AsyncConnection, MessageStream, MessageType, Proxy as AsyncProxy,
 };
 
 // Global state for Active Player to ensure commands use the correct target
@@ -46,7 +46,7 @@ impl Applet for MusicApplet {
 async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let mut reconnect_attempts = 0u32;
     let max_reconnects = 5;
-    
+
     loop {
         match monitor_with_reconnect(&app, reconnect_attempts).await {
             Ok(_) => {
@@ -57,20 +57,33 @@ async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error:
                 reconnect_attempts += 1;
                 if reconnect_attempts >= max_reconnects {
                     log::error!("[music] Max reconnection attempts reached: {}", e);
-                    let _ = app.emit("dbus-status", serde_json::json!({
-                        "service": "music",
-                        "status": "failed",
-                        "message": "No se pudo conectar al bus de sesión"
-                    }));
+                    let _ = app.emit(
+                        "dbus-status",
+                        serde_json::json!({
+                            "service": "music",
+                            "status": "failed",
+                            "message": "No se pudo conectar al bus de sesión"
+                        }),
+                    );
                     break;
                 }
-                log::warn!("[music] Connection lost (attempt {}): {}. Reconnecting...", reconnect_attempts, e);
-                let _ = app.emit("dbus-status", serde_json::json!({
-                    "service": "music",
-                    "status": "reconnecting",
-                    "attempt": reconnect_attempts
-                }));
-                tokio::time::sleep(std::time::Duration::from_secs(2u64.pow(reconnect_attempts.min(3)))).await;
+                log::warn!(
+                    "[music] Connection lost (attempt {}): {}. Reconnecting...",
+                    reconnect_attempts,
+                    e
+                );
+                let _ = app.emit(
+                    "dbus-status",
+                    serde_json::json!({
+                        "service": "music",
+                        "status": "reconnecting",
+                        "attempt": reconnect_attempts
+                    }),
+                );
+                tokio::time::sleep(std::time::Duration::from_secs(
+                    2u64.pow(reconnect_attempts.min(3)),
+                ))
+                .await;
             }
         }
     }
@@ -78,25 +91,36 @@ async fn monitor_signals_async(app: AppHandle) -> Result<(), Box<dyn std::error:
 }
 
 async fn monitor_with_reconnect(app: &AppHandle, attempt: u32) -> Result<(), String> {
-    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
-    
+    let conn = AsyncConnection::session()
+        .await
+        .map_err(|e| e.to_string())?;
+
     if attempt > 0 {
-        log::info!("[music] Reconnected successfully after {} attempts", attempt);
-        let _ = app.emit("dbus-status", serde_json::json!({
-            "service": "music",
-            "status": "connected"
-        }));
+        log::info!(
+            "[music] Reconnected successfully after {} attempts",
+            attempt
+        );
+        let _ = app.emit(
+            "dbus-status",
+            serde_json::json!({
+                "service": "music",
+                "status": "connected"
+            }),
+        );
     }
-    
+
     // Subscribe to PropertiesChanged
-    let match_rule = "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'";
-    let _ = conn.call_method(
-        Some("org.freedesktop.DBus"),
-        "/org/freedesktop/DBus",
-        Some("org.freedesktop.DBus"),
-        "AddMatch",
-        &(match_rule,),
-    ).await;
+    let match_rule =
+        "type='signal',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'";
+    let _ = conn
+        .call_method(
+            Some("org.freedesktop.DBus"),
+            "/org/freedesktop/DBus",
+            Some("org.freedesktop.DBus"),
+            "AddMatch",
+            &(match_rule,),
+        )
+        .await;
 
     log::info!("[music] Started Signal Monitor");
 
@@ -104,13 +128,13 @@ async fn monitor_with_reconnect(app: &AppHandle, attempt: u32) -> Result<(), Str
     let debounce_duration = std::time::Duration::from_millis(150);
     let mut deadline: Option<tokio::time::Instant> = None;
     let mut pending_sender: Option<String> = None;
-    
+
     // Polling Interval for redundancy
     let mut poll_interval = tokio::time::interval(std::time::Duration::from_secs(2));
 
     // Initialize state
     if let Ok(init_info) = fetch_best_player(&conn).await {
-         update_ui(app, &init_info);
+        update_ui(app, &init_info);
     }
 
     loop {
@@ -186,13 +210,24 @@ async fn handle_player_event(app: &AppHandle, conn: &AsyncConnection, sender: St
     let info = match fetch_player_info(conn, &sender).await {
         Ok(i) => i,
         Err(e) => {
-            log::warn!("[music] fetch_player_info failed sender={} err={}", sender, e);
+            log::warn!(
+                "[music] fetch_player_info failed sender={} err={}",
+                sender,
+                e
+            );
             return; // Ignore ghost events
         }
     };
 
-    let status = info.get("status").and_then(|s| s.as_str()).unwrap_or("Stopped");
-    let identity = info.get("playerIdentity").and_then(|s| s.as_str()).unwrap_or("").to_lowercase();
+    let status = info
+        .get("status")
+        .and_then(|s| s.as_str())
+        .unwrap_or("Stopped");
+    let identity = info
+        .get("playerIdentity")
+        .and_then(|s| s.as_str())
+        .unwrap_or("")
+        .to_lowercase();
     let is_playing = status == "Playing";
 
     // 3. Check Current State
@@ -283,9 +318,7 @@ fn is_valid_bus_name(bus: &str) -> bool {
 
 /// Get the currently active player name
 pub fn get_active_player() -> Option<String> {
-    ACTIVE_PLAYER.lock()
-        .ok()
-        .and_then(|guard| guard.clone())
+    ACTIVE_PLAYER.lock().ok().and_then(|guard| guard.clone())
 }
 
 /// Set the active player
@@ -314,7 +347,7 @@ pub fn set_pinned_player(player: Option<String>) {
 fn update_ui(app: &AppHandle, info: &serde_json::Value) {
     if let Some(p) = info.get("player").and_then(|s| s.as_str()) {
         if get_active_player().is_none() {
-             set_active_player(Some(p.to_string()));
+            set_active_player(Some(p.to_string()));
         }
     }
     let _ = app.emit("music-playing-update", info);
@@ -434,38 +467,68 @@ async fn fetch_player_info(conn: &AsyncConnection, name: &str) -> Result<JsonVal
 async fn fetch_best_player(conn: &AsyncConnection) -> Result<serde_json::Value, String> {
     let dbus = AsyncDBusProxy::new(conn).await.map_err(|e| e.to_string())?;
     let names = dbus.list_names().await.map_err(|e| e.to_string())?;
-    
+
     let mut best_score = -1;
     let mut best_info = None;
 
-    let preferred_apps = ["spotify", "rhythmbox", "clementine", "audacious", "vlc", "mpv", "mixxx"];
+    let preferred_apps = [
+        "spotify",
+        "rhythmbox",
+        "clementine",
+        "audacious",
+        "vlc",
+        "mpv",
+        "mixxx",
+    ];
 
-    for name in names.into_iter().filter(|n| n.starts_with("org.mpris.MediaPlayer2.")) {
+    for name in names
+        .into_iter()
+        .filter(|n| n.starts_with("org.mpris.MediaPlayer2."))
+    {
         if let Ok(info) = fetch_player_info(conn, &name).await {
-             let status = info.get("status").and_then(|s| s.as_str()).unwrap_or("Stopped");
-             let identity = info.get("playerIdentity").and_then(|s| s.as_str()).unwrap_or("").to_lowercase();
-             
-             let is_preferred = preferred_apps.iter().any(|app| identity.contains(app));
-             let is_playing = status == "Playing";
-             let is_paused = status == "Paused";
+            let status = info
+                .get("status")
+                .and_then(|s| s.as_str())
+                .unwrap_or("Stopped");
+            let identity = info
+                .get("playerIdentity")
+                .and_then(|s| s.as_str())
+                .unwrap_or("")
+                .to_lowercase();
 
-             let score = if is_playing && is_preferred { 4 }
-                         else if is_playing { 3 }
-                         else if is_paused && is_preferred { 2 }
-                         else if is_paused { 1 }
-                         else { 0 };
-             
-             if score > best_score {
-                 best_score = score;
-                 best_info = Some(info);
-                 // Early exit if max score
-                 if score == 4 { break; }
-             }
+            let is_preferred = preferred_apps.iter().any(|app| identity.contains(app));
+            let is_playing = status == "Playing";
+            let is_paused = status == "Paused";
+
+            let score = if is_playing && is_preferred {
+                4
+            } else if is_playing {
+                3
+            } else if is_paused && is_preferred {
+                2
+            } else if is_paused {
+                1
+            } else {
+                0
+            };
+
+            if score > best_score {
+                best_score = score;
+                best_info = Some(info);
+                // Early exit if max score
+                if score == 4 {
+                    break;
+                }
+            }
         }
     }
 
     if let Some(info) = best_info {
-        set_active_player(info.get("player").and_then(|s| s.as_str()).map(|s| s.to_string()));
+        set_active_player(
+            info.get("player")
+                .and_then(|s| s.as_str())
+                .map(|s| s.to_string()),
+        );
         Ok(info)
     } else {
         // Sin título y sin reproductor: el texto de «no hay nada sonando» lo
@@ -507,31 +570,49 @@ fn extract_string_value(v: &JsonValue) -> Option<String> {
     match v {
         JsonValue::String(s) => {
             // ignore DBus type markers
-            if s == "s" || s == "as" { None } else { Some(s.clone()) }
-        },
+            if s == "s" || s == "as" {
+                None
+            } else {
+                Some(s.clone())
+            }
+        }
         JsonValue::Number(n) => Some(n.to_string()),
         JsonValue::Bool(b) => Some(b.to_string()),
         JsonValue::Array(arr) => arr.iter().find_map(extract_string_value),
         JsonValue::Object(map) => {
             // prefer common 'value' field if present
-            if let Some(inner) = map.get("value").or_else(|| map.get("Value")).or_else(|| map.get("contents")) {
-                if let Some(s) = extract_string_value(inner) { return Some(s); }
+            if let Some(inner) = map
+                .get("value")
+                .or_else(|| map.get("Value"))
+                .or_else(|| map.get("contents"))
+            {
+                if let Some(s) = extract_string_value(inner) {
+                    return Some(s);
+                }
             }
             // unwrap single-key wrapper
             if map.len() == 1 {
                 if let Some((_, inner)) = map.iter().next() {
-                    if let Some(s) = extract_string_value(inner) { return Some(s); }
+                    if let Some(s) = extract_string_value(inner) {
+                        return Some(s);
+                    }
                 }
             }
             // common wrappers
-            for k in ["String", "Str", "OwnedStr", "Text", "Value", "Variant", "Basic"] {
+            for k in [
+                "String", "Str", "OwnedStr", "Text", "Value", "Variant", "Basic",
+            ] {
                 if let Some(inner) = map.get(k) {
-                    if let Some(s) = extract_string_value(inner) { return Some(s); }
+                    if let Some(s) = extract_string_value(inner) {
+                        return Some(s);
+                    }
                 }
             }
             // generic search across all values
             for inner in map.values() {
-                if let Some(s) = extract_string_value(inner) { return Some(s); }
+                if let Some(s) = extract_string_value(inner) {
+                    return Some(s);
+                }
             }
             None
         }
@@ -551,7 +632,9 @@ fn extract_string_array(v: &JsonValue) -> Vec<String> {
             }
             // known array wrappers
             for k in ["Array", "Vec", "List"] {
-                if let Some(inner) = map.get(k) { return extract_string_array(inner); }
+                if let Some(inner) = map.get(k) {
+                    return extract_string_array(inner);
+                }
             }
             // collect strings from all values
             let mut out = Vec::new();
@@ -561,7 +644,9 @@ fn extract_string_array(v: &JsonValue) -> Vec<String> {
                         out.extend(extract_string_array(inner));
                     }
                     _ => {
-                        if let Some(s) = extract_string_value(inner) { out.push(s); }
+                        if let Some(s) = extract_string_value(inner) {
+                            out.push(s);
+                        }
                     }
                 }
             }
@@ -576,18 +661,24 @@ fn extract_string_array(v: &JsonValue) -> Vec<String> {
 fn find_str(j: &JsonValue, keys: &[&str]) -> Option<String> {
     for key in keys {
         if let Some(v) = j.get(*key) {
-            if let Some(s) = extract_string_value(v) { return Some(s); }
+            if let Some(s) = extract_string_value(v) {
+                return Some(s);
+            }
         }
     }
     None
 }
 
 fn find_str_array(j: &JsonValue, keys: &[&str]) -> Option<String> {
-     for key in keys {
+    for key in keys {
         if let Some(v) = j.get(*key) {
-             let parts = extract_string_array(v);
-             if !parts.is_empty() { return Some(parts.join(", ")); }
-             if let Some(s) = extract_string_value(v) { return Some(s); }
+            let parts = extract_string_array(v);
+            if !parts.is_empty() {
+                return Some(parts.join(", "));
+            }
+            if let Some(s) = extract_string_value(v) {
+                return Some(s);
+            }
         }
     }
     None
@@ -604,19 +695,23 @@ fn find_str_array(j: &JsonValue, keys: &[&str]) -> Option<String> {
 fn normalize_json(v: JsonValue) -> JsonValue {
     match v {
         JsonValue::Object(mut map) => {
-             if let Some(inner) = map.remove("zvariant::Value::Value") {
-                 return normalize_json(inner);
-             }
-             if map.len() == 1 {
-                 // If generic variant wrapper 1 key
-                 if let Some((_, val)) = map.iter().next() {
-                      return normalize_json(val.clone());
-                 }
-             }
-             JsonValue::Object(map.into_iter().map(|(k,v)| (k, normalize_json(v))).collect())
-        },
+            if let Some(inner) = map.remove("zvariant::Value::Value") {
+                return normalize_json(inner);
+            }
+            if map.len() == 1 {
+                // If generic variant wrapper 1 key
+                if let Some((_, val)) = map.iter().next() {
+                    return normalize_json(val.clone());
+                }
+            }
+            JsonValue::Object(
+                map.into_iter()
+                    .map(|(k, v)| (k, normalize_json(v)))
+                    .collect(),
+            )
+        }
         JsonValue::Array(arr) => JsonValue::Array(arr.into_iter().map(normalize_json).collect()),
-        _ => v
+        _ => v,
     }
 }
 
@@ -625,13 +720,15 @@ fn normalize_json(v: JsonValue) -> JsonValue {
 pub async fn fetch_now_playing() -> Result<serde_json::Value, String> {
     let active = get_active_player();
     if let Some(player) = active {
-         if is_valid_bus_name(&player) {
-             let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
-             return fetch_player_info(&conn, &player).await;
-         }
+        if is_valid_bus_name(&player) {
+            let conn = AsyncConnection::session()
+                .await
+                .map_err(|e| e.to_string())?;
+            return fetch_player_info(&conn, &player).await;
+        }
 
-         log::warn!("[music] Ignoring invalid active player bus: {}", player);
-         set_active_player(None);
+        log::warn!("[music] Ignoring invalid active player bus: {}", player);
+        set_active_player(None);
     }
     Ok(json!({ "title": "", "status": "Stopped", "player": "" }))
 }
@@ -641,27 +738,46 @@ pub async fn mpris_playpause(player: String) -> Result<String, String> {
     if target.is_empty() {
         return Err("No player selected".into());
     }
-    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
-    let proxy = AsyncProxy::new(&conn, target.as_str(), "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
+    let conn = AsyncConnection::session()
         .await
         .map_err(|e| e.to_string())?;
-    let status = proxy.get_property::<String>("PlaybackStatus").await
+    let proxy = AsyncProxy::new(
+        &conn,
+        target.as_str(),
+        "/org/mpris/MediaPlayer2",
+        "org.mpris.MediaPlayer2.Player",
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+    let status = proxy
+        .get_property::<String>("PlaybackStatus")
+        .await
         .unwrap_or_else(|_| "Unknown".to_string());
-    let method = if status == "Paused" { "Play" } else if status == "Playing" { "Pause" } else { "PlayPause" };
+    let method = if status == "Paused" {
+        "Play"
+    } else if status == "Playing" {
+        "Pause"
+    } else {
+        "PlayPause"
+    };
     exec_command_async(&conn, &target, method).await?;
     Ok(target)
 }
 
 pub async fn mpris_next(player: String) -> Result<String, String> {
     let target = resolve_target(player);
-    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
+    let conn = AsyncConnection::session()
+        .await
+        .map_err(|e| e.to_string())?;
     exec_command_async(&conn, &target, "Next").await?;
     Ok(target)
 }
 
 pub async fn mpris_previous(player: String) -> Result<String, String> {
     let target = resolve_target(player);
-    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
+    let conn = AsyncConnection::session()
+        .await
+        .map_err(|e| e.to_string())?;
     exec_command_async(&conn, &target, "Previous").await?;
     Ok(target)
 }
@@ -884,34 +1000,60 @@ fn resolve_target(inc: String) -> String {
     get_active_player().unwrap_or_default()
 }
 
-async fn exec_command_async(conn: &AsyncConnection, player: &str, method: &str) -> Result<(), String> {
-    if player.is_empty() { return Err("No player selected".to_string()); }
+async fn exec_command_async(
+    conn: &AsyncConnection,
+    player: &str,
+    method: &str,
+) -> Result<(), String> {
+    if player.is_empty() {
+        return Err("No player selected".to_string());
+    }
 
     if !player_available_async(conn, player).await {
         return Err(format!("Player not available: {}", player));
     }
 
-    call_with_retry_async(|| async {
-        let proxy = AsyncProxy::new(conn, player, "/org/mpris/MediaPlayer2", "org.mpris.MediaPlayer2.Player")
+    call_with_retry_async(
+        || async {
+            let proxy = AsyncProxy::new(
+                conn,
+                player,
+                "/org/mpris/MediaPlayer2",
+                "org.mpris.MediaPlayer2.Player",
+            )
             .await
             .map_err(|e| format!("Proxy creation failed: {}", e))?;
-        proxy
-            .call_method(method, &())
-            .await
-            .map(|_| ())
-            .map_err(|e| format!("Method call failed: {}", e))
-    }, 3, 50).await
+            proxy
+                .call_method(method, &())
+                .await
+                .map(|_| ())
+                .map_err(|e| format!("Method call failed: {}", e))
+        },
+        3,
+        50,
+    )
+    .await
 }
 
 async fn player_available_async(conn: &AsyncConnection, name: &str) -> bool {
-    if name.starts_with(":") { return true; }
+    if name.starts_with(":") {
+        return true;
+    }
     match AsyncDBusProxy::new(conn).await {
-        Ok(dbus) => dbus.list_names().await.map(|list| list.into_iter().any(|n| n == name)).unwrap_or(false),
+        Ok(dbus) => dbus
+            .list_names()
+            .await
+            .map(|list| list.into_iter().any(|n| n == name))
+            .unwrap_or(false),
         Err(_) => false,
     }
 }
 
-async fn call_with_retry_async<F, Fut>(mut f: F, attempts: usize, base_delay_ms: u64) -> Result<(), String>
+async fn call_with_retry_async<F, Fut>(
+    mut f: F,
+    attempts: usize,
+    base_delay_ms: u64,
+) -> Result<(), String>
 where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = Result<(), String>>,
@@ -933,9 +1075,13 @@ where
 }
 
 pub async fn emit_now_playing(app: &AppHandle, player: &str) -> Result<(), String> {
-    if player.is_empty() { return Err("No player selected".to_string()); }
+    if player.is_empty() {
+        return Err("No player selected".to_string());
+    }
     log::info!("[music] emit_now_playing player={}", player);
-    let conn = AsyncConnection::session().await.map_err(|e| e.to_string())?;
+    let conn = AsyncConnection::session()
+        .await
+        .map_err(|e| e.to_string())?;
     let info = match fetch_player_info(&conn, player).await {
         Ok(i) => i,
         Err(e) => {
@@ -972,7 +1118,13 @@ pub async fn emit_now_playing(app: &AppHandle, player: &str) -> Result<(), Strin
 // Legacy impl for traits
 impl Default for MediaInfo {
     fn default() -> Self {
-        Self { title: None, artist: None, album_art_url: None, player: None, status: None }
+        Self {
+            title: None,
+            artist: None,
+            album_art_url: None,
+            player: None,
+            status: None,
+        }
     }
 }
 
