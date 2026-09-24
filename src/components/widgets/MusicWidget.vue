@@ -460,7 +460,7 @@ watch(() => musicInfo.value?.player, loadPlayers);
       >
         <div
           v-if="dbusStatus === 'reconnecting' || dbusStatus === 'failed'"
-          class="rounded-corner px-2 py-1 text-xs text-ui-main"
+          class="rounded-corner px-2 py-1 text-xs text-tx-main"
           :class="dbusStatus === 'reconnecting' ? 'bg-status-warning' : 'bg-status-error'"
         >
           {{ dbusMessage }}

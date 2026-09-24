@@ -121,21 +121,21 @@ onBeforeUnmount(() => {
 
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2 min-w-0">
-              <h2 class="text-lg font-semibold text-vsk-text truncate">
+              <h2 class="text-lg font-semibold text-tx-main truncate">
                 {{ data?.title || t('views.applets.tray.fallbackTitle') }}
               </h2>
-              <span class="text-[10px] uppercase tracking-[0.18em] text-vsk-text/45 whitespace-nowrap">
+              <span class="text-[10px] uppercase tracking-[0.18em] text-tx-main/45 whitespace-nowrap">
                 {{ t('views.applets.tray.itemCount').replace('{0}', String(itemCount)) }}
               </span>
             </div>
-            <p class="text-sm text-vsk-text/70 truncate mt-1">
+            <p class="text-sm text-tx-main/70 truncate mt-1">
               {{ popupSubtitle }}
             </p>
             <div class="mt-3 flex flex-wrap gap-2 text-xs">
-              <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-vsk-text/75">
+              <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-tx-main/75">
                 {{ data?.status || t('views.applets.tray.statusFallback') }}
               </span>
-              <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-vsk-text/65 truncate max-w-[280px]">
+              <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-tx-main/65 truncate max-w-[280px]">
                 {{ data?.service_name || 'service' }}
               </span>
             </div>
@@ -145,14 +145,14 @@ onBeforeUnmount(() => {
 
       <section class="flex-1 min-h-0 rounded-corner border border-ui-border bg-ui-surface/35 p-4 overflow-hidden">
         <div class="flex items-center justify-between gap-2 mb-3">
-          <h3 class="text-sm font-semibold text-vsk-text">{{ t('views.applets.tray.actionsTitle') }}</h3>
-          <span class="text-xs text-vsk-text/50">{{ t('views.applets.tray.actionsHint') }}</span>
+          <h3 class="text-sm font-semibold text-tx-main">{{ t('views.applets.tray.actionsTitle') }}</h3>
+          <span class="text-xs text-tx-main/50">{{ t('views.applets.tray.actionsHint') }}</span>
         </div>
 
         <div class="h-full overflow-y-auto pr-1 space-y-2">
           <div
             v-if="!data?.items?.length"
-            class="rounded-corner border border-ui-border bg-ui-surface/50 px-4 py-6 text-center text-sm text-vsk-text/60"
+            class="rounded-corner border border-ui-border bg-ui-surface/50 px-4 py-6 text-center text-sm text-tx-main/60"
           >
             {{ t('views.applets.tray.noItems') }}
           </div>
@@ -180,15 +180,15 @@ onBeforeUnmount(() => {
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2 min-w-0" :style="item.depth > 0 ? { paddingLeft: '0.25rem' } : undefined">
-                    <span class="text-sm font-medium text-vsk-text truncate">{{ item.label }}</span>
+                    <span class="text-sm font-medium text-tx-main truncate">{{ item.label }}</span>
                     <ThemeIcon v-if="item.checked" name="object-select-symbolic" type="symbol" :size="14" alt="✓" />
                   </div>
-                  <p class="mt-1 text-xs text-vsk-text/55 truncate">
+                  <p class="mt-1 text-xs text-tx-main/55 truncate">
                     <span v-if="item.icon">{{ item.icon }}</span>
                   </p>
                 </div>
 
-                <div class="shrink-0 flex items-center gap-2 text-[10px] text-vsk-text/55 uppercase tracking-[0.14em]">
+                <div class="shrink-0 flex items-center gap-2 text-[10px] text-tx-main/55 uppercase tracking-[0.14em]">
                   <span v-if="item.children?.length">{{ t('views.applets.tray.submenu') }}</span>
                   <span v-if="!item.enabled">{{ t('views.applets.tray.disabled') }}</span>
                 </div>
