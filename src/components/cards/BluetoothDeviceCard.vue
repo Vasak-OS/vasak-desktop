@@ -2,9 +2,12 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { getDeviceInfo } from '@vasakgroup/plugin-bluetooth-manager';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { DeviceCard } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import { logError } from '@/utils/logger';
-import DeviceCard from './DeviceCard.vue';
+
+const { t } = useI18n();
 
 const extraInfo: Ref<any> = ref({});
 const props = defineProps<{
@@ -73,8 +76,18 @@ onMounted(async () => {
 </script>
 
 <template>
+  <!--
+    `name` y no `icon`: el de la librería tiene las dos, y `icon` es la ruta ya
+    resuelta —está obsoleta y avisa por consola—. Lo que viaja desde acá es el
+    **nombre** del icono del tema, que es lo que hace que siga al tema sin que
+    este componente tenga que resolver nada.
+
+    `connecting-label` se resuelve acá y no adentro del componente: la librería
+    la usan seis aplicaciones y no puede depender de que todas tengan la misma
+    clave en su catálogo.
+  -->
   <DeviceCard
-    :icon="icon"
+    :name="icon"
     :title="deviceTitle"
     :subtitle="deviceSubtitle"
     :metadata="deviceMetadata"
@@ -82,6 +95,7 @@ onMounted(async () => {
     :is-connected="connected"
     :is-connecting="isConnecting"
     :action-label="actionLabel"
+    :connecting-label="t('components.DeviceCard.connecting')"
     @action="$emit('action')"
   />
 </template>

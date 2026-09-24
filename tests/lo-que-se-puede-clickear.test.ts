@@ -71,10 +71,10 @@ describe('nada que se pueda clickear queda fuera del teclado', () => {
  * sólo se nota probándolo con el teclado, que es lo que nadie hace.
  */
 describe('las filas que se abren enteras', () => {
-	// `ListCard` ya no está acá: se fue a la librería, con su teclado puesto.
-	// Ver Vasak-OS/vue-libvasak#22, que es el barrido de las copias.
+	// `ListCard` y `DeviceCard` ya no están acá: se fueron a la librería, con su
+	// teclado puesto. Ver Vasak-OS/vue-libvasak#22, que es el barrido de las
+	// copias.
 	const CON_BOTONES_ADENTRO = [
-		'components/cards/DeviceCard.vue',
 		'components/cards/NotificationCard.vue',
 		'components/cards/NotificationGroupCard.vue',
 	];
