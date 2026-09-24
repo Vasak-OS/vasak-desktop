@@ -30,22 +30,6 @@ const fuentes = await Promise.all(
 
 const leer = (ruta: string) => fuentes.find((f) => f.ruta === ruta)?.texto ?? '';
 
-/**
- * Las filas enteras que se pueden tocar.
- *
- * Son otra discusión: una tarjeta que se abre al hacer clic en cualquier punto
- * no se arregla poniéndole `<button>` alrededor —adentro tienen sus propios
- * botones, y un botón dentro de otro no es HTML válido—. Queda anotado en
- * https://github.com/Vasak-OS/vasak-desktop/issues/102 y no se toca acá.
- */
-const FILAS_ENTERAS = new Set([
-	'components/cards/DeviceCard.vue',
-	'components/cards/ListCard.vue',
-	'components/cards/NotificationCard.vue',
-	'components/cards/NotificationGroupCard.vue',
-	'components/controls/AudioDeviceSelector.vue',
-]);
-
 /** Etiquetas nativas que no hacen nada por sí solas al recibir un clic. */
 const SORDAS = /<(div|span|img|li|p|a)\b((?:[^<>]|"[^"]*"|'[^']*')*?)>/g;
 
@@ -53,30 +37,76 @@ function sordasQueEscuchanElClic(texto: string): number {
 	let cuantas = 0;
 	for (const [, , atributos] of texto.matchAll(SORDAS)) {
 		if (!/(@click|v-on:click)\b/.test(atributos)) continue;
-		if (/role="button"/.test(atributos)) continue;
+		// El papel puesto a mano y el atado a una condición valen los dos. Varias
+		// de estas filas **sólo a veces** hacen algo —`clickable`, o que la
+		// notificación traiga acción por omisión—, y ahí el papel tiene que
+		// aparecer y desaparecer con eso: anunciar un botón que no hace nada es
+		// el mismo problema al revés. Cuando no lo es, el manejador corta
+		// primero, así que el `@click` que queda no hace nada.
+		if (/(?:^|\s):?role="[^"]*button/.test(atributos)) continue;
 		cuantas += 1;
 	}
 	return cuantas;
 }
 
 describe('nada que se pueda clickear queda fuera del teclado', () => {
-	test('ningún elemento sordo escucha el clic, salvo las filas enteras', () => {
+	test('ningún elemento sordo escucha el clic — ya sin excepciones', () => {
+		// Hubo cinco: las filas enteras de las tarjetas y el selector de audio.
+		// Eran otra discusión porque varias tienen **sus propios botones
+		// adentro** y un botón dentro de otro no es HTML válido. Se resolvieron
+		// caso por caso y la lista quedó vacía, así que acá ya no hay salvedad
+		// que hacer.
 		const culpables = fuentes
-			.filter(({ ruta }) => !FILAS_ENTERAS.has(ruta))
 			.filter(({ texto }) => sordasQueEscuchanElClic(texto) > 0)
 			.map(({ ruta }) => ruta);
 
 		expect(culpables).toEqual([]);
 	});
+});
 
-	test('y la lista de excepciones no tiene nombres de más', () => {
-		// Una excepción que ya no hace falta es una puerta abierta: el día que
-		// alguien vuelva a poner un `@click` en ese archivo, nadie se entera.
-		const sobrantes = [...FILAS_ENTERAS].filter(
-			(ruta) => sordasQueEscuchanElClic(leer(ruta)) === 0
+/**
+ * Que no sea un `<div>` sordo no alcanza: `role="button"` sin `tabindex` no
+ * recibe foco, y con foco pero sin manejadores de tecla no se activa. Las tres
+ * cosas van juntas o no sirve ninguna — y como nada de esto falla ni avisa,
+ * sólo se nota probándolo con el teclado, que es lo que nadie hace.
+ */
+describe('las filas que se abren enteras', () => {
+	const CON_BOTONES_ADENTRO = [
+		'components/cards/DeviceCard.vue',
+		'components/cards/ListCard.vue',
+		'components/cards/NotificationCard.vue',
+		'components/cards/NotificationGroupCard.vue',
+	];
+
+	test.each(CON_BOTONES_ADENTRO)('%s se enfoca y se activa con el teclado', (ruta) => {
+		const texto = leer(ruta);
+
+		expect(texto).toMatch(/(?::role="|\srole=")/);
+		expect(texto).toMatch(/(?::tabindex="|\stabindex=")/);
+		expect(texto).toContain('@keydown.enter.prevent');
+		// `.prevent` en la barra no es decoración: sin él la página se desplaza
+		// además de activar la fila.
+		expect(texto).toContain('@keydown.space.prevent');
+	});
+
+	test('el grupo de notificaciones dice si está desplegado', () => {
+		// Despliega y repliega: sin esto se anuncia como un botón cualquiera y
+		// no se sabe que hay algo plegado detrás.
+		expect(leer('components/cards/NotificationGroupCard.vue')).toContain(
+			':aria-expanded="isExpanded"'
 		);
+	});
 
-		expect(sobrantes).toEqual([]);
+	test('el selector de audio es un grupo de opciones, no cinco botones iguales', () => {
+		// Ésta no tenía botones adentro, así que va `<button>` de verdad. Y
+		// elegir una salida es elegir **una de varias**: sin `radio` se leen
+		// cinco botones iguales y no se sabe cuál está puesta, que es
+		// justamente lo que dibuja el punto de la izquierda.
+		const texto = leer('components/controls/AudioDeviceSelector.vue');
+
+		expect(texto).toContain('role="radiogroup"');
+		expect(texto).toMatch(/<button[^>]*role="radio"/s);
+		expect(texto).toContain(':aria-checked="selectedDeviceId === device.id"');
 	});
 });
 

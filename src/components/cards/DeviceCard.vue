@@ -1,8 +1,28 @@
 <template>
+  <!--
+    La fila entera se abre con el mouse **y** con el teclado, pero sólo cuando
+    de verdad hace algo. `role="button"` y no un `<button>` de verdad porque
+    adentro hay otro botón —el de conectar— y un botón dentro de otro no es
+    HTML válido: el navegador desanida el marcado y el de adentro deja de
+    funcionar.
+
+    Y va atado a `clickable`, que estaba declarado y no se usaba: `handleClick`
+    emitía siempre, nadie escuchaba ese `click` y la fila no tenía ni el cursor
+    que lo anunciara. Una fila que dice ser un botón y no hace nada es peor que
+    una que no lo dice.
+  -->
   <div
     class="flex items-center justify-between bg-ui-bg/80 rounded-corner border border-ui-border px-6 py-3 mb-4"
-    :class="[{ 'border-l-4 border-status-success': isConnected }, customClass]"
+    :class="[
+      { 'border-l-4 border-status-success': isConnected, 'cursor-pointer': clickable },
+      customClass,
+    ]"
+    :role="clickable ? 'button' : undefined"
+    :tabindex="clickable ? 0 : undefined"
+    :aria-label="clickable ? title : undefined"
     @click="handleClick"
+    @keydown.enter.prevent="handleClick"
+    @keydown.space.prevent="handleClick"
   >
     <div class="flex items-center gap-3 flex-1 min-w-0">
       <ThemeIcon :name="icon" :size="28" :alt="title" />
@@ -68,7 +88,7 @@ interface Props {
 	clickable?: boolean;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	subtitle: '',
 	metadata: '',
 	extraInfo: () => [],
@@ -91,6 +111,7 @@ const handleAction = () => {
 };
 
 const handleClick = () => {
+	if (!props.clickable) return;
 	emit('click');
 };
 </script>
