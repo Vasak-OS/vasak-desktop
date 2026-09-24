@@ -126,7 +126,14 @@ async fn monitor_with_reconnect(app: &AppHandle, attempt: u32) -> Result<(), Str
                       } else {
                            // Player died, reset
                            set_active_player(None);
-                           set_pinned_player(None);
+                           // La elección a mano sólo se suelta si el reproductor
+                           // **se fue del bus**. Un `GetAll` que no contestó en
+                           // 500 ms no es una muerte: un navegador ocupado pasa
+                           // ese plazo, y perder ahí la elección sería mover el
+                           // foco a otro reproductor sin que nadie lo pidiera.
+                           if !player_available_async(&conn, &player).await {
+                                set_pinned_player(None);
+                           }
                            if let Ok(fallback) = fetch_best_player(&conn).await {
                                 update_ui(app, &fallback);
                            }
@@ -586,13 +593,21 @@ fn find_str_array(j: &JsonValue, keys: &[&str]) -> Option<String> {
     None
 }
 
+/// Saca las cáscaras de `Variant` y deja JSON común.
+///
+/// Un `Variant` se serializa como **la firma al lado del contenido**, o sea dos
+/// claves. Hasta ahora eso sólo se desenvolvía cuando venía solo, y funcionaba
+/// de casualidad: quien leía el valor rebuscaba entre todas las claves del
+/// objeto y descartaba las que parecían firmas —de ahí el filtro de `"s"` y
+/// `"as"`—. Con `GetAll` la firma viene **siempre**, y ese rebusque no sabe
+/// leer un booleano ni un entero: el estado entero llegaba vacío.
 fn normalize_json(v: JsonValue) -> JsonValue {
     match v {
         JsonValue::Object(mut map) => {
+             if let Some(inner) = map.remove("zvariant::Value::Value") {
+                 return normalize_json(inner);
+             }
              if map.len() == 1 {
-                 if let Some(inner) = map.remove("zvariant::Value::Value") {
-                     return normalize_json(inner);
-                 }
                  // If generic variant wrapper 1 key
                  if let Some((_, val)) = map.iter().next() {
                       return normalize_json(val.clone());
@@ -958,5 +973,71 @@ pub async fn emit_now_playing(app: &AppHandle, player: &str) -> Result<(), Strin
 impl Default for MediaInfo {
     fn default() -> Self {
         Self { title: None, artist: None, album_art_url: None, player: None, status: None }
+    }
+}
+
+#[cfg(test)]
+mod pruebas {
+    use super::*;
+
+    /// Las propiedades tal como las entrega `GetAll`: un `a{sv}`, con el
+    /// `Metadata` adentro como otro diccionario envuelto en su variante.
+    fn propiedades_de_getall() -> HashMap<String, Value<'static>> {
+        let mut meta: HashMap<String, Value> = HashMap::new();
+        meta.insert("xesam:title".into(), Value::from("La pista"));
+        meta.insert("xesam:album".into(), Value::from("El disco"));
+        meta.insert("mpris:length".into(), Value::from(2_179_701_000i64));
+        meta.insert(
+            "mpris:artUrl".into(),
+            Value::from("file:///tmp/la-tapa.png"),
+        );
+        meta.insert(
+            "xesam:artist".into(),
+            Value::from(vec!["Quien la canta".to_string()]),
+        );
+
+        let mut props: HashMap<String, Value> = HashMap::new();
+        props.insert("PlaybackStatus".into(), Value::from("Playing"));
+        props.insert("CanSeek".into(), Value::from(true));
+        props.insert("Position".into(), Value::from(634_000_000i64));
+        props.insert("Volume".into(), Value::from(0.8f64));
+        props.insert("Metadata".into(), Value::from(zvariant::Dict::from(meta)));
+        props
+    }
+
+    /// Lo que de verdad importa de cambiar trece llamadas por un `GetAll`: que
+    /// lo que llega adentro se siga leyendo igual.
+    #[test]
+    fn los_datos_de_la_pista_salen_del_getall() {
+        let props = a_json(propiedades_de_getall());
+        let meta = props.get("Metadata").cloned().unwrap_or(JsonValue::Null);
+
+        let (title, artist, art) = parse_metadata(&meta);
+
+        assert_eq!(title.as_deref(), Some("La pista"), "el título");
+        assert_eq!(artist.as_deref(), Some("Quien la canta"), "el artista");
+        assert_eq!(
+            art.as_deref(),
+            Some("file:///tmp/la-tapa.png"),
+            "la carátula"
+        );
+        assert_eq!(
+            find_str(&meta, &["xesam:album"]).as_deref(),
+            Some("El disco")
+        );
+        assert_eq!(find_i64(&meta, "mpris:length"), Some(2_179_701_000));
+    }
+
+    #[test]
+    fn el_estado_del_reproductor_tambien() {
+        let props = a_json(propiedades_de_getall());
+
+        assert_eq!(
+            find_str(&props, &["PlaybackStatus"]).as_deref(),
+            Some("Playing")
+        );
+        assert_eq!(find_bool(&props, "CanSeek"), Some(true));
+        assert_eq!(find_i64(&props, "Position"), Some(634_000_000));
+        assert_eq!(find_f64(&props, "Volume"), Some(0.8));
     }
 }

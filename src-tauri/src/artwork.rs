@@ -71,6 +71,15 @@ pub async fn read_local(url: &str) -> Result<Vec<u8>, String> {
     let meta = tokio::fs::metadata(&path)
         .await
         .map_err(|e| format!("no se pudo mirar la carátula en {}: {e}", path.display()))?;
+
+    // Un archivo común y nada más. `/dev/zero`, `/dev/urandom`, una tubería o
+    // casi cualquier cosa de `/proc` dicen que miden **cero** —así que pasan
+    // cualquier tope— y leerlos no termina nunca: el primero se lleva la memoria
+    // del escritorio y el segundo lo deja colgado. Y el `artUrl` lo elige otro
+    // proceso.
+    if !meta.is_file() {
+        return Err(format!("{} no es un archivo común", path.display()));
+    }
     if meta.len() > MAX_BYTES {
         return Err(format!(
             "la carátula en {} pesa {} bytes, más del tope de {MAX_BYTES}",
@@ -79,9 +88,23 @@ pub async fn read_local(url: &str) -> Result<Vec<u8>, String> {
         ));
     }
 
-    let bytes = tokio::fs::read(&path)
+    // El tope se vuelve a aplicar sobre la lectura, y no sólo sobre lo que dijo
+    // el `metadata`: entre una cosa y la otra el archivo puede haber crecido.
+    use tokio::io::AsyncReadExt;
+    let mut bytes = Vec::new();
+    tokio::fs::File::open(&path)
+        .await
+        .map_err(|e| format!("no se pudo leer la carátula en {}: {e}", path.display()))?
+        .take(MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
         .await
         .map_err(|e| format!("no se pudo leer la carátula en {}: {e}", path.display()))?;
+    if bytes.len() as u64 > MAX_BYTES {
+        return Err(format!(
+            "la carátula en {} pasa el tope de {MAX_BYTES} bytes",
+            path.display()
+        ));
+    }
 
     if !looks_like_image(&bytes) {
         return Err(format!("lo que hay en {} no es una imagen", path.display()));
@@ -180,6 +203,21 @@ mod pruebas {
             "el error nombra el archivo: {error}"
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// El caso que el tope de tamaño no atajaba: un dispositivo dice que mide
+    /// cero y no se termina de leer nunca.
+    #[tokio::test]
+    async fn lo_que_no_es_un_archivo_comun_no_se_lee() {
+        let error = read_local("file:///dev/zero")
+            .await
+            .expect_err("un dispositivo no es una carátula");
+        assert!(error.contains("no es un archivo común"), "{error}");
+
+        let error = read_local("file:///proc/self")
+            .await
+            .expect_err("un directorio tampoco");
+        assert!(error.contains("no es un archivo común"), "{error}");
     }
 
     #[tokio::test]

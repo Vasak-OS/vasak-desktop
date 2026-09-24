@@ -54,9 +54,19 @@ const box = ref<HTMLElement | null>(null);
 const boxHeight = ref(0);
 const sections = computed(() => sectionsFor(boxHeight.value));
 
+/**
+ * Dónde está el pulgar mientras alguien lo arrastra.
+ *
+ * La posición se actualiza sola cada medio segundo, y cada actualización
+ * reescribe el `value` del control: sin esto, el pulgar salta de vuelta a donde
+ * va la música justo mientras se lo está moviendo, y lo que se suelta no es lo
+ * que se eligió. `null` quiere decir que nadie lo está tocando.
+ */
+const dragging = ref<number | null>(null);
+
 /** Cuánto dura la pista, y si hay barra que dibujar. */
 const hasProgress = computed(() => musicInfo.value.length > 0);
-const elapsed = computed(() => formatDuration(position.value));
+const elapsed = computed(() => formatDuration(dragging.value ?? position.value));
 const total = computed(() => formatDuration(musicInfo.value.length));
 
 /**
@@ -102,6 +112,7 @@ async function pick(player: string): Promise<void> {
 function seekTo(event: Event): void {
 	const barra = event.target as HTMLInputElement;
 	const largo = musicInfo.value.length;
+	dragging.value = null;
 	if (largo <= 0) return;
 	onSeek(Number(barra.value) / largo);
 }
@@ -190,6 +201,15 @@ watch(
 		updateTitleOverflow();
 	}
 );
+
+/**
+ * La lista se vuelve a pedir cuando cambia el reproductor que suena.
+ *
+ * El selector no se dibuja mientras haya uno solo, y sin esto la lista se pedía
+ * únicamente al montar y al abrirlo — o sea que si el segundo reproductor
+ * arrancaba después, el botón para elegir no aparecía nunca.
+ */
+watch(() => musicInfo.value?.player, loadPlayers);
 </script>
 
 <template>
@@ -321,10 +341,11 @@ watch(
         class="h-1 min-w-0 flex-1 accent-primary disabled:opacity-50"
         min="0"
         :max="musicInfo.length"
-        :value="position"
+        :value="dragging ?? position"
         :disabled="!musicInfo.canSeek"
         :aria-label="t('components.MusicWidget.seek')"
         :aria-valuetext="`${elapsed} / ${total}`"
+        @input="dragging = Number(($event.target as HTMLInputElement).value)"
         @change="seekTo"
       />
       <span>{{ total }}</span>

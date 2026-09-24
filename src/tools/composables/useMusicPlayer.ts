@@ -173,6 +173,16 @@ export function useMusicPlayer() {
 	 * de kB por pista. Se suelta al cambiar de carátula y al desmontar.
 	 */
 	let coverObjectUrl = '';
+	/**
+	 * Cuál es el pedido de carátula que vale.
+	 *
+	 * Dos pistas seguidas son dos pedidos en vuelo, y el primero puede contestar
+	 * último: sin esto, la carátula vieja pisa a la nueva —o la suelta— y queda
+	 * puesta la que no es. Después de desmontar tampoco se adopta ninguna, que
+	 * si no se crea un `blob:` que ya nadie va a soltar.
+	 */
+	let coverRequest = 0;
+	let disposed = false;
 
 	function releaseCover(): void {
 		if (coverObjectUrl) {
@@ -202,6 +212,7 @@ export function useMusicPlayer() {
 	 * mismo origen. Lo remoto sí lo carga el WebView, que ya trae TLS.
 	 */
 	async function resolveCover(url: string): Promise<void> {
+		const request = ++coverRequest;
 		const clean = (url || '').trim();
 		if (!clean) {
 			await showFallbackCover();
@@ -217,12 +228,16 @@ export function useMusicPlayer() {
 
 		try {
 			const bytes = await invoke<ArrayBuffer>('music_artwork', { url: clean });
+			// Mientras se leía puede haber cambiado la pista, o haberse cerrado la
+			// ventana: esta carátula ya no es la que va.
+			if (disposed || request !== coverRequest) return;
 			const fresh = URL.createObjectURL(new Blob([bytes]));
 			releaseCover();
 			coverObjectUrl = fresh;
 			hasCover.value = true;
 			imgSrc.value = fresh;
 		} catch (e) {
+			if (disposed || request !== coverRequest) return;
 			logError('[music] La carátula no se pudo leer:', e);
 			await showFallbackCover();
 		}
@@ -266,6 +281,7 @@ export function useMusicPlayer() {
 		now.value = Date.now();
 	}, 500);
 	onUnmounted(() => {
+		disposed = true;
 		clearInterval(clock);
 		releaseCover();
 	});
