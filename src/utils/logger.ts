@@ -15,14 +15,38 @@ export enum LogLevel {
 	ERROR = 'ERROR',
 }
 
+/** Las cuatro funciones de consola que este logger reemplaza. */
+type ConsoleMethod = 'log' | 'debug' | 'warn' | 'error';
+
 /**
  * Interfaz para el logger de Vasak Desktop
  */
 class VasakLogger {
 	private isDevelopment: boolean;
 
+	/**
+	 * Las funciones de consola tal como estaban antes de que el constructor las
+	 * reemplazara. Todo lo que el logger quiera decir sale por acá: decirlo por
+	 * la consola reemplazada es volver a entrar al logger, y esa vuelta no
+	 * tiene fondo.
+	 */
+	private readonly originalConsole: Record<ConsoleMethod, (...args: any[]) => void>;
+
+	/**
+	 * Verdadero mientras se está entregando un log al backend. Lo que llegue a
+	 * la consola dentro de esa ventana viene de adentro del envío —del `invoke`
+	 * o de un plugin que lo envuelva—, así que se imprime pero no se reenvía.
+	 */
+	private forwarding = false;
+
 	constructor() {
 		this.isDevelopment = import.meta.env.DEV;
+		this.originalConsole = {
+			log: console.log.bind(console),
+			debug: console.debug.bind(console),
+			warn: console.warn.bind(console),
+			error: console.error.bind(console),
+		};
 		this.initializeLogger();
 	}
 
@@ -48,23 +72,24 @@ class VasakLogger {
 		});
 
 		// Interceptar console.error y console.warn
-		const originalError = console.error;
-		const originalWarn = console.warn;
-		const originalLog = console.log;
-		const originalDebug = console.debug;
-
 		console.error = (...args: any[]) => {
-			this.error(this.formatArgs(args));
 			if (this.isDevelopment) {
-				originalError.apply(console, args);
+				this.originalConsole.error(...args);
 			}
+			if (this.forwarding) {
+				return;
+			}
+			this.error(this.formatArgs(args));
 		};
 
 		console.warn = (...args: any[]) => {
-			this.warning(this.formatArgs(args));
 			if (this.isDevelopment) {
-				originalWarn.apply(console, args);
+				this.originalConsole.warn(...args);
 			}
+			if (this.forwarding) {
+				return;
+			}
+			this.warning(this.formatArgs(args));
 		};
 
 		// console.log and console.debug are only intercepted in development.
@@ -76,13 +101,19 @@ class VasakLogger {
 		}
 
 		console.log = (...args: any[]) => {
+			this.originalConsole.log(...args);
+			if (this.forwarding) {
+				return;
+			}
 			this.info(this.formatArgs(args));
-			originalLog.apply(console, args);
 		};
 
 		console.debug = (...args: any[]) => {
+			this.originalConsole.debug(...args);
+			if (this.forwarding) {
+				return;
+			}
 			this.debug(this.formatArgs(args));
-			originalDebug.apply(console, args);
 		};
 
 		this.info('Sistema de logging inicializado');
@@ -107,6 +138,20 @@ class VasakLogger {
 	}
 
 	/**
+	 * Avisa de un envío que no llegó.
+	 *
+	 * Sale por la consola original a propósito. La reemplazada vuelve a entrar
+	 * al logger, que vuelve a intentar el envío, que vuelve a fallar, que
+	 * vuelve a avisar: con el backend caído la pestaña se queda sin memoria
+	 * antes de dibujar nada.
+	 */
+	private reportDeliveryFailure(error: unknown) {
+		if (this.isDevelopment) {
+			this.originalConsole.warn('[Logger] No se pudo enviar el log al backend:', error);
+		}
+	}
+
+	/**
 	 * Envía un log al backend de Rust
 	 */
 	private async sendLog(level: LogLevel, message: string, data?: any) {
@@ -117,16 +162,30 @@ class VasakLogger {
 				? `${message} | Data: ${JSON.stringify(normalizedData)}`
 				: message;
 
+		let delivery: Promise<unknown>;
+
+		// La bandera cubre la parte síncrona del envío, que es donde la
+		// reentrada no tiene fondo: lo que el `invoke` escriba en consola
+		// ocurre acá, antes de que el bucle de eventos avance. Cubrir también
+		// la espera descartaría logs legítimos que se hayan emitido mientras
+		// éste viajaba, que es justo lo que no se quiere perder.
+		this.forwarding = true;
 		try {
-			await logFromFrontend({
+			delivery = logFromFrontend({
 				level: level.toString(),
 				message: fullMessage,
 			});
 		} catch (error) {
-			// Si falla el envío al backend, al menos registrar en consola (solo en dev)
-			if (this.isDevelopment) {
-				console.warn('[Logger] No se pudo enviar el log al backend:', error);
-			}
+			this.reportDeliveryFailure(error);
+			return;
+		} finally {
+			this.forwarding = false;
+		}
+
+		try {
+			await delivery;
+		} catch (error) {
+			this.reportDeliveryFailure(error);
 		}
 	}
 
@@ -165,7 +224,9 @@ class VasakLogger {
 		try {
 			return await getLogFilePath();
 		} catch (error) {
-			console.error('Error al obtener la ruta del log:', error);
+			// Por la vía propia y no por `console.error`, que está reemplazada
+			// por este mismo logger.
+			this.error('Error al obtener la ruta del log', error);
 			return '';
 		}
 	}
@@ -177,7 +238,7 @@ class VasakLogger {
 		try {
 			return await readLogFile();
 		} catch (error) {
-			console.error('Error al leer el archivo de log:', error);
+			this.error('Error al leer el archivo de log', error);
 			return '';
 		}
 	}
@@ -189,7 +250,7 @@ class VasakLogger {
 		try {
 			return await getLastLogLines({ lines });
 		} catch (error) {
-			console.error('Error al obtener las últimas líneas del log:', error);
+			this.error('Error al obtener las últimas líneas del log', error);
 			return [];
 		}
 	}
