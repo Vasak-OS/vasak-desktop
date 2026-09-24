@@ -58,11 +58,10 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ActionButton, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import { invokeNotificationAction } from '@/services/notification.service';
 import { logError } from '@/utils/logger';
-import ActionButton from '../buttons/ActionButton.vue';
 
 const { t } = useI18n();
 
