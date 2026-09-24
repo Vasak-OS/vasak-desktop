@@ -210,10 +210,8 @@ mod tests {
     /// Un directorio de aplicaciones de mentira, con las entradas que hacen
     /// falta para las pruebas.
     fn applications_dir(label: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!(
-            "vasak-app-icon-{}-{label}",
-            std::process::id()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("vasak-app-icon-{}-{label}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("no se pudo crear el directorio");
 
@@ -369,12 +367,10 @@ mod tests {
             !memoize(missing, Some("viejo".into()), generation),
             "se guardó un resultado de antes de invalidar"
         );
-        assert!(
-            !RESOLVED
-                .read()
-                .expect("cerrojo envenenado")
-                .contains_key(missing)
-        );
+        assert!(!RESOLVED
+            .read()
+            .expect("cerrojo envenenado")
+            .contains_key(missing));
 
         // Con la generación al día, sí.
         let up_to_date = GENERATION.load(Ordering::SeqCst);
