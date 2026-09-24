@@ -1,6 +1,6 @@
 [package]
 name = "vasak-desktop"
-version = "1.14.0"
+version = "1.15.0"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -26,12 +26,12 @@ wayland-client = { version = "0.31", features = ["system"] }
 wayland-protocols = { version = "0.32", features = ["staging", "client"] }
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 
-freedesktop_entry_parser = "1.3"
+freedesktop_entry_parser = "2"
 gtk = "0.18"
 gdk = "0.18"
 glib = "0.18"
 gtk-layer-shell = { version = "0.8", features = ["v0_6"] }
-base64 = "0.22"
+base64 = "0.23"
 #tauri-plugin-vicons = {path = "../../tauri-plugin-vicons"}
 tauri-plugin-vicons = "2"
 tauri-plugin-i18n-vsk = "2.3.0"
@@ -53,13 +53,18 @@ percent-encoding = "2"
 futures-util = "0.3"
 log = "0.4"
 async-trait = "0.1.89"
-dirs = "5.0"
+dirs = "7"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 thiserror = "2.0"
 chrono = "0.4"
-shlex = "1.3"
+shlex = "2"
+# Se queda en 0.8 a propósito. La feature `pipewire-native` —apagada por
+# omisión— ya no compila: libspa 0.8 falla contra las cabeceras de PipeWire
+# actuales. La 0.10 lo destraba pero saca `pipewire::prelude` y cambia cómo se
+# crean `MainLoop` y `Context`, así que subirla es reescribir `audio_native.rs`
+# y probar el audio en una sesión. Condición de salida: ese PR.
 pipewire = { version = "0.8", optional = true }
-inotify = "0.10"
+inotify = "0.11"
 parking_lot = "0.12"
 url = "2"
 tauri-plugin-vsk-contextual-menu = "2"

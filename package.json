@@ -1,7 +1,7 @@
 {
   "name": "vasak-desktop",
   "private": true,
-  "version": "1.14.0",
+  "version": "1.15.0",
   "type": "module",
   "engines": {
     "bun": ">=1.2.21"
@@ -40,18 +40,20 @@
     "@biomejs/biome": "^2.5.14",
     "@tailwindcss/postcss": "^4.3.3",
     "@tauri-apps/cli": "^2.11.5",
-    "@types/node": "^25.9.8",
+    "@types/node": "^26.6.2",
     "@vitejs/plugin-vue": "^6.0.9",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
     "terser": "^5.51.2",
-    "typescript": "^5.9.3",
-    "vite": "^7.3.6",
+    "typescript": "~5.9.3",
+    "vite": "~7.3.6",
     "vue-tsc": "^3.3.11"
   },
   "vasak": {
     "bibliotecasAtrasadas": {
-      "@vasakgroup/plugin-config-manager": "La 2.7.0 declara pinia ^4 y esta aplicación está en pinia 3: subir el rango arrastra un salto mayor ajeno. Por eso el rango es ~2.6.1 y no ^2.6.1, que alcanzaría una versión que no se puede instalar. Se saca al subir a pinia 4."
+      "@vasakgroup/plugin-config-manager": "La 2.7.0 declara pinia ^4 y esta aplicación está en pinia 3: subir el rango arrastra un salto mayor ajeno. Por eso el rango es ~2.6.1 y no ^2.6.1, que alcanzaría una versión que no se puede instalar. Se saca al subir a pinia 4.",
+      "typescript": "La 7 (el compilador reescrito) no trae `typescript/lib/tsc` y vue-tsc 3.3 lo busca ahí: `bun run build` se cae con ERR_PACKAGE_PATH_NOT_EXPORTED antes de mirar un archivo. Se saca cuando vue-tsc publique una versión que soporte TypeScript 7.",
+      "vite": "La 8 cambia rollup por rolldown y `build.rollupOptions.output.manualChunks` deja de aceptar un objeto: la compilación se cae. Migrar el reparto de chunks es cambiar cómo se empaqueta la ventana, y eso no lo verifica ninguna prueba: va en su propio PR, que lo compruebe en una sesión con `--features custom-protocol`."
     }
   }
 }
