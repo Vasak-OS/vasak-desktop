@@ -134,11 +134,20 @@ components:
   MusicWidget:
     reconnecting: Reconnecting (attempt {0})...
     connectionError: Connection error
-    unknownTitle: Unknown
+    nothingPlaying: Nothing is playing
     previous: Previous
     play: Play
     pause: Pause
     next: Next
+    stop: Stop
+    seek: Track position
+    volume: Player volume
+    shuffle: Shuffle
+    loopOff: No repeat
+    loopPlaylist: Repeat playlist
+    loopTrack: Repeat track
+    raise: Go to the player
+    choosePlayer: Choose player
   NetworkControlArea:
     title: Networks
     wifiUnavailable: Wi-Fi not available on this device
@@ -224,6 +233,7 @@ components:
     disconnected: "Twingate: disconnected"
     pending: "Twingate: {0} resources to authorize"
   TrayMusicControl:
+    nothingPlaying: Nothing is playing
     previous: Previous
     play: Play
     pause: Pause
