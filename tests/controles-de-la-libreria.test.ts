@@ -34,6 +34,23 @@ function conteniendo(patron: RegExp): string[] {
 
 const leer = (ruta: string) => fuentes.find((f) => f.ruta === ruta)?.texto ?? '';
 
+/**
+ * El archivo sin lo que está comentado.
+ *
+ * Un import comentado no es un import: el componente no queda disponible y Vue
+ * dibuja un elemento desconocido sin fallar. Se sacan los bloques y las líneas
+ * que **empiezan** con `//`, no cualquier `//`, para que una URL adentro de una
+ * cadena no se lleve media línea puesta.
+ */
+function sinComentarios(texto: string): string {
+	return texto
+		.replace(/\/\*[\s\S]*?\*\//g, '')
+		.replace(/<!--[\s\S]*?-->/g, '')
+		.split('\n')
+		.filter((linea) => !/^\s*\/\//.test(linea))
+		.join('\n');
+}
+
 describe('no hay controles propios', () => {
 	test('ningún interruptor escrito acá', () => {
 		// El de la librería lleva `role="switch"`, `aria-checked`, nombre
@@ -130,5 +147,42 @@ describe('y el guardia encuentra lo que busca', () => {
 		// prueba en rojo para siempre y terminaría borrada.
 		const transicion = '<Transition enter-active-class="x" leave-active-class="y">';
 		expect(/<SwitchToggle\b[^>]*\b(?:active|inactive|custom)-class=/s.test(transicion)).toBe(false);
+	});
+});
+
+/**
+ * El botón de acción, que era la copia más parecida de todas.
+ *
+ * `ActionButton` de acá y el de la librería eran **el mismo archivo** salvo la
+ * sangría y una clase — y ahí la de la librería sabía más: usa
+ * `transition-[background-color,opacity]` donde la copia usaba
+ * `transition-all`. Animar «todas» incluye las propiedades de maquetado, que es
+ * justo lo que cuesta caro en WebKitGTK y lo que midió el perfil de
+ * `vasak-resonance`; acá pasaba en cada hover de cada botón.
+ *
+ * No hay guardia contra `transition-all` porque quedan ocho archivos más que lo
+ * usan —transiciones de lista, la bandeja, el filtro del menú— y revisarlos es
+ * un barrido aparte: una guardia que naciera con ocho excepciones no guardaría
+ * nada.
+ */
+describe('el botón de acción', () => {
+	test('ya no hay copia propia', () => {
+		expect(fuentes.filter(({ ruta }) => ruta.endsWith('buttons/ActionButton.vue'))).toEqual([]);
+	});
+
+	test('y los dos que lo usan lo piden a la librería', () => {
+		// Si alguno lo usa sin importarlo, Vue dibuja un elemento desconocido y
+		// no falla: el botón no está y nadie se entera.
+		const culpables = fuentes
+			.filter(({ texto }) => /<ActionButton\b/.test(sinComentarios(texto)))
+			.filter(
+				({ texto }) =>
+					!/import \{[^}]*\bActionButton\b[^}]*\} from '@vasakgroup\/vue-libvasak'/.test(
+						sinComentarios(texto)
+					)
+			)
+			.map(({ ruta }) => ruta);
+
+		expect(culpables).toEqual([]);
 	});
 });
