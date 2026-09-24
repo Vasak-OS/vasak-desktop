@@ -1,6 +1,6 @@
 use crate::logger::log_info;
 use crate::structs::{AppEntry, CategoryInfo};
-use freedesktop_entry_parser::parse_entry;
+use freedesktop_entry_parser::{parse_entry, Section};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
@@ -47,7 +47,7 @@ pub fn invalidate_menu_cache() {
 }
 
 /// Lo que usa XDG cuando `XDG_DATA_DIRS` no dice nada.
-const DATA_DIRS_POR_OMISION: &str = "/usr/local/share:/usr/share";
+const DEFAULT_DATA_DIRS: &str = "/usr/local/share:/usr/share";
 
 /// Los directorios de entradas `.desktop`, **del que más manda al que menos**.
 ///
@@ -62,7 +62,7 @@ const DATA_DIRS_POR_OMISION: &str = "/usr/local/share:/usr/share";
 /// De paso se respeta `XDG_DATA_HOME` en vez de dar por sentado
 /// `~/.local/share`, y el orden de la lista por omisión, que también estaba
 /// invertido: `/usr/local/share` va antes que `/usr/share`.
-fn ordenar_directorios(
+fn sort_directories(
     data_home: Option<String>,
     home: Option<PathBuf>,
     data_dirs: Option<String>,
@@ -74,25 +74,25 @@ fn ordenar_directorios(
     // y que el estándar manda ignorar igual. Una regla en vez de dos: la cadena
     // vacía tampoco es absoluta, así que los dos casos salen de la misma
     // comprobación.
-    let base_del_usuario = data_home
+    let user_base = data_home
         .map(PathBuf::from)
         .filter(|base| base.is_absolute())
         .or_else(|| {
-            home.filter(|casa| casa.is_absolute())
-                .map(|casa| casa.join(".local/share"))
+            home.filter(|home_dir| home_dir.is_absolute())
+                .map(|home_dir| home_dir.join(".local/share"))
         });
 
-    if let Some(base) = base_del_usuario {
+    if let Some(base) = user_base {
         dirs.push(base.join("applications"));
     }
 
     // Una variable definida pero vacía significa «usá lo de siempre», igual que
     // si no estuviera.
-    let del_sistema = data_dirs.filter(|valor| !valor.is_empty());
+    let system_dirs = data_dirs.filter(|value| !value.is_empty());
 
-    for dir in del_sistema
+    for dir in system_dirs
         .as_deref()
-        .unwrap_or(DATA_DIRS_POR_OMISION)
+        .unwrap_or(DEFAULT_DATA_DIRS)
         .split(':')
         // Lo mismo para cada entrada de la lista: una relativa se ignora, y la
         // vacía es un caso de esa misma regla.
@@ -108,7 +108,7 @@ fn ordenar_directorios(
 }
 
 fn get_applications_dirs() -> Vec<PathBuf> {
-    ordenar_directorios(
+    sort_directories(
         std::env::var("XDG_DATA_HOME").ok(),
         dirs::home_dir(),
         std::env::var("XDG_DATA_DIRS").ok(),
@@ -144,18 +144,23 @@ fn locale_keys() -> Vec<String> {
 /// one. Applications ship their translations in the same file, as `Name[es]`,
 /// and reading only `Name` left the menu in English on a Spanish system even
 /// for the applications that do translate themselves.
-fn localized_attr<T: AsRef<str>>(
-    section: &freedesktop_entry_parser::AttrSelector<T>,
-    key: &str,
-    locales: &[String],
-) -> String {
+fn localized_attr(section: &Section, key: &str, locales: &[String]) -> String {
     for locale in locales {
-        if let Some(value) = section.attr_with_param(key, locale) {
-            return value.to_string();
+        if let Some(value) = section.attr_with_param(key, locale).first() {
+            return value.clone();
         }
     }
 
-    section.attr(key).unwrap_or("").to_string()
+    first_attr(section, key).unwrap_or("").to_string()
+}
+
+/// El valor de `key`, si el archivo lo tiene.
+///
+/// Desde la versión 2 el parser devuelve todas las apariciones de una clave —una
+/// lista, no un valor— para que una clave repetida no se pierda. Para el menú
+/// vale la primera, que es lo que devolvía la versión 1.
+pub(crate) fn first_attr<'a>(section: &'a Section, key: &str) -> Option<&'a str> {
+    section.attr(key).first().map(String::as_str)
 }
 
 fn normalize_category(categories: &str) -> String {
@@ -230,23 +235,27 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
                 }
 
                 if let Ok(entry_data) = parse_entry(&path_str) {
-                    let desktop_entry = entry_data.section("Desktop Entry");
+                    // Sin el grupo `Desktop Entry` no hay aplicación que mostrar:
+                    // antes el archivo entraba igual, con los campos vacíos.
+                    let Some(desktop_entry) = entry_data.section("Desktop Entry") else {
+                        continue;
+                    };
 
-                    if desktop_entry.attr("NoDisplay").unwrap_or("false") == "true" {
+                    if first_attr(desktop_entry, "NoDisplay").unwrap_or("false") == "true" {
                         continue;
                     }
 
-                    let app_categories = desktop_entry.attr("Categories").unwrap_or("");
+                    let app_categories = first_attr(desktop_entry, "Categories").unwrap_or("");
                     let normalized_category = normalize_category(app_categories);
-                    let name = localized_attr(&desktop_entry, "Name", &locales);
+                    let name = localized_attr(desktop_entry, "Name", &locales);
 
                     let app_entry = AppEntry {
                         category: normalized_category.clone(),
                         name: name.clone(),
-                        generic: localized_attr(&desktop_entry, "GenericName", &locales),
-                        description: localized_attr(&desktop_entry, "Comment", &locales),
-                        icon: desktop_entry.attr("Icon").unwrap_or("").to_string(),
-                        keywords: localized_attr(&desktop_entry, "Keywords", &locales),
+                        generic: localized_attr(desktop_entry, "GenericName", &locales),
+                        description: localized_attr(desktop_entry, "Comment", &locales),
+                        icon: first_attr(desktop_entry, "Icon").unwrap_or("").to_string(),
+                        keywords: localized_attr(desktop_entry, "Keywords", &locales),
                         path: path_str.clone(),
                     };
 
@@ -271,7 +280,7 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
     // colación, en el camino crítico de la superficie más usada del escritorio.
     // Acá se pagan una vez y quedan guardadas.
     for category in menu_items.values_mut() {
-        ordenar_aplicaciones(&mut category.apps);
+        sort_applications(&mut category.apps);
     }
 
     menu_items
@@ -292,7 +301,7 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
 /// frontend con `localeCompare`. No es una colación completa —«ñ» sigue después
 /// de «z» en Unicode— pero para nombres de aplicaciones da el mismo resultado
 /// que se veía, sin el costo por apertura.
-fn ordenar_aplicaciones(apps: &mut [crate::structs::AppEntry]) {
+fn sort_applications(apps: &mut [crate::structs::AppEntry]) {
     apps.sort_by(|izquierda, derecha| {
         izquierda
             .name
@@ -344,7 +353,7 @@ mod tests {
     /// nombre.
     #[test]
     fn el_directorio_del_usuario_va_primero() {
-        let dirs = ordenar_directorios(
+        let dirs = sort_directories(
             None,
             Some(PathBuf::from("/home/alguien")),
             Some("/usr/local/share:/usr/share".into()),
@@ -355,7 +364,7 @@ mod tests {
 
     #[test]
     fn se_respeta_el_orden_de_xdg_data_dirs() {
-        let dirs = ordenar_directorios(
+        let dirs = sort_directories(
             None,
             Some(PathBuf::from("/home/alguien")),
             Some("/primero:/segundo:/tercero".into()),
@@ -374,7 +383,7 @@ mod tests {
 
     #[test]
     fn xdg_data_home_le_gana_a_la_carpeta_de_siempre() {
-        let dirs = ordenar_directorios(
+        let dirs = sort_directories(
             Some("/otro/lado".into()),
             Some(PathBuf::from("/home/alguien")),
             Some("/usr/share".into()),
@@ -389,22 +398,22 @@ mod tests {
     /// llamado `applications` colgando de la raíz.
     #[test]
     fn una_variable_vacia_es_como_no_tenerla() {
-        let con_vacias = ordenar_directorios(
+        let with_empty = sort_directories(
             Some(String::new()),
             Some(PathBuf::from("/home/alguien")),
             Some(String::new()),
         );
-        let sin_ellas = ordenar_directorios(None, Some(PathBuf::from("/home/alguien")), None);
+        let without_them = sort_directories(None, Some(PathBuf::from("/home/alguien")), None);
 
-        assert_eq!(con_vacias, sin_ellas);
-        assert!(!con_vacias.contains(&apps("")));
+        assert_eq!(with_empty, without_them);
+        assert!(!with_empty.contains(&apps("")));
     }
 
     /// `/usr/local/share` antes que `/usr/share`, que es el orden de XDG. La
     /// lista de reserva los tenía al revés.
     #[test]
     fn la_lista_de_reserva_sigue_el_orden_de_xdg() {
-        let dirs = ordenar_directorios(None, Some(PathBuf::from("/home/alguien")), None);
+        let dirs = sort_directories(None, Some(PathBuf::from("/home/alguien")), None);
 
         assert_eq!(
             dirs,
@@ -418,7 +427,7 @@ mod tests {
 
     #[test]
     fn sin_casa_quedan_solo_los_del_sistema() {
-        let dirs = ordenar_directorios(None, None, Some("/usr/share".into()));
+        let dirs = sort_directories(None, None, Some("/usr/share".into()));
 
         assert_eq!(dirs, vec![apps("/usr/share")]);
     }
@@ -427,7 +436,7 @@ mod tests {
     /// no cambia qué gana, pero hace que cada entrada de ahí se lea dos veces.
     #[test]
     fn no_se_repiten_directorios() {
-        let dirs = ordenar_directorios(
+        let dirs = sort_directories(
             Some("/casa".into()),
             None,
             Some("/casa:/usr/share:/usr/share".into()),
@@ -444,27 +453,65 @@ mod tests {
         //
         // Las cuatro formas de no ser absoluta; la del nombre suelto es la que
         // se escapa cuando uno se acuerda sólo de la vacía.
-        for relativa in ["", "datos", "./datos", "../datos"] {
-            let dirs = ordenar_directorios(Some(relativa.into()), None, Some("/usr/share".into()));
+        for relative in ["", "datos", "./datos", "../datos"] {
+            let dirs = sort_directories(Some(relative.into()), None, Some("/usr/share".into()));
             assert_eq!(
                 dirs,
                 vec![PathBuf::from("/usr/share/applications")],
-                "«{relativa}» no tiene que aportar un directorio"
+                "«{relative}» no tiene que aportar un directorio"
             );
         }
     }
 
     #[test]
     fn un_hogar_relativo_tampoco() {
-        let dirs =
-            ordenar_directorios(None, Some(PathBuf::from("casa")), Some("/usr/share".into()));
+        let dirs = sort_directories(None, Some(PathBuf::from("casa")), Some("/usr/share".into()));
         assert_eq!(dirs, vec![PathBuf::from("/usr/share/applications")]);
     }
 
     #[test]
     fn una_entrada_relativa_de_la_lista_del_sistema_se_ignora() {
         // Un `.` acá sería «el directorio desde el que se lanzó el escritorio».
-        let dirs = ordenar_directorios(None, None, Some(".:..:relativo:/usr/share".into()));
+        let dirs = sort_directories(None, None, Some(".:..:relativo:/usr/share".into()));
         assert_eq!(dirs, vec![PathBuf::from("/usr/share/applications")]);
+    }
+
+    fn entry(text: &str) -> freedesktop_entry_parser::Entry {
+        freedesktop_entry_parser::Entry::parse(text).expect("parsea")
+    }
+
+    /// La versión 2 del parser devuelve listas; la lista de categorías tiene
+    /// que seguir llegando entera, como una sola cadena, y no partida.
+    #[test]
+    fn las_categorias_llegan_enteras() {
+        let parsed = entry("[Desktop Entry]\nName=Terminal\nCategories=System;TerminalEmulator;\n");
+        let section = parsed.section("Desktop Entry").expect("tiene el grupo");
+
+        assert_eq!(
+            first_attr(section, "Categories"),
+            Some("System;TerminalEmulator;")
+        );
+        assert_eq!(
+            first_attr(section, "Icon"),
+            None,
+            "una clave ausente es None"
+        );
+    }
+
+    #[test]
+    fn el_nombre_traducido_gana_y_si_no_esta_vale_el_original() {
+        let parsed = entry("[Desktop Entry]\nName=Files\nName[es]=Archivos\nComment=Browse\n");
+        let section = parsed.section("Desktop Entry").expect("tiene el grupo");
+        let locales = vec!["es".to_string()];
+
+        assert_eq!(localized_attr(section, "Name", &locales), "Archivos");
+        assert_eq!(localized_attr(section, "Comment", &locales), "Browse");
+        assert_eq!(localized_attr(section, "GenericName", &locales), "");
+    }
+
+    #[test]
+    fn sin_el_grupo_desktop_entry_no_hay_seccion() {
+        let parsed = entry("[Otra Cosa]\nName=Nada\n");
+        assert!(parsed.section("Desktop Entry").is_none());
     }
 }

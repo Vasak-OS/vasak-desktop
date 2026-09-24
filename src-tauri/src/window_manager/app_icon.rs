@@ -25,7 +25,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, RwLock};
 
-use crate::menu_manager::applications_dirs;
+use crate::menu_manager::{applications_dirs, first_attr};
 
 /// Icono para cuando no hay nada mejor que ofrecer.
 pub const FALLBACK_ICON: &str = "application-x-executable";
@@ -38,20 +38,20 @@ static RESOLVED: LazyLock<RwLock<HashMap<String, Option<String>>>> =
 /// Techo de lo memorizado. La clave la elige el cliente —el `app-id` es lo que
 /// la aplicación quiera declarar—, así que sin esto crece hasta donde la dejen.
 /// Con más aplicaciones abiertas que esto, el escritorio tiene otro problema.
-const LIMITE_MEMORIZADO: usize = 512;
+const MEMO_LIMIT: usize = 512;
 
 /// Cuántas veces se invalidó lo memorizado. La búsqueda se hace **fuera** del
 /// cerrojo —leer archivos con el cerrojo de escritura tomado dejaría al panel
 /// esperando—, así que una invalidación puede caer justo en el medio: sin este
 /// contador, la búsqueda que empezó antes guardaría después su resultado viejo,
 /// y ese icono ya inválido se quedaría hasta el próximo cambio en el disco.
-static GENERACION: AtomicU64 = AtomicU64::new(0);
+static GENERATION: AtomicU64 = AtomicU64::new(0);
 
 /// Olvida lo resuelto. La llama el vigilante de `.desktop`: una aplicación
 /// recién instalada tiene que poder aparecer con su icono, y una que cambió el
 /// suyo tiene que dejar de mostrar el viejo.
 pub fn invalidate_icon_cache() {
-    GENERACION.fetch_add(1, Ordering::SeqCst);
+    GENERATION.fetch_add(1, Ordering::SeqCst);
     if let Ok(mut cache) = RESOLVED.write() {
         cache.clear();
     }
@@ -73,23 +73,23 @@ pub fn icon_for_app_id(app_id: &str) -> Option<String> {
 
     // La generación se lee antes de buscar: si alguien invalida mientras se
     // leen los `.desktop`, lo que se encontró ya no vale y no se guarda.
-    let generacion = GENERACION.load(Ordering::SeqCst);
+    let generation = GENERATION.load(Ordering::SeqCst);
     let resolved = lookup_icon(key);
-    memorizar(key, resolved.clone(), generacion);
+    memoize(key, resolved.clone(), generation);
 
     resolved
 }
 
 /// Guarda lo resuelto, salvo que se haya invalidado mientras se buscaba.
 /// Devuelve si lo guardó.
-fn memorizar(key: &str, resolved: Option<String>, generacion: u64) -> bool {
-    if GENERACION.load(Ordering::SeqCst) != generacion {
+fn memoize(key: &str, resolved: Option<String>, generation: u64) -> bool {
+    if GENERATION.load(Ordering::SeqCst) != generation {
         return false;
     }
 
     match RESOLVED.write() {
         Ok(mut cache) => {
-            if cache.len() >= LIMITE_MEMORIZADO {
+            if cache.len() >= MEMO_LIMIT {
                 cache.clear();
             }
             cache.insert(key.to_string(), resolved);
@@ -151,14 +151,15 @@ fn lookup_icon_in(app_id: &str, dirs: &[std::path::PathBuf]) -> Option<String> {
                 Ok(parsed) => parsed,
                 Err(_) => continue,
             };
-            let section = parsed.section("Desktop Entry");
+            let Some(section) = parsed.section("Desktop Entry") else {
+                continue;
+            };
 
-            let same_class = section
-                .attr("StartupWMClass")
+            let same_class = first_attr(section, "StartupWMClass")
                 .is_some_and(|class| class.eq_ignore_ascii_case(app_id));
 
             if same_stem || same_class {
-                if let Some(icon) = non_empty(section.attr("Icon")) {
+                if let Some(icon) = non_empty(first_attr(section, "Icon")) {
                     return Some(icon);
                 }
             }
@@ -171,7 +172,7 @@ fn lookup_icon_in(app_id: &str, dirs: &[std::path::PathBuf]) -> Option<String> {
 /// La clave `Icon` de un archivo, si el archivo existe y la tiene.
 fn read_icon(path: &Path) -> Option<String> {
     let parsed = parse_entry(path).ok()?;
-    non_empty(parsed.section("Desktop Entry").attr("Icon"))
+    non_empty(first_attr(parsed.section("Desktop Entry")?, "Icon"))
 }
 
 fn non_empty(value: Option<&str>) -> Option<String> {
@@ -202,41 +203,41 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
 
-    fn escribir(dir: &Path, nombre: &str, cuerpo: &str) {
-        fs::write(dir.join(nombre), cuerpo).expect("no se pudo escribir la entrada");
+    fn write(dir: &Path, name: &str, body: &str) {
+        fs::write(dir.join(name), body).expect("no se pudo escribir la entrada");
     }
 
     /// Un directorio de aplicaciones de mentira, con las entradas que hacen
     /// falta para las pruebas.
-    fn directorio_de_aplicaciones(etiqueta: &str) -> PathBuf {
+    fn applications_dir(label: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!(
-            "vasak-app-icon-{}-{etiqueta}",
+            "vasak-app-icon-{}-{label}",
             std::process::id()
         ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("no se pudo crear el directorio");
 
-        escribir(
+        write(
             &dir,
             "org.telegram.desktop.desktop",
             "[Desktop Entry]\nName=Telegram\nIcon=org.telegram.desktop\nStartupWMClass=TelegramDesktop\n",
         );
-        escribir(
+        write(
             &dir,
             "com.anthropic.Claude.desktop",
             "[Desktop Entry]\nName=Claude\nIcon=claude-desktop\n",
         );
-        escribir(
+        write(
             &dir,
             "editor.desktop",
             "[Desktop Entry]\nName=Editor\nIcon=editor-icono\nStartupWMClass=EditorRaro\n",
         );
-        escribir(
+        write(
             &dir,
             "sin-icono.desktop",
             "[Desktop Entry]\nName=Pelado\nIcon=\n",
         );
-        escribir(&dir, "no-es-entrada.txt", "Icon=trampa\n");
+        write(&dir, "no-es-entrada.txt", "Icon=trampa\n");
 
         dir
     }
@@ -257,7 +258,7 @@ mod tests {
 
     #[test]
     fn el_icono_sale_de_la_entrada_desktop() {
-        let dir = directorio_de_aplicaciones("entrada");
+        let dir = applications_dir("entrada");
         let dirs = vec![dir.clone()];
 
         // Por nombre de archivo, con el identificador completo: esto es lo que
@@ -284,7 +285,7 @@ mod tests {
     fn el_icono_tambien_sale_por_startupwmclass() {
         // Es la clave que existe justamente para atar una ventana a su entrada
         // cuando el `app-id` no es el nombre del archivo.
-        let dir = directorio_de_aplicaciones("clase");
+        let dir = applications_dir("clase");
         let dirs = vec![dir.clone()];
 
         assert_eq!(
@@ -301,7 +302,7 @@ mod tests {
 
     #[test]
     fn lo_que_no_tiene_entrada_no_resuelve() {
-        let dir = directorio_de_aplicaciones("sin-entrada");
+        let dir = applications_dir("sin-entrada");
         let dirs = vec![dir.clone()];
 
         // Una entrada sin icono no cuenta como encontrada: quien llama tiene un
@@ -328,23 +329,23 @@ mod tests {
 
     /// Lo memorizado, de punta a punta, en una sola prueba.
     ///
-    /// Va junto a propósito: `RESOLVED` y `GENERACION` son globales del proceso
+    /// Va junto a propósito: `RESOLVED` y `GENERATION` son globales del proceso
     /// y las pruebas corren en paralelo, así que repartir esto en varias hace
     /// que una invalide mientras la otra comprueba lo que guardó.
     #[test]
     fn lo_memorizado_se_guarda_se_invalida_y_no_acepta_resultados_viejos() {
-        let inexistente = "vasak.prueba.que.no.existe";
+        let missing = "vasak.prueba.que.no.existe";
         invalidate_icon_cache();
 
         // El resultado negativo también se guarda: si no, cada evento del
         // compositor volvería a recorrer todos los directorios de aplicaciones
         // por cada ventana sin entrada.
-        assert_eq!(icon_for_app_id(inexistente), None);
+        assert_eq!(icon_for_app_id(missing), None);
         assert!(
             RESOLVED
                 .read()
                 .expect("cerrojo envenenado")
-                .contains_key(inexistente),
+                .contains_key(missing),
             "el resultado negativo no quedó memorizado"
         );
 
@@ -354,7 +355,7 @@ mod tests {
             !RESOLVED
                 .read()
                 .expect("cerrojo envenenado")
-                .contains_key(inexistente),
+                .contains_key(missing),
             "invalidar no vació lo memorizado"
         );
 
@@ -362,22 +363,22 @@ mod tests {
         // archivos sin el cerrojo tomado, así que puede terminar después de que
         // alguien invalidó; guardarlo dejaría el icono viejo memorizado hasta el
         // próximo cambio en el disco.
-        let generacion = GENERACION.load(Ordering::SeqCst);
+        let generation = GENERATION.load(Ordering::SeqCst);
         invalidate_icon_cache();
         assert!(
-            !memorizar(inexistente, Some("viejo".into()), generacion),
+            !memoize(missing, Some("viejo".into()), generation),
             "se guardó un resultado de antes de invalidar"
         );
         assert!(
             !RESOLVED
                 .read()
                 .expect("cerrojo envenenado")
-                .contains_key(inexistente)
+                .contains_key(missing)
         );
 
         // Con la generación al día, sí.
-        let al_dia = GENERACION.load(Ordering::SeqCst);
-        assert!(memorizar(inexistente, Some("nuevo".into()), al_dia));
+        let up_to_date = GENERATION.load(Ordering::SeqCst);
+        assert!(memoize(missing, Some("nuevo".into()), up_to_date));
 
         invalidate_icon_cache();
     }
