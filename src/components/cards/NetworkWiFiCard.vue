@@ -3,7 +3,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { TextInput, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ListCard, TextInput, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref } from 'vue';
 import {
 	connectToWifi,
@@ -11,7 +11,6 @@ import {
 	type WiFiConnectionConfig,
 } from '@/services/network.service';
 import ActionButton from '../buttons/ActionButton.vue';
-import ListCard from './ListCard.vue';
 
 const props = defineProps<NetworkInfo>();
 const { t } = useI18n();

@@ -15,8 +15,8 @@
     :role="hasDefaultAction ? 'button' : undefined"
     :tabindex="hasDefaultAction ? 0 : undefined"
     @click="handleDefaultAction"
-    @keydown.enter.prevent="handleDefaultAction"
-    @keydown.space.prevent="handleDefaultAction">
+    @keydown.enter.self.prevent="handleDefaultAction"
+    @keydown.space.self.prevent="handleDefaultAction">
     <!-- `role="button"` y no un `<button>`: adentro están el de descartar y los
          de las acciones de la notificación, y un botón dentro de otro no es
          HTML válido. Sólo cuando hay acción por omisión, que es lo mismo que

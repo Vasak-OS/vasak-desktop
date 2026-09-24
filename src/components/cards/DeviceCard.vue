@@ -21,8 +21,8 @@
     :tabindex="clickable ? 0 : undefined"
     :aria-label="clickable ? title : undefined"
     @click="handleClick"
-    @keydown.enter.prevent="handleClick"
-    @keydown.space.prevent="handleClick"
+    @keydown.enter.self.prevent="handleClick"
+    @keydown.space.self.prevent="handleClick"
   >
     <div class="flex items-center gap-3 flex-1 min-w-0">
       <ThemeIcon :name="icon" :size="28" :alt="title" />
