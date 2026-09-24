@@ -134,11 +134,20 @@ components:
   MusicWidget:
     reconnecting: Reconectando (intento {0})...
     connectionError: Error de conexión
-    unknownTitle: Desconocido
+    nothingPlaying: No hay nada sonando
     previous: Anterior
     play: Reproducir
     pause: Pausa
     next: Siguiente
+    stop: Parar
+    seek: Posición de la pista
+    volume: Volumen del reproductor
+    shuffle: Aleatorio
+    loopOff: Sin repetición
+    loopPlaylist: Repetir la lista
+    loopTrack: Repetir la pista
+    raise: Ir al reproductor
+    choosePlayer: Elegir reproductor
   NetworkControlArea:
     title: Redes
     wifiUnavailable: Wi-Fi no disponible en este dispositivo
@@ -224,6 +233,7 @@ components:
     disconnected: "Twingate: sin conexión"
     pending: "Twingate: {0} recursos por autorizar"
   TrayMusicControl:
+    nothingPlaying: No hay nada sonando
     previous: Anterior
     play: Reproducir
     pause: Pausa
