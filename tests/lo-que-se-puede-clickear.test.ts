@@ -116,19 +116,39 @@ describe('las filas que se abren enteras', () => {
 });
 
 describe('los botones del panel se anuncian con nombre', () => {
-	test('el icono de la bandeja se llama como su `alt`, y si no, como su tooltip', () => {
-		const componente = leer('components/buttons/TrayIconButton.vue');
-
-		expect(componente).toContain("props.alt || props.tooltip || undefined");
-		expect(componente).toContain("'aria-label': nombreAccesible");
+	/**
+	 * El icono de la bandeja se fue a la librería con todo esto puesto.
+	 *
+	 * Lo que estas dos pruebas miraban —que el nombre accesible salga del `alt`
+	 * o del tooltip, y que el que sólo informa se dibuje como `div`— ahora se
+	 * comprueba **montado** en `vue-libvasak`, que es donde vive la conducta.
+	 * Acá queda lo que a esta aplicación le toca: que no vuelva a haber copia y
+	 * que los siete lo pidan a la librería.
+	 */
+	test('el de la bandeja ya no tiene copia acá', () => {
+		expect(fuentes.filter(({ ruta }) => ruta.endsWith('buttons/TrayIconButton.vue'))).toEqual([]);
 	});
 
-	test('el que sólo informa no finge ser un botón', () => {
-		// La batería, Bloq Mayús y el micrófono silenciado no hacen nada al
-		// tocarlos: anunciarlos como botones promete un clic que no existe.
-		const componente = leer('components/buttons/TrayIconButton.vue');
+	test('y los siete lo piden a la librería', () => {
+		// Si alguno lo usa sin importarlo, Vue dibuja un elemento desconocido y
+		// no falla: el icono no está y el panel queda con un hueco.
+		const culpables = fuentes
+			.filter(({ texto }) => /<TrayIconButton\b/.test(texto))
+			.filter(
+				({ texto }) =>
+					!/import \{[^}]*\bTrayIconButton\b[^}]*\} from '@vasakgroup\/vue-libvasak'/.test(texto)
+			)
+			.map(({ ruta }) => ruta);
 
-		expect(componente).toContain("interactive ? 'button' : 'div'");
+		expect(culpables).toEqual([]);
+	});
+
+	test('y son siete, no menos', () => {
+		// Sin esto, la de arriba pasa sobre una lista vacía el día que alguien
+		// renombre los archivos y el patrón deje de encontrarlos.
+		const losQueLoUsan = fuentes.filter(({ texto }) => /<TrayIconButton\b/.test(texto));
+
+		expect(losQueLoUsan).toHaveLength(7);
 	});
 
 	test('los otros tres del panel llevan su nombre puesto', () => {

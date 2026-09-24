@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { ref } from 'vue';
-import TrayIconButton from '@/components/buttons/TrayIconButton.vue';
 import { useEventListener } from '@/tools/event.listener';
 
 const { t } = useI18n();
