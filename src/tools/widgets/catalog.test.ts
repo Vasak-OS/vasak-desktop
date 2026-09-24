@@ -152,8 +152,16 @@ describe('escritorio nuevo', () => {
 		expect(WIDGETS.clock.default.w).toBeGreaterThanOrEqual(4);
 	});
 
-	test('en una pantalla angosta los archivos y el reloj no se pisan', () => {
-		expect(anyOverlap(defaultLayout(true, 7, 6))).toBe(false);
+	/**
+	 * Que no se pisen no alcanza: una disposición con los archivos solos
+	 * tampoco se pisa. Con el ancho de siempre, en 7 columnas quedaban dos
+	 * libres y el reloj y la música se descartaban sin que nada fallara.
+	 */
+	test('en una pantalla angosta entran los tres, sin pisarse', () => {
+		const layout = defaultLayout(true, 7, 6);
+
+		expect(anyOverlap(layout)).toBe(false);
+		expect(layout.map((w) => w.type).sort()).toEqual(['clock', 'files', 'music']);
 	});
 });
 

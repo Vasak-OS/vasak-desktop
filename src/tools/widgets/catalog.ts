@@ -128,7 +128,10 @@ export function defaultLayout(
 			type: 'files',
 			x: 1,
 			y: 1,
-			w: WIDGETS.files.default.w,
+			// Angostos hasta donde empieza la columna de la derecha: con el ancho
+			// de siempre, en una pantalla chica los archivos dejaban dos columnas
+			// libres y el reloj y la música se descartaban por no entrar.
+			w: Math.max(WIDGETS.files.min.w, Math.min(WIDGETS.files.default.w, column - 1)),
 			h: Math.min(6, rows),
 		});
 	}

@@ -195,6 +195,12 @@ fn normalize_category(categories: &str) -> String {
 
 pub fn get_menu() -> HashMap<String, CategoryInfo> {
     log_info("Cargando menú de aplicaciones");
+    menu_from_dirs(&get_applications_dirs())
+}
+
+/// El menú armado a partir de estos directorios, en orden de prioridad: de cada
+/// nombre de archivo gana el primero que aparece.
+fn menu_from_dirs(dirs: &[std::path::PathBuf]) -> HashMap<String, CategoryInfo> {
     let mut menu_items: HashMap<String, CategoryInfo> = HashMap::new();
     let mut seen_names: HashSet<String> = HashSet::new();
     let locales = locale_keys();
@@ -213,8 +219,8 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
         );
     }
 
-    for apps_dir in get_applications_dirs() {
-        if let Ok(entries) = fs::read_dir(&apps_dir) {
+    for apps_dir in dirs {
+        if let Ok(entries) = fs::read_dir(apps_dir) {
             for entry in entries.flatten() {
                 let path_str = match entry.path().into_os_string().into_string() {
                     Ok(p) => p,
@@ -230,16 +236,23 @@ pub fn get_menu() -> HashMap<String, CategoryInfo> {
                     Err(_) => continue,
                 };
 
-                if !seen_names.insert(file_name) {
+                if seen_names.contains(&file_name) {
                     continue;
                 }
 
                 if let Ok(entry_data) = parse_entry(&path_str) {
                     // Sin el grupo `Desktop Entry` no hay aplicación que mostrar:
                     // antes el archivo entraba igual, con los campos vacíos.
+                    //
+                    // Y el nombre se reserva recién después de comprobarlo. Una
+                    // copia rota en el directorio del usuario no puede tapar la
+                    // del sistema que sí sirve; una con `NoDisplay=true` sí la
+                    // tapa, porque esconderla es justamente lo que pidió.
                     let Some(desktop_entry) = entry_data.section("Desktop Entry") else {
                         continue;
                     };
+
+                    seen_names.insert(file_name);
 
                     if first_attr(desktop_entry, "NoDisplay").unwrap_or("false") == "true" {
                         continue;
@@ -513,5 +526,51 @@ mod tests {
     fn sin_el_grupo_desktop_entry_no_hay_seccion() {
         let parsed = entry("[Otra Cosa]\nName=Nada\n");
         assert!(parsed.section("Desktop Entry").is_none());
+    }
+
+    /// Dos directorios de aplicaciones de mentira: el del usuario y el del
+    /// sistema, en ese orden de prioridad.
+    fn user_and_system_dirs(label: &str) -> (PathBuf, PathBuf) {
+        let base = std::env::temp_dir().join(format!("vasak-menu-{}-{label}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let user = base.join("user");
+        let system = base.join("system");
+        fs::create_dir_all(&user).expect("crea el directorio del usuario");
+        fs::create_dir_all(&system).expect("crea el directorio del sistema");
+        fs::write(
+            system.join("editor.desktop"),
+            "[Desktop Entry]\nName=Editor\nCategories=Utility;\n",
+        )
+        .expect("escribe la entrada del sistema");
+        (user, system)
+    }
+
+    fn names(menu: &HashMap<String, CategoryInfo>) -> Vec<String> {
+        menu["all"]
+            .apps
+            .iter()
+            .map(|app| app.name.clone())
+            .collect()
+    }
+
+    #[test]
+    fn una_copia_rota_del_usuario_no_tapa_la_del_sistema() {
+        let (user, system) = user_and_system_dirs("rota");
+        fs::write(user.join("editor.desktop"), "[Otra Cosa]\nName=Rota\n")
+            .expect("escribe la copia rota");
+
+        assert_eq!(names(&menu_from_dirs(&[user, system])), vec!["Editor"]);
+    }
+
+    #[test]
+    fn una_copia_del_usuario_con_nodisplay_si_la_esconde() {
+        let (user, system) = user_and_system_dirs("oculta");
+        fs::write(
+            user.join("editor.desktop"),
+            "[Desktop Entry]\nName=Editor\nNoDisplay=true\n",
+        )
+        .expect("escribe la copia oculta");
+
+        assert!(names(&menu_from_dirs(&[user, system])).is_empty());
     }
 }
