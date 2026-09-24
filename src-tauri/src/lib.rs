@@ -9,6 +9,7 @@ mod structs;
 
 // Feature modules
 mod applets;
+mod artwork;
 mod audio;
 mod audio_native;
 mod brightness;
@@ -204,6 +205,15 @@ pub fn run() {
             music_next_track,
             music_previous_track,
             music_now_playing,
+            music_stop,
+            music_raise,
+            music_set_position,
+            music_set_volume,
+            music_set_shuffle,
+            music_set_loop,
+            music_players,
+            music_select_player,
+            music_artwork,
             battery_exists,
             battery_fetch_info,
             get_battery_info,
