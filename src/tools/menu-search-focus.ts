@@ -8,10 +8,10 @@
  * `autofocus` del campo de la librería enfocaba la primera apertura y ninguna
  * de las siguientes.
  *
- * Lo que había en su lugar para las reaperturas era
- * `document.getElementById('search')?.focus()`, con un id que dejó de existir
- * cuando el campo pasó a ser el `SearchField` de `vue-libvasak`. No fallaba: el
- * `?.` se tragaba el `null` y el menú abría sin foco, sin una línea de log.
+ * Lo que había en su lugar para las reaperturas era una búsqueda del campo por
+ * un `id` que dejó de existir cuando el campo pasó a ser el `SearchField` de
+ * `vue-libvasak`. No fallaba: devolvía nada, el `?.` se lo tragaba y el menú
+ * abría mudo, sin una línea de log.
  *
  * Vive acá y no adentro del `.vue` porque este repositorio no tiene con qué
  * montar componentes, y lo que se rompió es justo la lógica: que esto se llame
@@ -31,7 +31,23 @@ export interface FocusableSearchField {
 	enfocar(): boolean;
 }
 
-export interface MenuSearchOptions {
+/**
+ * Un intento de foco en curso, para poder cortarlo.
+ *
+ * Mientras se insiste hay un temporizador vivo, y en esos milisegundos el menú
+ * puede cerrarse o el foco irse a otra parte: un reintento que llega tarde le
+ * robaría el foco a donde el usuario ya está. Se corta al cerrar, al desmontar,
+ * y antes de empezar un intento nuevo.
+ */
+export interface SearchFocusAttempt {
+	/** Corta lo que quede pendiente. Llamarlo dos veces no hace nada. */
+	cancel(): void;
+}
+
+/** `setTimeout`, con su forma de cancelar. Se inyecta para poder probarlo. */
+export type Schedule = (run: () => void, ms: number) => () => void;
+
+export interface FocusMenuSearchOptions {
 	/**
 	 * El campo, pedido en el momento y no recibido una vez.
 	 *
@@ -39,6 +55,15 @@ export interface MenuSearchOptions {
 	 * foco de la ventana puede llegar antes.
 	 */
 	field(): FocusableSearchField | null | undefined;
+	/** `setTimeout`, aparte para poder probar los reintentos sin esperarlos. */
+	schedule?: Schedule;
+	/** Cuántas veces más insistir si el foco no llegó. */
+	retries?: number;
+	/** Cuánto esperar antes de cada reintento. */
+	retryDelayMs?: number;
+}
+
+export interface MenuSearchOptions extends FocusMenuSearchOptions {
 	/**
 	 * Vacía lo que quedó escrito en la apertura anterior.
 	 *
@@ -47,43 +72,62 @@ export interface MenuSearchOptions {
 	 * escribir concatenaba contra ella.
 	 */
 	clear(): void;
-	/** `setTimeout`, aparte para poder probar los reintentos sin esperarlos. */
-	schedule?(run: () => void, ms: number): void;
-	/** Cuántas veces más insistir si el foco no llegó. */
-	retries?: number;
-	/** Cuánto esperar antes de cada reintento. */
-	retryDelayMs?: number;
 }
 
 /**
  * El WebView puede no tener todavía el foco del documento en el instante en que
  * el compositor se lo da a la ventana. `enfocar()` dice si llegó, así que se
- * insiste sólo mientras no haya llegado, y con un tope: sin él, un campo
- * desactivado —el menú vacío lo desactiva— dejaría un temporizador rebotando
- * para siempre.
+ * insiste sólo mientras no haya llegado, y con un tope: sin él, un campo que
+ * nunca acepta dejaría un temporizador rebotando para siempre.
  */
 export const DEFAULT_RETRIES = 3;
 export const DEFAULT_RETRY_DELAY_MS = 50;
 
-export function prepareMenuSearch(options: MenuSearchOptions): void {
+const defaultSchedule: Schedule = (run, ms) => {
+	const id = setTimeout(run, ms);
+	return () => clearTimeout(id);
+};
+
+/**
+ * Enfoca el campo, insistiendo mientras el foco no llegue.
+ *
+ * Sin vaciar nada: esto es lo que se llama cuando el campo se habilita con el
+ * menú ya abierto, y ahí el filtro es lo que el usuario está escribiendo.
+ */
+export function focusMenuSearch(options: FocusMenuSearchOptions): SearchFocusAttempt {
 	const {
 		field,
-		clear,
-		schedule = (run, ms) => {
-			setTimeout(run, ms);
-		},
+		schedule = defaultSchedule,
 		retries = DEFAULT_RETRIES,
 		retryDelayMs = DEFAULT_RETRY_DELAY_MS,
 	} = options;
 
-	clear();
-
+	let cancelled = false;
+	let cancelPending: (() => void) | null = null;
 	let left = retries;
+
 	const attempt = () => {
+		cancelPending = null;
+		if (cancelled) return;
 		if (field()?.enfocar()) return;
 		if (left <= 0) return;
 		left -= 1;
-		schedule(attempt, retryDelayMs);
+		cancelPending = schedule(attempt, retryDelayMs);
 	};
 	attempt();
+
+	return {
+		cancel() {
+			cancelled = true;
+			cancelPending?.();
+			cancelPending = null;
+		},
+	};
+}
+
+/** Vacía la búsqueda anterior y enfoca: lo que hace falta al abrir el menú. */
+export function prepareMenuSearch(options: MenuSearchOptions): SearchFocusAttempt {
+	const { clear, ...focusOptions } = options;
+	clear();
+	return focusMenuSearch(focusOptions);
 }

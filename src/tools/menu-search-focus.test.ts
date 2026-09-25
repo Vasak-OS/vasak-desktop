@@ -20,6 +20,7 @@ import { join } from 'node:path';
 import {
 	DEFAULT_RETRIES,
 	type FocusableSearchField,
+	focusMenuSearch,
 	prepareMenuSearch,
 } from '@/tools/menu-search-focus';
 
@@ -48,8 +49,35 @@ function immediateSchedule() {
 		run: (fn: () => void, _ms: number) => {
 			scheduled += 1;
 			fn();
+			return () => {};
 		},
 		scheduled: () => scheduled,
+	};
+}
+
+/**
+ * Un `setTimeout` que guarda lo pendiente en vez de correrlo, para poder mirar
+ * qué pasa cuando llega tarde.
+ */
+function pendingSchedule() {
+	let queued: (() => void) | null = null;
+	let cancels = 0;
+	return {
+		run: (fn: () => void, _ms: number) => {
+			queued = fn;
+			return () => {
+				cancels += 1;
+				queued = null;
+			};
+		},
+		/** Dispara lo que haya quedado en cola, como haría el temporizador. */
+		fire: () => {
+			const pending = queued;
+			queued = null;
+			pending?.();
+		},
+		cancels: () => cancels,
+		hasPending: () => queued !== null,
 	};
 }
 
@@ -148,6 +176,88 @@ describe('prepareMenuSearch', () => {
 	});
 });
 
+describe('cortar un intento en curso', () => {
+	test('un reintento cancelado no le roba el foco a nadie', () => {
+		// El menú se cierra mientras quedan reintentos vivos: el que llegue
+		// tarde enfocaría un campo que ya no está a la vista.
+		const field = fieldThatAcceptsAfter(Number.POSITIVE_INFINITY);
+		const schedule = pendingSchedule();
+
+		const attempt = prepareMenuSearch({
+			field: () => field,
+			clear: () => {},
+			schedule: schedule.run,
+		});
+		const beforeCancel = field.attempts();
+		attempt.cancel();
+		schedule.fire();
+
+		expect(field.attempts()).toBe(beforeCancel);
+	});
+
+	test('cancelar apaga el temporizador y no sólo el efecto', () => {
+		const schedule = pendingSchedule();
+
+		const attempt = focusMenuSearch({
+			field: () => fieldThatAcceptsAfter(Number.POSITIVE_INFINITY),
+			schedule: schedule.run,
+		});
+		expect(schedule.hasPending()).toBe(true);
+		attempt.cancel();
+
+		expect(schedule.cancels()).toBe(1);
+		expect(schedule.hasPending()).toBe(false);
+	});
+
+	test('cancelar dos veces no explota', () => {
+		const attempt = focusMenuSearch({ field: () => fieldThatAcceptsAfter(0) });
+
+		expect(() => {
+			attempt.cancel();
+			attempt.cancel();
+		}).not.toThrow();
+	});
+});
+
+describe('focusMenuSearch', () => {
+	test('enfoca sin vaciar nada', () => {
+		// Es lo que se llama cuando el campo se habilita con el menú ya abierto:
+		// para entonces, lo que hay escrito lo escribió el usuario.
+		const field = fieldThatAcceptsAfter(0);
+		focusMenuSearch({ field: () => field });
+
+		expect(field.attempts()).toBe(1);
+	});
+
+	test('un intento nuevo alcanza cuando el campo se habilita', () => {
+		// `isMenuEmpty` arranca en verdadero y desactiva el campo, y un campo
+		// desactivado no toma el foco. Si la carga del menú tarda más que los
+		// reintentos, se agotan contra un campo que no puede tomarlo.
+		let enabled = false;
+		let focusedTimes = 0;
+		const field: FocusableSearchField = {
+			enfocar: () => {
+				if (!enabled) return false;
+				focusedTimes += 1;
+				return true;
+			},
+		};
+		const schedule = immediateSchedule();
+
+		focusMenuSearch({ field: () => field, schedule: schedule.run });
+
+		expect(focusedTimes).toBe(0);
+		expect(schedule.scheduled()).toBe(DEFAULT_RETRIES);
+
+		// Por eso hace falta volver a intentarlo cuando el campo se habilita, y
+		// no dar la apertura por perdida.
+		enabled = true;
+		focusMenuSearch({ field: () => field });
+
+		expect(focusedTimes).toBe(1);
+	});
+});
+
 describe('el cable en la vista', () => {
 	const source = readFileSync(join(import.meta.dir, '..', 'views', 'MenuView.vue'), 'utf8');
 
@@ -186,6 +296,31 @@ describe('el cable en la vista', () => {
 
 		expect(contrato).toMatch(/enfocar:\s*typeof\s+enfocar/);
 		expect(contrato).toMatch(/declare\s+function\s+enfocar\(\):\s*boolean/);
+	});
+
+	test('el menú reenfoca cuando el campo deja de estar desactivado', () => {
+		// Y sin vaciar el filtro: para cuando el menú termina de cargar, lo que
+		// hay escrito lo escribió el usuario.
+		const observador = source.slice(source.indexOf('watch(\n\tisMenuEmpty'));
+
+		expect(observador).toMatch(/focusMenuSearch\(/);
+		expect(observador.slice(0, observador.indexOf('\n);'))).not.toMatch(/clear:/);
+	});
+
+	test('los reintentos se cortan al cerrar y al desmontar', () => {
+		// Quedan hasta 150 ms de reintentos vivos: uno que llegue tarde le
+		// robaría el foco a donde el usuario ya esté.
+		const alCerrar = source.slice(
+			source.indexOf('const closeAfterAnimation'),
+			source.indexOf('const appsOfCategory')
+		);
+		const alDesmontar = source.slice(
+			source.indexOf('onBeforeUnmount('),
+			source.indexOf('watch(\n\tisMenuEmpty')
+		);
+
+		expect(alCerrar).toMatch(/searchFocus\?\.cancel\(\)/);
+		expect(alDesmontar).toMatch(/searchFocus\?\.cancel\(\)/);
 	});
 
 	test('el campo no se vuelve a buscar por `id` en el documento', () => {
