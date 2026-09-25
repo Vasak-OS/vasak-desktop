@@ -15,6 +15,12 @@ import UserMenuCard from '@/components/cards/UserMenuCard.vue';
 import WidgetSlot from '@/components/widgets/WidgetSlot.vue';
 import { getMenuItems, openApp } from '@/services/app.service';
 import { openSettings, toggleSessionPopup } from '@/services/window.service';
+import {
+	type FocusableSearchField,
+	focusMenuSearch,
+	prepareMenuSearch,
+	type SearchFocusAttempt,
+} from '@/tools/menu-search-focus';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -25,6 +31,16 @@ const filter: Ref<string> = ref('');
 const leaving = ref(false);
 const selectedIndex = ref(0);
 const menuLoadFailed = ref(false);
+const searchField = ref<FocusableSearchField | null>(null);
+/**
+ * Si el menú está a la vista.
+ *
+ * Arranca en `true` porque la vista se monta cuando la ventana se está
+ * abriendo, y en esa primera vez puede no haber ningún cambio de foco que oír.
+ */
+const menuIsOpen = ref(true);
+/** El intento de foco en curso, para poder cortarlo antes de empezar otro. */
+let searchFocus: SearchFocusAttempt | null = null;
 const menuWindow = getCurrentWindow();
 let unlistenFocus: (() => void) | null = null;
 
@@ -74,6 +90,11 @@ const openConfiguration = async () => {
 const closeAfterAnimation = () => {
 	if (leaving.value) return;
 	leaving.value = true;
+	menuIsOpen.value = false;
+	// Quedan hasta 150 ms de reintentos de foco: uno que llegue con el menú ya
+	// escondido le robaría el foco a donde el usuario haya ido.
+	searchFocus?.cancel();
+	searchFocus = null;
 	setTimeout(() => {
 		menuWindow.hide().catch(() => {
 			/* already gone */
@@ -125,7 +146,19 @@ onMounted(() => {
 				// Shown again after being hidden: the animation state has to be
 				// reset or the menu comes back mid-fade and never becomes solid.
 				leaving.value = false;
-				setTimeout(() => document.getElementById('search')?.focus(), 50);
+				// Y acá, no en un gancho de montaje: la ventana se esconde en vez
+				// de destruirse, así que esto es lo único que corre en cada
+				// apertura. Antes se buscaba el campo por un `id` que dejó de
+				// existir al pasar al campo de la librería, y el `autofocus` del
+				// campo sólo cubre el primer montaje: ver `vasak-desktop#122`.
+				menuIsOpen.value = true;
+				searchFocus?.cancel();
+				searchFocus = prepareMenuSearch({
+					field: () => searchField.value,
+					clear: () => {
+						filter.value = '';
+					},
+				});
 				return;
 			}
 			// Losing focus was never handled — only gaining it — so clicking
@@ -144,7 +177,34 @@ onBeforeUnmount(() => {
 	window.removeEventListener('blur', onBlur);
 	unlistenFocus?.();
 	unlistenMenuChanged?.();
+	searchFocus?.cancel();
+	searchFocus = null;
 });
+
+/**
+ * El campo se habilita tarde, y un campo desactivado no toma el foco.
+ *
+ * `isMenuEmpty` arranca en verdadero —`menuData` está vacío hasta que conteste
+ * `getMenuItems`, que es un comando asíncrono justamente porque con la caché
+ * fría lee todos los `.desktop`—, así que el campo nace desactivado. Si esa
+ * lectura tarda más que los reintentos, se agotan contra un campo que no puede
+ * tomar el foco y el menú queda abierto y mudo.
+ *
+ * Acá **no** se vacía el filtro: para cuando el menú termina de cargar, lo que
+ * haya escrito lo escribió el usuario.
+ *
+ * `flush: 'post'` porque lo que hace falta es que el `disabled` ya no esté en el
+ * DOM, no que haya cambiado el estado.
+ */
+watch(
+	isMenuEmpty,
+	(empty) => {
+		if (empty || !menuIsOpen.value) return;
+		searchFocus?.cancel();
+		searchFocus = focusMenuSearch({ field: () => searchField.value });
+	},
+	{ flush: 'post' }
+);
 
 watch(filter, () => {
 	selectedIndex.value = 0;
@@ -198,9 +258,15 @@ const onBlur = () => {
 
       <!-- `grow` acá y no `search-component`, que no estaba definida en ningún
            lado: lo que el campo necesitaba de esa clase era ocupar la fila, y
-           eso lo traía en sus propias clases. El foco al abrir lo hace el
-           campo, que antes lo resolvía una directiva con un temporizador. -->
+           eso lo traía en sus propias clases.
+
+           `autofocus` cubre el primer montaje, que es el único que hay: la
+           ventana se esconde en vez de destruirse. Las aperturas siguientes las
+           cubre `prepareMenuSearch` desde el evento de foco de la ventana, y
+           por eso el `ref` — el campo expone `enfocar()`, que dice si el foco
+           llegó. -->
       <SearchField
+        ref="searchField"
         v-model="filter"
         :label="t('components.SearchMenuComponent.placeholder')"
         :disabled="isMenuEmpty"
