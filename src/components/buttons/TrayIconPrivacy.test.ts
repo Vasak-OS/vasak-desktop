@@ -98,7 +98,7 @@ describe('el applet', () => {
 		// funciona es peor que no tenerlo.
 		const botones = [...APPLET.matchAll(/@click="cortar\(/g)];
 
-		expect(botones.length).toBe(1);
+		expect(botones).toHaveLength(1);
 		expect(APPLET.slice(APPLET.indexOf('pantalla.length > 0'))).toContain('@click="cortar(');
 	});
 

@@ -123,7 +123,7 @@ describe('los tipos de la librería', () => {
 			await Bun.write(`${falso}src/inocente.ts`, 'export const nada = 1;\n');
 
 			const archivos = await escanear(falso);
-			expect(archivos.length).toBe(4);
+			expect(archivos).toHaveLength(4);
 
 			expect(await conteniendo(COMODIN, archivos, falso)).toEqual([
 				'src/dobles.d.ts',
@@ -353,7 +353,7 @@ describe('el chequeo de las plantillas', () => {
 			await Bun.file(`${raiz}tests/fixtures/tsconfig-data.json`).text()
 		) as { include: string[] };
 		const sinDeclaracion = tsconfig.include.filter((ruta) => !ruta.endsWith('.d.ts'));
-		expect(sinDeclaracion.length).toBe(tsconfig.include.length - 1);
+		expect(sinDeclaracion).toHaveLength(tsconfig.include.length - 1);
 
 		const carpeta = `${raiz}tests/fixtures/.sin-declaracion-${Bun.randomUUIDv7()}`;
 		try {
