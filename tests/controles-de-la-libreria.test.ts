@@ -82,28 +82,52 @@ describe('no hay controles propios', () => {
 describe('los controles salen de la librería', () => {
 	const DE_LA_LIBRERIA = /from '@vasakgroup\/vue-libvasak'/;
 
-	test('el interruptor del Bluetooth', () => {
-		const fuente = leer('components/areas/bluetooth/BluetoothControlArea.vue');
-		expect(fuente).toMatch(DE_LA_LIBRERIA);
-		expect(fuente).toContain('SwitchToggle');
-	});
+	/**
+	 * Los cuatro controles que la librería pasó a tener.
+	 *
+	 * Los cuatro tests eran lo mismo —el archivo importa de la librería y usa
+	 * tal componente— con otro par de valores, así que van en una tabla. El
+	 * `nombre` va en la tabla y no en un `for` porque sin él un fallo sale como
+	 * «esperaba esta cadena y llegó esta otra» y no dice de cuál de los cuatro
+	 * componentes habla: los cuatro repiten las mismas dos aserciones.
+	 *
+	 * El nombre del componente va en su propia columna y no en el `nombre` del
+	 * caso a propósito. Uno es lo que hay que encontrar en el archivo; el otro es
+	 * la manera de nombrarlo en prosa. Que sean dos columnas y no una es lo que
+	 * deja que un fallo diga «el interruptor del Bluetooth» sin que el nombre
+	 * técnico y el nombre de la prueba sean la misma cosa.
+	 *
+	 * Los nombres se dejan tal cual estaban, incluido el «y» del último: son los
+	 * que ya identifican estos casos en el informe, y renombrarlos obliga a
+	 * buscar en dos lugares cuando algo falle.
+	 */
+	const CONTROLES = [
+		{
+			nombre: 'el interruptor del Bluetooth',
+			archivo: 'components/areas/bluetooth/BluetoothControlArea.vue',
+			control: 'SwitchToggle',
+		},
+		{
+			nombre: 'el botón que alterna la red',
+			archivo: 'components/controls/NetworkControl.vue',
+			control: 'ToggleControl',
+		},
+		{
+			nombre: 'el deslizador del volumen',
+			archivo: 'components/controls/VolumeControl.vue',
+			control: 'SliderControl',
+		},
+		{
+			nombre: 'y el buscador del menú',
+			archivo: 'views/MenuView.vue',
+			control: 'SearchField',
+		},
+	];
 
-	test('el botón que alterna la red', () => {
-		const fuente = leer('components/controls/NetworkControl.vue');
+	test.each(CONTROLES)('$nombre', ({ archivo, control }) => {
+		const fuente = leer(archivo);
 		expect(fuente).toMatch(DE_LA_LIBRERIA);
-		expect(fuente).toContain('ToggleControl');
-	});
-
-	test('el deslizador del volumen', () => {
-		const fuente = leer('components/controls/VolumeControl.vue');
-		expect(fuente).toMatch(DE_LA_LIBRERIA);
-		expect(fuente).toContain('SliderControl');
-	});
-
-	test('y el buscador del menú', () => {
-		const fuente = leer('views/MenuView.vue');
-		expect(fuente).toMatch(DE_LA_LIBRERIA);
-		expect(fuente).toContain('SearchField');
+		expect(fuente).toContain(control);
 	});
 });
 
