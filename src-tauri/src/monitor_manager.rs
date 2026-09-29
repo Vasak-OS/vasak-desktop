@@ -133,6 +133,10 @@ pub fn rebuild_shell_surfaces(app: &AppHandle) {
     log_info("Reconstruyendo las superficies del shell por cambio de monitores");
 
     destroy_layer_windows(app, &SUPERFICIES);
+    // Los applets no se esperan ni se recrean: van atados al monitor en que se
+    // abrieron, que puede no existir más, y la próxima vez que se pidan se
+    // crean en el que toque.
+    crate::windows_apps::anchored_applet::destroy_applets(app);
     recrear_cuando_se_liberen(app.clone(), 0);
 }
 
@@ -294,7 +298,7 @@ mod tests {
         // ver con rehacer las superficies: esperarlos sería esperar para siempre.
         let etiquetas = [
             "applet_network",
-            "systray_popup",
+            "applet_tray",
             "osd_popup",
             "session_popup",
         ];

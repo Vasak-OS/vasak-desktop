@@ -41,7 +41,7 @@ export const batteryExists = <T = any>(args?: any): Promise<T> => {
  * cámara encendida hasta el próximo cambio.
  */
 export const privacyInUse = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('privacidad_en_uso', args);
+	return invoke<T>('privacy_in_use', args);
 };
 
 /**
@@ -52,12 +52,7 @@ export const privacyInUse = <T = any>(args?: any): Promise<T> => {
  * quitárselos.
  */
 export const privacyStopScreen = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('privacidad_cortar', args);
-};
-
-/** Abre o cierra el applet que lista todo y deja cortar. */
-export const togglePrivacyApplet = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('toggle_privacidad_applet', args);
+	return invoke<T>('privacy_stop_screen', args);
 };
 
 export const logFromFrontend = <T = any>(args: any): Promise<T> => {

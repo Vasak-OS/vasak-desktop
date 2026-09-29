@@ -1,45 +1,43 @@
+use crate::logger::{log_debug, log_error, log_info};
 use crate::structs::{SystrayPopupPayload, SystrayPopupState, TrayItem, TrayManager, TrayMenu};
-use crate::tray::sni_watcher::SniWatcher;
+use crate::tray::dbus_menu::{call_about_to_show, call_get_layout, DbusMenuLayout, DbusMenuProxy};
 use crate::tray::sni_item::SniItemProxy;
-use crate::tray::dbus_menu::{DbusMenuProxy, DbusMenuLayout, call_get_layout, call_about_to_show};
-use crate::app_url::get_app_url;
-use crate::logger::{log_info, log_error, log_debug};
-use crate::monitor_manager::get_primary_monitor;
-use crate::windows_apps::create_systray_popup_window;
+use crate::tray::sni_watcher::SniWatcher;
+use crate::windows_apps::anchored_applet::{open_anchored_applet, AnchorRect};
 use futures_util::future::BoxFuture;
-use tauri::Manager;
-use tauri::{PhysicalPosition, Position, Size, Url};
-use zbus::Connection;
 use zbus::zvariant::Value;
+use zbus::Connection;
 
-async fn resolve_tray_item(
-    tray_manager: &TrayManager,
-    service_name: &str,
-) -> Option<TrayItem> {
+async fn resolve_tray_item(tray_manager: &TrayManager, service_name: &str) -> Option<TrayItem> {
     let manager = tray_manager.read().await;
 
-    manager
-        .get(service_name)
-        .cloned()
-        .or_else(|| {
-            manager
-                .values()
-                .find(|item| {
-                    item.service_name == service_name
-                        || item.bus_name.as_deref() == Some(service_name)
-                })
-                .cloned()
-        })
+    manager.get(service_name).cloned().or_else(|| {
+        manager
+            .values()
+            .find(|item| {
+                item.service_name == service_name || item.bus_name.as_deref() == Some(service_name)
+            })
+            .cloned()
+    })
 }
 
-    fn resolve_tray_bus_name<'a>(tray_item: &'a TrayItem, service_name: &'a str) -> Result<&'a str, String> {
-        tray_item
+fn resolve_tray_bus_name<'a>(
+    tray_item: &'a TrayItem,
+    service_name: &'a str,
+) -> Result<&'a str, String> {
+    tray_item
         .bus_name
         .as_deref()
         .filter(|name| !name.is_empty())
-        .or_else(|| if !service_name.starts_with('/') { Some(service_name) } else { None })
+        .or_else(|| {
+            if !service_name.starts_with('/') {
+                Some(service_name)
+            } else {
+                None
+            }
+        })
         .ok_or_else(|| format!("No bus name available for tray item {}", service_name))
-    }
+}
 
 #[tauri::command]
 pub async fn init_sni_watcher(
@@ -73,7 +71,10 @@ pub async fn get_tray_items(
     Ok(items)
 }
 
-async fn get_sni_proxy<'a>(conn: &'a Connection, service_name: &'a str) -> Result<SniItemProxy<'a>, String> {
+async fn get_sni_proxy<'a>(
+    conn: &'a Connection,
+    service_name: &'a str,
+) -> Result<SniItemProxy<'a>, String> {
     let (bus_name, object_path) = if service_name.contains('/') {
         let parts: Vec<&str> = service_name.splitn(2, '/').collect();
         (parts[0], format!("/{}", parts[1]))
@@ -82,8 +83,10 @@ async fn get_sni_proxy<'a>(conn: &'a Connection, service_name: &'a str) -> Resul
     };
 
     SniItemProxy::builder(conn)
-        .destination(bus_name).map_err(|e| e.to_string())?
-        .path(object_path).map_err(|e| e.to_string())?
+        .destination(bus_name)
+        .map_err(|e| e.to_string())?
+        .path(object_path)
+        .map_err(|e| e.to_string())?
         .build()
         .await
         .map_err(|e| e.to_string())
@@ -91,13 +94,16 @@ async fn get_sni_proxy<'a>(conn: &'a Connection, service_name: &'a str) -> Resul
 
 #[tauri::command]
 pub async fn tray_item_activate(service_name: String, x: i32, y: i32) -> Result<(), String> {
-    log_info(&format!("Activando item de bandeja: {} en ({}, {})", service_name, x, y));
+    log_info(&format!(
+        "Activando item de bandeja: {} en ({}, {})",
+        service_name, x, y
+    ));
     let conn = Connection::session().await.map_err(|e| {
         log_error(&format!("Error conectando a D-Bus session: {}", e));
         e.to_string()
     })?;
     let proxy = get_sni_proxy(&conn, &service_name).await?;
-    
+
     proxy.activate(x, y).await.map_err(|e| {
         log_error(&format!("Error activando item '{}': {}", service_name, e));
         e.to_string()
@@ -112,15 +118,24 @@ pub async fn tray_item_secondary_activate(
     x: i32,
     y: i32,
 ) -> Result<(), String> {
-    log_info(&format!("Activación secundaria de item de bandeja: {} en ({}, {})", service_name, x, y));
+    log_info(&format!(
+        "Activación secundaria de item de bandeja: {} en ({}, {})",
+        service_name, x, y
+    ));
     let conn = Connection::session().await.map_err(|e| e.to_string())?;
     let proxy = get_sni_proxy(&conn, &service_name).await?;
-    
+
     proxy.secondary_activate(x, y).await.map_err(|e| {
-        log_error(&format!("Error en activación secundaria de '{}': {}", service_name, e));
+        log_error(&format!(
+            "Error en activación secundaria de '{}': {}",
+            service_name, e
+        ));
         e.to_string()
     })?;
-    log_debug(&format!("Activación secundaria de '{}' correcta", service_name));
+    log_debug(&format!(
+        "Activación secundaria de '{}' correcta",
+        service_name
+    ));
     Ok(())
 }
 
@@ -149,7 +164,9 @@ fn get_i32(v: &Value) -> Option<i32> {
 }
 
 // Helper to extract properties from zvariant::Dict
-fn extract_props_from_dict(dict: &zbus::zvariant::Dict) -> (String, bool, bool, String, Option<String>, Option<bool>) {
+fn extract_props_from_dict(
+    dict: &zbus::zvariant::Dict,
+) -> (String, bool, bool, String, Option<String>, Option<bool>) {
     let mut label = String::new();
     let mut enabled = true;
     let mut visible = true;
@@ -158,33 +175,33 @@ fn extract_props_from_dict(dict: &zbus::zvariant::Dict) -> (String, bool, bool, 
     let mut checked = None;
 
     for (k, v) in dict.iter() {
-             // k and v are &Value
-             let key_str = match k {
-                 Value::Str(s) => s.as_str(),
-                 _ => continue,
-             };
+        // k and v are &Value
+        let key_str = match k {
+            Value::Str(s) => s.as_str(),
+            _ => continue,
+        };
 
-             match key_str {
-                 "label" => label = get_string(v),
-                 "enabled" => enabled = get_bool(v),
-                 "visible" => visible = get_bool(v),
-                 "type" => menu_type = get_string(v),
-                 "children-display" => {
-                     let child_display = get_string(v);
-                     if child_display == "submenu" {
-                         menu_type = "submenu".to_string();
-                     }
-                 },
-                 "icon-name" => icon_name = Some(get_string(v)),
-                 "toggle-state" => {
-                     if let Some(i) = get_i32(v) {
-                         checked = Some(i == 1);
-                     }
-                 },
-                 _ => {}
-             }
+        match key_str {
+            "label" => label = get_string(v),
+            "enabled" => enabled = get_bool(v),
+            "visible" => visible = get_bool(v),
+            "type" => menu_type = get_string(v),
+            "children-display" => {
+                let child_display = get_string(v);
+                if child_display == "submenu" {
+                    menu_type = "submenu".to_string();
+                }
+            }
+            "icon-name" => icon_name = Some(get_string(v)),
+            "toggle-state" => {
+                if let Some(i) = get_i32(v) {
+                    checked = Some(i == 1);
+                }
+            }
+            _ => {}
         }
-    
+    }
+
     (label, enabled, visible, menu_type, icon_name, checked)
 }
 
@@ -193,15 +210,24 @@ fn parse_dbus_menu_value(v: &Value) -> Option<TrayMenu> {
         Value::Structure(s) => s,
         _ => return None,
     };
-    
+
     let fields = s.fields();
-    if fields.len() < 3 { return None; }
-    
+    if fields.len() < 3 {
+        return None;
+    }
+
     let id = get_i32(&fields[0]).unwrap_or(0);
-    
+
     let (label, enabled, visible, menu_type, icon_name, checked) = match &fields[1] {
         Value::Dict(d) => extract_props_from_dict(d),
-        _ => (String::new(), true, true, "standard".to_string(), None, None),
+        _ => (
+            String::new(),
+            true,
+            true,
+            "standard".to_string(),
+            None,
+            None,
+        ),
     };
 
     let mut children = Vec::new();
@@ -215,13 +241,17 @@ fn parse_dbus_menu_value(v: &Value) -> Option<TrayMenu> {
 
     Some(TrayMenu {
         id,
-        label: label.replace("_", ""), 
+        label: label.replace("_", ""),
         enabled,
         visible,
         menu_type,
         checked,
         icon: icon_name,
-        children: if children.is_empty() { None } else { Some(children) },
+        children: if children.is_empty() {
+            None
+        } else {
+            Some(children)
+        },
     })
 }
 
@@ -234,7 +264,9 @@ fn load_dbus_menu_level<'a>(
     Box::pin(async move {
         let _ = call_about_to_show(conn, bus_name, menu_path, parent_id).await;
 
-        let (_revision, layout) = call_get_layout(conn, bus_name, menu_path, parent_id).await.map_err(|e| e.to_string())?;
+        let (_revision, layout) = call_get_layout(conn, bus_name, menu_path, parent_id)
+            .await
+            .map_err(|e| e.to_string())?;
         let root_menu = parse_dbus_menu_layout(layout);
         let mut items = root_menu.children.unwrap_or_default();
 
@@ -246,7 +278,10 @@ fn load_dbus_menu_level<'a>(
                     }
                     Ok(_) => {}
                     Err(error) => {
-                        log_error(&format!("[fetch_dbus_menu] Failed to load submenu {}: {}", item.id, error));
+                        log_error(&format!(
+                            "[fetch_dbus_menu] Failed to load submenu {}: {}",
+                            item.id, error
+                        ));
                     }
                 }
             }
@@ -259,32 +294,45 @@ fn load_dbus_menu_level<'a>(
 fn parse_dbus_menu_layout(layout: DbusMenuLayout) -> TrayMenu {
     let DbusMenuLayout(id, props, children_variants) = layout;
 
-    let label = props.get("label").map(|v| get_string(v)).unwrap_or_default();
+    let label = props
+        .get("label")
+        .map(|v| get_string(v))
+        .unwrap_or_default();
     let enabled = props.get("enabled").map(|v| get_bool(v)).unwrap_or(true);
     let visible = props.get("visible").map(|v| get_bool(v)).unwrap_or(true);
-    let menu_type = props.get("type").map(|v| get_string(v)).unwrap_or_else(|| "standard".to_string());
+    let menu_type = props
+        .get("type")
+        .map(|v| get_string(v))
+        .unwrap_or_else(|| "standard".to_string());
     let icon_name = props.get("icon-name").map(|v| get_string(v));
-    
-    let checked = props.get("toggle-state").and_then(|v| get_i32(v)).map(|toggle_state| toggle_state == 1);
+
+    let checked = props
+        .get("toggle-state")
+        .and_then(|v| get_i32(v))
+        .map(|toggle_state| toggle_state == 1);
 
     let mut children: Vec<TrayMenu> = Vec::new();
 
     for child_variant in children_variants {
         // child_variant is OwnedValue -> &Value
         if let Some(child_menu) = parse_dbus_menu_value(&child_variant) {
-             children.push(child_menu);
+            children.push(child_menu);
         }
     }
 
     TrayMenu {
         id,
-        label: label.replace("_", ""), 
+        label: label.replace("_", ""),
         enabled,
         visible,
         menu_type,
         checked,
         icon: icon_name,
-        children: if children.is_empty() { None } else { Some(children) },
+        children: if children.is_empty() {
+            None
+        } else {
+            Some(children)
+        },
     }
 }
 
@@ -308,10 +356,9 @@ pub async fn get_tray_menu(
     load_dbus_menu_level(&conn, bus_name, &menu_path, 0).await
 }
 
-
 #[tauri::command]
 pub async fn tray_menu_item_click(
-    service_name: String, 
+    service_name: String,
     menu_id: i32,
     tray_manager: tauri::State<'_, TrayManager>,
 ) -> Result<(), String> {
@@ -327,39 +374,63 @@ pub async fn tray_menu_item_click(
     let conn = Connection::session().await.map_err(|e| e.to_string())?;
 
     let proxy = DbusMenuProxy::builder(&conn)
-        .destination(bus_name).map_err(|e| e.to_string())?
-        .path(menu_path).map_err(|e| e.to_string())?
+        .destination(bus_name)
+        .map_err(|e| e.to_string())?
+        .path(menu_path)
+        .map_err(|e| e.to_string())?
         .build()
         .await
         .map_err(|e| e.to_string())?;
 
     // timestamp 0, event "clicked"
-    proxy.event(menu_id, "clicked", &Value::from(""), 0).await.map_err(|e| e.to_string())?;
+    proxy
+        .event(menu_id, "clicked", &Value::from(""), 0)
+        .await
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }
 
-async fn fetch_dbus_menu(bus_name: &str, service_name: &str, menu_path: &str) -> Result<Vec<TrayMenu>, String> {
-    log_info(&format!("[fetch_dbus_menu] Connecting to session bus for {}", service_name));
+async fn fetch_dbus_menu(
+    bus_name: &str,
+    service_name: &str,
+    menu_path: &str,
+) -> Result<Vec<TrayMenu>, String> {
+    log_info(&format!(
+        "[fetch_dbus_menu] Connecting to session bus for {}",
+        service_name
+    ));
     let conn = Connection::session().await.map_err(|e| {
         log_error(&format!("[fetch_dbus_menu] DBus connection error: {}", e));
         e.to_string()
     })?;
 
-    log_info(&format!("[fetch_dbus_menu] Building proxy for {} path {} menu_path {}", service_name, bus_name, menu_path));
-    let items = load_dbus_menu_level(&conn, bus_name, menu_path, 0).await.map_err(|e| {
-        log_error(&format!("[fetch_dbus_menu] Failed to load menu tree: {}", e));
-        e
-    })?;
+    log_info(&format!(
+        "[fetch_dbus_menu] Building proxy for {} path {} menu_path {}",
+        service_name, bus_name, menu_path
+    ));
+    let items = load_dbus_menu_level(&conn, bus_name, menu_path, 0)
+        .await
+        .map_err(|e| {
+            log_error(&format!(
+                "[fetch_dbus_menu] Failed to load menu tree: {}",
+                e
+            ));
+            e
+        })?;
 
     let item_count = items.len();
-    log_info(&format!("[fetch_dbus_menu] Parsed {} menu items for {}", item_count, service_name));
+    log_info(&format!(
+        "[fetch_dbus_menu] Parsed {} menu items for {}",
+        item_count, service_name
+    ));
     Ok(items)
 }
 
 #[tauri::command]
 pub async fn open_tray_popup(
     service_name: String,
+    anchor: Option<AnchorRect>,
     app: tauri::AppHandle,
     tray_manager: tauri::State<'_, TrayManager>,
     popup_state: tauri::State<'_, SystrayPopupState>,
@@ -379,19 +450,31 @@ pub async fn open_tray_popup(
     let status = Some(tray_item.status.clone());
 
     let items = if let Some(ref path) = menu_path {
-        log_info(&format!("[open_tray_popup] Fetching DBus menu for {} at {}", service_name, path));
+        log_info(&format!(
+            "[open_tray_popup] Fetching DBus menu for {} at {}",
+            service_name, path
+        ));
         match fetch_dbus_menu(bus_name, &service_name, path).await {
             Ok(items) => {
-                log_info(&format!("[open_tray_popup] Fetched {} menu items", items.len()));
+                log_info(&format!(
+                    "[open_tray_popup] Fetched {} menu items",
+                    items.len()
+                ));
                 items
-            },
+            }
             Err(e) => {
-                log_error(&format!("[open_tray_popup] Failed to fetch tray menu: {}", e));
+                log_error(&format!(
+                    "[open_tray_popup] Failed to fetch tray menu: {}",
+                    e
+                ));
                 Vec::new()
             }
         }
     } else {
-        log_info(&format!("[open_tray_popup] No menu_path for {}, showing empty popup", service_name));
+        log_info(&format!(
+            "[open_tray_popup] No menu_path for {}, showing empty popup",
+            service_name
+        ));
         Vec::new()
     };
 
@@ -410,31 +493,14 @@ pub async fn open_tray_popup(
         .lock()
         .unwrap_or_else(|envenenado| envenenado.into_inner()) = Some(payload);
 
-    let popup_width = 700.0;
-    let popup_height = 620.0;
-
-    if let Some(window) = app.get_webview_window("systray_popup") {
-        let complete_url = format!("{}/index.html#/applets/tray-popup", get_app_url());
-        if let Ok(url) = Url::parse(&complete_url) {
-            let _ = window.navigate(url);
-        }
-        let _ = window.set_size(Size::Physical(tauri::PhysicalSize { width: popup_width as u32, height: popup_height as u32 }));
-        if let Some(monitor) = get_primary_monitor(&app) {
-            let pos = monitor.position();
-            let size = monitor.size();
-            let cx = pos.x + (size.width as i32 / 2) - (popup_width as i32 / 2);
-            let cy = pos.y + (size.height as i32 / 2) - (popup_height as i32 / 2);
-            let _ = window.set_position(Position::Physical(PhysicalPosition { x: cx, y: cy }));
-        }
-        let _ = window.set_focus();
-        let _ = window.show();
-        log_info("Reused existing systray popup window");
-        return Ok(());
-    }
-
-    create_systray_popup_window(app, popup_width, popup_height)
-        .await
-        .map_err(|e| format!("Failed to create systray popup: {}", e))?;
+    // Se abre siempre, aunque ya estuviera abierto: el mismo applet muestra
+    // el menú de otro icono, y tiene que mudarse debajo de ése. La página vuelve
+    // a pedir los datos al mostrarse.
+    open_anchored_applet(&app, "tray", anchor)?;
+    log_info(&format!(
+        "[open_tray_popup] applet de la bandeja abierto para {}",
+        service_name
+    ));
 
     Ok(())
 }
@@ -446,7 +512,8 @@ pub async fn get_tray_popup_data(
     let data = popup_state
         .0
         .lock()
-        .unwrap_or_else(|envenenado| envenenado.into_inner()).clone();
+        .unwrap_or_else(|envenenado| envenenado.into_inner())
+        .clone();
     Ok(data)
 }
 
@@ -458,11 +525,12 @@ pub async fn tray_popup_click(
 ) -> Result<(), String> {
     let service_name = {
         let data = popup_state
-        .0
-        .lock()
-        .unwrap_or_else(|envenenado| envenenado.into_inner());
+            .0
+            .lock()
+            .unwrap_or_else(|envenenado| envenenado.into_inner());
         data.as_ref().map(|d| d.service_name.clone())
-    }.ok_or("No popup data available")?;
+    }
+    .ok_or("No popup data available")?;
 
     let tray_item = resolve_tray_item(&tray_manager, &service_name)
         .await
@@ -476,13 +544,18 @@ pub async fn tray_popup_click(
     let conn = Connection::session().await.map_err(|e| e.to_string())?;
 
     let proxy = DbusMenuProxy::builder(&conn)
-        .destination(bus_name).map_err(|e| e.to_string())?
-        .path(menu_path).map_err(|e| e.to_string())?
+        .destination(bus_name)
+        .map_err(|e| e.to_string())?
+        .path(menu_path)
+        .map_err(|e| e.to_string())?
         .build()
         .await
         .map_err(|e| e.to_string())?;
 
-    proxy.event(menu_id, "clicked", &Value::from(""), 0).await.map_err(|e| e.to_string())?;
+    proxy
+        .event(menu_id, "clicked", &Value::from(""), 0)
+        .await
+        .map_err(|e| e.to_string())?;
 
     Ok(())
 }

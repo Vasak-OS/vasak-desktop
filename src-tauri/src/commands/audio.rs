@@ -1,10 +1,10 @@
 use tauri::AppHandle;
 
-use crate::audio::{get_volume, set_volume, toggle_mute, list_audio_devices, set_default_audio_device};
-use crate::logger::{log_info, log_error, log_debug};
-use crate::structs::{VolumeInfo, AudioDevice};
-use crate::windows_apps::applets::create_applet_audio_window;
-use tauri::{async_runtime::spawn, Manager, Emitter};
+use crate::audio::{
+    get_volume, list_audio_devices, set_default_audio_device, set_volume, toggle_mute,
+};
+use crate::logger::{log_debug, log_error, log_info};
+use crate::structs::{AudioDevice, VolumeInfo};
 
 // These are `async` so Tauri runs them on a worker instead of the main thread.
 // Each one shells out to pactl through CommandExecutor, which spawns a thread
@@ -54,27 +54,4 @@ pub async fn set_audio_device(device_id: String, app: AppHandle) -> Result<bool,
             log_error(&format!("Error al cambiar dispositivo de audio: {}", e));
             e.to_string()
         })
-}
-
-#[tauri::command]
-pub fn toggle_audio_applet(app: AppHandle) -> Result<(), ()> {
-    log_debug("Alternando applet de audio");
-    if let Some(audio_window) = app.get_webview_window("applet_audio") {
-        if audio_window.is_visible().unwrap_or(false) {
-            // hide(), not close(): closing destroys the webview so the next open
-            // reloads the page and re-runs Vue. The view refreshes on
-            // "window-shown" instead.
-            let _ = audio_window.hide();
-        } else {
-            let _ = audio_window.emit("window-shown", ());
-            let _ = audio_window.show();
-            let _ = audio_window.set_focus();
-        }
-    } else {
-        spawn(async move {
-            let _ = create_applet_audio_window(app).await;
-        });
-    }
-
-    Ok(())
 }

@@ -9,9 +9,10 @@ import {
 	getCurrentNetworkState,
 	getVpnStatus,
 	type NetworkInfo,
-	toggleNetworkApplet,
 	type VpnStatus,
 } from '@/services/network.service';
+import { toggleApplet } from '@/services/window.service';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -78,15 +79,27 @@ useSharedEvent<NetworkInfo>('network-changed', (payload) => {
 });
 
 useSharedEvent('vpn-changed', refreshVpnStatus);
+
+const button = ref<unknown>(null);
+const { openClasses } = useOpenApplet('network');
+
+const toggleNetworkApplet = async () => {
+	try {
+		await toggleApplet('network', button.value);
+	} catch (error) {
+		logError('Error toggling network applet:', error);
+	}
+};
 </script>
 
 <template>
   <div class="flex items-center gap-1">
 	<TrayIconButton
+	  ref="button"
 	  :name="networkIconName"
 	  :alt="networkAlt"
 	  :tooltip="networkAlt"
-	  :custom-class="{ 'relative': true }"
+	  :custom-class="{ relative: true, ...openClasses }"
 		:icon-class="{ 'filter brightness-90': !networkState.is_connected, 'drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]': vpnConnected }"
 	  @click="toggleNetworkApplet"
 	>

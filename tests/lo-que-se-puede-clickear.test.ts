@@ -152,7 +152,7 @@ describe('los botones del panel se anuncian con nombre', () => {
 	});
 
 	test('los otros tres del panel llevan su nombre puesto', () => {
-		expect(leer('components/buttons/TrayIconPrivacy.vue')).toContain(':aria-label="detalle"');
+		expect(leer('components/buttons/TrayIconPrivacy.vue')).toContain(':aria-label="detail"');
 		expect(leer('components/buttons/WindowPanelButton.vue')).toContain(':aria-label="title"');
 		expect(leer('views/PanelView.vue')).toContain(
 			':aria-label="t(\'views.panel.notificationsAlt\')"'

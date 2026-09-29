@@ -92,7 +92,3 @@ export const getVpnStatus = (): Promise<VpnStatus> => {
 export const getNetworkStats = (): Promise<NetworkStats> => {
 	return invoke<NetworkStats>('plugin:network-manager|get_network_stats');
 };
-
-export const toggleNetworkApplet = async () => {
-	await invoke('toggle_network_applet');
-};

@@ -7,7 +7,7 @@
 const LIB: &str = include_str!("../src/lib.rs");
 const APPLET: &str = include_str!("../src/applets/privacidad.rs");
 const COMPONENTE: &str = include_str!("../../src/components/buttons/TrayIconPrivacy.vue");
-const COMANDOS: &str = include_str!("../src/commands/privacidad.rs");
+const COMANDOS: &str = include_str!("../src/commands/privacy.rs");
 
 /// La línea donde se registra un applet.
 fn registro_de(applet: &str) -> &'static str {
@@ -47,7 +47,7 @@ fn el_evento_que_emite_es_el_que_el_panel_escucha() {
 #[test]
 fn el_comando_para_preguntar_el_estado_esta_registrado() {
     assert!(
-        LIB.contains("privacidad_en_uso,"),
+        LIB.contains("privacy_in_use,"),
         "el comando no está en el `invoke_handler`: la consulta del panel falla \
          en tiempo de ejecución y no lo dice ninguna compilación"
     );
@@ -66,7 +66,7 @@ fn la_respuesta_vieja_no_pisa_a_la_nueva() {
         .expect("el componente ya no consulta al montarse");
 
     assert!(
-        dentro_del_montaje.contains("if (yaLlegoUnAnuncio.value) return;"),
+        dentro_del_montaje.contains("if (announced.value) return;"),
         "aplicar la respuesta sin mirar pisa con la foto vieja lo que acaba de \
          llegar por el evento"
     );
@@ -106,15 +106,15 @@ fn cada_vigilante_toca_solo_su_campo() {
 #[test]
 fn el_comando_para_cortar_esta_registrado() {
     assert!(
-        COMANDOS.contains("pub async fn privacidad_cortar"),
+        COMANDOS.contains("pub async fn privacy_stop_screen"),
         "el comando no existe"
     );
     assert!(
-        LIB.contains("privacidad_cortar,"),
+        LIB.contains("privacy_stop_screen,"),
         "el comando no está en el `invoke_handler`"
     );
     assert!(
-        LIB.contains("toggle_privacidad_applet,"),
-        "el comando que abre el applet no está en el `invoke_handler`"
+        LIB.contains("toggle_applet,"),
+        "el comando que abre los applets no está en el `invoke_handler`"
     );
 }

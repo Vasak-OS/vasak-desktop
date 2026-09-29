@@ -191,7 +191,7 @@ import {
 	setWirelessEnabled,
 	type VpnStatus,
 } from '@/services/network.service';
-import { toggleNetworkApplet } from '@/services/window.service';
+import { dismissApplet } from '@/services/window.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -350,7 +350,7 @@ const refreshNetworks = async () => {
 
 const closeApplet = async () => {
 	try {
-		await toggleNetworkApplet();
+		await dismissApplet('network');
 	} catch (error) {
 		logError('Error closing applet:', error);
 	}

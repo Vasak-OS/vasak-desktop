@@ -6,7 +6,8 @@ import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import type { VolumeInfo } from '@/interfaces/volume';
 import { getAudioVolume } from '@/services/core.service';
-import { toggleAudioApplet } from '@/services/window.service';
+import { toggleApplet } from '@/services/window.service';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
@@ -37,9 +38,12 @@ async function getVolumeInfo(): Promise<void> {
 	}
 }
 
-async function toggleApplet(): Promise<void> {
+const button = ref<unknown>(null);
+const { openClasses } = useOpenApplet('audio');
+
+async function toggleAudioApplet(): Promise<void> {
 	try {
-		await toggleAudioApplet();
+		await toggleApplet('audio', button.value);
 	} catch (error) {
 		logError('Error toggling audio applet:', error);
 	}
@@ -60,6 +64,7 @@ useSharedEvent<VolumeInfo>(
 </script>
 <template>
   <TrayIconButton
+    ref="button"
     :name="currentIcon"
     :tooltip="volumeInfo.is_muted
       ? t('components.TrayIconSound.unmute')
@@ -68,6 +73,7 @@ useSharedEvent<VolumeInfo>(
       ? t('components.TrayIconSound.unmute')
       : t('components.TrayIconSound.mute')"
     :icon-class="{ 'opacity-60': volumeInfo.is_muted }"
-    @click="toggleApplet"
+    :custom-class="openClasses"
+    @click="toggleAudioApplet"
   />
 </template>

@@ -31,7 +31,7 @@ common:
   retry: Retry
 
 views:
-  privacidadApplet:
+  privacyApplet:
     title: Camera, microphone and screen
     subtitle: What is using each one right now.
     nobody: Nothing is using the camera, the microphone or the screen.

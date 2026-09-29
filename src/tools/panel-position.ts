@@ -6,7 +6,7 @@
  * —o que no diga nada— es arriba, que es donde el panel estuvo siempre.
  *
  * El backend lee esta misma clave con el mismo criterio para anclar la
- * superficie (`posicion_del_panel.rs`). Acá se decide **cómo se acomoda lo de
+ * superficie (`panel_position.rs`). Acá se decide **cómo se acomoda lo de
  * adentro**: a los costados el panel es una columna de 38 píxeles de ancho, y
  * una fila de iconos no entra de costado.
  *
@@ -16,15 +16,15 @@
  */
 
 /** Los cuatro lados donde puede quedar el panel. */
-export const POSICIONES_DEL_PANEL = ['top', 'bottom', 'left', 'right'] as const;
+export const PANEL_POSITIONS = ['top', 'bottom', 'left', 'right'] as const;
 
-export type PosicionDelPanel = (typeof POSICIONES_DEL_PANEL)[number];
+export type PanelPosition = (typeof PANEL_POSITIONS)[number];
 
 /** Arriba, que es donde estuvo siempre y donde la gente lo busca. */
-export const POSICION_DEL_PANEL_POR_OMISION: PosicionDelPanel = 'top';
+export const DEFAULT_PANEL_POSITION: PanelPosition = 'top';
 
-export function esPosicionDelPanel(valor: unknown): valor is PosicionDelPanel {
-	return typeof valor === 'string' && (POSICIONES_DEL_PANEL as readonly string[]).includes(valor);
+export function isPanelPosition(value: unknown): value is PanelPosition {
+	return typeof value === 'string' && (PANEL_POSITIONS as readonly string[]).includes(value);
 }
 
 /**
@@ -35,18 +35,18 @@ export function esPosicionDelPanel(valor: unknown): valor is PosicionDelPanel {
  * una aserción ese valor llegaría hasta las clases del panel y no coincidiría
  * con ninguna: la barra quedaría sin acomodo.
  */
-export function posicionDelPanel(config: unknown): PosicionDelPanel {
-	const seccion =
+export function panelPosition(config: unknown): PanelPosition {
+	const section =
 		config && typeof config === 'object'
 			? ((config as Record<string, unknown>).panel as Record<string, unknown> | undefined)
 			: undefined;
-	const puesta = seccion?.position;
-	return esPosicionDelPanel(puesta) ? puesta : POSICION_DEL_PANEL_POR_OMISION;
+	const value = section?.position;
+	return isPanelPosition(value) ? value : DEFAULT_PANEL_POSITION;
 }
 
 /** A los costados el panel es una columna. */
-export function esVertical(posicion: PosicionDelPanel): boolean {
-	return posicion === 'left' || posicion === 'right';
+export function isVertical(position: PanelPosition): boolean {
+	return position === 'left' || position === 'right';
 }
 
 /**
@@ -60,7 +60,7 @@ export function esVertical(posicion: PosicionDelPanel): boolean {
  * alto declarado, así que un porcentaje de alto no resuelve contra nada y la
  * columna se encoge hasta el tamaño de los iconos.
  */
-export const CLASES_DE_LA_BARRA: Record<PosicionDelPanel, string> = {
+export const BAR_CLASSES: Record<PanelPosition, string> = {
 	top: 'w-[calc(100%-8px)] h-9 mx-1 mt-0.5 px-3 flex-row',
 	bottom: 'w-[calc(100%-8px)] h-9 mx-1 mb-0.5 px-3 flex-row',
 	left: 'h-[calc(100vh-8px)] w-9 my-1 ml-0.5 py-3 flex-col',
