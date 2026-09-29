@@ -23,18 +23,29 @@ export function applyAppletChanged(payload: { applet?: string | null } | null | 
 /** Las clases del botón cuyo applet está abierto: así se lee de dónde salió. */
 export const OPEN_APPLET_CLASSES = 'bg-primary text-tx-on-primary';
 
-export function useOpenApplet(applet: AppletId): {
+export interface OpenAppletState {
 	isOpen: ComputedRef<boolean>;
 	openClasses: ComputedRef<Record<string, boolean>>;
-} {
-	useSharedEvent<{ applet: string | null }>('applet-changed', applyAppletChanged);
+}
 
+/**
+ * Lo que un botón necesita saber de su applet, sin suscribirse a nada.
+ *
+ * Aparte de `useOpenApplet` porque la suscripción necesita un componente
+ * montado, y esto es lo que se puede probar sin montar uno.
+ */
+export function openAppletState(applet: AppletId): OpenAppletState {
 	const isOpen = computed(() => openApplet.value === applet);
 
 	return {
 		isOpen,
 		openClasses: computed(() => ({ [OPEN_APPLET_CLASSES]: isOpen.value })),
 	};
+}
+
+export function useOpenApplet(applet: AppletId): OpenAppletState {
+	useSharedEvent<{ applet: string | null }>('applet-changed', applyAppletChanged);
+	return openAppletState(applet);
 }
 
 /** Para las pruebas: el valor compartido, sin suscribirse a nada. */
