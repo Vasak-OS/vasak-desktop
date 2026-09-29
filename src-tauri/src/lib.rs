@@ -56,7 +56,7 @@ mod menu_manager;
 mod menu_watcher;
 mod monitor_manager;
 mod notifications;
-mod posicion_del_panel;
+mod panel_position;
 mod tray;
 mod utils;
 mod window_manager;
@@ -149,9 +149,10 @@ pub fn run() {
         .plugin(tauri_plugin_vsk_contextual_menu::init())
         .invoke_handler(tauri::generate_handler![
             batch_invoke,
-            privacidad_en_uso,
-            privacidad_cortar,
-            toggle_privacidad_applet,
+            privacy_in_use,
+            privacy_stop_screen,
+            toggle_applet,
+            dismiss_applet,
             weather_cached,
             weather_claim,
             weather_place,
@@ -163,7 +164,6 @@ pub fn run() {
             open_settings,
             open_settings_section,
             twingate_info,
-            toggle_twingate_applet,
             twingate_authorize,
             show_osd,
             toggle_session_popup,
@@ -180,7 +180,6 @@ pub fn run() {
             toggle_audio_mute,
             get_audio_devices,
             set_audio_device,
-            toggle_audio_applet,
             get_brightness_info,
             set_brightness_info,
             send_notify,
@@ -190,7 +189,6 @@ pub fn run() {
             invoke_notification_action,
             toggle_control_center,
             hide_control_center,
-            toggle_network_applet,
             init_sni_watcher,
             get_tray_items,
             tray_item_activate,
@@ -200,7 +198,6 @@ pub fn run() {
             open_tray_popup,
             get_tray_popup_data,
             tray_popup_click,
-            toggle_bluetooth_applet,
             music_play_pause,
             music_next_track,
             music_previous_track,
@@ -336,7 +333,7 @@ pub fn run() {
                 crate::logger::log_error(&format!("[control_center] no se pudo crear: {error}"));
             }
             watch_monitor_changes(&handle);
-            seguir_la_posicion_del_panel(app.handle().clone());
+            follow_panel_position(app.handle().clone());
             menu_watcher::watch_application_dirs(&handle);
             // La carpeta del escritorio, para que el widget de archivos deje de
             // releerla cada diez segundos sin motivo.
@@ -378,7 +375,7 @@ pub fn run() {
                 }
             }
             setup_dbus_service(app.handle().clone());
-            
+
             // Initialize AppletManager with priority-based phased startup
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -406,7 +403,7 @@ pub fn run() {
                 // primer segundo de sesión, y recorrer /proc no tiene por qué
                 // competir con lo que dibuja el panel.
                 manager.register(PrivacidadApplet, AppletPriority::Deferred).await;
-                
+
                 manager.start_phased(app_handle).await;
                 logger::log_info("Todos los applets iniciados correctamente");
             });
@@ -435,17 +432,18 @@ pub fn run() {
 /// Sigue a `panel.position`: mover el panel en Configuración lo mueve en el acto.
 ///
 /// El gestor de configuración vigila el archivo y emite `config-changed` cuando
-/// cambia, así que acá sólo hay que volver a leer de qué lado va y acomodar las
-/// dos superficies que dependen de eso: el panel, que se ancla al borde nuevo, y
-/// el centro de control, que se aparta del panel a mano porque le pasa por
-/// encima.
+/// cambia, así que acá sólo hay que volver a leer de qué lado va y acomodar lo
+/// que depende de eso: el panel, que se ancla al borde nuevo; el centro de
+/// control, que se aparta del panel a mano porque le pasa por encima; y el applet
+/// que estuviera abierto, que se cierra porque el botón del que colgaba ya no
+/// está donde estaba.
 ///
 /// # Por qué se compara con la anterior
 ///
 /// `config-changed` se emite por **cualquier** cambio del archivo —el tema, la
 /// fuente, un interruptor del panel—, y son muchos más que los cambios de
-/// posición. Sin la comparación, cada uno reacomodaría las dos superficies para
-/// dejarlas donde ya estaban.
+/// posición. Sin la comparación, cada uno reacomodaría las superficies para
+/// dejarlas donde ya estaban, y cerraría el applet abierto sin motivo.
 ///
 /// # Y por qué el trabajo se marshalla al hilo principal
 ///
@@ -453,34 +451,35 @@ pub fn run() {
 /// de GTK: el registro de superficies es un `thread_local` del hilo principal, y
 /// desde cualquier otro se ve vacío. Hacerlo en el hilo equivocado no falla con
 /// un error, no hace nada.
-fn seguir_la_posicion_del_panel(app: tauri::AppHandle) {
-    let ultima = Arc::new(std::sync::Mutex::new(posicion_del_panel::leer()));
-    let para_el_oyente = app.clone();
+fn follow_panel_position(app: tauri::AppHandle) {
+    let last = Arc::new(std::sync::Mutex::new(panel_position::read()));
+    let listener_app = app.clone();
 
     app.listen("config-changed", move |_| {
-        let nueva = posicion_del_panel::leer();
+        let current = panel_position::read();
 
         {
-            let Ok(mut ultima) = ultima.lock() else {
+            let Ok(mut last) = last.lock() else {
                 logger::log_error("[panel] el candado de la posición quedó envenenado");
                 return;
             };
-            if *ultima == nueva {
+            if *last == current {
                 return;
             }
-            *ultima = nueva;
+            *last = current;
         }
 
         logger::log_info(&format!(
             "[panel] la configuración lo manda a {}",
-            nueva.clave()
+            current.key()
         ));
 
-        let app = para_el_oyente.clone();
+        let app = listener_app.clone();
         unsafe {
             gtk_utils::invoke_on_main(move || {
-                reubicar_panel(&app, nueva);
-                reubicar_control_center(&app, nueva);
+                windows_apps::anchored_applet::close_open_applet(&app);
+                relocate_panel(&app, current);
+                relocate_control_center(&app, current);
             });
         }
     });

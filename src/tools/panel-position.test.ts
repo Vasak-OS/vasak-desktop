@@ -1,27 +1,22 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-	CLASES_DE_LA_BARRA,
-	esVertical,
-	POSICIONES_DEL_PANEL,
-	posicionDelPanel,
-} from './posicion-del-panel';
+import { BAR_CLASSES, isVertical, PANEL_POSITIONS, panelPosition } from './panel-position';
 
-describe('posicionDelPanel', () => {
+describe('panelPosition', () => {
 	test('sin nada puesto, el panel va arriba', () => {
 		// La sección `panel` existe desde antes que esta clave —lleva los
 		// interruptores de los indicadores—, así que el caso normal de una
 		// instalación vieja es que la sección esté y la clave no.
-		expect(posicionDelPanel({})).toBe('top');
-		expect(posicionDelPanel(null)).toBe('top');
-		expect(posicionDelPanel({ panel: {} })).toBe('top');
-		expect(posicionDelPanel({ panel: { weather: false } })).toBe('top');
+		expect(panelPosition({})).toBe('top');
+		expect(panelPosition(null)).toBe('top');
+		expect(panelPosition({ panel: {} })).toBe('top');
+		expect(panelPosition({ panel: { weather: false } })).toBe('top');
 	});
 
 	test('los cuatro lados se leen', () => {
-		for (const lado of POSICIONES_DEL_PANEL) {
-			expect(posicionDelPanel({ panel: { position: lado } })).toBe(lado);
+		for (const side of PANEL_POSITIONS) {
+			expect(panelPosition({ panel: { position: side } })).toBe(side);
 		}
 	});
 
@@ -29,18 +24,18 @@ describe('posicionDelPanel', () => {
 		// El archivo se edita a mano. Con una aserción de tipo, un `"izquierda"`
 		// llegaría hasta las clases de la barra y no coincidiría con ninguna: el
 		// panel se dibujaría sin acomodo.
-		expect(posicionDelPanel({ panel: { position: 'izquierda' } })).toBe('top');
-		expect(posicionDelPanel({ panel: { position: 3 } })).toBe('top');
-		expect(posicionDelPanel({ panel: 'left' })).toBe('top');
+		expect(panelPosition({ panel: { position: 'izquierda' } })).toBe('top');
+		expect(panelPosition({ panel: { position: 3 } })).toBe('top');
+		expect(panelPosition({ panel: 'left' })).toBe('top');
 	});
 });
 
-describe('esVertical', () => {
+describe('isVertical', () => {
 	test('a los costados el panel es una columna', () => {
-		expect(esVertical('top')).toBe(false);
-		expect(esVertical('bottom')).toBe(false);
-		expect(esVertical('left')).toBe(true);
-		expect(esVertical('right')).toBe(true);
+		expect(isVertical('top')).toBe(false);
+		expect(isVertical('bottom')).toBe(false);
+		expect(isVertical('left')).toBe(true);
+		expect(isVertical('right')).toBe(true);
 	});
 });
 
@@ -49,17 +44,17 @@ describe('las clases de la barra', () => {
 		// Los 38 píxeles que reserva la superficie son los mismos de los cuatro
 		// lados: 36 de la barra (`h-9` / `w-9`) más 2 de margen contra el borde
 		// de la pantalla. Lo que cambia es sobre qué eje se estira.
-		for (const lado of POSICIONES_DEL_PANEL) {
-			const clases = CLASES_DE_LA_BARRA[lado].split(' ');
+		for (const side of PANEL_POSITIONS) {
+			const classes = BAR_CLASSES[side].split(' ');
 
-			if (esVertical(lado)) {
-				expect(clases).toContain('flex-col');
-				expect(clases).toContain('w-9');
-				expect(clases).toContain('h-[calc(100vh-8px)]');
+			if (isVertical(side)) {
+				expect(classes).toContain('flex-col');
+				expect(classes).toContain('w-9');
+				expect(classes).toContain('h-[calc(100vh-8px)]');
 			} else {
-				expect(clases).toContain('flex-row');
-				expect(clases).toContain('h-9');
-				expect(clases).toContain('w-[calc(100%-8px)]');
+				expect(classes).toContain('flex-row');
+				expect(classes).toContain('h-9');
+				expect(classes).toContain('w-[calc(100%-8px)]');
 			}
 		}
 	});
@@ -67,10 +62,10 @@ describe('las clases de la barra', () => {
 	test('el margen va contra el borde de la pantalla, no contra las ventanas', () => {
 		// Que es lo que hace el panel de arriba desde siempre: 2 píxeles arriba y
 		// nada abajo, así que la barra queda pegada a lo que haya debajo.
-		expect(CLASES_DE_LA_BARRA.top).toContain('mt-0.5');
-		expect(CLASES_DE_LA_BARRA.bottom).toContain('mb-0.5');
-		expect(CLASES_DE_LA_BARRA.left).toContain('ml-0.5');
-		expect(CLASES_DE_LA_BARRA.right).toContain('mr-0.5');
+		expect(BAR_CLASSES.top).toContain('mt-0.5');
+		expect(BAR_CLASSES.bottom).toContain('mb-0.5');
+		expect(BAR_CLASSES.left).toContain('ml-0.5');
+		expect(BAR_CLASSES.right).toContain('mr-0.5');
 	});
 });
 
@@ -82,10 +77,7 @@ describe('la interfaz y el backend leen la misma clave', () => {
 	 * y nada falla: queda una columna de iconos acostada en una barra
 	 * horizontal.
 	 */
-	const rust = readFileSync(
-		join(import.meta.dir, '../../src-tauri/src/posicion_del_panel.rs'),
-		'utf8'
-	);
+	const rust = readFileSync(join(import.meta.dir, '../../src-tauri/src/panel_position.rs'), 'utf8');
 
 	test('la sección y la clave son las mismas', () => {
 		expect(rust).toContain('get("panel")');
@@ -93,8 +85,8 @@ describe('la interfaz y el backend leen la misma clave', () => {
 	});
 
 	test('y los cuatro valores también', () => {
-		for (const lado of POSICIONES_DEL_PANEL) {
-			expect(rust).toContain(`"${lado}" =>`);
+		for (const side of PANEL_POSITIONS) {
+			expect(rust).toContain(`"${side}" =>`);
 		}
 	});
 });

@@ -1,20 +1,18 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import AppletFrame from '@/components/layouts/AppletFrame.vue';
+import { computed, onMounted, ref } from 'vue';
+import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import type { SystrayPopupPayload, TrayMenu } from '@/interfaces/tray';
 import { getTrayPopupData, trayPopupClick } from '@/services/tray.service';
+import { dismissApplet } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
 
-const currentWindow = getCurrentWindow();
 const data = ref<SystrayPopupPayload | null>(null);
-const leaving = ref(false);
 
 const popupIcon = computed(() => {
 	if (!data.value?.icon_data) return null;
@@ -45,16 +43,7 @@ const renderItems = computed<RenderedTrayItem[]>(() => {
 	return output;
 });
 
-const closeAfterAnimation = () => {
-	leaving.value = true;
-	setTimeout(() => {
-		try {
-			currentWindow.close();
-		} catch {
-			/* window already closed */
-		}
-	}, 200);
-};
+const close = () => dismissApplet('tray').catch(() => undefined);
 
 const handleItemClick = async (item: TrayMenu) => {
 	if (!item.enabled || item.type === 'separator') return;
@@ -63,20 +52,16 @@ const handleItemClick = async (item: TrayMenu) => {
 	} catch (error) {
 		logError('[TrayPopup] Error executing menu action:', error);
 	}
-	closeAfterAnimation();
+	void close();
 };
 
-const onKeydown = (event: KeyboardEvent) => {
-	if (event.key === 'Escape') {
-		closeAfterAnimation();
-	}
-};
-
-const onBlur = () => {
-	closeAfterAnimation();
-};
-
-onMounted(async () => {
+/**
+ * Los datos del icono que se tocó.
+ *
+ * Se piden al montarse y cada vez que el applet vuelve a la vista: es el mismo
+ * applet para todos los iconos de la bandeja, y esconderlo no lo desmonta.
+ */
+const loadData = async () => {
 	try {
 		const payload = await getTrayPopupData();
 		data.value = payload;
@@ -85,21 +70,15 @@ onMounted(async () => {
 		}
 	} catch (error) {
 		logError('[TrayPopup] Error loading popup data:', error);
-		await currentWindow.close();
-		return;
+		void close();
 	}
-	document.addEventListener('keydown', onKeydown);
-	window.addEventListener('blur', onBlur);
-});
+};
 
-onBeforeUnmount(() => {
-	document.removeEventListener('keydown', onKeydown);
-	window.removeEventListener('blur', onBlur);
-});
+onMounted(loadData);
 </script>
 
 <template>
-  <AppletFrame :close-fn="closeAfterAnimation">
+  <AppletPopover applet="tray" @shown="loadData">
     <div class="flex h-full flex-col gap-4">
       <section class="rounded-corner border border-ui-border bg-ui-surface/45 p-4 shadow-sm">
         <div class="flex items-start gap-4 min-w-0">
@@ -198,39 +177,5 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </div>
-  </AppletFrame>
+  </AppletPopover>
 </template>
-
-<style scoped>
-@keyframes scale-in {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes scale-out {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  to {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-}
-
-.enter-active {
-  animation: scale-in 200ms ease-out;
-}
-
-.leave-active {
-  animation: scale-out 200ms ease-in;
-}
-</style>

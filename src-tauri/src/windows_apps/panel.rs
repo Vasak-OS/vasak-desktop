@@ -3,9 +3,9 @@ use tauri::AppHandle;
 
 use crate::logger::{log_error, log_info};
 use crate::monitor_manager::{find_gdk_monitor, get_primary_monitor};
-use crate::posicion_del_panel::{self, PosicionDelPanel};
+use crate::panel_position::{self, PanelPosition};
 use crate::windows_apps::shell_layer::{
-    reubicar_layer_window, spawn_layer_window, Geometria, LayerSpec,
+    relocate_layer_window, spawn_layer_window, Geometry, LayerSpec,
 };
 
 pub const PANEL_LABEL: &str = "panel";
@@ -15,7 +15,7 @@ pub const PANEL_LABEL: &str = "panel";
 /// Tauri informa en píxeles físicos y layer-shell trabaja en lógicos, así que
 /// hay que dividir por la escala: en una pantalla HiDPI el panel pedía el doble
 /// de ancho del que hay.
-fn pantalla_del_panel(
+pub fn panel_screen(
     app: &AppHandle,
 ) -> Result<(gdk::Monitor, f64, f64), Box<dyn std::error::Error>> {
     let primary = get_primary_monitor(app).ok_or("No primary monitor found")?;
@@ -40,21 +40,21 @@ fn pantalla_del_panel(
 /// donde corresponde sin que el cambio de monitores tenga que saber nada de
 /// esto.
 pub fn create_panels(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let (gdk_monitor, ancho, alto) = pantalla_del_panel(app)?;
-    let posicion = posicion_del_panel::leer();
+    let (gdk_monitor, width, height) = panel_screen(app)?;
+    let position = panel_position::read();
 
-    log_info(&format!("[panel] posición: {}", posicion.clave()));
+    log_info(&format!("[panel] posición: {}", position.key()));
 
     spawn_layer_window(
         app,
         PANEL_LABEL,
         "index.html#/panel",
         &gdk_monitor,
-        posicion.tamano(ancho, alto),
+        position.size(width, height),
         LayerSpec {
             namespace: "vasak-panel",
             layer: Layer::Top,
-            anchors: posicion.anclas(),
+            anchors: position.anchors(),
             // Automatic: the panel reserves its strip so windows don't sit under it.
             exclusive_zone: None,
             ..Default::default()
@@ -62,34 +62,34 @@ pub fn create_panels(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
     )
 }
 
-/// Mueve el panel al lado que diga `posicion`, sin volver a crearlo.
+/// Mueve el panel al lado que diga `position`, sin volver a crearlo.
 ///
 /// Sigue en la misma pantalla: la superficie conserva el monitor al que se la
 /// ancló, así que cambiar de lado no la manda a otro. Mover monitores es otra
 /// cosa y la rehace entera.
 ///
-/// Sólo desde el hilo principal de GTK. Ver [`reubicar_layer_window`].
-pub fn reubicar_panel(app: &AppHandle, posicion: PosicionDelPanel) {
-    let (ancho, alto) = match pantalla_del_panel(app) {
-        Ok((_, ancho, alto)) => (ancho, alto),
+/// Sólo desde el hilo principal de GTK. Ver [`relocate_layer_window`].
+pub fn relocate_panel(app: &AppHandle, position: PanelPosition) {
+    let (width, height) = match panel_screen(app) {
+        Ok((_, width, height)) => (width, height),
         Err(error) => {
             log_error(&format!("[panel] no se pudo mover: {error}"));
             return;
         }
     };
 
-    let movido = reubicar_layer_window(
+    let moved = relocate_layer_window(
         PANEL_LABEL,
-        &Geometria {
-            anchors: posicion.anclas(),
-            size: posicion.tamano(ancho, alto),
+        &Geometry {
+            anchors: position.anchors(),
+            size: position.size(width, height),
             margins: (0, 0, 0, 0),
             exclusive_zone: None,
         },
     );
 
-    if movido {
-        log_info(&format!("[panel] movido a {}", posicion.clave()));
+    if moved {
+        log_info(&format!("[panel] moved a {}", position.key()));
     } else {
         log_error("[panel] no está construido: no hay nada que mover");
     }

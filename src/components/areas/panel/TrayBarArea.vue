@@ -25,8 +25,11 @@ import {
 	trayItemSecondaryActivate,
 } from '@/services/tray.service';
 import { animationBudget } from '@/tools/animation.budget';
+import { anchorOf } from '@/tools/applet-anchor';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
+import { createSerialQueue } from '@/tools/serial-queue';
 import { logError, logWarning } from '@/utils/logger';
 
 // Qué partes del panel están encendidas, y de qué lado va la barra: a los
@@ -75,12 +78,30 @@ const refreshTrayItems = async (): Promise<void> => {
 	}
 };
 
+/**
+ * De qué icono es el menú abierto.
+ *
+ * El applet de la bandeja es uno solo para todos los iconos: el backend dice
+ * que está abierto, y esto dice cuál de los iconos lo abrió, para realzar ése.
+ */
+const trayPopupOwner = ref<string | null>(null);
+const { isOpen: trayPopupOpen } = useOpenApplet('tray');
+
+/** Un menú por vez: ver `serial-queue.ts`. */
+const trayPopupQueue = createSerialQueue();
+
+const isTrayPopupOwner = (item: TrayItem) =>
+	trayPopupOpen.value && trayPopupOwner.value === item.service_name;
+
 const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
-	console.log('[TrayPanel] handleTrayClick', event.button, item.service_name, item.menu_path);
 	try {
 		if (event.button === 2) {
 			event.preventDefault();
-			await openTrayPopup({ serviceName: item.service_name });
+			trayPopupOwner.value = item.service_name;
+			// El rectángulo se mide ahora: `currentTarget` sólo vale mientras
+			// dura el evento, y el pedido puede esperar en la fila.
+			const anchor = anchorOf(event.currentTarget) ?? null;
+			await trayPopupQueue(() => openTrayPopup({ serviceName: item.service_name, anchor }));
 		} else if (event.button === 0) {
 			await trayItemActivate({
 				serviceName: item.service_name,
@@ -168,6 +189,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
           'relative flex items-center justify-center w-7 h-7 rounded-corner cursor-pointer transform transition-all duration-300 ease-out hover:bg-white/15 hover:scale-110 hover:rotate-3 active:scale-95 active:rotate-0 group',
           getItemStatusClass(item),
           getItemPulseClass(item),
+          { 'bg-primary text-tx-on-primary': isTrayPopupOwner(item) },
         ]"
         @mousedown.prevent="(e) => handleTrayClick(item, e)"
         @contextmenu.prevent.stop

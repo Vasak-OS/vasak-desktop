@@ -2,6 +2,7 @@ use gtk::prelude::*;
 use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 use crate::logger::log_error;
@@ -39,6 +40,19 @@ pub struct LayerSpec {
     /// what makes a popup behave like a popup — it used to stay open until it
     /// was toggled again, over whatever the person clicked next.
     pub dismiss_on_unfocus: bool,
+    /// Qué hacer en lugar de esconderla en el acto, cuando `dismiss_on_unfocus`
+    /// pide cerrarla.
+    ///
+    /// Los applets lo usan para salir con su animación: avisan a la página, que
+    /// se desvanece, y recién después se esconde la superficie. Sin esto la
+    /// salida es un corte seco.
+    pub on_dismiss: Option<Rc<dyn Fn()>>,
+    /// Se llama cada vez que la superficie se esconde, la esconda quien la
+    /// esconda: Escape, la pérdida de foco, el panel o la propia página.
+    ///
+    /// Es lo que le permite al panel saber que un applet se cerró sin tener que
+    /// adivinarlo.
+    pub on_hide: Option<Box<dyn Fn()>>,
 }
 
 impl Default for LayerSpec {
@@ -52,6 +66,8 @@ impl Default for LayerSpec {
             keyboard: KeyboardMode::None,
             start_hidden: false,
             dismiss_on_unfocus: false,
+            on_dismiss: None,
+            on_hide: None,
         }
     }
 }
@@ -62,7 +78,7 @@ impl Default for LayerSpec {
 /// se mueve de un lado a otro de la pantalla sin volver a crearse, y el centro
 /// de control se corre para no quedar debajo. Lo demás —la capa, el espacio de
 /// nombres, el teclado— se decide una vez y no vuelve a tocarse.
-pub struct Geometria {
+pub struct Geometry {
     /// Bordes anclados: (izquierda, derecha, arriba, abajo).
     pub anchors: (bool, bool, bool, bool),
     /// Lo que mide, en píxeles lógicos.
@@ -77,7 +93,7 @@ pub struct Geometria {
 ///
 /// Se aplica igual al crearla y al moverla: `gtk-layer-shell` acepta los cuatro
 /// cambios en caliente, así que cambiar de lado es esto y nada más.
-fn aplicar_geometria(layer_win: &gtk::Window, geo: &Geometria) {
+fn apply_geometry(layer_win: &gtk::Window, geo: &Geometry) {
     let (left, right, top, bottom) = geo.anchors;
     let (width, height) = geo.size;
 
@@ -151,9 +167,9 @@ pub fn spawn_layer_window(
     layer_win.set_namespace(spec.namespace);
     layer_win.set_layer(spec.layer);
 
-    aplicar_geometria(
+    apply_geometry(
         &layer_win,
-        &Geometria {
+        &Geometry {
             anchors: spec.anchors,
             size,
             margins: spec.margins,
@@ -170,16 +186,22 @@ pub fn spawn_layer_window(
         // Escape and focus loss are handled here rather than in the page: the
         // surface owns the keyboard, and a click that lands on another window
         // never reaches the webview at all.
-        layer_win.connect_key_press_event(|window, event| {
+        let dismiss: Rc<dyn Fn(&gtk::Window)> = match spec.on_dismiss {
+            Some(on_dismiss) => Rc::new(move |_| on_dismiss()),
+            None => Rc::new(|window: &gtk::Window| window.hide()),
+        };
+
+        let on_escape = dismiss.clone();
+        layer_win.connect_key_press_event(move |window, event| {
             if event.keyval() == gdk::keys::constants::Escape {
-                window.hide();
+                on_escape(window);
                 return glib::Propagation::Stop;
             }
             glib::Propagation::Proceed
         });
 
-        layer_win.connect_focus_out_event(|window, _| {
-            window.hide();
+        layer_win.connect_focus_out_event(move |window, _| {
+            dismiss(window);
             glib::Propagation::Proceed
         });
     }
@@ -187,6 +209,12 @@ pub fn spawn_layer_window(
     layer_win.show_all();
     if spec.start_hidden {
         layer_win.hide();
+    }
+
+    // Después de la primera vez que se esconde, que es parte de construirla y
+    // no algo que haya que anunciar.
+    if let Some(on_hide) = spec.on_hide {
+        layer_win.connect_hide(move |_| on_hide());
     }
     gtk_window.hide();
 
@@ -255,14 +283,14 @@ fn apply_transparency(layer_win: &gtk::Window) {
 /// el hilo principal de GTK, que es donde vive el registro: desde cualquier
 /// otro hilo el registro se ve vacío y la respuesta sería `false` esté o no la
 /// ventana en pantalla.
-pub fn reubicar_layer_window(label: &str, geo: &Geometria) -> bool {
+pub fn relocate_layer_window(label: &str, geo: &Geometry) -> bool {
     LAYER_WINDOWS
         .try_with(|windows| {
             let windows = windows.borrow();
             let Some(window) = windows.get(label) else {
                 return false;
             };
-            aplicar_geometria(window, geo);
+            apply_geometry(window, geo);
             true
         })
         .unwrap_or(false)

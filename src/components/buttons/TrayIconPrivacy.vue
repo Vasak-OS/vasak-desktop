@@ -4,7 +4,9 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
-import { privacyInUse, togglePrivacyApplet } from '@/services/core.service';
+import { privacyInUse } from '@/services/core.service';
+import { toggleApplet } from '@/services/window.service';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { useEventListener } from '@/tools/event.listener';
 import { logWarning } from '@/utils/logger';
 
@@ -24,41 +26,49 @@ import { logWarning } from '@/utils/logger';
  * El estado se pregunta al montarse y después se escucha: el panel se destruye
  * y se vuelve a crear al cambiar de monitor, y el escritorio no repite un
  * anuncio igual al anterior.
+ *
+ * Los campos del estado (`camara`, `aplicacion`…) son los que manda el applet de
+ * Rust (`applets/privacidad.rs`) y se leen tal cual.
  */
-interface Uso {
+interface Usage {
 	aplicacion: string;
 	detalle: string;
 }
 
+interface PrivacyState {
+	camara?: Usage[];
+	microfono?: Usage[];
+	pantalla?: Usage[];
+}
+
 const { t } = useI18n();
 
-const camara = ref<Uso[]>([]);
-const microfono = ref<Uso[]>([]);
-const pantalla = ref<Uso[]>([]);
+const camera = ref<Usage[]>([]);
+const microphone = ref<Usage[]>([]);
+const screen = ref<Usage[]>([]);
 
 /** Si ya llegó un anuncio, la respuesta de la consulta inicial es vieja. */
-const yaLlegoUnAnuncio = ref(false);
+const announced = ref(false);
 
-useEventListener<{ camara: Uso[]; microfono: Uso[]; pantalla: Uso[] }>(
-	'privacidad-en-uso',
-	(event) => {
-		yaLlegoUnAnuncio.value = true;
-		camara.value = event.payload.camara ?? [];
-		microfono.value = event.payload.microfono ?? [];
-		pantalla.value = event.payload.pantalla ?? [];
-	}
-);
+const apply = (state: PrivacyState | null | undefined) => {
+	camera.value = state?.camara ?? [];
+	microphone.value = state?.microfono ?? [];
+	screen.value = state?.pantalla ?? [];
+};
+
+useEventListener<PrivacyState>('privacidad-en-uso', (event) => {
+	announced.value = true;
+	apply(event.payload);
+});
 
 onMounted(async () => {
 	try {
-		const estado = await privacyInUse<{ camara: Uso[]; microfono: Uso[]; pantalla: Uso[] }>();
+		const state = await privacyInUse<PrivacyState>();
 		// La consulta sale antes de que el applet pueda anunciar y vuelve
 		// después: aplicarla sin mirar pisaría con la foto vieja lo que acaba
 		// de llegar por el evento.
-		if (yaLlegoUnAnuncio.value) return;
-		camara.value = estado?.camara ?? [];
-		microfono.value = estado?.microfono ?? [];
-		pantalla.value = estado?.pantalla ?? [];
+		if (announced.value) return;
+		apply(state);
 	} catch (error) {
 		// El applet es diferido: si todavía no arrancó, el primer anuncio llega
 		// por el evento igual y esto no tiene nada que arreglar.
@@ -76,45 +86,48 @@ onMounted(async () => {
  * `ThemeIcon` en la plantilla, que además lo vuelve a pedir cuando la persona
  * cambia de tema.
  */
-const simbolos = computed(() => {
-	const puestos: { clave: string; icono: string; texto: string }[] = [];
-	if (camara.value.length > 0)
-		puestos.push({
-			clave: 'camara',
-			icono: 'camera-web',
-			texto: t('components.TrayIconPrivacy.camera'),
+const symbols = computed(() => {
+	const shown: { key: string; icon: string; text: string }[] = [];
+	if (camera.value.length > 0)
+		shown.push({
+			key: 'camera',
+			icon: 'camera-web',
+			text: t('components.TrayIconPrivacy.camera'),
 		});
-	if (microfono.value.length > 0)
-		puestos.push({
-			clave: 'microfono',
-			icono: 'microphone-sensitivity-high',
-			texto: t('components.TrayIconPrivacy.microphone'),
+	if (microphone.value.length > 0)
+		shown.push({
+			key: 'microphone',
+			icon: 'microphone-sensitivity-high',
+			text: t('components.TrayIconPrivacy.microphone'),
 		});
-	if (pantalla.value.length > 0)
-		puestos.push({
-			clave: 'pantalla',
-			icono: 'video-display',
-			texto: t('components.TrayIconPrivacy.screen'),
+	if (screen.value.length > 0)
+		shown.push({
+			key: 'screen',
+			icon: 'video-display',
+			text: t('components.TrayIconPrivacy.screen'),
 		});
-	return puestos;
+	return shown;
 });
 
-const visible = computed(() => simbolos.value.length > 0);
+const visible = computed(() => symbols.value.length > 0);
 
 /** Una línea por aplicación: pueden ser varias a la vez, y de las tres clases. */
-const detalle = computed(() => {
-	const lineas = [...camara.value, ...microfono.value, ...pantalla.value].map((uso) =>
+const detail = computed(() => {
+	const lines = [...camera.value, ...microphone.value, ...screen.value].map((usage) =>
 		t('components.TrayIconPrivacy.usedBy')
-			.replace('{0}', uso.aplicacion)
-			.replace('{1}', uso.detalle)
+			.replace('{0}', usage.aplicacion)
+			.replace('{1}', usage.detalle)
 	);
-	const titulo = simbolos.value.map((simbolo) => simbolo.texto).join(' · ');
-	return [titulo, ...lineas].join('\n');
+	const title = symbols.value.map((symbol) => symbol.text).join(' · ');
+	return [title, ...lines].join('\n');
 });
 
-const abrir = async () => {
+const button = ref<HTMLButtonElement | null>(null);
+const { openClasses } = useOpenApplet('privacy');
+
+const open = async () => {
 	try {
-		await togglePrivacyApplet();
+		await toggleApplet('privacy', button.value);
 	} catch (error) {
 		logWarning('[TrayIconPrivacy] no se pudo abrir el applet:', error);
 	}
@@ -124,19 +137,21 @@ const abrir = async () => {
 <template>
   <button
     v-if="visible"
+    ref="button"
     type="button"
     class="theme-transition p-1 rounded-corner relative flex items-center gap-1 cursor-pointer hover:bg-primary transition-all duration-300"
-    :title="detalle"
-    :aria-label="detalle"
-    @click="abrir"
+    :class="openClasses"
+    :title="detail"
+    :aria-label="detail"
+    @click="open"
   >
     <ThemeIcon
-      v-for="simbolo in simbolos"
-      :key="simbolo.clave"
-      :name="simbolo.icono"
+      v-for="symbol in symbols"
+      :key="symbol.key"
+      :name="symbol.icon"
       type="symbol"
       :size="22"
-      :alt="simbolo.texto"
+      :alt="symbol.text"
       class="transition-all duration-300"
     />
   </button>

@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.17.2",
+	"version": "1.18.0",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -19,10 +19,10 @@
 	},
 	"dependencies": {
 		"@tailwindcss/vite": "^4.3.3",
-		"@tauri-apps/api": "^2.11.1",
-		"@tauri-apps/plugin-fs": "^2.5.2",
-		"@tauri-apps/plugin-opener": "~2.5.5",
-		"@tauri-apps/plugin-shell": "~2.3.6",
+		"@tauri-apps/api": "^2.12.0",
+		"@tauri-apps/plugin-fs": "^2.6.0",
+		"@tauri-apps/plugin-opener": "^2.6.0",
+		"@tauri-apps/plugin-shell": "^2.4.0",
 		"@vasakgroup/plugin-bluetooth-manager": "^2.0.3",
 		"@vasakgroup/plugin-config-manager": "~2.6.1",
 		"@vasakgroup/plugin-network-manager": "^2.2.0",
@@ -39,7 +39,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.14",
 		"@tailwindcss/postcss": "^4.3.3",
-		"@tauri-apps/cli": "^2.11.5",
+		"@tauri-apps/cli": "^2.12.0",
 		"@types/node": "^26.6.2",
 		"@vitejs/plugin-vue": "^6.0.9",
 		"postcss": "^8.5.28",

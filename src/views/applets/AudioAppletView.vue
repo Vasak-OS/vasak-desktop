@@ -1,14 +1,12 @@
-
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 
 import SystemAudioArea from '@/components/areas/audio/SystemAudioArea.vue';
-import AppletFrame from '@/components/layouts/AppletFrame.vue';
-import { toggleAudioApplet } from '@/services/window.service';
+import AppletPopover from '@/components/layouts/AppletPopover.vue';
 </script>
 
 <template>
-  <AppletFrame :close-fn="toggleAudioApplet">
+  <AppletPopover applet="audio">
     <SystemAudioArea />
-  </AppletFrame>
+  </AppletPopover>
 </template>

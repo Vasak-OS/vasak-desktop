@@ -1,0 +1,166 @@
+import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { anchorFromQuery, anchorOf, appletTransformOrigin } from './applet-anchor';
+import { applyAppletChanged, openAppletForTests } from './composables/useOpenApplet';
+
+const ROOT = join(import.meta.dir, '..', '..');
+const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
+
+describe('de dónde crece un applet', () => {
+	test('con el panel arriba, desde el botón y el borde de arriba', () => {
+		expect(appletTransformOrigin({ side: 'top', origin: 120 })).toBe('120px 0%');
+	});
+
+	test('con el panel abajo, desde el botón y el borde de abajo', () => {
+		expect(appletTransformOrigin({ side: 'bottom', origin: 120 })).toBe('120px 100%');
+	});
+
+	test('a los costados, desde el borde que toca el panel y la altura del botón', () => {
+		expect(appletTransformOrigin({ side: 'left', origin: 80 })).toBe('0% 80px');
+		expect(appletTransformOrigin({ side: 'right', origin: 80 })).toBe('100% 80px');
+	});
+
+	test('sin anclaje, desde el centro del borde de arriba', () => {
+		// Es donde está el panel por omisión: una página abierta sin que el
+		// backend dijera nada sigue creciendo desde el lado más probable.
+		expect(appletTransformOrigin(null)).toBe('50% 0%');
+	});
+
+	test('un origen que no es un número no se escribe en el estilo', () => {
+		// `NaNpx` no es un `transform-origin`: el navegador descarta la regla y
+		// el applet crece desde el centro, que es justo lo que se vino a sacar.
+		expect(appletTransformOrigin({ side: 'top', origin: Number.NaN })).toBe('50% 0%');
+		expect(appletTransformOrigin({ side: 'left', origin: -5 })).toBe('0% 0px');
+	});
+});
+
+describe('el anclaje que viene en la ruta', () => {
+	test('se lee el lado y el origen', () => {
+		expect(anchorFromQuery({ side: 'bottom', origin: '212.5' })).toEqual({
+			side: 'bottom',
+			origin: 212.5,
+		});
+	});
+
+	test('un lado que no existe o un origen que no se entiende descartan todo', () => {
+		expect(anchorFromQuery({ side: 'arriba', origin: '10' })).toBeNull();
+		expect(anchorFromQuery({ side: 'top', origin: 'mucho' })).toBeNull();
+		expect(anchorFromQuery({ side: 'top' })).toBeNull();
+		expect(anchorFromQuery({})).toBeNull();
+	});
+
+	test('con la clave repetida, vale la primera', () => {
+		expect(anchorFromQuery({ side: ['right', 'top'], origin: ['40', '0'] })).toEqual({
+			side: 'right',
+			origin: 40,
+		});
+	});
+});
+
+describe('el rectángulo del botón', () => {
+	const rect = { x: 10, y: 2, width: 30, height: 34 };
+	const element = { getBoundingClientRect: () => ({ ...rect, top: 2, toJSON: () => null }) };
+
+	test('se mide del elemento, sin lo que no viaja', () => {
+		expect(anchorOf(element)).toEqual(rect);
+	});
+
+	test('y también del componente, que es lo que da un `ref` sobre uno de la librería', () => {
+		expect(anchorOf({ $el: element })).toEqual(rect);
+	});
+
+	test('sin nada que medir no hay rectángulo, y el backend centra el applet', () => {
+		expect(anchorOf(null)).toBeUndefined();
+		expect(anchorOf(undefined)).toBeUndefined();
+		expect(anchorOf({ $el: null })).toBeUndefined();
+		expect(anchorOf({})).toBeUndefined();
+	});
+});
+
+describe('qué applet está abierto', () => {
+	test('lo dice el backend, abra o cierre quien sea', () => {
+		applyAppletChanged({ applet: 'audio' });
+		expect(openAppletForTests.value).toBe('audio');
+
+		applyAppletChanged({ applet: null });
+		expect(openAppletForTests.value).toBeNull();
+
+		applyAppletChanged(undefined);
+		expect(openAppletForTests.value).toBeNull();
+	});
+});
+
+describe('AppletPopover', () => {
+	const popover = read('src/components/layouts/AppletPopover.vue');
+
+	test('el origen de la animación sale del anclaje', () => {
+		expect(popover).toContain('appletTransformOrigin(anchor.value)');
+		expect(popover).toContain(':style="{ transformOrigin }"');
+	});
+
+	test('entra con opacidad y escala desde 0.96, en 180 ms', () => {
+		expect(popover).toMatch(/applet-popover-in[\s\S]*scale\(0\.96\)/);
+		expect(popover).toContain('animation: applet-popover-in 180ms');
+	});
+
+	test('sin movimiento, sólo opacidad', () => {
+		const reduced = popover.slice(popover.indexOf('@media (prefers-reduced-motion: reduce)'));
+		expect(reduced).toContain('applet-popover-fade-in');
+		expect(reduced).toContain('applet-popover-fade-out');
+		expect(reduced).not.toContain('scale');
+	});
+
+	test('la raíz de la plantilla es un solo elemento', () => {
+		// Un comentario antes de la raíz la vuelve fragmento y las clases que se
+		// le pasan desde afuera dejan de caer en algún lado.
+		const template = popover.slice(popover.indexOf('<template>') + '<template>'.length).trimStart();
+		expect(template.startsWith('<div')).toBe(true);
+	});
+
+	test('los applets usan el contenedor nuevo, y el viejo no existe', () => {
+		for (const view of [
+			'AudioAppletView',
+			'BluetoothAppletView',
+			'NetworkAppletView',
+			'PrivacyAppletView',
+			'TrayPopupView',
+			'TwingateAppletView',
+		]) {
+			const source = read(`src/views/applets/${view}.vue`);
+			expect(source).toContain('<AppletPopover applet="');
+			expect(source).not.toContain('AppletFrame');
+		}
+	});
+});
+
+describe('la interfaz y el backend nombran los mismos applets', () => {
+	/**
+	 * El panel pide un applet por su nombre y el backend lo busca en su tabla.
+	 * Si los dos se separan, el botón no abre nada y ninguna compilación lo
+	 * dice: Tauri devuelve un error que sólo se ve en el registro.
+	 */
+	const rust = read('src-tauri/src/windows_apps/anchored_applet.rs');
+	const service = read('src/services/window.service.ts');
+	const routes = read('src/routes/index.ts');
+
+	const rustApplets = [...rust.matchAll(/id: "([a-z-]+)",\s*route: "([a-z-]+)"/g)].map(
+		([, id, route]) => ({ id, route })
+	);
+	const declared = service
+		.slice(service.indexOf('export type AppletId ='))
+		.split(';')[0]
+		.match(/'([a-z-]+)'/g)
+		?.map((quoted) => quoted.slice(1, -1));
+
+	test('los mismos nombres', () => {
+		expect(rustApplets.length).toBeGreaterThan(0);
+		expect(declared?.sort()).toEqual(rustApplets.map(({ id }) => id).sort());
+	});
+
+	test('y cada ruta del backend existe en la interfaz', () => {
+		for (const { route } of rustApplets) {
+			expect(routes).toContain(`path: '${route}'`);
+		}
+	});
+});

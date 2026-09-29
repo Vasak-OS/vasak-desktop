@@ -1,6 +1,6 @@
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { computed } from 'vue';
-import { esVertical, posicionDelPanel } from '@/tools/posicion-del-panel';
+import { isVertical, panelPosition } from '@/tools/panel-position';
 
 /**
  * Qué muestra el panel y de qué lado va.
@@ -19,17 +19,17 @@ import { esVertical, posicionDelPanel } from '@/tools/posicion-del-panel';
 export function usePanelConfig() {
 	const configStore = useConfigStore();
 
-	const seccion = computed(() => (configStore as any).config?.panel ?? {});
-	const posicion = computed(() => posicionDelPanel((configStore as any).config));
+	const section = computed(() => (configStore as any).config?.panel ?? {});
+	const position = computed(() => panelPosition((configStore as any).config));
 
 	return {
-		showWeather: computed(() => seccion.value.weather !== false),
-		showMusic: computed(() => seccion.value.music !== false),
-		showTransfer: computed(() => seccion.value.transfer !== false),
-		showTray: computed(() => seccion.value.tray !== false),
-		showPrivacy: computed(() => seccion.value.privacy !== false),
-		posicion,
+		showWeather: computed(() => section.value.weather !== false),
+		showMusic: computed(() => section.value.music !== false),
+		showTransfer: computed(() => section.value.transfer !== false),
+		showTray: computed(() => section.value.tray !== false),
+		showPrivacy: computed(() => section.value.privacy !== false),
+		position,
 		/** `true` cuando el panel es una columna, que es lo que más se pregunta. */
-		vertical: computed(() => esVertical(posicion.value)),
+		vertical: computed(() => isVertical(position.value)),
 	};
 }

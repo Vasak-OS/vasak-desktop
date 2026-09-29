@@ -1,6 +1,6 @@
 [package]
 name = "vasak-desktop"
-version = "1.17.2"
+version = "1.18.0"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -44,6 +44,13 @@ tauri-plugin-network-manager = "2"
 #tauri-plugin-bluetooth-manager = { path = "../../tauri-plugin-bluetooth-manager" }
 tauri-plugin-bluetooth-manager = "2"
 tauri-plugin-fs = "2"
+# Se quedan en 4 a propósito. La 5 no compila tal cual: saca `zbus::MessageType`,
+# vuelve privados los proxys generados que usa la bandeja (`SniItemProxy`,
+# `DbusMenuProxy`) y cambia cómo se deserializan `str` y los mapas de bits de
+# los iconos — quince errores, todos en la bandeja del sistema y el menú de
+# DBus. Migrarlo es tocar lo que dibuja los iconos de otras aplicaciones y sus
+# menús, y eso no lo verifica ninguna prueba. Condición de salida: un PR propio
+# que lo pruebe en una sesión con aplicaciones en la bandeja.
 zbus = { version = "4", default-features = false, features = ["async-io"] }
 zvariant = "4"
 libc = "0.2"

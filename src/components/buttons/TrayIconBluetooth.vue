@@ -5,9 +5,10 @@
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { TrayIconButton } from '@vasakgroup/vue-libvasak';
-import { computed } from 'vue';
-import { toggleBluetoothApplet } from '@/services/window.service';
+import { computed, ref } from 'vue';
+import { toggleApplet } from '@/services/window.service';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -21,9 +22,12 @@ const bluetoothIcon = computed(() => {
 	return connectedDevicesCount.value > 0 ? 'bluetooth-active-symbolic' : 'bluetooth-symbolic';
 });
 
+const button = ref<unknown>(null);
+const { openClasses } = useOpenApplet('bluetooth');
+
 const toggleBluetooth = async (): Promise<void> => {
 	try {
-		await toggleBluetoothApplet();
+		await toggleApplet('bluetooth', button.value);
 	} catch (error) {
 		logError('Error toggling bluetooth applet:', error);
 	}
@@ -32,6 +36,7 @@ const toggleBluetooth = async (): Promise<void> => {
 
 <template>
   <TrayIconButton
+    ref="button"
     :name="bluetoothIcon"
     :tooltip="isBluetoothOn
       ? t('components.TrayIconBluetooth.statusOn')
@@ -39,6 +44,7 @@ const toggleBluetooth = async (): Promise<void> => {
     :alt="t('components.TrayIconBluetooth.iconAlt')"
     :badge="isBluetoothOn && connectedDevicesCount > 0 ? connectedDevicesCount : null"
     :icon-class="{ 'filter brightness-75': !isBluetoothOn }"
+    :custom-class="openClasses"
     @click="toggleBluetooth"
   />
 </template>

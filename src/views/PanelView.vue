@@ -22,7 +22,7 @@ import { toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
 import { hayNotificacionesNuevas } from '@/tools/notificaciones';
-import { CLASES_DE_LA_BARRA } from '@/tools/posicion-del-panel';
+import { BAR_CLASSES } from '@/tools/panel-position';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -37,7 +37,7 @@ const { t } = useI18n();
  * Es reactivo, así que mover el panel en Configuración lo acomoda en el acto,
  * al mismo tiempo que la superficie se reancla.
  */
-const { posicion, vertical } = usePanelConfig();
+const { position, vertical } = usePanelConfig();
 
 /**
  * El clic derecho del panel: sólo cosas del panel.
@@ -215,7 +215,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 	<nav
 		@contextmenu.prevent="abrirMenuDelPanel"
 		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80"
-		:class="CLASES_DE_LA_BARRA[posicion]"
+		:class="BAR_CLASSES[position]"
 	>
     <div class="flex items-center gap-1" :class="vertical ? 'flex-col' : ''">
       <!-- Un botón y no una imagen con `@click`: así se alcanza con el teclado

@@ -62,9 +62,7 @@ fn instalado() -> bool {
     // cliente esté; `which` sigue las mismas reglas que el `Command` de abajo.
     std::path::Path::new("/usr/bin/twingate").exists()
         || std::env::var_os("PATH")
-            .map(|rutas| {
-                std::env::split_paths(&rutas).any(|dir| dir.join(BINARY).exists())
-            })
+            .map(|rutas| std::env::split_paths(&rutas).any(|dir| dir.join(BINARY).exists()))
             .unwrap_or(false)
 }
 
@@ -191,7 +189,11 @@ pub async fn twingate_info() -> TwingateInfo {
         };
     }
 
-    let status = correr(&["status"]).await.unwrap_or_default().trim().to_string();
+    let status = correr(&["status"])
+        .await
+        .unwrap_or_default()
+        .trim()
+        .to_string();
     let connected = status.eq_ignore_ascii_case("online");
 
     // Sin sesión, pedir los recursos devuelve una frase y no una tabla: se evita
@@ -248,34 +250,6 @@ pub async fn twingate_authorize(resource: String) -> Result<(), String> {
         .args(["auth", &resource])
         .spawn()
         .map_err(|error| format!("no se pudo pedir la autorización: {error}"))?;
-
-    Ok(())
-}
-
-/// Abre o esconde el applet de Twingate.
-#[tauri::command]
-pub fn toggle_twingate_applet(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::{async_runtime::spawn, Emitter, Manager};
-
-    if let Some(ventana) = app.get_webview_window("applet_twingate") {
-        if ventana.is_visible().unwrap_or(false) {
-            let _ = ventana.hide();
-        } else {
-            // `window-shown` es lo que hace que la vista vuelva a preguntar:
-            // esconder no destruye el webview, así que Vue no se monta de nuevo.
-            let _ = ventana.emit("window-shown", ());
-            let _ = ventana.show();
-            let _ = ventana.set_focus();
-        }
-
-        return Ok(());
-    }
-
-    spawn(async move {
-        if let Err(error) = crate::windows_apps::create_applet_twingate_window(app).await {
-            eprintln!("[twingate] No se pudo abrir el applet: {error}");
-        }
-    });
 
     Ok(())
 }

@@ -4,7 +4,7 @@
 
 import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import { onMounted } from 'vue';
-import { toggleNetworkApplet } from '@/services/window.service';
+import { toggleApplet } from '@/services/window.service';
 import { useNetworkState } from '@/tools/composables/useNetworkState';
 
 const {
@@ -53,7 +53,7 @@ onMounted(async () => {
 				'ring-2 ring-primary': vpnConnected,
 				'ring-2 ring-status-error': !networkState.is_connected,
 			}"
-			@click="toggleNetworkApplet"
+			@click="toggleApplet('network')"
 		/>
 	</div>
 </template>
