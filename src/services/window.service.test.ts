@@ -64,4 +64,3 @@ describe('cerrar un applet', () => {
 		expect(calls).toEqual([{ cmd: 'dismiss_applet', args: { applet: 'tray' } }]);
 	});
 });
-
