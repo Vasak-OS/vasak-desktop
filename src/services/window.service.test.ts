@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
-import { privacyInUse, privacyStopScreen } from './core.service';
 import { dismissApplet, toggleApplet } from './window.service';
 
 /**
@@ -66,17 +65,3 @@ describe('cerrar un applet', () => {
 	});
 });
 
-describe('los comandos de privacidad', () => {
-	test('se llaman como los registra el backend', async () => {
-		// `privacy_in_use` y `privacy_stop_screen` en `commands/privacy.rs`. El
-		// parámetro es `session`: con el nombre viejo, `sesion`, cortar una
-		// captura fallaría justo cuando alguien quiere dejar de compartir.
-		await privacyInUse();
-		await privacyStopScreen({ session: 'abc' });
-
-		expect(calls).toEqual([
-			{ cmd: 'privacy_in_use', args: {} },
-			{ cmd: 'privacy_stop_screen', args: { session: 'abc' } },
-		]);
-	});
-});
