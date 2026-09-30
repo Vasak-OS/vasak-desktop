@@ -1,5 +1,9 @@
 import { listen } from '@tauri-apps/api/event';
-import { getConnectedDevicesCount, getDefaultAdapter } from '@vasakgroup/plugin-bluetooth-manager';
+import {
+	BluetoothChangeType,
+	getConnectedDevicesCount,
+	getDefaultAdapter,
+} from '@vasakgroup/plugin-bluetooth-manager';
 import { computed, onMounted, onUnmounted, type Ref, ref } from 'vue';
 import type {
 	BluetoothChangePayload,
@@ -87,18 +91,18 @@ export const applyBluetoothChange = (
 	payload: BluetoothChangePayload,
 	state: BluetoothStateRefs
 ) => {
-	const { change_type, data } = payload;
+	const { changeType, data } = payload;
 
 	const handlers: Record<string, (data: any, state: BluetoothStateRefs) => void> = {
-		'adapter-property-changed': handleAdapterPropertyChanged,
-		'device-added': handleDeviceAdded,
-		'device-removed': handleDeviceRemoved,
-		'device-connected': handleDeviceUpdate,
-		'device-property-changed': handleDeviceUpdate,
-		'device-disconnected': handleDeviceDisconnected,
+		[BluetoothChangeType.ADAPTER_PROPERTY_CHANGED]: handleAdapterPropertyChanged,
+		[BluetoothChangeType.DEVICE_ADDED]: handleDeviceAdded,
+		[BluetoothChangeType.DEVICE_REMOVED]: handleDeviceRemoved,
+		[BluetoothChangeType.DEVICE_CONNECTED]: handleDeviceUpdate,
+		[BluetoothChangeType.DEVICE_PROPERTY_CHANGED]: handleDeviceUpdate,
+		[BluetoothChangeType.DEVICE_DISCONNECTED]: handleDeviceDisconnected,
 	};
 
-	const handler = handlers[change_type];
+	const handler = handlers[changeType];
 	if (handler) {
 		handler(data, state);
 	}
