@@ -4931,9 +4931,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-bluetooth-manager"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "484186f435ff4d8cd382978ee33aeb16b175d09966156a724ca93259c5cab932"
+checksum = "2228b5a99405d2ea00eedc03a3da0ef1cff5b11b164815f8bd2487cd39cb7773"
 dependencies = [
  "dirs 6.0.0",
  "futures",
@@ -4942,6 +4942,7 @@ dependencies = [
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.21",
+ "tokio",
  "tracing",
  "tracing-subscriber",
  "zbus 4.4.0",
@@ -5798,7 +5799,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "vasak-desktop"
-version = "1.18.1"
+version = "1.18.2"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -6727,9 +6728,9 @@ dependencies = [
 
 [[package]]
 name = "yoke-derive"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33811428bee40dbceb6d545e95754741d17a6aef9a4849f0fd62e2ba4f412a78"
+checksum = "ec8ebde2db3681e8c9980cc27822030e68752690ddfa9473e739aeb4dbde6d71"
 dependencies = [
  "proc-macro2",
  "quote",

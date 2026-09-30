@@ -12,6 +12,10 @@ trait SniItem {
     /// SecondaryActivate method  
     fn secondary_activate(&self, x: i32, y: i32) -> zbus::Result<()>;
 
+    /// ContextMenu: que el programa muestre su propio menú. Es lo que pide la
+    /// especificación para los items que no publican uno por `com.canonical.dbusmenu`.
+    fn context_menu(&self, x: i32, y: i32) -> zbus::Result<()>;
+
     /// Scroll method
     fn scroll(&self, delta: i32, orientation: &str) -> zbus::Result<()>;
 

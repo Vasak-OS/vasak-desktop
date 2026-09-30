@@ -97,15 +97,9 @@ views:
       notifications: Notification centre
       systemSettings: System settings
     tray:
-      fallbackTitle: Tray
-      iconAlt: Tray icon
-      itemCount: "{0} items"
-      statusFallback: Tray active
-      actionsTitle: Tray actions
-      actionsHint: Tray right click
-      noItems: No items available for this tray.
-      submenu: Submenu
-      disabled: Disabled
+      fallbackTitle: Application
+      menuLabel: "{0} menu"
+      noItems: This application has no actions.
 
 components:
   AudioDeviceSelector:
