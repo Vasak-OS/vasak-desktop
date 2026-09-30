@@ -194,8 +194,8 @@ const CHIP =
 
 			<!-- El selector de salida, encima de la tarjeta: el applet mide lo
 			     que mide y una lista que empujara la tarjeta la sacaría de la
-			     ventana. Elegir una de varias es un `radiogroup`, igual que en el
-			     applet de audio. -->
+			     ventana. Elegir una de varias es un grupo de `radio` nativos: así
+			     se anuncia cuál está puesta y las flechas pasan de una a otra. -->
 			<div
 				v-if="pickingOutput"
 				class="absolute inset-0 z-10 flex min-h-0 flex-col gap-2 rounded-corner bg-ui-surface p-2"
@@ -216,27 +216,27 @@ const CHIP =
 				<p v-if="devices.length === 0" class="px-2 text-xs text-tx-muted">
 					{{ t('views.musicApplet.noOutputs') }}
 				</p>
-				<div
-					v-else
-					class="flex min-h-0 flex-col gap-1 overflow-y-auto"
-					role="radiogroup"
-					:aria-label="t('views.musicApplet.chooseOutput')"
-				>
-					<button
+				<fieldset v-else class="flex min-h-0 flex-col gap-1 overflow-y-auto">
+					<legend class="sr-only">{{ t('views.musicApplet.chooseOutput') }}</legend>
+					<label
 						v-for="device in devices"
 						:key="device.id"
-						type="button"
-						role="radio"
-						:aria-checked="device.id === output?.id"
-						:disabled="switching !== null"
-						class="flex w-full items-center gap-2 rounded-corner px-2 py-1.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-wait"
+						class="flex w-full cursor-pointer items-center gap-2 rounded-corner px-2 py-1.5 text-left text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary has-[:disabled]:cursor-wait"
 						:class="device.id === output?.id ? 'bg-primary text-tx-on-primary' : 'text-tx-main hover:bg-primary/20'"
-						@click="chooseOutput(device)"
 					>
+						<input
+							type="radio"
+							name="music-applet-output"
+							class="sr-only"
+							:value="device.id"
+							:checked="device.id === output?.id"
+							:disabled="switching !== null"
+							@change="chooseOutput(device)"
+						/>
 						<ThemeIcon :name="outputIcon(device)" type="symbol" :size="16" />
 						<span class="min-w-0 flex-1 truncate">{{ outputLabel(device) }}</span>
-					</button>
-				</div>
+					</label>
+				</fieldset>
 			</div>
 		</div>
 	</AppletPopover>

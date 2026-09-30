@@ -86,45 +86,26 @@ impl AppletSpec {
 }
 
 /// Los applets que hay.
+// Una fila por applet, sin que `rustfmt` la abra en cinco: es una tabla, y
+// leída como tabla se ve de un vistazo qué applets hay y cuánto mide cada uno.
+// Abierta, cada fila era el mismo bloque de cinco líneas y el analizador de
+// duplicados la contaba como código copiado.
+#[rustfmt::skip]
 pub const APPLETS: &[AppletSpec] = &[
-    AppletSpec {
-        id: "bluetooth",
-        route: "bluetooth",
-        size: (700.0, 620.0),
-    },
-    AppletSpec {
-        id: "network",
-        route: "network",
-        size: (700.0, 620.0),
-    },
-    AppletSpec {
-        id: "audio",
-        route: "audio",
-        size: (700.0, 620.0),
-    },
+    AppletSpec { id: "bluetooth", route: "bluetooth", size: (700.0, 620.0) },
+    AppletSpec { id: "network", route: "network", size: (700.0, 620.0) },
+    AppletSpec { id: "audio", route: "audio", size: (700.0, 620.0) },
     // El menú de un icono de la bandeja. Los datos los deja `open_tray_popup`
     // antes de abrirlo, y con ellos el tamaño (`tray_menu_size`): esto es sólo
     // el de un menú vacío.
-    AppletSpec {
-        id: "tray",
-        route: "tray-popup",
-        size: (280.0, 42.0),
-    },
+    AppletSpec { id: "tray", route: "tray-popup", size: (280.0, 42.0) },
     // Quién usa la cámara, el micrófono y la pantalla. Alcanza para las tres
     // listas con varias aplicaciones en cada una sin desplazar en el caso
     // normal, que es una o dos.
-    AppletSpec {
-        id: "privacy",
-        route: "privacy",
-        size: (420.0, 420.0),
-    },
+    AppletSpec { id: "privacy", route: "privacy", size: (420.0, 420.0) },
     // Setenta recursos no entran igual, pero los que piden autorización sí, y
     // de eso se trata la pantalla.
-    AppletSpec {
-        id: "twingate",
-        route: "twingate",
-        size: (480.0, 560.0),
-    },
+    AppletSpec { id: "twingate", route: "twingate", size: (480.0, 560.0) },
     // El reproductor que se despliega desde el control de música: el disco,
     // los datos de la pista, la barra y el transporte. Cuatrocientos de ancho
     // como en la referencia; el alto es el de la tarjeta sin ecualizador —que
@@ -132,11 +113,7 @@ pub const APPLETS: &[AppletSpec] = &[
     // renglones, que es el caso más alto que se dibuja hoy (238 de tarjeta más
     // el relleno del contenedor). Cuando llegue el ecualizador, este es el
     // número que crece.
-    AppletSpec {
-        id: "music",
-        route: "music",
-        size: (400.0, 272.0),
-    },
+    AppletSpec { id: "music", route: "music", size: (400.0, 272.0) },
 ];
 
 pub fn applet_spec(id: &str) -> Option<&'static AppletSpec> {

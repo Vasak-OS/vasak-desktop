@@ -75,7 +75,10 @@ describe('el reproductor desplegable', () => {
 		expect(VIEW).toContain('getAudioDevices');
 		expect(VIEW).toContain('setAudioDevice({ deviceId: device.id })');
 		expect(VIEW).toContain("'audio-devices-changed'");
-		expect(VIEW).toContain('role="radiogroup"');
+		// Radios nativos y no `role="radio"` sobre un botón: el control nativo
+		// trae el anuncio y las flechas sin tener que reimplementarlos.
+		expect(VIEW).toContain('type="radio"');
+		expect(VIEW).not.toContain('role="radio"');
 	});
 
 	test('el espacio del ecualizador no se dibuja mientras no exista', () => {
