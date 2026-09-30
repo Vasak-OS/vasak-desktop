@@ -835,6 +835,57 @@ mod tests {
         assert_eq!(applet_spec("no-existe"), None);
     }
 
+    /// Si una etiqueta de ventana entra en un patrón de la capability. Tauri
+    /// acepta `*` como comodín; la capability usa sólo el del final
+    /// (`desktop*`), y eso es lo que se reconoce.
+    fn cubre(patron: &str, etiqueta: &str) -> bool {
+        match patron.strip_suffix('*') {
+            Some(prefijo) => etiqueta.starts_with(prefijo),
+            None => patron == etiqueta,
+        }
+    }
+
+    /// Cada applet tiene permisos.
+    ///
+    /// Una ventana que no está en `windows` de la capability no puede llamar a
+    /// ningún comando: el tema se pide al plugin de configuración, así que el
+    /// applet se abre sin tema y sin datos, y lo único que lo dice es un error
+    /// en la consola del WebView. Pasó con la bandeja y con privacidad: al
+    /// pasar a `applet_<id>` quedaron `applet_tray` y `applet_privacy` afuera, y
+    /// la capability seguía nombrando `systray_popup`, que ya no existe.
+    #[test]
+    fn cada_applet_esta_en_la_capability() {
+        let capability: serde_json::Value =
+            serde_json::from_str(include_str!("../../capabilities/default.json"))
+                .expect("capabilities/default.json se lee");
+        let ventanas: Vec<&str> = capability["windows"]
+            .as_array()
+            .expect("la capability declara sus ventanas")
+            .iter()
+            .filter_map(|v| v.as_str())
+            .collect();
+        assert!(!ventanas.is_empty(), "la lista de ventanas vino vacía");
+
+        let sin_permisos: Vec<String> = APPLETS
+            .iter()
+            .map(AppletSpec::label)
+            .filter(|etiqueta| !ventanas.iter().any(|patron| cubre(patron, etiqueta)))
+            .collect();
+        assert!(
+            sin_permisos.is_empty(),
+            "estos applets no están en capabilities/default.json y se abren sin permisos \
+             (sin tema, sin datos): {sin_permisos:?}"
+        );
+    }
+
+    #[test]
+    fn el_comodin_de_la_capability_se_lee_como_tauri() {
+        assert!(cubre("desktop*", "desktop_1"));
+        assert!(cubre("applet_tray", "applet_tray"));
+        assert!(!cubre("applet_tray", "applet_tray2"));
+        assert!(!cubre("desktop*", "panel"));
+    }
+
     #[test]
     fn las_etiquetas_de_los_applets_no_chocan_con_las_del_shell() {
         // Rehacer el shell espera a que se liberen las etiquetas del panel, el

@@ -11,9 +11,10 @@
     "applet_bluetooth",
     "applet_network",
     "applet_audio",
+    "applet_tray",
+    "applet_privacy",
     "applet_twingate",
     "app_terminal",
-    "systray_popup",
     "session_popup",
     "osd_popup"
   ],

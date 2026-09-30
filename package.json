@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.18.0",
+	"version": "1.18.1",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -21,10 +21,10 @@
 		"@tailwindcss/vite": "^4.3.3",
 		"@tauri-apps/api": "^2.12.0",
 		"@tauri-apps/plugin-fs": "^2.6.0",
-		"@tauri-apps/plugin-opener": "^2.6.0",
+		"@tauri-apps/plugin-opener": "^2.7.0",
 		"@tauri-apps/plugin-shell": "^2.4.0",
 		"@vasakgroup/plugin-bluetooth-manager": "^2.0.3",
-		"@vasakgroup/plugin-config-manager": "~2.6.1",
+		"@vasakgroup/plugin-config-manager": "^2.9.0",
 		"@vasakgroup/plugin-network-manager": "^2.2.0",
 		"@vasakgroup/plugin-user-data": "^2.1.0",
 		"@vasakgroup/plugin-vicons": "^2.2.1",
@@ -51,8 +51,7 @@
 	},
 	"vasak": {
 		"bibliotecasAtrasadas": {
-			"@vasakgroup/plugin-config-manager": "La 2.7.0 declara pinia ^4 y esta aplicación está en pinia 3: subir el rango arrastra un salto mayor ajeno. Por eso el rango es ~2.6.1 y no ^2.6.1, que alcanzaría una versión que no se puede instalar. Se saca al subir a pinia 4.",
-			"pinia": "La 4 es un salto mayor de una biblioteca que usa el taller entero: catorce aplicaciones están en pinia 3 y subir sólo ésta parte el vocabulario compartido. Va en su propio PR, coordinado con el resto; ese mismo PR se lleva la nota de @vasakgroup/plugin-config-manager, que espera lo mismo.",
+			"pinia": "La 4 es un salto mayor de una biblioteca que usa el taller entero: catorce aplicaciones están en pinia 3 y subir sólo ésta parte el vocabulario compartido. Va en su propio PR, coordinado con el resto.",
 			"typescript": "La 7 (el compilador reescrito) no trae `typescript/lib/tsc` y vue-tsc 3.3 lo busca ahí: `bun run build` se cae con ERR_PACKAGE_PATH_NOT_EXPORTED antes de mirar un archivo. Se saca cuando vue-tsc publique una versión que soporte TypeScript 7.",
 			"vite": "La 8 cambia rollup por rolldown y `build.rollupOptions.output.manualChunks` deja de aceptar un objeto: la compilación se cae. Migrar el reparto de chunks es cambiar cómo se empaqueta la ventana, y eso no lo verifica ninguna prueba: va en su propio PR, que lo compruebe en una sesión con `--features custom-protocol`."
 		}
