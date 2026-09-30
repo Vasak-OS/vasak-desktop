@@ -4931,11 +4931,11 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-bluetooth-manager"
-version = "2.1.1"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2228b5a99405d2ea00eedc03a3da0ef1cff5b11b164815f8bd2487cd39cb7773"
+checksum = "f1553f7e31ccf1686dcf5d3ce056e7d28c2f784cca4959db3151139cc079ebf1"
 dependencies = [
- "dirs 6.0.0",
+ "dirs 7.0.0",
  "futures",
  "serde",
  "serde_json",
@@ -5799,7 +5799,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "vasak-desktop"
-version = "1.18.3"
+version = "1.18.4"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
