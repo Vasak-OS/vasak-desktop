@@ -1,4 +1,6 @@
 use crate::logger::{log_debug, log_error, log_info};
+use crate::monitor_manager::get_primary_monitor;
+use crate::panel_position;
 use crate::structs::{SystrayPopupPayload, SystrayPopupState, TrayItem, TrayManager, TrayMenu};
 use crate::tray::dbus_menu::{call_about_to_show, call_get_layout, DbusMenuLayout, DbusMenuProxy};
 use crate::tray::sni_item::SniItemProxy;
@@ -274,7 +276,9 @@ fn parse_dbus_menu_value(v: &Value) -> Option<TrayMenu> {
 
     Some(TrayMenu {
         id,
-        label: menu_label(&label),
+        // Ya viene sin la marca del atajo: `extract_props_from_dict` la sacó.
+        // Otra pasada convertía `mi__archivo` en `miarchivo`.
+        label,
         enabled,
         visible,
         menu_type,
@@ -475,6 +479,12 @@ const TRAY_MENU_CHROME: f64 = 10.0;
 /// puede tapar media pantalla para ser un menú.
 const TRAY_MENU_MAX_HEIGHT: f64 = 560.0;
 
+/// Un submenú se dibuja como título con sus entradas debajo, tenga o no hijos:
+/// uno vacío no es una acción. Mismo criterio que `trayMenuRows`.
+fn is_submenu(item: &TrayMenu) -> bool {
+    item.menu_type == "submenu" || item.children.as_deref().is_some_and(|c| !c.is_empty())
+}
+
 fn tray_menu_rows(items: &[TrayMenu]) -> f64 {
     items
         .iter()
@@ -482,8 +492,8 @@ fn tray_menu_rows(items: &[TrayMenu]) -> f64 {
         .map(|item| {
             if item.menu_type == "separator" {
                 TRAY_MENU_SEPARATOR
-            } else if let Some(children) = item.children.as_deref().filter(|c| !c.is_empty()) {
-                TRAY_MENU_CAPTION + tray_menu_rows(children)
+            } else if is_submenu(item) {
+                TRAY_MENU_CAPTION + tray_menu_rows(item.children.as_deref().unwrap_or_default())
             } else {
                 TRAY_MENU_ITEM
             }
@@ -492,20 +502,45 @@ fn tray_menu_rows(items: &[TrayMenu]) -> f64 {
 }
 
 /// Cuánto mide el menú de un icono de la bandeja: lo que ocupan sus entradas
-/// visibles, sin pasarse de [`TRAY_MENU_MAX_HEIGHT`].
+/// visibles, sin pasarse de [`TRAY_MENU_MAX_HEIGHT`]. Sin nada que tocar, el
+/// menú es sólo el aviso de una línea, como lo dibuja la vista.
 pub fn tray_menu_size(items: &[TrayMenu]) -> (f64, f64) {
-    let rows = tray_menu_rows(items).max(TRAY_MENU_ITEM);
+    let rows = if has_visible_entries(items) {
+        tray_menu_rows(items)
+    } else {
+        TRAY_MENU_ITEM
+    };
     (
         TRAY_MENU_WIDTH,
         (TRAY_MENU_CHROME + rows).min(TRAY_MENU_MAX_HEIGHT),
     )
 }
 
-/// Si hay algo que mostrar en el menú propio.
+/// Si el menú tiene alguna entrada que se pueda tocar, a cualquier profundidad.
+/// Los separadores y los títulos de submenú no cuentan. Mismo criterio que
+/// `hasActions` en `tools/tray-menu.ts`.
 fn has_visible_entries(items: &[TrayMenu]) -> bool {
-    items
-        .iter()
-        .any(|item| item.visible && item.menu_type != "separator")
+    items.iter().filter(|item| item.visible).any(|item| {
+        if item.menu_type == "separator" {
+            false
+        } else if is_submenu(item) {
+            has_visible_entries(item.children.as_deref().unwrap_or_default())
+        } else {
+            true
+        }
+    })
+}
+
+/// El centro del botón en coordenadas de pantalla.
+///
+/// `AnchorRect` se mide dentro del panel; `ContextMenu` pide la posición en la
+/// pantalla, así que se suma dónde empieza el panel: con el panel abajo o a la
+/// derecha, el centro local caía en la otra punta.
+fn anchor_screen_center(rect: &AnchorRect, panel_origin: (f64, f64)) -> (i32, i32) {
+    (
+        (panel_origin.0 + rect.x + rect.width / 2.0).round() as i32,
+        (panel_origin.1 + rect.y + rect.height / 2.0).round() as i32,
+    )
 }
 
 #[tauri::command]
@@ -564,14 +599,18 @@ pub async fn open_tray_popup(
     // mostrar una ficha sin nada que hacer. Si el programa tampoco lo
     // implementa, queda el applet con el aviso de que no hay acciones.
     if !has_visible_entries(&items) {
-        let (x, y) = anchor
-            .as_ref()
-            .map(|rect| {
-                (
-                    (rect.x + rect.width / 2.0) as i32,
-                    (rect.y + rect.height / 2.0) as i32,
+        let panel_origin = get_primary_monitor(&app)
+            .map(|monitor| {
+                let scale = monitor.scale_factor();
+                panel_position::read().origin(
+                    monitor.size().width as f64 / scale,
+                    monitor.size().height as f64 / scale,
                 )
             })
+            .unwrap_or((0.0, 0.0));
+        let (x, y) = anchor
+            .as_ref()
+            .map(|rect| anchor_screen_center(rect, panel_origin))
             .unwrap_or((0, 0));
         match ask_for_own_context_menu(&service_name, x, y).await {
             Ok(()) => {
@@ -764,6 +803,59 @@ mod tests {
         assert_eq!(menu_checked(Some("checkmark"), None), Some(false));
         assert_eq!(menu_checked(None, Some(0)), None);
         assert_eq!(menu_checked(Some(""), Some(-1)), None);
+    }
+
+    #[test]
+    fn el_parser_completo_conserva_el_guion_bajo_literal() {
+        use std::collections::HashMap;
+        let mut props: HashMap<String, Value> = HashMap::new();
+        props.insert("label".into(), Value::from("mi__archivo"));
+        let child = Value::from((7i32, props, Vec::<Value>::new()));
+        let parsed = parse_dbus_menu_value(&child).expect("la entrada se lee");
+        assert_eq!(parsed.label, "mi_archivo");
+    }
+
+    #[test]
+    fn un_submenu_vacio_es_un_titulo_y_no_una_accion() {
+        let empty = TrayMenu {
+            menu_type: "submenu".into(),
+            children: Some(vec![]),
+            ..entry("Recientes")
+        };
+        assert!(!has_visible_entries(std::slice::from_ref(&empty)));
+        assert_eq!(
+            tray_menu_rows(&[empty.clone(), entry("Salir")]),
+            TRAY_MENU_CAPTION + TRAY_MENU_ITEM
+        );
+        // Sin nada que tocar, sólo el aviso: el título suelto no se dibuja.
+        assert_eq!(
+            tray_menu_size(&[empty]).1,
+            TRAY_MENU_CHROME + TRAY_MENU_ITEM
+        );
+    }
+
+    #[test]
+    fn una_entrada_dentro_de_un_submenu_cuenta_como_accion() {
+        let parent = TrayMenu {
+            menu_type: "submenu".into(),
+            children: Some(vec![entry("Uno")]),
+            ..entry("Estado")
+        };
+        assert!(has_visible_entries(&[parent]));
+    }
+
+    #[test]
+    fn el_centro_del_boton_se_lleva_a_la_pantalla() {
+        let rect = AnchorRect {
+            x: 100.0,
+            y: 4.0,
+            width: 28.0,
+            height: 28.0,
+        };
+        // Panel arriba: el origen es la esquina de la pantalla.
+        assert_eq!(anchor_screen_center(&rect, (0.0, 0.0)), (114, 18));
+        // Panel abajo en 1920×1080: empieza 36 px antes del borde.
+        assert_eq!(anchor_screen_center(&rect, (0.0, 1044.0)), (114, 1062));
     }
 
     #[test]

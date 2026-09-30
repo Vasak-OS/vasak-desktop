@@ -105,7 +105,7 @@ onMounted(loadData);
         {{ t('views.applets.tray.noItems') }}
       </p>
 
-      <template v-for="row in rows" :key="row.kind === 'separator' ? row.key : `${row.kind}-${row.item.id}`">
+      <template v-for="row in empty ? [] : rows" :key="row.kind === 'separator' ? row.key : `${row.kind}-${row.item.id}`">
         <div
           v-if="row.kind === 'separator'"
           role="separator"

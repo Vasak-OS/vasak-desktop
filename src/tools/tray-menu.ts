@@ -18,15 +18,27 @@ export type TrayMenuRow =
 	| { kind: 'separator'; key: string }
 	| { kind: 'caption'; item: TrayMenu; depth: number };
 
-export function trayMenuRows(items: readonly TrayMenu[] | undefined, depth = 0): TrayMenuRow[] {
+/**
+ * `parentEnabled` baja la habilitación de los ancestros: un submenú
+ * deshabilitado deshabilita todo lo que tiene adentro, aunque cada hijo diga
+ * `enabled: true` —el protocolo usa `enabled` como el control de activación—.
+ */
+export function trayMenuRows(
+	items: readonly TrayMenu[] | undefined,
+	depth = 0,
+	parentEnabled = true
+): TrayMenuRow[] {
 	const rows: TrayMenuRow[] = [];
-	for (const item of items ?? []) {
-		if (!item.visible) continue;
+	for (const raw of items ?? []) {
+		if (!raw.visible) continue;
+		const item = parentEnabled ? raw : { ...raw, enabled: false };
 		if (item.type === 'separator') {
 			rows.push({ kind: 'separator', key: `sep-${depth}-${item.id}-${rows.length}` });
-		} else if (item.children?.length) {
+		} else if (item.type === 'submenu' || item.children?.length) {
+			// Un submenú es un título aunque venga vacío: no es una acción. Mismo
+			// criterio que `is_submenu` en `commands/tray.rs`.
 			rows.push({ kind: 'caption', item, depth });
-			rows.push(...trayMenuRows(item.children, depth + 1));
+			rows.push(...trayMenuRows(item.children, depth + 1, item.enabled));
 		} else {
 			rows.push({ kind: 'item', item, depth });
 		}

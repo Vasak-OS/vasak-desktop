@@ -47,6 +47,36 @@ describe('trayMenuRows', () => {
 		expect(rows).toHaveLength(1);
 	});
 
+	test('un submenú vacío es un título, no una acción', () => {
+		const rows = trayMenuRows([entry(1, 'Recientes', { type: 'submenu', children: [] })]);
+		expect(rows.map((row) => row.kind)).toEqual(['caption']);
+		expect(hasActions(rows)).toBe(false);
+	});
+
+	test('un submenú deshabilitado deshabilita a sus descendientes', () => {
+		const rows = trayMenuRows([
+			entry(1, 'Cuenta', {
+				type: 'submenu',
+				enabled: false,
+				children: [
+					entry(2, 'Cambiar'),
+					entry(3, 'Más', { type: 'submenu', children: [entry(4, 'Honda')] }),
+				],
+			}),
+			entry(5, 'Salir'),
+		]);
+		const enabled = Object.fromEntries(
+			rows.flatMap((row) => (row.kind === 'separator' ? [] : [[row.item.label, row.item.enabled]]))
+		);
+		expect(enabled).toEqual({
+			Cuenta: false,
+			Cambiar: false,
+			Más: false,
+			Honda: false,
+			Salir: true,
+		});
+	});
+
 	test('sin entradas tocables no hay acciones, aunque haya separadores', () => {
 		expect(hasActions(trayMenuRows([]))).toBe(false);
 		expect(hasActions(trayMenuRows(undefined))).toBe(false);
