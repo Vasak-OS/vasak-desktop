@@ -3,7 +3,6 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { SearchField } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
@@ -12,9 +11,10 @@ import MenuArea from '@/components/areas/menu/MenuArea.vue';
 import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
 import SessionButton from '@/components/buttons/SessionButton.vue';
 import UserMenuCard from '@/components/cards/UserMenuCard.vue';
+import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import WidgetSlot from '@/components/widgets/WidgetSlot.vue';
 import { getMenuItems, openApp } from '@/services/app.service';
-import { openSettings, toggleSessionPopup } from '@/services/window.service';
+import { dismissMenu, openSettings, toggleSessionPopup } from '@/services/window.service';
 import {
 	type FocusableSearchField,
 	focusMenuSearch,
@@ -23,26 +23,39 @@ import {
 } from '@/tools/menu-search-focus';
 import { logError } from '@/utils/logger';
 
+/**
+ * El menú de aplicaciones.
+ *
+ * Es un applet (`windows_apps/menu.rs`): cuelga del botón del panel y lo
+ * envuelve `AppletPopover`, que pone el borde, la entrada que crece desde el
+ * botón y la salida. Quien lo esconde es el backend —Escape y la pérdida de
+ * foco los atrapa la superficie de capa—, y la página sólo pide cerrarlo cuando
+ * termina lo suyo: lanzar una aplicación.
+ *
+ * Antes era una ventana común y se cuidaba sola: miraba el foco de la ventana
+ * de Tauri para enfocar la búsqueda y para cerrarse. Dentro de una superficie de
+ * capa esa ventana es la vacía, que no gana ni pierde el foco nunca, así que las
+ * dos cosas pasan ahora por los avisos del applet (`shown` y `leave`).
+ */
+
 const { t } = useI18n();
 
 const menuData: Ref<Record<string, any>> = ref({});
 const categorySelected: Ref<any> = ref('all');
 const filter: Ref<string> = ref('');
-const leaving = ref(false);
 const selectedIndex = ref(0);
 const menuLoadFailed = ref(false);
 const searchField = ref<FocusableSearchField | null>(null);
 /**
  * Si el menú está a la vista.
  *
- * Arranca en `true` porque la vista se monta cuando la ventana se está
- * abriendo, y en esa primera vez puede no haber ningún cambio de foco que oír.
+ * Arranca en `true` porque la vista se monta cuando la superficie se está
+ * abriendo por primera vez, y esa vez no llega `applet-shown`: el lado y el
+ * origen vienen en la ruta.
  */
 const menuIsOpen = ref(true);
 /** El intento de foco en curso, para poder cortarlo antes de empezar otro. */
 let searchFocus: SearchFocusAttempt | null = null;
-const menuWindow = getCurrentWindow();
-let unlistenFocus: (() => void) | null = null;
 
 const setMenu = async () => {
 	try {
@@ -77,29 +90,34 @@ const openConfiguration = async () => {
 };
 
 /**
- * Plays the leave animation and hides the window.
+ * El menú volvió a la vista.
  *
- * Hides rather than toggles. It used to call the toggle, and hiding raises a
- * blur, and the blur handler called it again — by then the window was hidden,
- * so the second call *opened* it. Escape appeared to close the menu and
- * immediately bring it back.
- *
- * The guard is the other half: Escape and losing focus can both fire for the
- * same dismissal, and two overlapping animations left the window half faded.
+ * La superficie se esconde en vez de destruirse, así que la vista no se vuelve
+ * a montar: esto es lo único que corre en cada apertura. Vacía la búsqueda
+ * anterior y enfoca el campo — el `autofocus` del campo sólo cubre el primer
+ * montaje (ver `vasak-desktop#122`).
  */
-const closeAfterAnimation = () => {
-	if (leaving.value) return;
-	leaving.value = true;
+const onShown = () => {
+	menuIsOpen.value = true;
+	searchFocus?.cancel();
+	searchFocus = prepareMenuSearch({
+		field: () => searchField.value,
+		clear: () => {
+			filter.value = '';
+		},
+	});
+};
+
+/**
+ * El menú se empieza a ir.
+ *
+ * Quedan hasta 150 ms de reintentos de foco: uno que llegue con el menú ya
+ * escondido le robaría el foco a donde el usuario haya ido.
+ */
+const onLeave = () => {
 	menuIsOpen.value = false;
-	// Quedan hasta 150 ms de reintentos de foco: uno que llegue con el menú ya
-	// escondido le robaría el foco a donde el usuario haya ido.
 	searchFocus?.cancel();
 	searchFocus = null;
-	setTimeout(() => {
-		menuWindow.hide().catch(() => {
-			/* already gone */
-		});
-	}, 200);
 };
 
 const appsOfCategory = computed(
@@ -132,50 +150,17 @@ let unlistenMenuChanged: UnlistenFn | undefined;
 
 onMounted(() => {
 	setMenu();
-	// The window is hidden rather than destroyed now, so it is no longer
-	// rebuilt — and re-fetched — on every open. The backend watches the
-	// application directories and tells us when an app is installed or removed.
+	// The surface is hidden rather than destroyed, so it is not rebuilt — and
+	// re-fetched — on every open. The backend watches the application
+	// directories and tells us when an app is installed or removed.
 	listen('menu-items-changed', () => setMenu()).then((fn) => {
 		unlistenMenuChanged = fn;
 	});
 	document.addEventListener('keydown', onKeydown);
-	window.addEventListener('blur', onBlur);
-	menuWindow
-		.onFocusChanged(({ payload: focused }) => {
-			if (focused) {
-				// Shown again after being hidden: the animation state has to be
-				// reset or the menu comes back mid-fade and never becomes solid.
-				leaving.value = false;
-				// Y acá, no en un gancho de montaje: la ventana se esconde en vez
-				// de destruirse, así que esto es lo único que corre en cada
-				// apertura. Antes se buscaba el campo por un `id` que dejó de
-				// existir al pasar al campo de la librería, y el `autofocus` del
-				// campo sólo cubre el primer montaje: ver `vasak-desktop#122`.
-				menuIsOpen.value = true;
-				searchFocus?.cancel();
-				searchFocus = prepareMenuSearch({
-					field: () => searchField.value,
-					clear: () => {
-						filter.value = '';
-					},
-				});
-				return;
-			}
-			// Losing focus was never handled — only gaining it — so clicking
-			// somewhere else left the menu open over whatever you clicked. The DOM
-			// `blur` event does not stand in for this: the webview keeps its own
-			// focus when another window takes the compositor's.
-			closeAfterAnimation();
-		})
-		.then((fn) => {
-			unlistenFocus = fn;
-		});
 });
 
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onKeydown);
-	window.removeEventListener('blur', onBlur);
-	unlistenFocus?.();
 	unlistenMenuChanged?.();
 	searchFocus?.cancel();
 	searchFocus = null;
@@ -216,12 +201,13 @@ watch(appsFiltred, (list) => {
 	}
 });
 
+/**
+ * Las flechas y Enter sobre los resultados de la búsqueda.
+ *
+ * Escape no va acá: lo atrapa la superficie, y si se lo queda el campo lo toma
+ * `AppletPopover`. Atenderlo también acá cerraría dos veces.
+ */
 const onKeydown = (event: KeyboardEvent) => {
-	if (event.key === 'Escape') {
-		closeAfterAnimation();
-		return;
-	}
-
 	if (!filter.value) return;
 
 	const list = appsFiltred.value;
@@ -238,19 +224,20 @@ const onKeydown = (event: KeyboardEvent) => {
 		const app = list[selectedIndex.value];
 		if (app?.path) {
 			openApp({ path: app.path });
-			menuWindow.close();
+			void dismissMenu();
 		}
 	}
-};
-
-const onBlur = () => {
-	closeAfterAnimation();
 };
 </script>
 
 <template>
-  <Transition appear enter-active-class="enter-active">
-    <div :class="['h-screen p-4 rounded-corner bg-ui-bg/80 border border-ui-border', { 'leave-active': leaving }]">
+  <AppletPopover applet="menu" @shown="onShown" @leave="onLeave">
+    <!-- La misma distribución de siempre, que ahora llena el applet en lugar
+         de la ventana: las alturas salen de la columna y no de `100vh`, porque
+         la superficie es más grande que el applet (el margen de sombra). Así
+         también se achica sin salirse cuando el backend le da menos lugar que
+         900×620 en una pantalla chica. -->
+    <div class="flex h-full min-h-0 flex-col">
     <div
       class="flex items-center justify-between gap-4 mb-4 header-section"
     >
@@ -261,8 +248,8 @@ const onBlur = () => {
            eso lo traía en sus propias clases.
 
            `autofocus` cubre el primer montaje, que es el único que hay: la
-           ventana se esconde en vez de destruirse. Las aperturas siguientes las
-           cubre `prepareMenuSearch` desde el evento de foco de la ventana, y
+           superficie se esconde en vez de destruirse. Las aperturas siguientes
+           las cubre `prepareMenuSearch` desde el aviso `shown` del applet, y
            por eso el `ref` — el campo expone `enfocar()`, que dice si el foco
            llegó. -->
       <SearchField
@@ -278,17 +265,17 @@ const onBlur = () => {
           v-for="(action, index) in [
             {
               title: t('views.menu.configuration'),
-              icono: 'settings',
+              icon: 'settings',
               handler: openConfiguration,
             },
-            { title: t('views.menu.shutdown'), icono: 'system-shutdown', handler: () => openSessionPopup('shutdown') },
-            { title: t('views.menu.reboot'), icono: 'system-reboot', handler: () => openSessionPopup('reboot') },
-            { title: t('views.menu.logout'), icono: 'system-log-out', handler: () => openSessionPopup('logout') },
-            { title: t('views.menu.suspend'), icono: 'system-suspend', handler: () => openSessionPopup('suspend') },
+            { title: t('views.menu.shutdown'), icon: 'system-shutdown', handler: () => openSessionPopup('shutdown') },
+            { title: t('views.menu.reboot'), icon: 'system-reboot', handler: () => openSessionPopup('reboot') },
+            { title: t('views.menu.logout'), icon: 'system-log-out', handler: () => openSessionPopup('logout') },
+            { title: t('views.menu.suspend'), icon: 'system-suspend', handler: () => openSessionPopup('suspend') },
           ]"
           :key="index"
           :title="action.title"
-          :icono="action.icono"
+          :icon="action.icon"
           @click="action.handler"
           class="w-10 h-10 hover:bg-primary rounded-corner p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3"
         />
@@ -296,16 +283,16 @@ const onBlur = () => {
     </div>
 
     <transition enter-active-class="transition-opacity duration-300 ease-out" leave-active-class="transition-opacity duration-300 ease-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
-      <div v-if="isMenuEmpty" key="empty-state" class="flex items-center justify-center h-[calc(100vh-88px)]">
+      <div v-if="isMenuEmpty" key="empty-state" class="flex flex-1 min-h-0 items-center justify-center">
         <p class="text-tx-main/60 text-lg">{{ t('views.menu.noApps') }}</p>
       </div>
-      <div v-else-if="filter !== ''" key="filter-view">
+      <div v-else-if="filter !== ''" key="filter-view" class="flex-1 min-h-0 overflow-y-auto">
         <FilterArea :apps="appsFiltred" :selected-index="selectedIndex" />
       </div>
       <div
         v-else
         key="main-view"
-        class="grid grid-cols-3 gap-4 h-[calc(100vh-88px)]"
+        class="grid grid-cols-3 gap-4 flex-1 min-h-0"
       >
         <div
           class="bg-ui-bg/80 border border-ui-border rounded-corner p-4 h-full overflow-y-auto"
@@ -359,38 +346,5 @@ const onBlur = () => {
       </div>
     </transition>
     </div>
-  </Transition>
+  </AppletPopover>
 </template>
-
-<style scoped>
-@keyframes scale-in {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes scale-out {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-  to {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-}
-
-.enter-active {
-  animation: scale-in 200ms ease-out;
-}
-
-.leave-active {
-  animation: scale-out 200ms ease-in;
-}
-</style>
-

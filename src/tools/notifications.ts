@@ -9,34 +9,34 @@ import type { Notification, NotificationGroupData } from '@/interfaces/notificat
  * dibujado. Mientras la aplicación siga teniendo notificaciones, su tarjeta es
  * la misma aunque el objeto que la describe sea nuevo.
  */
-export function agruparNotificaciones(
-	notificaciones: readonly Notification[]
+export function groupNotifications(
+	notifications: readonly Notification[]
 ): NotificationGroupData[] {
-	const grupos = new Map<string, NotificationGroupData>();
+	const groups = new Map<string, NotificationGroupData>();
 
-	for (const notificacion of notificaciones) {
-		const aplicacion = notificacion.app_name;
-		let grupo = grupos.get(aplicacion);
+	for (const notification of notifications) {
+		const app = notification.app_name;
+		let group = groups.get(app);
 
-		if (!grupo) {
-			grupo = {
-				app_name: aplicacion,
-				app_icon: notificacion.app_icon,
+		if (!group) {
+			group = {
+				app_name: app,
+				app_icon: notification.app_icon,
 				notifications: [],
 				count: 0,
 				latest_timestamp: 0,
 				has_unread: false,
 			};
-			grupos.set(aplicacion, grupo);
+			groups.set(app, group);
 		}
 
-		grupo.notifications.push(notificacion);
-		grupo.count = grupo.notifications.length;
-		grupo.latest_timestamp = Math.max(grupo.latest_timestamp, notificacion.timestamp);
-		grupo.has_unread = grupo.has_unread || !notificacion.seen;
+		group.notifications.push(notification);
+		group.count = group.notifications.length;
+		group.latest_timestamp = Math.max(group.latest_timestamp, notification.timestamp);
+		group.has_unread = group.has_unread || !notification.seen;
 	}
 
-	return [...grupos.values()].sort((a, b) => b.latest_timestamp - a.latest_timestamp);
+	return [...groups.values()].sort((a, b) => b.latest_timestamp - a.latest_timestamp);
 }
 
 /**
@@ -47,10 +47,10 @@ export function agruparNotificaciones(
  * la campanita se sacudía también al **borrar** una notificación, porque las
  * que quedaban llegaban igual en el mismo evento.
  */
-export function hayNotificacionesNuevas(
-	previas: readonly Notification[],
-	siguientes: readonly Notification[]
+export function containsNewNotifications(
+	previous: readonly Notification[],
+	next: readonly Notification[]
 ): boolean {
-	const conocidas = new Set(previas.map((n) => n.id));
-	return siguientes.some((n) => !conocidas.has(n.id));
+	const known = new Set(previous.map((n) => n.id));
+	return next.some((n) => !known.has(n.id));
 }

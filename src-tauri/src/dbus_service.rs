@@ -21,7 +21,11 @@ impl DesktopService {
     /// hasta ahora no contestaban ninguno —quien llamaba usaba `--no-reply`— y
     /// eso alcanzaba mientras todo fuera «abrí esto». Preguntar qué ventanas hay
     /// es otra cosa: sin respuesta no sirve de nada.
-    pub async fn handle_method_call(&self, conexion: &Connection, msg: &Message) -> ZbusResult<()> {
+    pub async fn handle_method_call(
+        &self,
+        connection: &Connection,
+        msg: &Message,
+    ) -> ZbusResult<()> {
         let header = msg.header();
         let member = header.member().map(|m| m.as_str()).unwrap_or("Unknown");
 
@@ -29,7 +33,11 @@ impl DesktopService {
         match member {
             "OpenMenu" => {
                 log_info("D-Bus: Abriendo menú");
-                let _ = toggle_menu(self.app_handle.clone());
+                // Sin rectángulo: no lo abrió un clic en el panel. Se ancla igual
+                // al botón del menú (ver `windows_apps/menu.rs`), no al centro.
+                if let Err(error) = toggle_menu(self.app_handle.clone(), None) {
+                    log_error(&format!("D-Bus: no se pudo alternar el menú: {}", error));
+                }
             }
             "OpenControlCenter" => {
                 log_info("D-Bus: Abriendo centro de control");
@@ -39,8 +47,8 @@ impl DesktopService {
                 // concludes the surface was never built, and does nothing —
                 // OpenControlCenter was silently dead over D-Bus.
                 //
-                // OpenMenu below needs no such care: it goes through Tauri's
-                // window API, which marshals to the main thread itself.
+                // OpenMenu above needs no such care: the anchored applets
+                // marshal to the main thread themselves.
                 let app_handle = self.app_handle.clone();
                 if let Err(e) = self.app_handle.run_on_main_thread(move || {
                     let _ = toggle_control_center(app_handle);
@@ -63,9 +71,9 @@ impl DesktopService {
             // un registro que no mira nadie y el atajo queda muerto.
             "OpenSearch" | "ToggleSearch" => {
                 log_info("D-Bus: reenviando la búsqueda a vasak-prism");
-                let conexion = conexion.clone();
+                let connection = connection.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(error) = reenviar_a_prism(&conexion).await {
+                    if let Err(error) = forward_to_prism(&connection).await {
                         log_error(&format!(
                             "D-Bus: no se pudo alternar el lanzador: {}",
                             error
@@ -88,12 +96,12 @@ impl DesktopService {
             // cuenta solo —la superficie de bloqueo es de otro proceso y la
             // suya sigue mapeada—, así que se lo avisa quien sí sabe.
             "PauseWallpaper" | "ResumeWallpaper" => {
-                let reproducir = member == "ResumeWallpaper";
+                let play = member == "ResumeWallpaper";
                 log_info(&format!(
                     "D-Bus: {} el fondo en movimiento",
-                    if reproducir { "reanudando" } else { "pausando" }
+                    if play { "reanudando" } else { "pausando" }
                 ));
-                if let Err(e) = self.app_handle.emit("wallpaper-playback", reproducir) {
+                if let Err(e) = self.app_handle.emit("wallpaper-playback", play) {
                     log_error(&format!("D-Bus: no se pudo avisar al fondo: {}", e));
                 }
             }
@@ -109,13 +117,13 @@ impl DesktopService {
             // llama tiene que usar `--no-reply` o no esperar. Y no falla si la
             // aplicación no está abierta; eso es un caso normal, no un error.
             "PresentApp" => match msg.body().deserialize::<String>() {
-                Ok(pedido) => {
-                    log_info(&format!("D-Bus: trayendo al frente «{}»", pedido));
+                Ok(requested) => {
+                    log_info(&format!("D-Bus: trayendo al frente «{}»", requested));
                     tauri::async_runtime::spawn(async move {
-                        if !crate::window_manager::present::present_app(&pedido).await {
+                        if !crate::window_manager::present::present_app(&requested).await {
                             log_debug(&format!(
                                 "D-Bus: no hay ninguna ventana de «{}» para mostrar",
-                                pedido
+                                requested
                             ));
                         }
                     });
@@ -135,13 +143,13 @@ impl DesktopService {
             // se deserializa con serde igual, y una firma de tipos para cinco
             // campos que todavía pueden cambiar es trabajo que se paga dos veces.
             "ListWindows" => {
-                let ventanas = self.ventanas_abiertas();
+                let windows = self.open_windows();
                 log_debug(&format!(
                     "D-Bus: ListWindows devolvió {} ventanas",
-                    ventanas.len()
+                    windows.len()
                 ));
 
-                let cuerpo = serde_json::to_string(&ventanas).unwrap_or_else(|error| {
+                let body = serde_json::to_string(&windows).unwrap_or_else(|error| {
                     log_error(&format!(
                         "D-Bus: no se pudieron serializar las ventanas: {}",
                         error
@@ -149,7 +157,7 @@ impl DesktopService {
                     "[]".to_string()
                 });
 
-                conexion.reply(msg, &cuerpo).await?;
+                connection.reply(msg, &body).await?;
             }
             // Traerla al frente. **Nunca** minimiza, que es la diferencia con el
             // botón del panel: elegir una ventana en una lista de resultados no
@@ -163,11 +171,11 @@ impl DesktopService {
             "PresentWindow" => match msg.body().deserialize::<String>() {
                 Ok(id) => {
                     log_info(&format!("D-Bus: presentando la ventana {}", id));
-                    match self.presentar(&id) {
-                        Ok(()) => conexion.reply(msg, &()).await?,
+                    match self.present(&id) {
+                        Ok(()) => connection.reply(msg, &()).await?,
                         Err(error) => {
                             log_warning(&format!("D-Bus: no se pudo presentar {}: {}", id, error));
-                            conexion
+                            connection
                                 .reply_error(msg, "org.vasak.os.Desktop.Error", &error)
                                 .await?
                         }
@@ -178,7 +186,7 @@ impl DesktopService {
                         "D-Bus: PresentWindow sin un identificador válido: {}",
                         e
                     ));
-                    conexion
+                    connection
                         .reply_error(
                             msg,
                             "org.freedesktop.DBus.Error.InvalidArgs",
@@ -201,27 +209,29 @@ impl DesktopService {
     /// Sin lista es un caso normal —el compositor puede estar ocupado— y no un
     /// error que valga la pena devolver: quien preguntó muestra las demás cosas
     /// que encontró y listo.
-    fn ventanas_abiertas(&self) -> Vec<crate::window_manager::WindowInfo> {
-        let estado = self.app_handle.state::<crate::structs::WMState>();
-        let Ok(gestor) = estado.window_manager.try_read() else {
+    fn open_windows(&self) -> Vec<crate::window_manager::WindowInfo> {
+        let state = self.app_handle.state::<crate::structs::WMState>();
+        let Ok(manager) = state.window_manager.try_read() else {
             log_debug("D-Bus: el gestor de ventanas está ocupado");
             return Vec::new();
         };
 
-        gestor.get_window_list().unwrap_or_else(|error| {
+        manager.get_window_list().unwrap_or_else(|error| {
             log_error(&format!("D-Bus: no se pudo listar las ventanas: {}", error));
             Vec::new()
         })
     }
 
-    fn presentar(&self, id: &str) -> Result<(), String> {
-        let estado = self.app_handle.state::<crate::structs::WMState>();
-        let gestor = estado
+    fn present(&self, id: &str) -> Result<(), String> {
+        let state = self.app_handle.state::<crate::structs::WMState>();
+        let manager = state
             .window_manager
             .try_read()
             .map_err(|_| "el gestor de ventanas está ocupado".to_string())?;
 
-        gestor.present_window(id).map_err(|error| error.to_string())
+        manager
+            .present_window(id)
+            .map_err(|error| error.to_string())
     }
 }
 
@@ -230,20 +240,20 @@ impl DesktopService {
 /// Escritos acá y no importados: `vasak-prism` es otro paquete y otro proceso,
 /// y lo único que los une es este nombre. Depender de su crate para tres cadenas
 /// ataría la compilación de todo el escritorio a la del lanzador.
-const PRISM_NOMBRE: &str = "ar.net.vasak.Prism";
-const PRISM_RUTA: &str = "/ar/net/vasak/Prism";
+const PRISM_NAME: &str = "ar.net.vasak.Prism";
+const PRISM_PATH: &str = "/ar/net/vasak/Prism";
 
 /// Le pide al lanzador que aparezca o se esconda.
 ///
 /// No hace falta que esté corriendo: el paquete instala su archivo de activación
 /// por D-Bus, así que el bus lo levanta con esta misma llamada. Lo que sí puede
 /// fallar es que no esté instalado, y eso se anota — no se cae nada.
-async fn reenviar_a_prism(conexion: &Connection) -> ZbusResult<()> {
-    conexion
+async fn forward_to_prism(connection: &Connection) -> ZbusResult<()> {
+    connection
         .call_method(
-            Some(PRISM_NOMBRE),
-            PRISM_RUTA,
-            Some(PRISM_NOMBRE),
+            Some(PRISM_NAME),
+            PRISM_PATH,
+            Some(PRISM_NAME),
             "Toggle",
             &(),
         )
@@ -302,7 +312,7 @@ mod tests {
     /// que es el error que de verdad pasa: cambiar una y olvidarse de la otra.
     #[test]
     fn el_nombre_y_la_ruta_del_lanzador_se_corresponden() {
-        assert_eq!(PRISM_RUTA, format!("/{}", PRISM_NOMBRE.replace('.', "/")));
+        assert_eq!(PRISM_PATH, format!("/{}", PRISM_NAME.replace('.', "/")));
     }
 
     /// Y es el del lanzador, no el de este escritorio.
@@ -311,6 +321,6 @@ mod tests {
     /// el escritorio se queda hablando solo hasta que expira el tiempo de D-Bus.
     #[test]
     fn el_reenvio_no_apunta_a_este_mismo_servicio() {
-        assert_ne!(PRISM_NOMBRE, DBUS_SERVICE_NAME);
+        assert_ne!(PRISM_NAME, DBUS_SERVICE_NAME);
     }
 }

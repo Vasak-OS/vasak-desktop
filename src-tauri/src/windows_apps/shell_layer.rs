@@ -296,6 +296,39 @@ pub fn relocate_layer_window(label: &str, geo: &Geometry) -> bool {
         .unwrap_or(false)
 }
 
+/// Recorta la parte de la superficie que recibe el puntero.
+///
+/// `rect` es (x, y, ancho, alto) en píxeles lógicos, relativo a la superficie;
+/// `None` la deja entera. Fuera de ese rectángulo los clics **atraviesan** la
+/// superficie y caen en lo que haya debajo, que es lo que necesita una
+/// superficie más grande que lo que dibuja: el margen de sombra de los applets
+/// se mete encima del panel, y sin esto se quedaría con los clics de esa franja
+/// de la barra. En Wayland GDK lo manda como la región de entrada de la
+/// superficie.
+///
+/// Devuelve `false` si esa superficie no está construida. Sólo en el hilo
+/// principal de GTK, como [`relocate_layer_window`].
+pub fn set_layer_input_region(label: &str, rect: Option<(i32, i32, i32, i32)>) -> bool {
+    LAYER_WINDOWS
+        .try_with(|windows| {
+            let windows = windows.borrow();
+            let Some(window) = windows.get(label) else {
+                return false;
+            };
+            match rect {
+                Some((x, y, width, height)) => {
+                    let region = gtk::cairo::Region::create_rectangle(
+                        &gtk::cairo::RectangleInt::new(x, y, width, height),
+                    );
+                    window.input_shape_combine_region(Some(&region));
+                }
+                None => window.input_shape_combine_region(None),
+            }
+            true
+        })
+        .unwrap_or(false)
+}
+
 /// Tears down every shell surface whose label starts with one of `prefixes`,
 /// closing both the layer window and the Tauri webview behind it.
 pub fn destroy_layer_windows(app: &AppHandle, prefixes: &[&str]) {

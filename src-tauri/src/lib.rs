@@ -174,6 +174,7 @@ pub fn run() {
             detect_display_server,
             get_menu_items,
             toggle_menu,
+            set_menu_button,
             show_panel,
             get_audio_volume,
             set_audio_volume,

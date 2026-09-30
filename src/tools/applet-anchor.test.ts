@@ -1,7 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { anchorFromQuery, anchorOf, appletTransformOrigin } from './applet-anchor';
+import {
+	anchorFromQuery,
+	anchorOf,
+	appletTransformOrigin,
+	insetFromQuery,
+	insetStyle,
+	NO_INSET,
+	toInset,
+} from './applet-anchor';
 import { applyAppletChanged, openAppletForTests } from './composables/useOpenApplet';
 
 const ROOT = join(import.meta.dir, '..', '..');
@@ -58,6 +66,48 @@ describe('el anclaje que viene en la ruta', () => {
 	});
 });
 
+describe('el margen de sombra', () => {
+	test('la ruta de la primera apertura lo trae en el orden de Rust', () => {
+		// izquierda, derecha, arriba, abajo: el mismo orden que `Placement::inset`.
+		expect(insetFromQuery({ side: 'top', origin: '23', inset: '10,24,24,24' })).toEqual({
+			left: 10,
+			right: 24,
+			top: 24,
+			bottom: 24,
+		});
+	});
+
+	test('sin margen en la ruta, el applet ocupa la superficie entera', () => {
+		expect(insetFromQuery({ side: 'top', origin: '10' })).toEqual(NO_INSET);
+		expect(insetFromQuery({ inset: '1,2,3' })).toEqual(NO_INSET);
+	});
+
+	test('un lado que no se entiende vale cero, no `NaNpx`', () => {
+		expect(insetFromQuery({ inset: '24,nada,24,-3' })).toEqual({
+			left: 24,
+			right: 0,
+			top: 24,
+			bottom: 0,
+		});
+		expect(toInset({ left: 24, right: '24', top: null })).toEqual({
+			left: 24,
+			right: 0,
+			top: 0,
+			bottom: 0,
+		});
+		expect(toInset(undefined)).toEqual(NO_INSET);
+	});
+
+	test('se escribe como la posición del applet dentro de la superficie', () => {
+		expect(insetStyle({ left: 10, right: 24, top: 24, bottom: 24 })).toEqual({
+			left: '10px',
+			right: '24px',
+			top: '24px',
+			bottom: '24px',
+		});
+	});
+});
+
 describe('el rectángulo del botón', () => {
 	const rect = { x: 10, y: 2, width: 30, height: 34 };
 	const element = { getBoundingClientRect: () => ({ ...rect, top: 2, toJSON: () => null }) };
@@ -96,7 +146,22 @@ describe('AppletPopover', () => {
 
 	test('el origen de la animación sale del anclaje', () => {
 		expect(popover).toContain('appletTransformOrigin(anchor.value)');
-		expect(popover).toContain(':style="{ transformOrigin }"');
+		expect(popover).toContain(':style="placement"');
+		expect(popover).toMatch(/transformOrigin: transformOrigin\.value/);
+	});
+
+	test('el applet se dibuja dentro del margen de sombra', () => {
+		// La superficie es más grande que el applet: sin esto el applet llenaría
+		// el margen y quedaría corrido 24 píxeles hacia afuera.
+		expect(popover).toMatch(/\.\.\.insetStyle\(inset\.value\)/);
+		expect(popover).toContain('insetFromQuery(route.query)');
+		expect(popover).toContain('inset.value = toInset(payload.inset)');
+		expect(popover).toMatch(/'applet-popover absolute /);
+	});
+
+	test('la sombra sale de un token, nunca de un color escrito', () => {
+		expect(popover).toContain('box-shadow: var(--shadow-surface-l, none)');
+		expect(popover).not.toMatch(/rgba?\(|#[0-9a-f]{3,8}\b/i);
 	});
 
 	test('entra con opacidad y escala desde 0.96, en 180 ms', () => {

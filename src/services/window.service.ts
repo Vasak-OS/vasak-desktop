@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { anchorOf } from '@/tools/applet-anchor';
+import type { PanelPosition } from '@/tools/panel-position';
 
 /** Los applets del panel. Son las filas de `APPLETS` en `anchored_applet.rs`. */
 export type AppletId =
@@ -9,7 +10,8 @@ export type AppletId =
 	| 'tray'
 	| 'privacy'
 	| 'twingate'
-	| 'music';
+	| 'music'
+	| 'menu';
 
 /**
  * Abre o cierra un applet, colgado del botón que lo pidió.
@@ -62,8 +64,36 @@ export const openSettings = <T = any>(): Promise<T> => {
 	return invoke<T>('open_settings');
 };
 
-export const toggleMenu = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('toggle_menu', args);
+/**
+ * Abre o cierra el menú de aplicaciones, colgado del botón que lo pidió.
+ *
+ * Es un applet más (`windows_apps/menu.rs`), con comando propio porque también
+ * se abre sin botón —la tecla Super, por D-Bus— y entonces el backend lo ancla
+ * al botón del menú que informó el panel con `reportMenuButton`.
+ */
+export const toggleMenu = (button?: unknown): Promise<void> => {
+	return invoke<void>('toggle_menu', { anchor: anchorOf(button) ?? null });
+};
+
+/**
+ * Cierra el menú con su salida. Para después de lanzar una aplicación.
+ *
+ * No `getCurrentWindow().close()`, que era lo que había: la página vive dentro
+ * de una superficie de capa y esa ventana es la vacía de Tauri; cerrarla se
+ * lleva puesto el webview, y la próxima apertura recargaba el menú entero.
+ */
+export const dismissMenu = (): Promise<void> => dismissApplet('menu');
+
+/**
+ * Le dice al backend dónde quedó el botón del menú y de qué lado está el panel.
+ *
+ * Con esto abrir el menú sin clic lo cuelga del botón que se ve. Sin botón que
+ * medir no manda nada: el backend tiene dónde lo dibuja el panel por diseño.
+ */
+export const reportMenuButton = async (side: PanelPosition, button: unknown): Promise<void> => {
+	const anchor = anchorOf(button);
+	if (!anchor) return;
+	await invoke<void>('set_menu_button', { side, anchor });
 };
 
 export const toggleSessionPopup = <T = any>(action: string): Promise<T> => {

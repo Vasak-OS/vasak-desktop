@@ -1,8 +1,8 @@
 
 <script lang="ts" setup>
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { openApp as sysOpenApp } from '@/services/app.service';
+import { dismissMenu } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
 const props = defineProps({
@@ -16,15 +16,14 @@ const props = defineProps({
 	},
 });
 
-const appWindow = getCurrentWindow();
-
 const openApp = async () => {
 	try {
 		await sysOpenApp({ path: props.app.path } as any);
 	} catch (error) {
 		logError('Error al abrir aplicación:', error);
 	} finally {
-		appWindow.close();
+		// Esconder, no cerrar: ver `dismissMenu`.
+		void dismissMenu();
 	}
 };
 </script>

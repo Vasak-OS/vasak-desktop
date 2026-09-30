@@ -4,9 +4,13 @@ import { useRoute } from 'vue-router';
 import { type AppletId, dismissApplet } from '@/services/window.service';
 import {
 	type AppletAnchor,
+	type AppletInset,
 	type AppletShownEvent,
 	anchorFromQuery,
 	appletTransformOrigin,
+	insetFromQuery,
+	insetStyle,
+	toInset,
 } from '@/tools/applet-anchor';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logWarning } from '@/utils/logger';
@@ -20,6 +24,13 @@ import { logWarning } from '@/utils/logger';
  * el panel y dónde quedó el botón a lo largo del applet (`applet-anchor.ts`); la
  * primera vez por la ruta, después por `applet-shown`.
  *
+ * La superficie es más grande que el applet —el margen de sombra de
+ * `anchored_applet.rs`, para que la sombra no se corte en el canto—: el applet
+ * se dibuja a `inset` de cada borde, y lo de alrededor queda transparente. Los
+ * clics sobre ese margen no llegan acá: el backend recorta la región de entrada
+ * de la superficie al applet, y caen en lo que haya debajo, que suele ser el
+ * panel.
+ *
  * Quien cierra es el backend. Escape y la pérdida de foco los atrapa la
  * superficie de capa antes que la página, y avisa con `applet-leave` para que la
  * salida se vea; la página sólo pide cerrar cuando termina lo suyo (`close`, que
@@ -27,7 +38,8 @@ import { logWarning } from '@/utils/logger';
  *
  * Emite `shown` cada vez que el applet vuelve a la vista: esconder no destruye
  * el webview, así que Vue no se monta de nuevo y el contenido tiene que volver a
- * pedir lo que muestra.
+ * pedir lo que muestra. Y `leave` cuando se empieza a ir, para que corte lo que
+ * tenga en curso —el menú, sus reintentos de foco—.
  */
 const props = defineProps<{
 	applet: AppletId;
@@ -41,10 +53,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	shown: [];
+	leave: [];
 }>();
+
+// Lo que se le pase desde afuera —una clase, un `aria-*`— va al applet que se
+// ve y no al envoltorio transparente del margen de sombra.
+defineOptions({ inheritAttrs: false });
 
 const route = useRoute();
 const anchor = ref<AppletAnchor | null>(anchorFromQuery(route.query));
+const inset = ref<AppletInset>(insetFromQuery(route.query));
 
 /**
  * En qué momento de la vida del applet estamos.
@@ -56,6 +74,10 @@ const anchor = ref<AppletAnchor | null>(anchorFromQuery(route.query));
 const phase = ref<'enter' | 'leave' | 'hidden'>('enter');
 
 const transformOrigin = computed(() => appletTransformOrigin(anchor.value));
+const placement = computed(() => ({
+	...insetStyle(inset.value),
+	transformOrigin: transformOrigin.value,
+}));
 
 const close = async () => {
 	try {
@@ -69,6 +91,7 @@ useSharedEvent<AppletShownEvent>('applet-shown', (payload) => {
 	if (payload?.applet !== props.applet) return;
 
 	anchor.value = { side: payload.side, origin: payload.origin };
+	inset.value = toInset(payload.inset);
 	// Invisible un cuadro y recién después la entrada: poner `enter` sobre
 	// `enter` no vuelve a correr la animación.
 	phase.value = 'hidden';
@@ -81,6 +104,7 @@ useSharedEvent<AppletShownEvent>('applet-shown', (payload) => {
 useSharedEvent<{ applet: string; instant: boolean }>('applet-leave', (payload) => {
 	if (payload?.applet !== props.applet) return;
 	phase.value = payload.instant ? 'hidden' : 'leave';
+	emit('leave');
 });
 
 // Por si Escape llega a la página: la superficie lo atrapa antes, pero un
@@ -94,16 +118,19 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 </script>
 
 <template>
-  <div
-    role="dialog"
-    :class="[
-      'applet-popover h-screen w-screen overflow-hidden rounded-corner border border-ui-border bg-ui-bg/80 backdrop-blur-md',
-      compact ? 'p-1' : 'p-4',
-      `applet-popover-${phase}`,
-    ]"
-    :style="{ transformOrigin }"
-  >
-    <slot :close="close" />
+  <div class="relative h-screen w-screen">
+    <div
+      role="dialog"
+      :class="[
+        'applet-popover absolute overflow-hidden rounded-corner border border-ui-border bg-ui-bg/80 backdrop-blur-md',
+        compact ? 'p-1' : 'p-4',
+        `applet-popover-${phase}`,
+      ]"
+      :style="placement"
+      v-bind="$attrs"
+    >
+      <slot :close="close" />
+    </div>
   </div>
 </template>
 
@@ -146,6 +173,14 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
   to {
     opacity: 0;
   }
+}
+
+/* La sombra de algo que sale del panel. El token lo trae el estilo nuevo de la
+   librería (vue-libvasak#74, `--shadow-surface-l`); mientras no esté, sin
+   sombra, y nunca un color escrito acá. El lugar para dibujarla ya lo deja el
+   margen de la superficie. */
+.applet-popover {
+  box-shadow: var(--shadow-surface-l, none);
 }
 
 .applet-popover-enter {

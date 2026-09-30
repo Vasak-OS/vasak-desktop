@@ -25,9 +25,70 @@ export interface AppletAnchor {
 	origin: number;
 }
 
+/**
+ * Cuánto hay de cada canto de la superficie al applet: el margen de sombra.
+ *
+ * La superficie es más grande que el applet para que la sombra no se corte
+ * (`SHADOW_BLEED` en `anchored_applet.rs`), y el backend dice cuánto quedó de
+ * cada lado: contra el borde del monitor puede ser menos que el resto.
+ */
+export interface AppletInset {
+	left: number;
+	right: number;
+	top: number;
+	bottom: number;
+}
+
+/** Sin margen: el applet ocupa la superficie entera. */
+export const NO_INSET: AppletInset = { left: 0, right: 0, top: 0, bottom: 0 };
+
 /** El evento con que el backend avisa que un applet se mostró. */
 export interface AppletShownEvent extends AppletAnchor {
 	applet: string;
+	inset?: unknown;
+}
+
+const INSET_EDGES = ['left', 'right', 'top', 'bottom'] as const;
+
+const toEdge = (value: unknown): number =>
+	typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
+
+/**
+ * El margen que mandó el backend, o ninguno si no se entiende.
+ *
+ * Un lado que no es un número vale cero: dibujar el applet contra el canto es
+ * lo que pasaba antes del margen, y es mejor que un `NaNpx` que el navegador
+ * descarta y deja el applet sin posición.
+ */
+export function toInset(value: unknown): AppletInset {
+	if (!value || typeof value !== 'object') return { ...NO_INSET };
+	const raw = value as Record<string, unknown>;
+	const inset = { ...NO_INSET };
+	for (const edge of INSET_EDGES) inset[edge] = toEdge(raw[edge]);
+	return inset;
+}
+
+/**
+ * El margen que viene en la ruta de la primera apertura:
+ * `inset=izquierda,derecha,arriba,abajo`.
+ */
+export function insetFromQuery(query: Record<string, unknown>): AppletInset {
+	const raw = Array.isArray(query.inset) ? query.inset[0] : query.inset;
+	if (typeof raw !== 'string') return { ...NO_INSET };
+	const values = raw.split(',').map((part) => Number.parseFloat(part));
+	if (values.length !== INSET_EDGES.length) return { ...NO_INSET };
+	const [left, right, top, bottom] = values;
+	return toInset({ left, right, top, bottom });
+}
+
+/** El margen como posición del applet dentro de la superficie. */
+export function insetStyle(inset: AppletInset): Record<string, string> {
+	return {
+		left: `${inset.left}px`,
+		right: `${inset.right}px`,
+		top: `${inset.top}px`,
+		bottom: `${inset.bottom}px`,
+	};
 }
 
 /**

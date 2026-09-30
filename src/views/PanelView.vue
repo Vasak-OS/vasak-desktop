@@ -7,7 +7,7 @@ import { Command } from '@tauri-apps/plugin-shell';
 import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
 import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
@@ -18,10 +18,11 @@ import type {
 } from '@/interfaces/notifications';
 import { listConnectDevices, toggleConnectMenu } from '@/services/connect.service';
 import { getAllNotifications } from '@/services/notification.service';
-import { toggleControlCenter, toggleMenu } from '@/services/window.service';
+import { reportMenuButton, toggleControlCenter, toggleMenu } from '@/services/window.service';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
-import { hayNotificacionesNuevas } from '@/tools/notificaciones';
+import { containsNewNotifications } from '@/tools/notifications';
 import { BAR_CLASSES } from '@/tools/panel-position';
 import { logError } from '@/utils/logger';
 
@@ -51,9 +52,9 @@ const { position, vertical } = usePanelConfig();
  * el teclado, el tema, cerrarse al perder el foco— es del plugin, que es el
  * mismo menú que usan todas las aplicaciones de VasakOS.
  */
-const abrirMenuDelPanel = async (evento: MouseEvent) => {
+const openPanelContextMenu = async (event: MouseEvent) => {
 	try {
-		const elegido = await showContextMenu(
+		const chosen = await showContextMenu(
 			[
 				{
 					id: 'panel',
@@ -61,29 +62,29 @@ const abrirMenuDelPanel = async (evento: MouseEvent) => {
 					icon: 'preferences-system-windows',
 				},
 				{
-					id: 'notificaciones',
+					id: 'notifications',
 					label: t('views.applets.panelMenu.notifications'),
 					icon: 'preferences-desktop-notification',
 				},
 				{ type: 'separator' },
 				{
-					id: 'sistema',
+					id: 'system',
 					label: t('views.applets.panelMenu.systemSettings'),
 					icon: 'preferences-system',
 				},
 			],
-			evento,
+			event,
 			{ window: true }
 		);
 
-		switch (elegido?.id) {
+		switch (chosen?.id) {
 			case 'panel':
 				await invoke('open_settings_section', { section: 'appearance-panel' });
 				break;
-			case 'notificaciones':
+			case 'notifications':
 				await toggleControlCenter();
 				break;
-			case 'sistema':
+			case 'system':
 				await invoke('open_settings');
 				break;
 		}
@@ -128,13 +129,52 @@ const openPhoneMenu = async () => {
 	}
 };
 
+/**
+ * El botón del menú: de él cuelga el menú, lo abra un clic o la tecla Super.
+ */
+const menuButton = ref<HTMLElement | null>(null);
+const { isOpen: menuIsOpen, openClasses: menuOpenClasses } = useOpenApplet('menu');
+
 const openMenu = async () => {
 	try {
-		await toggleMenu();
+		await toggleMenu(menuButton.value);
 	} catch (error) {
 		logError('Error al abrir el menu:', error);
 	}
 };
+
+/**
+ * Le cuenta al backend dónde quedó el botón del menú, para que abrirlo sin clic
+ * —la tecla Super, por D-Bus— lo cuelgue de acá y no del centro.
+ *
+ * Al montarse, cuando el panel cambia de lado y cuando el botón cambia de
+ * tamaño. Con `ResizeObserver` y no con `resize`: en este WebView `resize` no
+ * llega.
+ */
+const sendMenuButton = async () => {
+	try {
+		await reportMenuButton(position.value, menuButton.value);
+	} catch (error) {
+		logError('No se pudo informar el botón del menú:', error);
+	}
+};
+
+let menuButtonObserver: ResizeObserver | undefined;
+
+watch(position, async () => {
+	await nextTick();
+	await sendMenuButton();
+});
+
+onMounted(() => {
+	void sendMenuButton();
+	if (typeof ResizeObserver !== 'undefined' && menuButton.value) {
+		menuButtonObserver = new ResizeObserver(() => void sendMenuButton());
+		menuButtonObserver.observe(menuButton.value);
+	}
+});
+
+onBeforeUnmount(() => menuButtonObserver?.disconnect());
 
 const openConfig = async () => {
 	try {
@@ -198,10 +238,10 @@ useSharedEvent('connect-device-removed', refreshConnectDevices);
 // no estaba. Antes bastaba con que la lista trajera algo, y como toda foto trae
 // lo que quedó, la campanita se sacudía también al borrar una.
 useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
-	const nuevas = hayNotificacionesNuevas(notifications.value, delta.items);
+	const hasNew = containsNewNotifications(notifications.value, delta.items);
 	notifications.value = delta.items;
 
-	if (!nuevas) return;
+	if (!hasNew) return;
 
 	hasNewNotifications.value = true;
 	clearTimeout(notificationResetTimer);
@@ -213,7 +253,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 
 <template>
 	<nav
-		@contextmenu.prevent="abrirMenuDelPanel"
+		@contextmenu.prevent="openPanelContextMenu"
 		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80"
 		:class="BAR_CLASSES[position]"
 	>
@@ -222,8 +262,11 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
            y se anuncia como lo que es. Antes eran `img` clicables, que no
            reciben foco ni salen en la lista de controles. -->
       <button
+        ref="menuButton"
         type="button"
         class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        :class="menuOpenClasses"
+        :aria-expanded="menuIsOpen"
         :title="t('views.panel.menuAlt')"
         :aria-label="t('views.panel.menuAlt')"
         @click="openMenu"

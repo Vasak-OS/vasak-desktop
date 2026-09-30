@@ -10,7 +10,6 @@ const routes = [
 		path: '/vsk-context-menu',
 		component: () => import('@/views/ContextMenuView.vue'),
 	},
-	{ path: '/menu', component: () => import('@/views/MenuView.vue') },
 	{
 		path: '/connect',
 		component: () => import('@/views/ConnectMenuView.vue'),
@@ -50,6 +49,8 @@ const routes = [
 				path: 'music',
 				component: () => import('@/views/applets/MusicAppletView.vue'),
 			},
+			// El menú de aplicaciones es un applet más: ver `windows_apps/menu.rs`.
+			{ path: 'menu', component: () => import('@/views/MenuView.vue') },
 		],
 	},
 	{
