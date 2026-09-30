@@ -90,6 +90,19 @@ views:
     rebootDescription: The system will restart. Make sure to save your work.
     logoutDescription: Your current session will be closed.
     suspendDescription: The system will enter a low-power suspend state.
+  musicApplet:
+    previous: Previous
+    next: Next
+    play: Play
+    pause: Pause
+    seek: Track position
+    byArtist: "by {0}"
+    nothingPlaying: Nothing playing
+    currentOutput: "Audio output: {0}"
+    chooseOutput: Choose audio output
+    noOutputs: No audio outputs.
+    via: "via {0}"
+    back: Back
   applets:
     panelMenu:
       title: Panel options
@@ -227,6 +240,7 @@ components:
     disconnected: "Twingate: disconnected"
     pending: "Twingate: {0} resources to authorize"
   TrayMusicControl:
+    openPlayer: Open the player
     nothingPlaying: Nothing is playing
     previous: Previous
     play: Play

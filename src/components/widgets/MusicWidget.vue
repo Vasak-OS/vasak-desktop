@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { listen } from '@tauri-apps/api/event';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SliderControl, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { SeekBar, SliderControl, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { formatDuration, sectionsFor } from '@/utils/playback';
@@ -55,28 +55,13 @@ const boxHeight = ref(0);
 const sections = computed(() => sectionsFor(boxHeight.value));
 
 /**
- * Dónde está el pulgar mientras alguien lo arrastra.
- *
- * La posición se actualiza sola cada medio segundo, y cada actualización
- * reescribe el `value` del control: sin esto, el pulgar salta de vuelta a donde
- * va la música justo mientras se lo está moviendo, y lo que se suelta no es lo
- * que se eligió. `null` quiere decir que nadie lo está tocando.
- */
-const dragging = ref<number | null>(null);
-
-/** Cuánto dura la pista, y si hay barra que dibujar. */
-const hasProgress = computed(() => musicInfo.value.length > 0);
-const elapsed = computed(() => formatDuration(dragging.value ?? position.value));
-const total = computed(() => formatDuration(musicInfo.value.length));
-
-/**
  * El volumen del reproductor en 0–100.
  *
  * MPRIS lo publica entre 0 y 1, y el deslizador compartido se mueve de a uno.
  */
 const volumePercent = computed({
 	get: () => Math.round((musicInfo.value.volume ?? 0) * 100),
-	set: (valor: number) => onVolume(Math.min(1, Math.max(0, valor / 100))),
+	set: (value: number) => onVolume(Math.min(1, Math.max(0, value / 100))),
 });
 
 const loopStatusIcon = computed(() =>
@@ -108,13 +93,14 @@ async function pick(player: string): Promise<void> {
 	await selectPlayer(player);
 }
 
-/** Un clic o un arrastre en la barra: la fracción, y el resto lo hace MPRIS. */
-function seekTo(event: Event): void {
-	const barra = event.target as HTMLInputElement;
-	const largo = musicInfo.value.length;
-	dragging.value = null;
-	if (largo <= 0) return;
-	onSeek(Number(barra.value) / largo);
+/**
+ * Un salto en la barra: llega en microsegundos, y el composable salta por
+ * fracción. El arrastre —que el pulgar no vuelva solo mientras se lo mueve— lo
+ * resuelve `SeekBar`, que salió de la barra que vivía acá.
+ */
+function seekTo(micros: number): void {
+	const length = musicInfo.value.length;
+	if (length > 0) onSeek(micros / length);
 }
 
 onMounted(async () => {
@@ -164,12 +150,12 @@ function updateTitleOverflow(): void {
 		return;
 	}
 
-	const disponible = container.clientWidth;
-	const necesario = inner.scrollWidth;
+	const available = container.clientWidth;
+	const needed = inner.scrollWidth;
 
-	if (disponible > 0 && necesario > disponible + 2) {
+	if (available > 0 && needed > available + 2) {
 		titleOverflow.value = true;
-		marqueeDistance.value = necesario - disponible;
+		marqueeDistance.value = needed - available;
 		marqueeDuration.value = Math.min(20, Math.max(4, marqueeDistance.value / 30));
 	} else {
 		titleOverflow.value = false;
@@ -178,21 +164,21 @@ function updateTitleOverflow(): void {
 	}
 }
 
-let observadorTitulo: ResizeObserver | null = null;
+let titleObserver: ResizeObserver | null = null;
 
 onMounted(() => {
 	if (!box.value) return;
 
-	observadorTitulo = new ResizeObserver(() => {
+	titleObserver = new ResizeObserver(() => {
 		boxHeight.value = box.value?.clientHeight ?? 0;
 		updateTitleOverflow();
 	});
-	observadorTitulo.observe(box.value);
+	titleObserver.observe(box.value);
 	boxHeight.value = box.value.clientHeight;
 	updateTitleOverflow();
 });
 
-onUnmounted(() => observadorTitulo?.disconnect());
+onUnmounted(() => titleObserver?.disconnect());
 
 watch(
 	() => musicInfo.value?.title,
@@ -331,25 +317,17 @@ watch(() => musicInfo.value?.player, loadPlayers);
 
     <!-- Dónde va la pista. Sin duración publicada no hay barra: una radio en
          vivo no sabe cuánto dura, y una barra ahí diría algo que nadie sabe. -->
-    <div
-      v-if="sections.progress && hasProgress"
-      class="relative flex shrink-0 items-center gap-[2cqmin] text-[clamp(0.55rem,7cqmin,0.72rem)] text-tx-muted tabular-nums"
-    >
-      <span>{{ elapsed }}</span>
-      <input
-        type="range"
-        class="h-1 min-w-0 flex-1 accent-primary disabled:opacity-50"
-        min="0"
-        :max="musicInfo.length"
-        :value="dragging ?? position"
-        :disabled="!musicInfo.canSeek"
-        :aria-label="t('components.MusicWidget.seek')"
-        :aria-valuetext="`${elapsed} / ${total}`"
-        @input="dragging = Number(($event.target as HTMLInputElement).value)"
-        @change="seekTo"
-      />
-      <span>{{ total }}</span>
-    </div>
+    <SeekBar
+      v-if="sections.progress"
+      class="relative shrink-0"
+      :position="position"
+      :duration="musicInfo.length"
+      :seekable="musicInfo.canSeek"
+      :format="formatDuration"
+      :step="5_000_000"
+      :label="t('components.MusicWidget.seek')"
+      @seek="seekTo"
+    />
 
     <!-- El transporte. Cada botón dice si sirve: con un vídeo de YouTube el
          navegador contesta que no se puede ir al anterior ni al siguiente, y

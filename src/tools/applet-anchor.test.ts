@@ -122,6 +122,7 @@ describe('AppletPopover', () => {
 		for (const view of [
 			'AudioAppletView',
 			'BluetoothAppletView',
+			'MusicAppletView',
 			'NetworkAppletView',
 			'PrivacyAppletView',
 			'TrayPopupView',

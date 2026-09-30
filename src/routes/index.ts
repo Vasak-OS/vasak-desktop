@@ -46,6 +46,10 @@ const routes = [
 				path: 'twingate',
 				component: () => import('@/views/applets/TwingateAppletView.vue'),
 			},
+			{
+				path: 'music',
+				component: () => import('@/views/applets/MusicAppletView.vue'),
+			},
 		],
 	},
 	{

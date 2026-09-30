@@ -68,7 +68,10 @@ describe('no hay controles propios', () => {
 		// campo sin borde adentro de su propia caja, que imponerle el aspecto
 		// compartido volvía otra cosa. Esa ventana se fue a `vasak-prism`, así
 		// que la excepción se va con ella y no quedan campos escritos acá.
-		expect(conteniendo(/<input(?![^>]*type="range")/)).toEqual([]);
+		//
+		// Un `radio` no es un campo de texto: es la forma nativa de elegir una
+		// de varias, y la librería no tiene un grupo propio que lo reemplace.
+		expect(conteniendo(/<input(?![^>]*type="(?:range|radio)")/)).toEqual([]);
 	});
 
 	test('ni una directiva de foco propia', () => {

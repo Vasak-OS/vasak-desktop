@@ -90,6 +90,19 @@ views:
     rebootDescription: El sistema se reiniciará. Asegúrate de guardar tu trabajo.
     logoutDescription: Se cerrará tu sesión actual.
     suspendDescription: El sistema entrará en estado de suspensión de bajo consumo.
+  musicApplet:
+    previous: Anterior
+    next: Siguiente
+    play: Reproducir
+    pause: Pausa
+    seek: Posición en la pista
+    byArtist: "de {0}"
+    nothingPlaying: No hay nada sonando
+    currentOutput: "Salida de audio: {0}"
+    chooseOutput: Elegir la salida de audio
+    noOutputs: No hay salidas de audio.
+    via: "vía {0}"
+    back: Volver
   applets:
     panelMenu:
       title: Opciones del panel
@@ -227,6 +240,7 @@ components:
     disconnected: "Twingate: sin conexión"
     pending: "Twingate: {0} recursos por autorizar"
   TrayMusicControl:
+    openPlayer: Abrir el reproductor
     nothingPlaying: No hay nada sonando
     previous: Anterior
     play: Reproducir

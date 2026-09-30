@@ -2,7 +2,14 @@ import { invoke } from '@tauri-apps/api/core';
 import { anchorOf } from '@/tools/applet-anchor';
 
 /** Los applets del panel. Son las filas de `APPLETS` en `anchored_applet.rs`. */
-export type AppletId = 'bluetooth' | 'network' | 'audio' | 'tray' | 'privacy' | 'twingate';
+export type AppletId =
+	| 'bluetooth'
+	| 'network'
+	| 'audio'
+	| 'tray'
+	| 'privacy'
+	| 'twingate'
+	| 'music';
 
 /**
  * Abre o cierra un applet, colgado del botón que lo pidió.

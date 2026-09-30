@@ -434,6 +434,10 @@ async fn fetch_player_info(conn: &AsyncConnection, name: &str) -> Result<JsonVal
     Ok(json!({
         "player": name,
         "playerIdentity": find_str(&root, &["Identity"]).unwrap_or_else(|| name.to_string()),
+        // El `.desktop` del reproductor, sin la extensión: es el nombre de su
+        // icono en el tema, y con eso el disco sin carátula muestra el de la
+        // aplicación que suena y no uno genérico.
+        "desktopEntry": find_str(&root, &["DesktopEntry"]).unwrap_or_default(),
         "status": find_str(&player, &["PlaybackStatus"]).unwrap_or_else(|| "Stopped".to_string()),
         "title": title.unwrap_or_default(),
         "artist": artist.unwrap_or_default(),
@@ -536,6 +540,7 @@ async fn fetch_best_player(conn: &AsyncConnection) -> Result<serde_json::Value, 
         Ok(json!({
             "player": "",
             "playerIdentity": "",
+            "desktopEntry": "",
             "status": "Stopped",
             "title": "",
             "artist": "",
