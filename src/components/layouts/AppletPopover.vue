@@ -31,6 +31,12 @@ import { logWarning } from '@/utils/logger';
  */
 const props = defineProps<{
 	applet: AppletId;
+	/**
+	 * Para un menú: el relleno de un menú contextual (`p-1`) en lugar del de un
+	 * applet (`p-4`). El backend cuenta con esa medida al calcular el alto del
+	 * menú de la bandeja (`tray_menu_size` en `commands/tray.rs`).
+	 */
+	compact?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -91,7 +97,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
   <div
     role="dialog"
     :class="[
-      'applet-popover h-screen w-screen overflow-hidden rounded-corner border border-ui-border bg-ui-bg/80 p-4 backdrop-blur-md',
+      'applet-popover h-screen w-screen overflow-hidden rounded-corner border border-ui-border bg-ui-bg/80 backdrop-blur-md',
+      compact ? 'p-1' : 'p-4',
       `applet-popover-${phase}`,
     ]"
     :style="{ transformOrigin }"

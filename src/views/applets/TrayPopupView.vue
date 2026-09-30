@@ -3,56 +3,68 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import type { SystrayPopupPayload, TrayMenu } from '@/interfaces/tray';
 import { getTrayPopupData, trayPopupClick } from '@/services/tray.service';
 import { dismissApplet } from '@/services/window.service';
+import { hasActions, menuFocusTarget, trayMenuRows } from '@/tools/tray-menu';
 import { logError } from '@/utils/logger';
+
+/**
+ * El menú del clic derecho sobre un icono de la bandeja.
+ *
+ * Es un menú contextual y nada más: las entradas que publica el programa, del
+ * tamaño de un menú. Hasta la 1.18 era una ficha de 700×620 con el icono, el
+ * título, el estado y el nombre de servicio arriba, y las acciones abajo como
+ * tarjetas: quien buscaba «Salir» encontraba la información del programa.
+ *
+ * El alto lo calcula el backend antes de abrir (`tray_menu_size`), con las
+ * mismas medidas que las clases de acá: ver `tools/tray-menu.ts`.
+ */
 
 const { t } = useI18n();
 
 const data = ref<SystrayPopupPayload | null>(null);
+const menu = ref<HTMLElement | null>(null);
 
-const popupIcon = computed(() => {
-	if (!data.value?.icon_data) return null;
-	return `data:image/png;base64,${data.value.icon_data}`;
-});
+const rows = computed(() => trayMenuRows(data.value?.items));
+const empty = computed(() => !hasActions(rows.value));
 
-const popupSubtitle = computed(() => {
-	return data.value?.tooltip || data.value?.service_name || t('views.applets.tray.fallbackTitle');
-});
-
-const itemCount = computed(() => data.value?.items?.length ?? 0);
-
-type RenderedTrayItem = TrayMenu & { depth: number };
-
-const renderItems = computed<RenderedTrayItem[]>(() => {
-	const output: RenderedTrayItem[] = [];
-
-	const appendItems = (items: TrayMenu[] | undefined, depth: number) => {
-		for (const item of items ?? []) {
-			output.push({ ...item, depth });
-			if (item.children?.length) {
-				appendItems(item.children, depth + 1);
-			}
-		}
-	};
-
-	appendItems(data.value?.items, 0);
-	return output;
-});
+const menuLabel = computed(() =>
+	t('views.applets.tray.menuLabel').replace(
+		'{0}',
+		data.value?.title || data.value?.tooltip || t('views.applets.tray.fallbackTitle')
+	)
+);
 
 const close = () => dismissApplet('tray').catch(() => undefined);
 
 const handleItemClick = async (item: TrayMenu) => {
-	if (!item.enabled || item.type === 'separator') return;
+	if (!item.enabled) return;
 	try {
 		await trayPopupClick({ menuId: item.id });
 	} catch (error) {
 		logError('[TrayPopup] Error executing menu action:', error);
 	}
 	void close();
+};
+
+const entries = (): HTMLButtonElement[] => [
+	...(menu.value?.querySelectorAll<HTMLButtonElement>('[data-tray-entry]') ?? []),
+];
+
+const onKeydown = (event: KeyboardEvent) => {
+	const buttons = entries();
+	const from = buttons.indexOf(document.activeElement as HTMLButtonElement);
+	const target = menuFocusTarget(
+		buttons.map((button) => !button.disabled),
+		from,
+		event.key
+	);
+	if (target === null) return;
+	event.preventDefault();
+	buttons[target]?.focus();
 };
 
 /**
@@ -63,11 +75,10 @@ const handleItemClick = async (item: TrayMenu) => {
  */
 const loadData = async () => {
 	try {
-		const payload = await getTrayPopupData();
-		data.value = payload;
-		if (!payload?.items || payload.items.length === 0) {
-			console.warn('[TrayPopup] No menu items available');
-		}
+		data.value = await getTrayPopupData();
+		// El foco adentro, como cualquier menú: así las flechas funcionan de una.
+		await nextTick();
+		menu.value?.focus();
 	} catch (error) {
 		logError('[TrayPopup] Error loading popup data:', error);
 		void close();
@@ -78,104 +89,59 @@ onMounted(loadData);
 </script>
 
 <template>
-  <AppletPopover applet="tray" @shown="loadData">
-    <div class="flex h-full flex-col gap-4">
-      <section class="rounded-corner border border-ui-border bg-ui-surface/45 p-4 shadow-sm">
-        <div class="flex items-start gap-4 min-w-0">
-          <div class="w-14 h-14 rounded-corner border border-ui-border/70 bg-ui-surface/70 flex items-center justify-center overflow-hidden shrink-0">
-            <img
-              v-if="popupIcon"
-              :src="popupIcon"
-              class="w-full h-full object-contain p-2"
-              :alt="t('views.applets.tray.iconAlt')"
-            />
-            <ThemeIcon
-              v-else
-              name="applications-other"
-              :size="48"
-              class="object-contain p-2"
-              :alt="t('views.applets.tray.iconAlt')"
-            />
-          </div>
+  <AppletPopover applet="tray" compact @shown="loadData">
+    <div
+      ref="menu"
+      role="menu"
+      tabindex="-1"
+      :aria-label="menuLabel"
+      class="h-full overflow-y-auto outline-none"
+      @keydown="onKeydown"
+    >
+      <p
+        v-if="empty"
+        class="flex h-8 items-center px-3 text-sm text-tx-muted"
+      >
+        {{ t('views.applets.tray.noItems') }}
+      </p>
 
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2 min-w-0">
-              <h2 class="text-lg font-semibold text-tx-main truncate">
-                {{ data?.title || t('views.applets.tray.fallbackTitle') }}
-              </h2>
-              <span class="text-[10px] uppercase tracking-[0.18em] text-tx-main/45 whitespace-nowrap">
-                {{ t('views.applets.tray.itemCount').replace('{0}', String(itemCount)) }}
-              </span>
-            </div>
-            <p class="text-sm text-tx-main/70 truncate mt-1">
-              {{ popupSubtitle }}
-            </p>
-            <div class="mt-3 flex flex-wrap gap-2 text-xs">
-              <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-tx-main/75">
-                {{ data?.status || t('views.applets.tray.statusFallback') }}
-              </span>
-              <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-tx-main/65 truncate max-w-[280px]">
-                {{ data?.service_name || 'service' }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
+      <template v-for="row in rows" :key="row.kind === 'separator' ? row.key : `${row.kind}-${row.item.id}`">
+        <div
+          v-if="row.kind === 'separator'"
+          role="separator"
+          class="mx-2 my-1 h-px bg-ui-border"
+        />
 
-      <section class="flex-1 min-h-0 rounded-corner border border-ui-border bg-ui-surface/35 p-4 overflow-hidden">
-        <div class="flex items-center justify-between gap-2 mb-3">
-          <h3 class="text-sm font-semibold text-tx-main">{{ t('views.applets.tray.actionsTitle') }}</h3>
-          <span class="text-xs text-tx-main/50">{{ t('views.applets.tray.actionsHint') }}</span>
-        </div>
+        <p
+          v-else-if="row.kind === 'caption'"
+          role="presentation"
+          class="flex h-7 items-center truncate px-3 text-xs font-semibold text-tx-muted"
+          :style="{ paddingLeft: `${0.75 + row.depth}rem` }"
+        >
+          {{ row.item.label }}
+        </p>
 
-        <div class="h-full overflow-y-auto pr-1 space-y-2">
-          <div
-            v-if="!data?.items?.length"
-            class="rounded-corner border border-ui-border bg-ui-surface/50 px-4 py-6 text-center text-sm text-tx-main/60"
-          >
-            {{ t('views.applets.tray.noItems') }}
-          </div>
-
-          <template v-for="item in renderItems" :key="item.id">
-            <div
-              v-if="item.type === 'separator'"
-              class="mx-1 my-3 h-px bg-ui-border/70"
-            />
-
-            <button
-              v-else
-              type="button"
-              :disabled="!item.enabled"
-              :class="[
-                'w-full rounded-corner border px-4 py-3 text-left transition-all duration-150',
-                item.depth > 0 ? 'ml-6 w-[calc(100%-1.5rem)]' : '',
-                item.enabled
-                  ? 'border-ui-border bg-ui-surface/50 hover:bg-primary/12 hover:border-primary/40'
-                  : 'border-ui-border/60 bg-ui-surface/30 cursor-default opacity-40',
-                item.checked ? 'ring-1 ring-primary/35' : '',
-              ]"
-              @click="handleItemClick(item)"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2 min-w-0" :style="item.depth > 0 ? { paddingLeft: '0.25rem' } : undefined">
-                    <span class="text-sm font-medium text-tx-main truncate">{{ item.label }}</span>
-                    <ThemeIcon v-if="item.checked" name="object-select-symbolic" type="symbol" :size="14" alt="✓" />
-                  </div>
-                  <p class="mt-1 text-xs text-tx-main/55 truncate">
-                    <span v-if="item.icon">{{ item.icon }}</span>
-                  </p>
-                </div>
-
-                <div class="shrink-0 flex items-center gap-2 text-[10px] text-tx-main/55 uppercase tracking-[0.14em]">
-                  <span v-if="item.children?.length">{{ t('views.applets.tray.submenu') }}</span>
-                  <span v-if="!item.enabled">{{ t('views.applets.tray.disabled') }}</span>
-                </div>
-              </div>
-            </button>
-          </template>
-        </div>
-      </section>
+        <button
+          v-else
+          data-tray-entry
+          type="button"
+          :role="row.item.checked === undefined || row.item.checked === null ? 'menuitem' : 'menuitemcheckbox'"
+          :aria-checked="row.item.checked ?? undefined"
+          :disabled="!row.item.enabled"
+          class="flex h-8 w-full items-center gap-2 rounded-corner-sm pr-3 text-left text-sm text-tx-main transition-colors hover:bg-primary hover:text-tx-on-primary focus-visible:bg-primary focus-visible:text-tx-on-primary focus-visible:outline-none disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-tx-main"
+          :style="{ paddingLeft: `${0.75 + row.depth}rem` }"
+          @click="handleItemClick(row.item)"
+        >
+          <span class="min-w-0 flex-1 truncate">{{ row.item.label }}</span>
+          <ThemeIcon
+            v-if="row.item.checked"
+            name="object-select-symbolic"
+            type="symbol"
+            :size="14"
+            alt=""
+          />
+        </button>
+      </template>
     </div>
   </AppletPopover>
 </template>

@@ -103,11 +103,12 @@ pub const APPLETS: &[AppletSpec] = &[
         size: (700.0, 620.0),
     },
     // El menú de un icono de la bandeja. Los datos los deja `open_tray_popup`
-    // antes de abrirlo.
+    // antes de abrirlo, y con ellos el tamaño (`tray_menu_size`): esto es sólo
+    // el de un menú vacío.
     AppletSpec {
         id: "tray",
         route: "tray-popup",
-        size: (700.0, 620.0),
+        size: (280.0, 42.0),
     },
     // Quién usa la cámara, el micrófono y la pantalla. Alcanza para las tres
     // listas con varias aplicaciones en cada una sin desplazar en el caso
@@ -320,16 +321,19 @@ pub fn toggle_anchored_applet(
 /// Abre el applet `id`, esté o no abierto: si ya estaba, lo vuelve a ubicar.
 ///
 /// Es lo que usa la bandeja, donde el mismo applet muestra el menú de otro
-/// icono cada vez.
+/// icono cada vez. `size` reemplaza al del [`AppletSpec`] cuando el contenido
+/// se conoce antes de abrir: un menú de tres entradas no ocupa lo mismo que
+/// uno de veinte.
 pub fn open_anchored_applet(
     app: &AppHandle,
     id: &str,
     anchor: Option<AnchorRect>,
+    size: Option<(f64, f64)>,
 ) -> Result<(), String> {
     let spec = applet_spec(id).ok_or_else(|| format!("no hay ningún applet «{id}»"))?;
     let handle = app.clone();
 
-    app.run_on_main_thread(move || open_on_main(&handle, spec, anchor.as_ref()))
+    app.run_on_main_thread(move || open_on_main(&handle, spec, anchor.as_ref(), size))
         .map_err(|error| format!("no se pudo llegar al hilo principal: {error}"))
 }
 
@@ -351,10 +355,15 @@ fn toggle_on_main(app: &AppHandle, spec: &'static AppletSpec, anchor: Option<Anc
         return;
     }
 
-    open_on_main(app, spec, anchor.as_ref());
+    open_on_main(app, spec, anchor.as_ref(), None);
 }
 
-fn open_on_main(app: &AppHandle, spec: &'static AppletSpec, anchor: Option<&AnchorRect>) {
+fn open_on_main(
+    app: &AppHandle,
+    spec: &'static AppletSpec,
+    anchor: Option<&AnchorRect>,
+    size: Option<(f64, f64)>,
+) {
     // Uno por vez: el anterior se va sin animación, porque el nuevo aparece en
     // el mismo instante y dos superficies fundiéndose a la vez se ven sucias.
     let previous = STATE.with(|state| state.borrow().open);
@@ -375,7 +384,7 @@ fn open_on_main(app: &AppHandle, spec: &'static AppletSpec, anchor: Option<&Anch
         primary.size().height as f64 / scale,
     );
     let side = panel_position::read();
-    let placement = place_applet(anchor, side, spec.size, monitor);
+    let placement = place_applet(anchor, side, size.unwrap_or(spec.size), monitor);
     let label = spec.label();
 
     STATE.with(|state| {
