@@ -14,6 +14,7 @@
     "applet_tray",
     "applet_privacy",
     "applet_twingate",
+    "applet_music",
     "app_terminal",
     "session_popup",
     "osd_popup"

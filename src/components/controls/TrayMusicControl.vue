@@ -3,8 +3,11 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { toggleApplet } from '@/services/window.service';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
-import { formatDuration } from '@/utils/playback';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
+import { logError } from '@/utils/logger';
+import { formatDuration, playbackStateOf } from '@/utils/playback';
 
 const { t } = useI18n();
 
@@ -37,18 +40,50 @@ const ANIM_MS = 180;
  * Es la única parte de la bandeja donde entra texto: la fila del panel mide 22
  * píxeles y el resto son iconos. Antes decía sólo el título.
  */
-const resumen = computed(() => {
+const summary = computed(() => {
 	const info = musicInfo.value;
 	if (!info.title) return t('components.TrayMusicControl.nothingPlaying');
 
-	const lineas = [info.title];
-	if (info.artist) lineas.push(info.artist);
-	if (info.album) lineas.push(info.album);
+	const lines = [info.title];
+	if (info.artist) lines.push(info.artist);
+	if (info.album) lines.push(info.album);
 	if (info.length > 0) {
-		lineas.push(`${formatDuration(position.value)} / ${formatDuration(info.length)}`);
+		lines.push(`${formatDuration(position.value)} / ${formatDuration(info.length)}`);
 	}
-	return lineas.join('\n');
+	return lines.join('\n');
 });
+
+/**
+ * El giro de la portada: puesto mientras hay algo cargado, congelado en pausa.
+ *
+ * Antes la clase se ponía y se sacaba con `isPlaying`, y sacarla devuelve la
+ * rotación a cero: la portada saltaba cada vez que se pausaba. Congelada con
+ * `animation-play-state` se queda donde estaba, igual que el disco del
+ * reproductor desplegable.
+ */
+const state = computed(() => playbackStateOf(musicInfo.value.status));
+const coverSpin = computed(() =>
+	state.value === 'stopped'
+		? {}
+		: { animationPlayState: state.value === 'playing' ? 'running' : 'paused' }
+);
+
+/**
+ * El reproductor desplegable, colgado de este control.
+ *
+ * Lo abre la portada —que es lo que se ve siempre, con o sin el mouse encima—
+ * y no los botones del transporte, que siguen haciendo lo suyo sin abrir nada.
+ */
+const opener = ref<HTMLButtonElement | null>(null);
+const { openClasses } = useOpenApplet('music');
+
+async function openPlayer(): Promise<void> {
+	try {
+		await toggleApplet('music', opener.value);
+	} catch (error) {
+		logError('[TrayMusicControl] no se pudo abrir el reproductor:', error);
+	}
+}
 
 function onEnter(): void {
 	if (hideTimer) {
@@ -84,6 +119,7 @@ onUnmounted(() => {
   <!-- contenedor con handlers para controlar la visibilidad -->
   <div
     class="p-1 rounded-corner hover:bg-primary flex items-center"
+    :class="openClasses"
     @mouseenter="onEnter"
     @mouseleave="onLeave"
   >
@@ -91,13 +127,20 @@ onUnmounted(() => {
          quien pidió que el escritorio no se mueva no pidió una excepción para
          la bandeja. Debajo, el aro de progreso dice por dónde va sin ocupar
          una fila más, que en 22 píxeles de panel no existe. -->
-    <div class="relative w-5.5 h-5.5 shrink-0">
+    <button
+      ref="opener"
+      type="button"
+      class="relative w-5.5 h-5.5 shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      :title="summary"
+      :aria-label="t('components.TrayMusicControl.openPlayer')"
+      @click="openPlayer"
+    >
       <img
         :src="imgSrc"
         :alt="musicInfo.title"
-        :title="resumen"
         class="w-full h-full rounded-full origin-center object-cover"
-        :class="{ 'animate-spin motion-reduce:animate-none': isPlaying }"
+        :class="{ 'animate-spin motion-reduce:animate-none': state !== 'stopped' }"
+        :style="coverSpin"
         @error="onImgError"
       />
       <div
@@ -110,7 +153,7 @@ onUnmounted(() => {
         }"
         aria-hidden="true"
       ></div>
-    </div>
+    </button>
 
     <div
       v-show="visible || isHiding"
@@ -129,7 +172,7 @@ onUnmounted(() => {
       <span
         v-if="musicInfo.title"
         class="max-w-40 truncate text-xs text-tx-main"
-        :title="resumen"
+        :title="summary"
       >
         {{ musicInfo.title }}<span v-if="musicInfo.artist" class="text-tx-muted"> — {{ musicInfo.artist }}</span>
       </span>

@@ -125,6 +125,18 @@ pub const APPLETS: &[AppletSpec] = &[
         route: "twingate",
         size: (480.0, 560.0),
     },
+    // El reproductor que se despliega desde el control de música: el disco,
+    // los datos de la pista, la barra y el transporte. Cuatrocientos de ancho
+    // como en la referencia; el alto es el de la tarjeta sin ecualizador —que
+    // todavía no existe— con el título en dos líneas y los dos chips en dos
+    // renglones, que es el caso más alto que se dibuja hoy (238 de tarjeta más
+    // el relleno del contenedor). Cuando llegue el ecualizador, este es el
+    // número que crece.
+    AppletSpec {
+        id: "music",
+        route: "music",
+        size: (400.0, 272.0),
+    },
 ];
 
 pub fn applet_spec(id: &str) -> Option<&'static AppletSpec> {

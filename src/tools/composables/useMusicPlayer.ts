@@ -12,6 +12,7 @@ function emptyInfo(): MusicInfo {
 	return {
 		player: '',
 		playerIdentity: '',
+		desktopEntry: '',
 		status: '',
 		title: '',
 		artist: '',

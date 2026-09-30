@@ -9,7 +9,7 @@
  */
 
 /** Un microsegundo por millonésima de segundo, escrito una sola vez. */
-const POR_SEGUNDO = 1_000_000;
+const MICROS_PER_SECOND = 1_000_000;
 
 /**
  * Un tiempo de MPRIS como lo lee una persona: `3:07`, y `1:02:30` si pasa de
@@ -21,14 +21,14 @@ const POR_SEGUNDO = 1_000_000;
 export function formatDuration(micros: number): string {
 	if (!Number.isFinite(micros) || micros <= 0) return '0:00';
 
-	const total = Math.floor(micros / POR_SEGUNDO);
-	const segundos = total % 60;
-	const minutos = Math.floor(total / 60) % 60;
-	const horas = Math.floor(total / 3600);
+	const total = Math.floor(micros / MICROS_PER_SECOND);
+	const seconds = total % 60;
+	const minutes = Math.floor(total / 60) % 60;
+	const hours = Math.floor(total / 3600);
 
-	const ss = String(segundos).padStart(2, '0');
-	if (horas === 0) return `${minutos}:${ss}`;
-	return `${horas}:${String(minutos).padStart(2, '0')}:${ss}`;
+	const ss = String(seconds).padStart(2, '0');
+	if (hours === 0) return `${minutes}:${ss}`;
+	return `${hours}:${String(minutes).padStart(2, '0')}:${ss}`;
 }
 
 /**
@@ -46,8 +46,8 @@ export function progressRatio(position: number, length: number): number {
 /** La posición que le corresponde a un clic hecho a esta altura de la barra. */
 export function positionFromRatio(ratio: number, length: number): number {
 	if (!Number.isFinite(length) || length <= 0) return 0;
-	const acotada = Math.min(1, Math.max(0, Number.isFinite(ratio) ? ratio : 0));
-	return Math.round(acotada * length);
+	const clamped = Math.min(1, Math.max(0, Number.isFinite(ratio) ? ratio : 0));
+	return Math.round(clamped * length);
 }
 
 /**
@@ -64,12 +64,12 @@ export function positionNow(
 	playing: boolean,
 	length: number
 ): number {
-	const desde = Number.isFinite(base) && base > 0 ? base : 0;
-	if (!playing) return desde;
+	const from = Number.isFinite(base) && base > 0 ? base : 0;
+	if (!playing) return from;
 
-	const avanzada = desde + Math.max(0, elapsedMs) * 1000;
-	if (Number.isFinite(length) && length > 0) return Math.min(avanzada, length);
-	return avanzada;
+	const advanced = from + Math.max(0, elapsedMs) * 1000;
+	if (Number.isFinite(length) && length > 0) return Math.min(advanced, length);
+	return advanced;
 }
 
 /** Lo que entra en el widget, según el alto que le queda. */
@@ -96,11 +96,11 @@ export interface Sections {
  * Los cortes están puestos entre esos dos números y no en cualquier lado.
  */
 export function sectionsFor(height: number): Sections {
-	const alto = Number.isFinite(height) ? height : 0;
+	const available = Number.isFinite(height) ? height : 0;
 	return {
-		progress: alto >= 150,
-		album: alto >= 190,
-		extras: alto >= 230,
+		progress: available >= 150,
+		album: available >= 190,
+		extras: available >= 230,
 	};
 }
 
@@ -120,5 +120,25 @@ export function nextLoop(current: string | null | undefined): 'None' | 'Playlist
 			return 'Track';
 		default:
 			return 'None';
+	}
+}
+
+/**
+ * El estado de un reproductor, en los tres valores que dibuja el disco.
+ *
+ * MPRIS manda `Playing`, `Paused` o `Stopped`, y hay reproductores que lo
+ * mandan en minúsculas o que mandan otra cosa. Lo que no se entiende es
+ * «detenido»: un disco quieto no promete nada, uno que gira dice que algo suena.
+ */
+export function playbackStateOf(
+	status: string | null | undefined
+): 'playing' | 'paused' | 'stopped' {
+	switch (String(status ?? '').toLowerCase()) {
+		case 'playing':
+			return 'playing';
+		case 'paused':
+			return 'paused';
+		default:
+			return 'stopped';
 	}
 }

@@ -4,6 +4,15 @@
    donde no hay ninguno: ninguna de las dos declaraciones puede pisar a la otra. */
 @import "tailwindcss";
 
+/* Tailwind no mira adentro de `node_modules`, así que las clases que sólo usa
+   la librería de componentes no llegan a la hoja de estilos y el componente se
+   dibuja sin ellas, sin ningún aviso. El escritorio no lo tenía: los
+   componentes de la librería funcionaban de casualidad, con las clases que el
+   propio escritorio también usa. El reproductor desplegable fue el primero en
+   necesitar alguna que acá no aparecía: el tirador de la barra de progreso, que
+   aparece al pasar por encima o con el foco del teclado. */
+@source "../../node_modules/@vasakgroup/vue-libvasak/dist";
+
 :root {
   /* general */
   --corner-radius: 10px;
