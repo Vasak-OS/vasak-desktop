@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.18.2",
+	"version": "1.18.3",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -53,7 +53,8 @@
 		"bibliotecasAtrasadas": {
 			"pinia": "La 4 es un salto mayor de una biblioteca que usa el taller entero: catorce aplicaciones están en pinia 3 y subir sólo ésta parte el vocabulario compartido. Va en su propio PR, coordinado con el resto.",
 			"typescript": "La 7 (el compilador reescrito) no trae `typescript/lib/tsc` y vue-tsc 3.3 lo busca ahí: `bun run build` se cae con ERR_PACKAGE_PATH_NOT_EXPORTED antes de mirar un archivo. Se saca cuando vue-tsc publique una versión que soporte TypeScript 7.",
-			"vite": "La 8 cambia rollup por rolldown y `build.rollupOptions.output.manualChunks` deja de aceptar un objeto: la compilación se cae. Migrar el reparto de chunks es cambiar cómo se empaqueta la ventana, y eso no lo verifica ninguna prueba: va en su propio PR, que lo compruebe en una sesión con `--features custom-protocol`."
+			"vite": "La 8 cambia rollup por rolldown y `build.rollupOptions.output.manualChunks` deja de aceptar un objeto: la compilación se cae. Migrar el reparto de chunks es cambiar cómo se empaqueta la ventana, y eso no lo verifica ninguna prueba: va en su propio PR, que lo compruebe en una sesión con `--features custom-protocol`.",
+			"glib (crate de Rust)": "Va en la 0.18 atada a gtk-rs: la usan tauri, wry/webkit2gtk, gtk-layer-shell y tauri-plugin-vicons, así que subirla sola metería una segunda copia de los enlaces a GLib. Dependabot marca una falla moderada (`VariantStrIter` en glib < 0.20, alerta 2); este repo no usa esa API —ni `VariantStrIter` ni `array_iter_str`—, sólo la tocan las dependencias. Se saca cuando tauri pase a gtk-rs 0.20 o posterior: entonces suben juntas glib, gtk y gtk-layer-shell."
 		}
 	}
 }
