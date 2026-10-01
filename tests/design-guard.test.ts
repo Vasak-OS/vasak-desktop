@@ -35,11 +35,14 @@
  *   o desplazamientos al pasar o al apretar, ni duraciones fuera de 100, 150,
  *   200 y 300 ms.
  *
- * Reemplaza a `los-colores-existen.test.ts`, que era la primera de estas reglas.
+ * Nació acá (vasak-desktop#144), pasó a la plantilla `vapp` y a vasak-terminal
+ * con los huecos cerrados —el `//` adentro de un texto, las sombras `xs`, las
+ * hojas de estilo, el piso del esquema—, y vuelve con ellos (vue-libvasak#74).
  */
 
 import { describe, expect, test } from 'bun:test';
 import { Glob } from 'bun';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -50,7 +53,8 @@ const LIBRARY_TOKENS = `${ROOT}node_modules/@vasakgroup/vue-libvasak/dist/tokens
 /**
  * La bandeja del sistema dibuja el icono que **manda la otra aplicación**
  * (`IconPixmap` de StatusNotifierItem) cuando no trae un nombre del tema. No es
- * un icono propio: es el de un tercero, que el tema no puede tener.
+ * un icono propio: es el de un tercero, que el tema no puede tener. Es la
+ * excepción de la §5 del inventario de vue-libvasak#74, y la única.
  */
 const THIRD_PARTY_PIXMAP = ['components/buttons/TrayPixmap.vue'];
 
@@ -69,20 +73,35 @@ function stripComments(text: string): string {
 	let out = '';
 	let index = 0;
 	while (index < text.length) {
+		const char = text[index] as string;
+		// Un texto entre comillas se copia entero: un `//` o un `/*` adentro
+		// (`title="a // b"`) no abre ningún comentario, y cortarlo ahí se
+		// llevaba puesto lo que venía después en la misma línea.
+		if (char === '"' || char === '`') {
+			let end = index + 1;
+			while (end < text.length && text[end] !== char) end += text[end] === '\\' ? 2 : 1;
+			out += text.slice(index, end + 1);
+			index = end + 1;
+			continue;
+		}
 		const pair = pairs.find(([open]) => text.startsWith(open, index));
 		if (pair) {
 			const end = text.indexOf(pair[1], index + pair[0].length);
 			index = end === -1 ? text.length : end + pair[1].length;
 			continue;
 		}
-		// `//` de línea, salvo dentro de una dirección (`https://`) o un texto.
+		// `//` de línea, salvo dentro de una dirección (`https://`, con su
+		// esquema delante: un `clave: // nota` sí es comentario) o de un texto
+		// con comilla simple, que no se sigue: en la prosa de una plantilla es
+		// un apóstrofo y no abre nada.
 		const previous = text[index - 1] ?? '';
-		if (text.startsWith('//', index) && !':"\'`'.includes(previous)) {
+		const isUrl = /[a-z][a-z0-9+.-]*:$/i.test(text.slice(Math.max(0, index - 32), index));
+		if (text.startsWith('//', index) && !isUrl && previous !== "'") {
 			const end = text.indexOf('\n', index);
 			index = end === -1 ? text.length : end;
 			continue;
 		}
-		out += text[index];
+		out += char;
 		index += 1;
 	}
 	return out;
@@ -155,7 +174,7 @@ const VIEWPORT =
 const FORBIDDEN_SHAPE: Array<[string, RegExp]> = [
 	[
 		'sombras de Tailwind en vez de shadow-surface-*',
-		/(?<![\w-])(?:[a-z0-9@[\]-]+:)*(?:shadow(?:-(?:sm|md|lg|xl|2xl|inner))?|drop-shadow(?:-(?:sm|md|lg|xl|2xl|\[[^\]]*\]))?)(?![\w-])/g,
+		/(?<![\w-])(?:[a-z0-9@[\]-]+:)*(?:shadow(?:-(?:2xs|xs|sm|md|lg|xl|2xl|inner))?|drop-shadow(?:-(?:xs|sm|md|lg|xl|2xl|\[[^\]]*\]))?)(?![\w-])/g,
 	],
 	['desenfoque detrás', /backdrop-blur/g],
 	[
@@ -252,7 +271,9 @@ describe('los colores salen del esquema', () => {
 		for (const file of sources('**/*.css')) {
 			for (const line of (await read(SOURCE + file)).split('\n')) {
 				if (!line.match(LITERAL_COLOR)) continue;
-				if (/^\s*--[a-z0-9-]+\s*:\s*#[0-9a-fA-F]{3,8}\s*;\s*$/.test(line)) continue;
+				// Sólo en `main.css`: otra hoja que declare `--algo: #fff` y
+				// después lo use es un color dibujado a mano con un paso más.
+				if (`${SOURCE}${file}` === APP_CSS && /^\s*--[a-z0-9-]+\s*:\s*#[0-9a-fA-F]{3,8}\s*;\s*$/.test(line)) continue;
 				found.push(`${file}: ${line.trim()}`);
 			}
 		}
@@ -264,11 +285,42 @@ describe('los colores salen del esquema', () => {
 		// `body * { @apply text-tx-main }` fuera de toda capa le ganaba a cada
 		// `text-*` de Tailwind, que vive en `@layer utilities`: el texto sobre
 		// el primario salía con el color principal (1,4:1 en oscuro) y ningún
-		// `text-tx-muted` se veía. El color por omisión va heredado y en la capa
-		// `base`.
+		// `text-tx-muted` se veía (vasak-desktop#144). El color por omisión va
+		// heredado y en la capa `base`. La transición de colores sí puede ir
+		// en `body *`: no es un color.
 		const css = await read(APP_CSS);
-		expect(css).not.toMatch(/body\s*\*\s*\{[^}]*\b(?:color|text-)/);
+		expect(css).not.toMatch(/body\s*\*\s*\{[^}]*(?:(?<![\w-])color\s*:|text-tx)/);
 		expect(css).toMatch(/@layer base\s*\{\s*body\s*\{\s*color:\s*var\(--color-tx-main\);/);
+	});
+
+	test('y no vuelve la clase `.background`', async () => {
+		// La librería 2.0 dejó de leerla: sus tarjetas van en
+		// `bg-ui-surface/70`. Una aplicación que la siga declarando no cambia
+		// nada en la librería y sí invita a usarla en lo propio, con el fondo de
+		// la ventana encima de la ventana (memoria `tokens-de-fondo`).
+		expect(await read(APP_CSS)).not.toMatch(/(?<![\w-])\.background\b/);
+	});
+
+	test('respeta a quien pidió menos movimiento', async () => {
+		// `tokens.css` no lo trae: lo pone cada aplicación. Sin esto, la
+		// transición de colores de `body *` y las entradas de los componentes
+		// siguen moviéndose para quien lo pidió (WCAG 2.3.3).
+		const css = await read(APP_CSS);
+		const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+		expect(block.length, 'falta el bloque de prefers-reduced-motion').toBeGreaterThan(0);
+		expect(block).toMatch(/transition-duration:\s*0\.01ms\s*!important/);
+		expect(block).toMatch(/animation-iteration-count:\s*1\s*!important/);
+	});
+
+	test('ni las copias de lo que trae `tokens.css`', async () => {
+		// Los radios y el piso del foco viven en la librería. Una copia acá,
+		// por venir después, le gana: así el foco volvía al primario (2,64:1
+		// contra el fondo claro, debajo del 3:1 que pide un indicador).
+		const css = await read(APP_CSS);
+		expect(css).toContain('@import "@vasakgroup/vue-libvasak/tokens.css"');
+		expect(css.indexOf('@import "tailwindcss"')).toBeLessThan(css.indexOf('@import "@vasakgroup/vue-libvasak/tokens.css"'));
+		expect(css).not.toMatch(/--radius-[a-z0-9-]+\s*:/);
+		expect(css).not.toMatch(/:focus-visible/);
 	});
 
 	test('la guardia de colores ve un color cuando lo hay', () => {
@@ -279,6 +331,14 @@ describe('los colores salen del esquema', () => {
 		expect([...'drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]'.matchAll(LITERAL_COLOR)]).toHaveLength(1);
 		// Y un comentario no es un color.
 		expect(stripComments('/* #dd7878 */ <!-- rgb(1 2 3) -->')).not.toMatch(LITERAL_COLOR);
+		// Pero un `//` adentro de un texto no se come lo que sigue. (Sin la
+		// `g`: con ella, `toMatch` arranca donde terminó la búsqueda anterior.)
+		const once = new RegExp(LITERAL_COLOR.source);
+		expect(stripComments('<div title="a // b" class="bg-white rounded-md"></div>')).toMatch(once);
+		expect(stripComments('<div title="a /* b" class="bg-white"></div> */')).toMatch(once);
+		// Y una dirección no es un comentario, pero `clave: // nota` sí.
+		expect(stripComments("src: url(https://x/bg-white)")).toMatch(once);
+		expect(stripComments('gap: // bg-white')).not.toMatch(once);
 	});
 });
 
@@ -309,6 +369,17 @@ describe('los iconos salen del tema del sistema', () => {
 		}
 	});
 
+	test('ni imágenes de iconos en el repositorio', () => {
+		// El escritorio guardaba el logo y dos fondos de la plantilla en
+		// `src/assets/`, que nada usaba. El icono de la aplicación es el de
+		// `src-tauri/icons/`, que es otra cosa: lo que instala el paquete en el
+		// tema.
+		const images = ['src/', 'public/'].filter((dir) => existsSync(ROOT + dir)).flatMap((dir) =>
+			[...new Glob('**/*.{svg,png,ico,webp,gif}').scanSync({ cwd: ROOT + dir, onlyFiles: true })].map((f) => dir + f)
+		);
+		expect(images).toEqual([]);
+	});
+
 	test('la guardia de iconos ve uno cuando lo hay', () => {
 		expect([...'<svg viewBox="0 0 1 1"> src="./x.png" mdi-home'.matchAll(EMBEDDED_ICON)]).toHaveLength(3);
 	});
@@ -332,13 +403,14 @@ describe('ningún punto de corte de la pantalla', () => {
 describe('lo que la forma de Once UI deja afuera', () => {
 	for (const [what, regex] of FORBIDDEN_SHAPE) {
 		test(`sin ${what}`, async () => {
-			expect(await findAll(sources('**/*.{vue,ts}'), regex)).toEqual([]);
+			// También en las hojas: un `@apply shadow-lg` es la misma sombra.
+			expect(await findAll(sources('**/*.{vue,ts,css}'), regex)).toEqual([]);
 		});
 	}
 
 	test('las duraciones son 100, 150, 200 o 300', async () => {
 		const found = await findAll(
-			sources('**/*.{vue,ts}'),
+			sources('**/*.{vue,ts,css}'),
 			/(?<![\w-])(?:[a-z0-9@[\]-]+:)*duration-(\d+)(?![\w-])/g,
 			(m) => !['100', '150', '200', '300'].includes(m[1] as string)
 		);
@@ -347,14 +419,71 @@ describe('lo que la forma de Once UI deja afuera', () => {
 	});
 
 	test('la guardia ve lo prohibido cuando lo hay', () => {
-		const sample = 'shadow-lg drop-shadow-[0_0_6px] hover:scale-110 backdrop-blur-md shadow-surface-l';
+		const sample = 'shadow-lg shadow-xs shadow-2xs drop-shadow-[0_0_6px] hover:scale-110 backdrop-blur-md shadow-surface-l';
 		const hits = FORBIDDEN_SHAPE.flatMap(([what, regex]) => [...sample.matchAll(regex)].map(() => what));
 
 		expect(hits).toEqual([
 			'sombras de Tailwind en vez de shadow-surface-*',
 			'sombras de Tailwind en vez de shadow-surface-*',
+			'sombras de Tailwind en vez de shadow-surface-*',
+			'sombras de Tailwind en vez de shadow-surface-*',
 			'desenfoque detrás',
 			'escalas, giros y desplazamientos al pasar o al apretar',
 		]);
+	});
+});
+
+describe('el piso del esquema se lee', () => {
+	/**
+	 * Los valores de `:root` rigen hasta que el config-manager escribe los del
+	 * esquema de la persona, y son los que quedan si esa lectura falla. Este
+	 * diálogo llegó a tener `--text-on-primary-dark: #cdd6f4`: «Permitir» salía
+	 * lavanda sobre rosa, 1,4:1, hasta que cargaba la configuración.
+	 */
+	function luminance(hex: string): number {
+		const value = hex.replace('#', '');
+		const full = value.length === 3 ? [...value].map((c) => c + c).join('') : value;
+		const [r, g, b] = [0, 2, 4].map((i) => {
+			const channel = Number.parseInt(full.slice(i, i + 2), 16) / 255;
+			return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+		});
+		return 0.2126 * (r as number) + 0.7152 * (g as number) + 0.0722 * (b as number);
+	}
+
+	function contrast(a: string, b: string): number {
+		const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+		return (light + 0.05) / (dark + 0.05);
+	}
+
+	async function floor(): Promise<Record<string, string>> {
+		const css = await read(APP_CSS);
+		const root = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')));
+		return Object.fromEntries([...root.matchAll(/--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,6})\s*;/g)].map((m) => [m[1], m[2]]));
+	}
+
+	for (const mode of ['', '-dark']) {
+		test(`el texto llega a 4,5:1 sobre su fondo${mode ? ' en oscuro' : ' en claro'}`, async () => {
+			const colors = await floor();
+			const pairs: Array<[string, string]> = [
+				['text-on-primary', 'primary'],
+				['text-main', 'ui-background'],
+				['text-muted', 'ui-background'],
+				['text-main', 'ui-surface'],
+			];
+			for (const [text, background] of pairs) {
+				const fg = colors[text + mode];
+				const bg = colors[background + mode];
+				expect(fg, `falta --${text}${mode}`).toBeDefined();
+				expect(bg, `falta --${background}${mode}`).toBeDefined();
+				expect(contrast(fg as string, bg as string), `--${text}${mode} sobre --${background}${mode}`).toBeGreaterThanOrEqual(4.5);
+			}
+		});
+	}
+
+	test('y el contorno de un control, 3:1 contra el fondo', async () => {
+		const colors = await floor();
+		for (const mode of ['', '-dark']) {
+			expect(contrast(colors[`ui-border-strong${mode}`] as string, colors[`ui-background${mode}`] as string)).toBeGreaterThanOrEqual(3);
+		}
 	});
 });
