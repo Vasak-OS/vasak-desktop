@@ -1,7 +1,3 @@
-/* biome-ignore-all lint/style/noDescendingSpecificity: el `body *` de más abajo
-   fija el color del texto y el bloque de `@layer base` fija `border-color`. La
-   regla compara selectores sin mirar qué propiedad tocan, así que ve un conflicto
-   donde no hay ninguno: ninguna de las dos declaraciones puede pisar a la otra. */
 @import "tailwindcss";
 
 /* La forma de los componentes, con el criterio de Once UI: radios derivados
@@ -231,8 +227,20 @@ body {
   overflow: hidden;
 }
 
-body * {
-  @apply text-tx-main;
+/* El color del texto se hereda del cuerpo y va en la capa `base`.
+
+   Era `body * { @apply text-tx-main }` suelto, fuera de toda capa, y en CSS
+   lo que no está en una capa le gana a lo que sí, sin mirar la especificidad:
+   pisaba **todas** las utilidades de color de texto, que Tailwind 4 emite en
+   `@layer utilities`. Medido en el banco: el «Conectar» de una tarjeta de
+   Bluetooth salía `#cdd6f4` sobre el primario `#eba0ac` (1,4:1) en vez del
+   `text-tx-on-primary` que pide la librería, y cada `text-tx-muted` del
+   escritorio se dibujaba con el color principal. Heredado desde el cuerpo,
+   lo que no pide color sigue en `tx-main` y lo que lo pide, lo recibe. */
+@layer base {
+  body {
+    color: var(--color-tx-main);
+  }
 }
 
 .theme-transition {

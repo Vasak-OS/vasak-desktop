@@ -290,7 +290,7 @@ const onKeydown = (event: KeyboardEvent) => {
       <!-- Los botones de sesión son los de la librería, `ghost` y del tamaño
            de siempre (40): sin escala ni giro al pasar, el velo neutro de Once
            UI y el icono simbólico del tema, que sigue el color del texto. -->
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <ActionButton
           v-for="action in sessionActions"
           :key="action.icon"
@@ -315,7 +315,7 @@ const onKeydown = (event: KeyboardEvent) => {
       <div
         v-else
         key="main-view"
-        class="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto @3xl:grid-cols-3 @3xl:overflow-visible"
+        class="grid min-h-0 flex-1 grid-cols-1 content-start gap-4 overflow-y-auto @3xl:grid-cols-3 @3xl:content-normal @3xl:overflow-visible"
       >
         <!-- Las tres zonas son tarjetas de la librería (`ListCard`): la
              superficie de lo que se apoya, el canto fino y el radio `l`. -->
@@ -325,9 +325,12 @@ const onKeydown = (event: KeyboardEvent) => {
           </div>
         </ListCard>
 
-        <div class="grid min-h-0 grid-rows-[auto_18rem] gap-4 @3xl:col-span-2 @3xl:h-full @3xl:grid-rows-[1fr_2fr]">
-          <ListCard custom-class="min-h-0">
-            <div class="grid h-full min-h-0 min-w-0 flex-1 grid-cols-[1fr_2fr] gap-3">
+        <!-- `min-h-0` sólo lado a lado: apiladas, una fila `auto` con
+             `min-h-0` se encoge a cero cuando la columna desborda, y las
+             categorías se dibujaban encima del clima. -->
+        <div class="grid grid-rows-[auto_18rem] gap-4 @max-sm:grid-rows-[auto_30rem] @3xl:col-span-2 @3xl:h-full @3xl:min-h-0 @3xl:grid-rows-[1fr_2fr]">
+          <ListCard custom-class="@3xl:min-h-0">
+            <div class="grid h-full min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 @md:grid-cols-[1fr_2fr]">
               <div v-if="categoryEntries.all" role="menu" :aria-label="t('views.menu.categories')" class="flex min-h-14 items-center justify-center">
                 <CategoryMenuPill
                   :category="categoryEntries.all[0]"
@@ -338,7 +341,7 @@ const onKeydown = (event: KeyboardEvent) => {
                 />
               </div>
 
-              <div role="menu" :aria-label="t('views.menu.categories')" class="grid min-h-0 grid-cols-3 grid-rows-2 gap-3">
+              <div role="menu" :aria-label="t('views.menu.categories')" class="grid min-h-0 grid-cols-[repeat(auto-fit,minmax(4rem,1fr))] gap-3 @md:grid-cols-3 @md:grid-rows-2">
                 <CategoryMenuPill
                   v-for="([key, value]) in categoryEntries.others.slice(0, 6)"
                   :key="key"

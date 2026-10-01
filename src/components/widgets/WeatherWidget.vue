@@ -87,8 +87,11 @@ const nombreDelDia = (fecha: string) => {
       </div>
     </div>
 
-    <!-- Variante extendida: hoy a la izquierda, la semana a la derecha. -->
-    <div v-else class="grid h-full min-h-0 gap-[3cqmin]" style="grid-template-columns: 2fr 3fr">
+    <!-- Variante extendida: hoy a la izquierda, la semana a la derecha. Con
+         menos de 20rem de ancho —el menú en un monitor chico— hoy va arriba y
+         la semana abajo, en vez de apretar los siete días hasta encimarlos.
+         Por el ancho del marco, que es un contenedor, y no de la pantalla. -->
+    <div v-else class="grid h-full min-h-0 grid-cols-[2fr_3fr] gap-[3cqmin] @max-[20rem]:grid-cols-1 @max-[20rem]:grid-rows-[auto_1fr]">
       <div
         class="flex min-h-0 flex-col items-center justify-center gap-[3cqmin] rounded-corner-m border border-primary bg-ui-selected-accent p-[3cqmin]"
       >

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ActionButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { toggleApplet } from '@/services/window.service';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
@@ -130,7 +130,7 @@ onUnmounted(() => {
     <button
       ref="opener"
       type="button"
-      class="relative w-5.5 h-5.5 shrink-0 rounded-corner-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      class="relative w-5.5 h-5.5 shrink-0 rounded-corner-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-focus"
       :title="summary"
       :aria-label="t('components.TrayMusicControl.openPlayer')"
       @click="openPlayer"
@@ -177,42 +177,46 @@ onUnmounted(() => {
         {{ musicInfo.title }}<span v-if="musicInfo.artist" class="text-tx-muted"> — {{ musicInfo.artist }}</span>
       </span>
 
-      <button
-        type="button"
-        @click.prevent="onPrev"
+      <!-- Los tres de transporte son el botón `ghost` de la librería en su
+           tamaño chico: se ve de 24, como antes, y se apunta en 32. -->
+      <ActionButton
+        label=""
+        :icon="prevIcon"
+        :icon-alt="t('components.TrayMusicControl.previous')"
+        :title="t('components.TrayMusicControl.previous')"
+        variant="ghost"
+        size="sm"
+        prevent-default
         :disabled="!musicInfo.canGoPrevious"
-        class="w-6 h-6 flex items-center justify-center rounded-corner-m bg-ui-bg/80 text-label-xs disabled:cursor-default disabled:opacity-40"
-        :title="t('components.TrayMusicControl.previous')" :aria-label="t('components.TrayMusicControl.previous')">
-        <ThemeIcon :name="prevIcon" type="symbol" :size="16" :alt="t('components.TrayMusicControl.previous')" />
-      </button>
+        @click="onPrev"
+      />
 
-      <button
-        type="button"
-        @click.prevent="onPlayPause"
-        class="w-6 h-6 flex items-center justify-center rounded-corner-m bg-ui-bg/80 text-label-xs"
+      <ActionButton
+        label=""
+        :icon="isPlaying ? pauseIcon : playIcon"
+        :icon-alt="isPlaying
+          ? t('components.TrayMusicControl.pause')
+          : t('components.TrayMusicControl.play')"
         :title="isPlaying
           ? t('components.TrayMusicControl.pause')
-          : t('components.TrayMusicControl.play')" :aria-label="isPlaying
-          ? t('components.TrayMusicControl.pause')
-          : t('components.TrayMusicControl.play')">
-        <ThemeIcon
-          :name="isPlaying ? pauseIcon : playIcon"
-          type="symbol"
-          :size="16"
-          :alt="isPlaying
-            ? t('components.TrayMusicControl.pause')
-            : t('components.TrayMusicControl.play')"
-        />
-      </button>
+          : t('components.TrayMusicControl.play')"
+        variant="ghost"
+        size="sm"
+        prevent-default
+        @click="onPlayPause"
+      />
 
-      <button
-        type="button"
-        @click.prevent="onNext"
+      <ActionButton
+        label=""
+        :icon="nextIcon"
+        :icon-alt="t('components.TrayMusicControl.next')"
+        :title="t('components.TrayMusicControl.next')"
+        variant="ghost"
+        size="sm"
+        prevent-default
         :disabled="!musicInfo.canGoNext"
-        class="w-6 h-6 flex items-center justify-center rounded-corner-m bg-ui-bg/80 text-label-xs disabled:cursor-default disabled:opacity-40"
-        :title="t('components.TrayMusicControl.next')" :aria-label="t('components.TrayMusicControl.next')">
-        <ThemeIcon :name="nextIcon" type="symbol" :size="16" :alt="t('components.TrayMusicControl.next')" />
-      </button>
+        @click="onNext"
+      />
     </div>
   </div>
 </template>

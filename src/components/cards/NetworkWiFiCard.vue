@@ -76,11 +76,11 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
        conectada suma un anillo del color del éxito, que no pisa nada. -->
   <ListCard
     :clickable="true"
-    :custom-class="props.is_connected ? 'ring-1 ring-status-success/40' : ''"
+    :custom-class="props.is_connected ? 'flex-wrap ring-1 ring-status-success/40' : 'flex-wrap'"
     @click="connectToNetwork()"
   >
-    <div class="flex items-center gap-3 flex-1 min-w-0">
-      <div class="rounded-corner-full bg-ui-selected-accent p-2 border border-ui-line">
+    <div class="flex items-center gap-3 flex-1 min-w-32">
+      <div class="shrink-0 rounded-corner-full bg-ui-selected-accent p-2 border border-ui-line">
         <ThemeIcon :name="props.icon" type="symbol" :size="16" :alt="props.ssid" />
       </div>
 

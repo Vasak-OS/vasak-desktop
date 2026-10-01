@@ -260,6 +260,17 @@ describe('los colores salen del esquema', () => {
 		expect(found).toEqual([]);
 	});
 
+	test('el color del texto por omisión no pisa las utilidades', async () => {
+		// `body * { @apply text-tx-main }` fuera de toda capa le ganaba a cada
+		// `text-*` de Tailwind, que vive en `@layer utilities`: el texto sobre
+		// el primario salía con el color principal (1,4:1 en oscuro) y ningún
+		// `text-tx-muted` se veía. El color por omisión va heredado y en la capa
+		// `base`.
+		const css = await read(APP_CSS);
+		expect(css).not.toMatch(/body\s*\*\s*\{[^}]*\b(?:color|text-)/);
+		expect(css).toMatch(/@layer base\s*\{\s*body\s*\{\s*color:\s*var\(--color-tx-main\);/);
+	});
+
 	test('la guardia de colores ve un color cuando lo hay', () => {
 		const sample = 'color: #dd7878; box-shadow: 0 0 1px rgb(0 0 0 / .1); hover:bg-white text-gray-500';
 		expect([...sample.matchAll(LITERAL_COLOR)]).toHaveLength(4);

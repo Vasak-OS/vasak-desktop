@@ -97,7 +97,7 @@ function getDeviceName(device: AudioDevice): string {
       :aria-label="t('components.AudioDeviceSelector.title')">
       <button v-for="device in devices" :key="device.id" type="button" role="radio"
         :aria-checked="selectedDeviceId === device.id"
-        class="flex w-full min-w-0 items-center gap-2 p-2 rounded-corner-m cursor-pointer text-left transition-colors duration-200 ease-ui focus-visible:-outline-offset-2" :class="[
+        class="flex w-full min-w-0 flex-wrap items-center gap-2 p-2 rounded-corner-m cursor-pointer text-left transition-colors duration-200 ease-ui focus-visible:-outline-offset-2" :class="[
           selectedDeviceId === device.id
             ? 'bg-ui-selected-accent font-semibold'
             : 'hover:bg-ui-hover active:bg-ui-pressed',
@@ -117,8 +117,8 @@ function getDeviceName(device: AudioDevice): string {
         </div>
 
         <!-- Device info -->
-        <div class="flex-1 min-w-0">
-          <div class="text-label-xs font-medium break-words">
+        <div class="min-w-24 flex-1">
+          <div class="text-label-xs font-medium break-all">
             {{ getDeviceName(device) }}
           </div>
           <div class="text-label-xs text-tx-muted">
