@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ActionButton, ListRow, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import { privacyInUse, privacyStopScreen } from '@/services/core.service';
@@ -105,14 +105,14 @@ const stopScreen = async (session: string) => {
 							{{ t('views.privacyApplet.camera') }}
 						</h3>
 					</div>
-					<div
+					<ListRow
 						v-for="usage in camera"
 						:key="`camera-${usage.aplicacion}-${usage.detalle}`"
-						class="rounded-corner-m bg-ui-surface/70 px-3 py-2"
-					>
-						<p class="truncate text-label-m text-tx-main">{{ usage.aplicacion }}</p>
-						<p class="truncate text-label-xs text-tx-muted">{{ usage.detalle }}</p>
-					</div>
+						:title="usage.aplicacion"
+						:description="usage.detalle"
+						truncate
+						class="border border-ui-line bg-ui-surface/70"
+					/>
 				</section>
 
 				<section v-if="microphone.length > 0" class="flex flex-col gap-2">
@@ -122,14 +122,14 @@ const stopScreen = async (session: string) => {
 							{{ t('views.privacyApplet.microphone') }}
 						</h3>
 					</div>
-					<div
+					<ListRow
 						v-for="usage in microphone"
 						:key="`microphone-${usage.aplicacion}-${usage.detalle}`"
-						class="rounded-corner-m bg-ui-surface/70 px-3 py-2"
-					>
-						<p class="truncate text-label-m text-tx-main">{{ usage.aplicacion }}</p>
-						<p class="truncate text-label-xs text-tx-muted">{{ usage.detalle }}</p>
-					</div>
+						:title="usage.aplicacion"
+						:description="usage.detalle"
+						truncate
+						class="border border-ui-line bg-ui-surface/70"
+					/>
 				</section>
 
 				<section v-if="screen.length > 0" class="flex flex-col gap-2">
@@ -139,25 +139,27 @@ const stopScreen = async (session: string) => {
 							{{ t('views.privacyApplet.screen') }}
 						</h3>
 					</div>
-					<div
+					<ListRow
 						v-for="usage in screen"
 						:key="`screen-${usage.detalle}`"
-						class="flex items-center justify-between gap-2 rounded-corner-m bg-ui-surface/70 px-3 py-2"
+						:title="usage.aplicacion"
+						truncate
+						class="border border-ui-line bg-ui-surface/70"
 					>
-						<p class="min-w-0 truncate text-label-m text-tx-main">{{ usage.aplicacion }}</p>
-						<button
-							type="button"
-							class="shrink-0 rounded-corner-m border border-ui-line px-2 py-1 text-label-xs font-medium hover:bg-ui-hover disabled:opacity-50"
-							:disabled="stopping === usage.detalle"
-							@click="stopScreen(usage.detalle)"
-						>
-							{{
-								stopping === usage.detalle
-									? t('views.privacyApplet.stopping')
-									: t('views.privacyApplet.stop')
-							}}
-						</button>
-					</div>
+						<template #trailing>
+							<ActionButton
+								:label="
+									stopping === usage.detalle
+										? t('views.privacyApplet.stopping')
+										: t('views.privacyApplet.stop')
+								"
+								variant="secondary"
+								size="sm"
+								:loading="stopping === usage.detalle"
+								@click="stopScreen(usage.detalle)"
+							/>
+						</template>
+					</ListRow>
 				</section>
 			</div>
 		</div>

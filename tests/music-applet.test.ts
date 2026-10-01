@@ -104,9 +104,24 @@ describe('una sola barra de progreso', () => {
 describe('la portada del panel', () => {
 	test('en pausa se congela en vez de volver a cero', () => {
 		// Sacar `animate-spin` con la pausa hacía saltar la portada a su
-		// posición inicial. Ahora se saca sólo sin reproducción.
-		expect(CONTROL).toContain("'animate-spin motion-reduce:animate-none': state !== 'stopped'");
-		expect(CONTROL).toContain("animationPlayState: state.value === 'playing' ? 'running' : 'paused'");
+		// posición inicial. Desde vue-libvasak 2.2.0 eso lo hace
+		// `SpinningCover` (probado montado en la librería): acá queda que
+		// reciba el estado de reproducción, que es lo que distingue pausa de
+		// detenido.
+		expect(CONTROL).toContain('<SpinningCover');
+		expect(CONTROL).toContain(':state="state"');
+		expect(CONTROL).toContain('playbackStateOf(musicInfo.value.status)');
+	});
+
+	test('el aro de progreso y el botón son los de la librería', () => {
+		// Ni el `conic-gradient` con su máscara a mano ni un `<button>` propio.
+		expect(CONTROL).toContain(':progress="musicInfo.length > 0 ? progress * 100 : null"');
+		expect(CONTROL).toMatch(/<SpinningCover[^/]*\n\s*interactive\n/);
+		expect(CONTROL).not.toContain('conic-gradient');
+		expect(CONTROL).not.toMatch(/<button\b/);
+		for (const catalog of [ES, EN]) {
+			expect(typeof catalog.components.TrayMusicControl.progress).toBe('string');
+		}
 	});
 });
 
