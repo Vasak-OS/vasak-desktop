@@ -26,8 +26,8 @@ import type { ConnectCamera, ConnectWebcamState } from '@/interfaces/connect';
  * nada: un teléfono con una sola cámara clasificada como `external` igual puede
  * transmitir, y negarse sería inventar un requisito.
  */
-export function camaraPorDefecto(camaras: readonly ConnectCamera[]): ConnectCamera | undefined {
-	return camaras.find((camara) => camara.facing === 'back') ?? camaras[0];
+export function defaultCamera(cameras: readonly ConnectCamera[]): ConnectCamera | undefined {
+	return cameras.find((camera) => camera.facing === 'back') ?? cameras[0];
 }
 
 /**
@@ -37,14 +37,14 @@ export function camaraPorDefecto(camaras: readonly ConnectCamera[]): ConnectCame
  * de todas formas. Cada píxel de más es latencia y batería del teléfono, y no
  * se ve.
  */
-const TOPE_DE_ANCHO = 1920;
-const TOPE_DE_ALTO = 1080;
+const MAX_WIDTH = 1920;
+const MAX_HEIGHT = 1080;
 
 /** `1280x720` → `[1280, 720]`, o `undefined` si no tiene esa forma. */
-function medidas(tamanio: string): [number, number] | undefined {
-	const [ancho, alto] = tamanio.split('x');
-	const w = Number(ancho);
-	const h = Number(alto);
+function dimensions(size: string): [number, number] | undefined {
+	const [width, height] = size.split('x');
+	const w = Number(width);
+	const h = Number(height);
 	if (!Number.isInteger(w) || !Number.isInteger(h) || w <= 0 || h <= 0) return undefined;
 	return [w, h];
 }
@@ -67,24 +67,28 @@ function medidas(tamanio: string): [number, number] | undefined {
  * Si todos los modos pasan el tope se devuelve el más chico: es lo único que
  * queda por intentar, y es mejor que rendirse antes de probar.
  */
-export function tamanioPorDefecto(camara: ConnectCamera | undefined): string {
-	const medidos = (camara?.sizes ?? [])
-		.map((tamanio) => ({ tamanio, medidas: medidas(tamanio) }))
-		.flatMap(({ tamanio, medidas }) => (medidas ? [{ tamanio, pixeles: medidas }] : []));
+export function defaultSize(camera: ConnectCamera | undefined): string {
+	const measured = (camera?.sizes ?? [])
+		.map((size) => ({ size, dimensions: dimensions(size) }))
+		.flatMap(({ size, dimensions }) => (dimensions ? [{ size, pixels: dimensions }] : []));
 
-	if (medidos.length === 0) return '';
+	if (measured.length === 0) return '';
 
-	const entran = medidos.filter(
-		({ pixeles: [ancho, alto] }) => ancho <= TOPE_DE_ANCHO && alto <= TOPE_DE_ALTO
+	const fitting = measured.filter(
+		({ pixels: [width, height] }) => width <= MAX_WIDTH && height <= MAX_HEIGHT
 	);
 
-	const area = ({ pixeles: [ancho, alto] }: (typeof medidos)[number]) => ancho * alto;
+	const area = ({ pixels: [width, height] }: (typeof measured)[number]) => width * height;
 
-	if (entran.length > 0) {
-		return entran.reduce((mayor, uno) => (area(uno) > area(mayor) ? uno : mayor)).tamanio;
+	if (fitting.length > 0) {
+		return fitting.reduce((largest, candidate) =>
+			area(candidate) > area(largest) ? candidate : largest
+		).size;
 	}
 
-	return medidos.reduce((menor, uno) => (area(uno) < area(menor) ? uno : menor)).tamanio;
+	return measured.reduce((smallest, candidate) =>
+		area(candidate) < area(smallest) ? candidate : smallest
+	).size;
 }
 
 /**
@@ -94,8 +98,8 @@ export function tamanioPorDefecto(camara: ConnectCamera | undefined): string {
  * —el dispositivo de vídeo admite un productor— y la tarjeta del otro no puede
  * mostrar su interruptor encendido.
  */
-export function encendidaEn(estado: ConnectWebcamState | null, serial?: string): boolean {
-	return estado?.active === true && !!serial && estado.serial === serial;
+export function isActiveOn(state: ConnectWebcamState | null, serial?: string): boolean {
+	return state?.active === true && !!serial && state.serial === serial;
 }
 
 /**
@@ -107,7 +111,7 @@ export function encendidaEn(estado: ConnectWebcamState | null, serial?: string):
  * dispositivo vacío significa «falta el módulo v4l2loopback», y la tarjeta
  * termina mandando a reiniciar por una consulta que simplemente no volvió.
  */
-export type DiagnosticoWebcam = 'desconocido' | 'sin-modulo' | 'ocupada' | 'encendida' | 'lista';
+export type WebcamDiagnosis = 'unknown' | 'no-module' | 'busy' | 'active' | 'ready';
 
 /**
  * Qué le pasa a la cámara desde el punto de vista de este teléfono.
@@ -116,26 +120,26 @@ export type DiagnosticoWebcam = 'desconocido' | 'sin-modulo' | 'ocupada' | 'ence
  * estar transmitiendo—, y «encendida» se decide antes que «ocupada» porque
  * ocupada significa «la tiene otro».
  */
-export function diagnosticoWebcam(
-	estado: ConnectWebcamState | null,
+export function webcamDiagnosis(
+	state: ConnectWebcamState | null,
 	serial?: string
-): DiagnosticoWebcam {
-	if (estado === null) return 'desconocido';
-	if (estado.device === '') return 'sin-modulo';
-	if (encendidaEn(estado, serial)) return 'encendida';
-	if (estado.active) return 'ocupada';
-	return 'lista';
+): WebcamDiagnosis {
+	if (state === null) return 'unknown';
+	if (state.device === '') return 'no-module';
+	if (isActiveOn(state, serial)) return 'active';
+	if (state.active) return 'busy';
+	return 'ready';
 }
 
 /** Lo que hace falta saber para decidir si el interruptor se puede tocar. */
-export interface SituacionWebcam {
-	estado: ConnectWebcamState | null;
+export interface WebcamSituation {
+	state: ConnectWebcamState | null;
 	/** El teléfono de esta tarjeta. */
 	serial?: string;
 	/** Si el teléfono terminó de autorizarse y está listo para trabajar. */
-	telefonoListo: boolean;
+	phoneReady: boolean;
 	/** Si hay un encendido o apagado a mitad de camino. */
-	enCurso: boolean;
+	inProgress: boolean;
 }
 
 /**
@@ -153,13 +157,13 @@ export interface SituacionWebcam {
  *
  * Lo único que bloquea las dos direcciones es una operación en curso.
  */
-export function interruptorHabilitado(situacion: SituacionWebcam): boolean {
-	if (situacion.enCurso) return false;
-	if (encendidaEn(situacion.estado, situacion.serial)) return true;
+export function switchEnabled(situation: WebcamSituation): boolean {
+	if (situation.inProgress) return false;
+	if (isActiveOn(situation.state, situation.serial)) return true;
 
 	return (
-		situacion.telefonoListo &&
-		(situacion.estado?.device ?? '') !== '' &&
-		situacion.estado?.active !== true
+		situation.phoneReady &&
+		(situation.state?.device ?? '') !== '' &&
+		situation.state?.active !== true
 	);
 }

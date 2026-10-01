@@ -1,8 +1,13 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { onMounted, type Ref, ref } from 'vue';
+import {
+	LoadingState,
+	OptionGroup,
+	type OptionGroupOption,
+	ThemeIcon,
+} from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, type Ref, ref } from 'vue';
 import { getAudioDevices, setAudioDevice } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
@@ -71,6 +76,19 @@ function getDeviceName(device: AudioDevice): string {
 		.replaceAll('PipeWire', '')
 		.trim();
 }
+
+/** Cada salida como opción del grupo: el nombre, su volumen y si es la predeterminada. */
+const options = computed<OptionGroupOption<string>[]>(() =>
+	devices.value.map((device) => ({
+		value: device.id,
+		label: getDeviceName(device),
+		description: t('components.AudioDeviceSelector.volume').replace(
+			'{0}',
+			String(Math.round(device.volume * 100))
+		),
+		badge: device.is_default ? t('components.AudioDeviceSelector.default') : undefined,
+	}))
+);
 </script>
 
 <template>
@@ -82,65 +100,23 @@ function getDeviceName(device: AudioDevice): string {
       <span>{{ t('components.AudioDeviceSelector.title') }}</span>
     </div>
 
-    <!--
-      Elegir una salida de audio es elegir una de varias, no apretar botones
-      sueltos: por eso el grupo es un `radiogroup` y cada fila un `radio`. Así
-      se anuncia cuál está puesta —que es lo que el punto de la izquierda dibuja
-      y un lector de pantalla no puede ver— en vez de leer cinco botones
-      iguales.
+    <!-- Elegir una salida es elegir una de varias: `OptionGroup` de la
+         librería (vue-libvasak 2.2.0), un `radiogroup` con un `radio` por fila,
+         el punto con su contorno de 3:1 y la insignia «Predeterminado». Era
+         una de las cuatro copias del mismo selector en el taller. -->
+    <OptionGroup
+      v-if="!isLoading && devices.length > 0"
+      :model-value="selectedDeviceId"
+      :options="options"
+      :label="t('components.AudioDeviceSelector.title')"
+      size="sm"
+      @change="onDeviceChange"
+    />
 
-      Acá sí va un `<button>` de verdad, y no `role="button"` sobre un `<div>`
-      como en las tarjetas: esta fila no tiene ningún botón adentro, así que no
-      hay nada que anidar.
-    -->
-    <div v-if="!isLoading && devices.length > 0" class="space-y-1" role="radiogroup"
-      :aria-label="t('components.AudioDeviceSelector.title')">
-      <button v-for="device in devices" :key="device.id" type="button" role="radio"
-        :aria-checked="selectedDeviceId === device.id"
-        class="flex w-full min-w-0 flex-wrap items-center gap-2 p-2 rounded-corner-m cursor-pointer text-left transition-colors duration-200 ease-ui focus-visible:-outline-offset-2" :class="[
-          selectedDeviceId === device.id
-            ? 'bg-ui-selected-accent font-semibold'
-            : 'hover:bg-ui-hover active:bg-ui-pressed',
-        ]" @click="onDeviceChange(device.id)">
+    <LoadingState v-else-if="isLoading" size="sm" :label="t('components.AudioDeviceSelector.loadingDevices')" />
 
-        <!-- El punto de la opción: el contorno de un control lleva 3:1
-             (`ui-border-strong`), y la elegida, el primario con el punto en el
-             texto que va encima del primario. Nada de blanco escrito a mano. -->
-        <div
-          class="w-4 h-4 shrink-0 rounded-corner-full border-2 flex items-center justify-center transition-colors duration-200 ease-ui"
-          :class="[
-            selectedDeviceId === device.id
-              ? 'bg-primary border-primary'
-              : 'border-ui-border-strong',
-          ]">
-          <div v-if="selectedDeviceId === device.id" class="w-2 h-2 bg-tx-on-primary rounded-corner-full" />
-        </div>
-
-        <!-- Device info -->
-        <div class="min-w-24 flex-1">
-          <div class="text-label-xs font-medium break-all">
-            {{ getDeviceName(device) }}
-          </div>
-          <div class="text-label-xs text-tx-muted">
-            {{ t('components.AudioDeviceSelector.volume').replace('{0}', String(Math.round(device.volume * 100))) }}
-          </div>
-        </div>
-
-        <!-- La insignia de la librería (la de `SideButton`): antes el texto iba
-             en `primary` sobre fondo `primary`, o sea que no se leía. -->
-        <div v-if="device.is_default"
-          class="flex h-5 shrink-0 items-center rounded-corner-full bg-ui-selected px-2 text-label-xs font-semibold text-tx-main">
-          {{ t('components.AudioDeviceSelector.default') }}
-        </div>
-      </button>
-    </div>
-
-    <div v-else-if="isLoading" class="text-label-xs text-tx-muted">
-      {{ t('components.AudioDeviceSelector.loadingDevices') }}
-    </div>
-
-    <div v-else class="text-label-xs text-tx-muted">
+    <p v-else class="text-label-xs text-tx-muted">
       {{ t('components.AudioDeviceSelector.noDevices') }}
-    </div>
+    </p>
   </div>
 </template>

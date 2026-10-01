@@ -5,7 +5,17 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SearchField, SwitchToggle, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import {
+	ActionButton,
+	AlertMessage,
+	EmptyState,
+	LoadingState,
+	SearchField,
+	SegmentedControl,
+	SettingRow,
+	SwitchToggle,
+	ThemeIcon,
+} from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref } from 'vue';
 import ConnectAppButton from '@/components/buttons/ConnectAppButton.vue';
 import type { ConnectApp, ConnectDevice, ConnectRunningApp } from '@/interfaces/connect';
@@ -32,6 +42,11 @@ const errorMessage = ref('');
 const leaving = ref(false);
 
 const device = computed(() => devices.value.find((d) => d.serial === selected.value));
+
+/** Los teléfonos enchufados, como opciones del selector cuando hay más de uno. */
+const deviceOptions = computed(() =>
+	devices.value.map((d) => ({ value: d.serial, label: d.model }))
+);
 
 /**
  * System apps are hidden by default. A phone reports around 130 applications
@@ -160,101 +175,86 @@ onBeforeUnmount(() => {
   <Transition appear enter-active-class="enter-active">
     <div
       :class="[
-        'flex h-screen flex-col gap-3 rounded-corner-m border border-ui-line bg-ui-bg/80 p-4 text-tx-main',
+        'flex h-screen min-w-0 flex-col gap-3 rounded-corner-m border border-ui-line bg-ui-bg/80 p-4 text-tx-main',
         { 'leave-active': leaving },
       ]"
     >
-      <header class="flex items-center gap-3">
+      <header class="flex min-w-0 items-center gap-3">
         <ThemeIcon name="smartphone" :size="32" />
         <div class="min-w-0 flex-1">
           <!-- A native <select> is drawn by GTK, not by the stylesheet, so its
                popup ignores the session's colours entirely. With one phone —
                the normal case — there is nothing to choose anyway. -->
-          <div v-if="devices.length > 1" class="flex flex-wrap gap-1">
-            <button
-              v-for="d in devices"
-              :key="d.serial"
-              type="button"
-              class="rounded-corner-m border border-ui-line px-2 py-1 text-label-xs"
-              :class="
-                d.serial === selected
-                  ? 'bg-primary text-tx-on-primary'
-                  : 'bg-ui-surface/40 hover:bg-ui-hover'
-              "
-              @click="selected = d.serial; loadApps()"
-            >
-              {{ d.model }}
-            </button>
-          </div>
+          <SegmentedControl
+            v-if="devices.length > 1"
+            :model-value="selected"
+            :options="deviceOptions"
+            :label="t('views.connect.chooseDevice')"
+            variant="chips"
+            @change="(serial) => { selected = serial; loadApps(); }"
+          />
           <p v-else class="truncate font-semibold">
             {{ device?.model || t('views.connect.noDevice') }}
           </p>
-          <p v-if="device" class="text-label-xs text-tx-muted">
+          <p v-if="device" class="truncate text-label-xs text-tx-muted">
             {{ device.transport === 'usb' ? 'USB' : device.address }}
           </p>
         </div>
-        <button
+        <ActionButton
           v-if="device?.state === 'ready'"
-          type="button"
+          label=""
+          icon="view-refresh"
+          :icon-alt="t('views.connect.refresh')"
           :title="t('views.connect.refresh')"
+          variant="ghost"
           @click="loadApps(true)"
-          class="rounded-corner-m p-2 hover:bg-ui-hover" :aria-label="t('views.connect.refresh')">
-          <ThemeIcon name="view-refresh" :size="20" />
-        </button>
+        />
       </header>
 
       <!-- A phone that has not been authorised is the single most common
            first-run state, so it gets an explanation rather than an empty list. -->
-      <div
-        v-if="device && device.state === 'unauthorized'"
-        class="rounded-corner-m border border-status-warning/40 bg-status-warning/10 p-4 text-label-m text-status-warning"
-      >
+      <AlertMessage v-if="device && device.state === 'unauthorized'" tone="warning">
         {{ t('views.connect.unauthorized') }}
-      </div>
+      </AlertMessage>
 
-      <div v-else-if="!device" class="flex flex-1 items-center justify-center px-6 text-center">
-        <p class="text-tx-muted">{{ t('views.connect.plugIn') }}</p>
-      </div>
+      <EmptyState
+        v-else-if="!device"
+        class="flex-1"
+        :title="t('views.connect.plugIn')"
+        icon="smartphone"
+      />
 
       <template v-else>
         <SearchField v-model="filter" :label="t('views.connect.search')" class="w-full" />
 
-        <div v-if="loading" class="flex flex-1 items-center justify-center">
-          <p class="text-tx-muted">{{ t('views.connect.loading') }}</p>
-        </div>
+        <LoadingState v-if="loading" class="flex-1" :label="t('views.connect.loading')" />
 
-        <div
-          v-else-if="errorMessage"
-          class="rounded-corner-m border border-status-error/40 bg-status-error/10 p-4 text-label-m text-status-error"
-        >
+        <AlertMessage v-else-if="errorMessage" tone="error">
           {{ errorMessage }}
-        </div>
+        </AlertMessage>
 
-        <ul v-else class="flex-1 space-y-1 overflow-y-auto">
+        <ul v-else class="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
           <li v-for="app in visibleApps" :key="app.package">
             <ConnectAppButton :app="app" :running="isRunning(app.package)" @open="open(app)">
-              <template #actions>
-                <button
-                  v-if="isRunning(app.package)"
-                  type="button"
-                  :title="t('views.connect.close')"
+              <template v-if="isRunning(app.package)" #actions>
+                <ActionButton
+                  :label="t('views.connect.close')"
+                  variant="secondary"
+                  size="sm"
+                  stop-propagation
                   @click="close(app)"
-                  class="shrink-0 rounded-corner-m border border-ui-line px-2 py-1 text-label-xs text-primary hover:bg-ui-hover"
-                >
-                  {{ t('views.connect.close') }}
-                </button>
+                />
               </template>
             </ConnectAppButton>
           </li>
-          <li v-if="visibleApps.length === 0" class="py-8 text-center text-tx-muted">
-            {{ t('views.connect.noApps') }}
+          <li v-if="visibleApps.length === 0">
+            <EmptyState :title="t('views.connect.noApps')" icon="" size="sm" />
           </li>
         </ul>
 
-        <div class="flex items-center justify-between gap-2 text-label-xs text-tx-muted">
-          <span>{{ t('views.connect.showSystem') }}</span>
+        <SettingRow :label="t('views.connect.showSystem')">
           <SwitchToggle :label="t('views.connect.showSystem')" :model-value="showSystem" @update:model-value="showSystem = $event" />
-        </div>
+        </SettingRow>
       </template>
     </div>
   </Transition>

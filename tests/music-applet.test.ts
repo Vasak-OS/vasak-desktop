@@ -75,10 +75,11 @@ describe('el reproductor desplegable', () => {
 		expect(VIEW).toContain('getAudioDevices');
 		expect(VIEW).toContain('setAudioDevice({ deviceId: device.id })');
 		expect(VIEW).toContain("'audio-devices-changed'");
-		// Radios nativos y no `role="radio"` sobre un botón: el control nativo
-		// trae el anuncio y las flechas sin tener que reimplementarlos.
-		expect(VIEW).toContain('type="radio"');
+		// El grupo de opciones de la librería, el mismo del applet de audio:
+		// trae el anuncio y las flechas (los prueba montados vue-libvasak).
+		expect(VIEW).toContain('<OptionGroup');
 		expect(VIEW).not.toContain('role="radio"');
+		expect(VIEW).not.toContain('type="radio"');
 	});
 
 	test('el espacio del ecualizador no se dibuja mientras no exista', () => {

@@ -250,9 +250,18 @@ describe('la marca y el atajo, para la librería', () => {
 
 	test('prendido y apagado son `checked`; sin casilla, `null`', () => {
 		expect(entryCheck(e())).toEqual({ checked: null, toggle: 'checkbox' });
-		expect(entryCheck(e({ kind: 'checkmark', state: 'on' }))).toEqual({ checked: true, toggle: 'checkbox' });
-		expect(entryCheck(e({ kind: 'checkmark', state: 'off' }))).toEqual({ checked: false, toggle: 'checkbox' });
-		expect(entryCheck(e({ kind: 'radio', state: 'on' }))).toEqual({ checked: true, toggle: 'radio' });
+		expect(entryCheck(e({ kind: 'checkmark', state: 'on' }))).toEqual({
+			checked: true,
+			toggle: 'checkbox',
+		});
+		expect(entryCheck(e({ kind: 'checkmark', state: 'off' }))).toEqual({
+			checked: false,
+			toggle: 'checkbox',
+		});
+		expect(entryCheck(e({ kind: 'radio', state: 'on' }))).toEqual({
+			checked: true,
+			toggle: 'radio',
+		});
 	});
 
 	test('el indeterminado no tiene marca propia: lleva su dibujo en la columna del icono', () => {
@@ -265,13 +274,7 @@ describe('la marca y el atajo, para la librería', () => {
 
 	test('las teclas de cada combinación, una por recuadro', () => {
 		expect(shortcutChords([['Control', 'q']])).toEqual([['Ctrl', 'Q']]);
-		expect(
-			shortcutChords([
-				['Control', 'Q'],
-				[],
-				['Alt', 'F4'],
-			])
-		).toEqual([
+		expect(shortcutChords([['Control', 'Q'], [], ['Alt', 'F4']])).toEqual([
 			['Ctrl', 'Q'],
 			['Alt', 'F4'],
 		]);
