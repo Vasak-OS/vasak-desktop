@@ -100,18 +100,18 @@ onUnmounted(() => {
 	<Transition name="osd">
 		<div
 			v-if="visible"
-			class="w-screen h-screen flex flex-col items-center justify-center gap-3 bg-ui-bg/80 border border-ui-border rounded-corner-window overflow-hidden px-8 py-6"
+			class="w-screen h-screen flex flex-col items-center justify-center gap-3 bg-ui-bg/80 border border-ui-line rounded-corner-window overflow-hidden px-8 py-6"
 		>
 			<div class="w-16 h-16 flex items-center justify-center">
 				<ThemeIcon :name="iconName" :size="56" :alt="displayLabel" />
 			</div>
-			<span class="text-sm font-medium text-tx-main text-center whitespace-nowrap">{{ displayLabel }}</span>
+			<span class="text-label-m font-medium text-tx-main text-center whitespace-nowrap">{{ displayLabel }}</span>
 			<div
 				v-if="maximum > 1"
-				class="w-full h-1 bg-ui-surface rounded-corner overflow-hidden"
+				class="w-full h-1 bg-ui-surface rounded-corner-m overflow-hidden"
 			>
 				<div
-					class="h-full bg-primary rounded-corner"
+					class="h-full bg-primary rounded-corner-m"
 					:style="{ width: Math.min((currentValue / maximum) * 100, 100) + '%' }"
 				/>
 			</div>

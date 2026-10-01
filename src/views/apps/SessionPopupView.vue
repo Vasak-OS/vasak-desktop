@@ -149,35 +149,35 @@ onUnmounted(() => {
 <template>
   <Transition appear enter-active-class="enter-active">
     <div
-      :class="['h-screen w-screen flex items-center justify-center bg-ui-bg/80 border border-ui-border rounded-corner-window overflow-hidden', { 'leave-active': leaving }]"
+      :class="['h-screen w-screen flex items-center justify-center bg-ui-bg/80 border border-ui-line rounded-corner-window overflow-hidden', { 'leave-active': leaving }]"
     >
       <div
         class="flex flex-col w-[380px]"
       >
         <div class="flex flex-col items-center gap-4 px-8 pt-8 pb-4">
-          <div class="w-20 h-20 rounded-full bg-primary/15 flex items-center justify-center">
+          <div class="w-20 h-20 rounded-corner-full bg-primary/15 flex items-center justify-center">
             <ThemeIcon :name="actionImg ?? ''" :size="48" :alt="titleText" />
           </div>
           <h2 class="text-xl font-bold text-tx-main text-center">{{ titleText }}</h2>
-          <p class="text-sm text-tx-main/70 text-center leading-relaxed">{{ descriptionText }}</p>
+          <p class="text-label-m text-tx-main/70 text-center leading-relaxed">{{ descriptionText }}</p>
         </div>
 
         <div class="flex gap-3 px-8 pb-8 pt-2">
           <button
-            class="flex-1 px-5 py-3 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors text-sm font-medium text-tx-main"
+            class="flex-1 px-5 py-3 rounded-corner-m border border-ui-line bg-ui-surface/50 hover:bg-ui-hover transition-colors text-label-m font-medium text-tx-main"
             @click="closeAfterAnimation"
             :disabled="confirming"
           >
             {{ t('common.cancel') }}
           </button>
           <button
-            class="flex-1 px-5 py-3 rounded-corner bg-primary hover:bg-primary/90 transition-colors text-sm font-bold text-tx-on-primary flex items-center justify-center gap-2"
+            class="flex-1 px-5 py-3 rounded-corner-m bg-primary hover:bg-ui-hover transition-colors text-label-m font-bold text-tx-on-primary flex items-center justify-center gap-2"
             @click="executeAction"
             :disabled="confirming"
           >
             <div
               v-if="confirming"
-              class="w-4 h-4 border-2 border-tx-on-primary/30 border-t-tx-on-primary rounded-full animate-spin"
+              class="w-4 h-4 border-2 border-tx-on-primary/30 border-t-tx-on-primary rounded-corner-full animate-spin"
             />
             {{ confirmText }}
           </button>

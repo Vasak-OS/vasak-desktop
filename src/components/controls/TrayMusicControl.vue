@@ -118,7 +118,7 @@ onUnmounted(() => {
 <template>
   <!-- contenedor con handlers para controlar la visibilidad -->
   <div
-    class="p-1 rounded-corner hover:bg-primary flex items-center"
+    class="p-1 rounded-corner-m hover:bg-ui-hover flex items-center"
     :class="openClasses"
     @mouseenter="onEnter"
     @mouseleave="onLeave"
@@ -130,7 +130,7 @@ onUnmounted(() => {
     <button
       ref="opener"
       type="button"
-      class="relative w-5.5 h-5.5 shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      class="relative w-5.5 h-5.5 shrink-0 rounded-corner-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       :title="summary"
       :aria-label="t('components.TrayMusicControl.openPlayer')"
       @click="openPlayer"
@@ -138,14 +138,14 @@ onUnmounted(() => {
       <img
         :src="imgSrc"
         :alt="musicInfo.title"
-        class="w-full h-full rounded-full origin-center object-cover"
+        class="w-full h-full rounded-corner-full origin-center object-cover"
         :class="{ 'animate-spin motion-reduce:animate-none': state !== 'stopped' }"
         :style="coverSpin"
         @error="onImgError"
       />
       <div
         v-if="musicInfo.length > 0"
-        class="pointer-events-none absolute inset-0 rounded-full"
+        class="pointer-events-none absolute inset-0 rounded-corner-full"
         :style="{
           background: `conic-gradient(var(--color-primary) ${progress * 360}deg, transparent 0deg)`,
           mask: 'radial-gradient(circle, transparent 72%, black 74%)',
@@ -171,7 +171,7 @@ onUnmounted(() => {
       <!-- Qué está sonando, que hasta ahora sólo estaba en el globo. -->
       <span
         v-if="musicInfo.title"
-        class="max-w-40 truncate text-xs text-tx-main"
+        class="max-w-40 truncate text-label-xs text-tx-main"
         :title="summary"
       >
         {{ musicInfo.title }}<span v-if="musicInfo.artist" class="text-tx-muted"> — {{ musicInfo.artist }}</span>
@@ -181,7 +181,7 @@ onUnmounted(() => {
         type="button"
         @click.prevent="onPrev"
         :disabled="!musicInfo.canGoPrevious"
-        class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs disabled:cursor-default disabled:opacity-40"
+        class="w-6 h-6 flex items-center justify-center rounded-corner-m bg-ui-bg/80 text-label-xs disabled:cursor-default disabled:opacity-40"
         :title="t('components.TrayMusicControl.previous')" :aria-label="t('components.TrayMusicControl.previous')">
         <ThemeIcon :name="prevIcon" type="symbol" :size="16" :alt="t('components.TrayMusicControl.previous')" />
       </button>
@@ -189,7 +189,7 @@ onUnmounted(() => {
       <button
         type="button"
         @click.prevent="onPlayPause"
-        class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
+        class="w-6 h-6 flex items-center justify-center rounded-corner-m bg-ui-bg/80 text-label-xs"
         :title="isPlaying
           ? t('components.TrayMusicControl.pause')
           : t('components.TrayMusicControl.play')" :aria-label="isPlaying
@@ -209,7 +209,7 @@ onUnmounted(() => {
         type="button"
         @click.prevent="onNext"
         :disabled="!musicInfo.canGoNext"
-        class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs disabled:cursor-default disabled:opacity-40"
+        class="w-6 h-6 flex items-center justify-center rounded-corner-m bg-ui-bg/80 text-label-xs disabled:cursor-default disabled:opacity-40"
         :title="t('components.TrayMusicControl.next')" :aria-label="t('components.TrayMusicControl.next')">
         <ThemeIcon :name="nextIcon" type="symbol" :size="16" :alt="t('components.TrayMusicControl.next')" />
       </button>

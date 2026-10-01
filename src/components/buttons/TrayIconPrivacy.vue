@@ -139,7 +139,7 @@ const open = async () => {
     v-if="visible"
     ref="button"
     type="button"
-    class="theme-transition p-1 rounded-corner relative flex items-center gap-1 cursor-pointer hover:bg-primary transition-all duration-300"
+    class="theme-transition p-1 rounded-corner-m relative flex items-center gap-1 cursor-pointer hover:bg-ui-hover transition-all duration-300"
     :class="openClasses"
     :title="detail"
     :aria-label="detail"

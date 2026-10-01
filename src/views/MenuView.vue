@@ -4,12 +4,11 @@
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SearchField } from '@vasakgroup/vue-libvasak';
+import { ActionButton, EmptyState, ListCard, SearchField } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
 import MenuArea from '@/components/areas/menu/MenuArea.vue';
 import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
-import SessionButton from '@/components/buttons/SessionButton.vue';
 import UserMenuCard from '@/components/cards/UserMenuCard.vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import WidgetSlot from '@/components/widgets/WidgetSlot.vue';
@@ -80,6 +79,35 @@ const setMenu = async () => {
 const openSessionPopup = (action: string) => {
 	toggleSessionPopup(action);
 };
+
+/** Los cinco botones de sesión, en el orden de siempre. */
+const sessionActions = computed(() => [
+	{
+		title: t('views.menu.configuration'),
+		icon: 'settings',
+		handler: () => void openConfiguration(),
+	},
+	{
+		title: t('views.menu.shutdown'),
+		icon: 'system-shutdown',
+		handler: () => openSessionPopup('shutdown'),
+	},
+	{
+		title: t('views.menu.reboot'),
+		icon: 'system-reboot',
+		handler: () => openSessionPopup('reboot'),
+	},
+	{
+		title: t('views.menu.logout'),
+		icon: 'system-log-out',
+		handler: () => openSessionPopup('logout'),
+	},
+	{
+		title: t('views.menu.suspend'),
+		icon: 'system-suspend',
+		handler: () => openSessionPopup('suspend'),
+	},
+]);
 
 const openConfiguration = async () => {
 	try {
@@ -234,20 +262,19 @@ const onKeydown = (event: KeyboardEvent) => {
   <AppletPopover applet="menu" @shown="onShown" @leave="onLeave">
     <!-- La misma distribución de siempre, que ahora llena el applet en lugar
          de la ventana: las alturas salen de la columna y no de `100vh`, porque
-         la superficie es más grande que el applet (el margen de sombra). Así
-         también se achica sin salirse cuando el backend le da menos lugar que
-         900×620 en una pantalla chica. -->
-    <div class="flex h-full min-h-0 flex-col">
-    <div
-      class="flex items-center justify-between gap-4 mb-4 header-section"
-    >
+         la superficie es más grande que el applet (el margen de sombra).
+
+         Es un contenedor (`@container`) para poder achicarse sin salirse
+         cuando el backend le da menos lugar que 900×620 en una pantalla chica:
+         con 768 px o más —el menú de siempre— las tres zonas van lado a lado
+         como siempre; por debajo se apilan y la columna se desplaza. Por el
+         ancho del menú y no de la pantalla: en WebKitGTK `matchMedia` no avisa,
+         y el menú no sabe en qué monitor está. -->
+    <div class="@container flex h-full min-h-0 flex-col">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
       <UserMenuCard />
 
-      <!-- `grow` acá y no `search-component`, que no estaba definida en ningún
-           lado: lo que el campo necesitaba de esa clase era ocupar la fila, y
-           eso lo traía en sus propias clases.
-
-           `autofocus` cubre el primer montaje, que es el único que hay: la
+      <!-- `autofocus` cubre el primer montaje, que es el único que hay: la
            superficie se esconde en vez de destruirse. Las aperturas siguientes
            las cubre `prepareMenuSearch` desde el aviso `shown` del applet, y
            por eso el `ref` — el campo expone `focus()`, que dice si el foco
@@ -258,33 +285,29 @@ const onKeydown = (event: KeyboardEvent) => {
         :label="t('components.SearchMenuComponent.placeholder')"
         :disabled="isMenuEmpty"
         autofocus
-        class="grow" />
+        class="min-w-48 grow" />
 
+      <!-- Los botones de sesión son los de la librería, `ghost` y del tamaño
+           de siempre (40): sin escala ni giro al pasar, el velo neutro de Once
+           UI y el icono simbólico del tema, que sigue el color del texto. -->
       <div class="flex items-center gap-2">
-        <SessionButton
-          v-for="(action, index) in [
-            {
-              title: t('views.menu.configuration'),
-              icon: 'settings',
-              handler: openConfiguration,
-            },
-            { title: t('views.menu.shutdown'), icon: 'system-shutdown', handler: () => openSessionPopup('shutdown') },
-            { title: t('views.menu.reboot'), icon: 'system-reboot', handler: () => openSessionPopup('reboot') },
-            { title: t('views.menu.logout'), icon: 'system-log-out', handler: () => openSessionPopup('logout') },
-            { title: t('views.menu.suspend'), icon: 'system-suspend', handler: () => openSessionPopup('suspend') },
-          ]"
-          :key="index"
-          :title="action.title"
+        <ActionButton
+          v-for="action in sessionActions"
+          :key="action.icon"
+          label=""
           :icon="action.icon"
+          :icon-alt="action.title"
+          :title="action.title"
+          variant="ghost"
+          size="lg"
           @click="action.handler"
-          class="w-10 h-10 hover:bg-primary rounded-corner p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3"
         />
       </div>
     </div>
 
-    <transition enter-active-class="transition-opacity duration-300 ease-out" leave-active-class="transition-opacity duration-300 ease-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
+    <transition enter-active-class="transition-opacity duration-200 ease-ui" leave-active-class="transition-opacity duration-150 ease-ui" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
       <div v-if="isMenuEmpty" key="empty-state" class="flex flex-1 min-h-0 items-center justify-center">
-        <p class="text-tx-main/60 text-lg">{{ t('views.menu.noApps') }}</p>
+        <EmptyState :title="t('views.menu.noApps')" icon="application-x-executable" />
       </div>
       <div v-else-if="filter !== ''" key="filter-view" class="flex-1 min-h-0 overflow-y-auto">
         <FilterArea :apps="appsFiltred" :selected-index="selectedIndex" />
@@ -292,37 +315,30 @@ const onKeydown = (event: KeyboardEvent) => {
       <div
         v-else
         key="main-view"
-        class="grid grid-cols-3 gap-4 flex-1 min-h-0"
+        class="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto @3xl:grid-cols-3 @3xl:overflow-visible"
       >
-        <div
-          class="bg-ui-bg/80 border border-ui-border rounded-corner p-4 h-full overflow-y-auto"
-        >
-          <MenuArea :apps="appsOfCategory" />
-        </div>
+        <!-- Las tres zonas son tarjetas de la librería (`ListCard`): la
+             superficie de lo que se apoya, el canto fino y el radio `l`. -->
+        <ListCard custom-class="h-72 min-h-0 @3xl:h-full">
+          <div class="h-full min-w-0 flex-1 overflow-y-auto">
+            <MenuArea :apps="appsOfCategory" />
+          </div>
+        </ListCard>
 
-        <div
-          class="col-span-2 grid gap-4 h-full min-h-0"
-          style="grid-template-rows: 1fr 2fr"
-        >
-          <div class="rounded-corner bg-ui-bg/80 border border-ui-border p-4 overflow-y-auto min-h-0">
-            <div class="h-full grid gap-3 min-h-0" style="grid-template-columns: 1fr 2fr">
-              <div v-if="categoryEntries.all" class="flex items-center justify-center">
+        <div class="grid min-h-0 grid-rows-[auto_18rem] gap-4 @3xl:col-span-2 @3xl:h-full @3xl:grid-rows-[1fr_2fr]">
+          <ListCard custom-class="min-h-0">
+            <div class="grid h-full min-h-0 min-w-0 flex-1 grid-cols-[1fr_2fr] gap-3">
+              <div v-if="categoryEntries.all" role="menu" :aria-label="t('views.menu.categories')" class="flex min-h-14 items-center justify-center">
                 <CategoryMenuPill
                   :category="categoryEntries.all[0]"
                   :image="categoryEntries.all[1].icon"
                   :label="t(categoryEntries.all[1].description)"
                   v-model:categorySelected="categorySelected"
                   large
-                  class="w-full h-full"
                 />
               </div>
 
-              <transition-group
-                tag="div"
-                move-class="transition-transform duration-400 ease-out" enter-active-class="transition-all duration-400 ease-out" leave-active-class="transition-all duration-400 ease-out" enter-from-class="opacity-0 translate-y-[20px] scale-90" leave-to-class="opacity-0 translate-y-[20px] scale-90"
-                appear
-                class="grid grid-cols-3 grid-rows-2 gap-3 min-h-0"
-              >
+              <div role="menu" :aria-label="t('views.menu.categories')" class="grid min-h-0 grid-cols-3 grid-rows-2 gap-3">
                 <CategoryMenuPill
                   v-for="([key, value]) in categoryEntries.others.slice(0, 6)"
                   :key="key"
@@ -331,9 +347,9 @@ const onKeydown = (event: KeyboardEvent) => {
                   :label="t(value.description)"
                   v-model:categorySelected="categorySelected"
                 />
-              </transition-group>
+              </div>
             </div>
-          </div>
+          </ListCard>
 
           <!-- El hueco de la derecha acepta cualquiera de los widgets del
                escritorio: cambiar `type` alcanza. El marco y el contenedor los

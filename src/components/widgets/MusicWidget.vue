@@ -226,7 +226,7 @@ watch(() => musicInfo.value?.player, loadPlayers);
       <button
         v-if="musicInfo.canRaise"
         type="button"
-        class="aspect-square h-full max-h-full shrink-0 overflow-hidden rounded-corner"
+        class="aspect-square h-full max-h-full shrink-0 overflow-hidden rounded-corner-m"
         :title="t('components.MusicWidget.raise')"
         :aria-label="t('components.MusicWidget.raise')"
         @click.prevent="onRaise"
@@ -243,7 +243,7 @@ watch(() => musicInfo.value?.player, loadPlayers);
         :src="imgSrc"
         :alt="musicInfo.title"
         :title="musicInfo.title"
-        class="aspect-square h-full max-h-full shrink-0 rounded-corner object-cover"
+        class="aspect-square h-full max-h-full shrink-0 rounded-corner-m object-cover"
         @error="onImgError"
       />
 
@@ -288,7 +288,7 @@ watch(() => musicInfo.value?.player, loadPlayers);
       <div v-if="canPick && sections.album" class="relative shrink-0">
         <button
           type="button"
-          class="max-w-[25cqw] truncate rounded-corner bg-ui-surface/60 px-[2cqmin] py-[1cqmin] text-[clamp(0.55rem,7cqmin,0.72rem)] text-tx-muted transition-colors hover:bg-ui-surface"
+          class="max-w-[25cqw] truncate rounded-corner-m bg-ui-surface/60 px-[2cqmin] py-[1cqmin] text-[clamp(0.55rem,7cqmin,0.72rem)] text-tx-muted transition-colors hover:bg-ui-hover"
           :title="t('components.MusicWidget.choosePlayer')"
           :aria-label="t('components.MusicWidget.choosePlayer')"
           :aria-expanded="showPicker"
@@ -299,13 +299,13 @@ watch(() => musicInfo.value?.player, loadPlayers);
 
         <div
           v-if="showPicker"
-          class="absolute right-0 top-full z-10 mt-1 flex min-w-[28cqmin] flex-col gap-1 rounded-corner border border-ui-border bg-ui-surface/95 p-1 backdrop-blur-md"
+          class="absolute right-0 top-full z-10 mt-1 flex min-w-[28cqmin] flex-col gap-1 rounded-corner-l border border-ui-line bg-ui-float p-1 shadow-surface-m"
         >
           <button
             v-for="p in players"
             :key="p.player"
             type="button"
-            class="truncate rounded-corner px-2 py-1 text-left text-xs transition-colors hover:bg-primary/40"
+            class="truncate rounded-corner-m px-2 py-1 text-left text-label-xs transition-colors hover:bg-ui-hover"
             :class="p.pinned || p.active ? 'text-tx-main' : 'text-tx-muted'"
             @click.prevent="pick(p.player)"
           >
@@ -336,8 +336,8 @@ watch(() => musicInfo.value?.player, loadPlayers);
       <button
         v-if="sections.extras && musicInfo.shuffle !== null"
         type="button"
-        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] w-[clamp(1.25rem,20cqmin,2.5rem)] shrink-0 items-center justify-center rounded-corner transition-colors"
-        :class="musicInfo.shuffle ? 'bg-primary/80 hover:bg-primary' : 'bg-ui-surface/60 hover:bg-ui-surface'"
+        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] w-[clamp(1.25rem,20cqmin,2.5rem)] shrink-0 items-center justify-center rounded-corner-m transition-colors"
+        :class="musicInfo.shuffle ? 'bg-primary/80 hover:bg-ui-hover' : 'bg-ui-surface/60 hover:bg-ui-hover'"
         :title="t('components.MusicWidget.shuffle')"
         :aria-label="t('components.MusicWidget.shuffle')"
         :aria-pressed="musicInfo.shuffle"
@@ -348,7 +348,7 @@ watch(() => musicInfo.value?.player, loadPlayers);
 
       <button
         type="button"
-        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] flex-1 items-center justify-center rounded-corner bg-ui-surface/60 transition-colors hover:bg-ui-surface disabled:cursor-default disabled:opacity-40 disabled:hover:bg-ui-surface/60"
+        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] flex-1 items-center justify-center rounded-corner-m bg-ui-surface/60 transition-colors hover:bg-ui-hover disabled:cursor-default disabled:opacity-40 disabled:hover:bg-ui-hover"
         :title="t('components.MusicWidget.previous')"
         :aria-label="t('components.MusicWidget.previous')"
         :disabled="!musicInfo.canGoPrevious"
@@ -359,7 +359,7 @@ watch(() => musicInfo.value?.player, loadPlayers);
 
       <button
         type="button"
-        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] flex-[1.4] items-center justify-center rounded-corner bg-primary/80 transition-colors hover:bg-primary"
+        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] flex-[1.4] items-center justify-center rounded-corner-m bg-primary/80 transition-colors hover:bg-ui-hover"
         :title="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
         :aria-label="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
         @click.prevent="onPlayPause"
@@ -374,7 +374,7 @@ watch(() => musicInfo.value?.player, loadPlayers);
 
       <button
         type="button"
-        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] flex-1 items-center justify-center rounded-corner bg-ui-surface/60 transition-colors hover:bg-ui-surface disabled:cursor-default disabled:opacity-40 disabled:hover:bg-ui-surface/60"
+        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] flex-1 items-center justify-center rounded-corner-m bg-ui-surface/60 transition-colors hover:bg-ui-hover disabled:cursor-default disabled:opacity-40 disabled:hover:bg-ui-hover"
         :title="t('components.MusicWidget.next')"
         :aria-label="t('components.MusicWidget.next')"
         :disabled="!musicInfo.canGoNext"
@@ -386,8 +386,8 @@ watch(() => musicInfo.value?.player, loadPlayers);
       <button
         v-if="sections.extras && musicInfo.loopStatus !== null"
         type="button"
-        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] w-[clamp(1.25rem,20cqmin,2.5rem)] shrink-0 items-center justify-center rounded-corner transition-colors"
-        :class="musicInfo.loopStatus !== 'None' ? 'bg-primary/80 hover:bg-primary' : 'bg-ui-surface/60 hover:bg-ui-surface'"
+        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] w-[clamp(1.25rem,20cqmin,2.5rem)] shrink-0 items-center justify-center rounded-corner-m transition-colors"
+        :class="musicInfo.loopStatus !== 'None' ? 'bg-primary/80 hover:bg-ui-hover' : 'bg-ui-surface/60 hover:bg-ui-hover'"
         :title="loopLabel"
         :aria-label="loopLabel"
         @click.prevent="onLoop"
@@ -398,7 +398,7 @@ watch(() => musicInfo.value?.player, loadPlayers);
       <button
         v-if="sections.extras"
         type="button"
-        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] w-[clamp(1.25rem,20cqmin,2.5rem)] shrink-0 items-center justify-center rounded-corner bg-ui-surface/60 transition-colors hover:bg-ui-surface disabled:cursor-default disabled:opacity-40"
+        class="flex h-[clamp(1.25rem,20cqmin,2.5rem)] w-[clamp(1.25rem,20cqmin,2.5rem)] shrink-0 items-center justify-center rounded-corner-m bg-ui-surface/60 transition-colors hover:bg-ui-hover disabled:cursor-default disabled:opacity-40"
         :title="t('components.MusicWidget.stop')"
         :aria-label="t('components.MusicWidget.stop')"
         :disabled="!musicInfo.canControl"
@@ -438,7 +438,7 @@ watch(() => musicInfo.value?.player, loadPlayers);
       >
         <div
           v-if="dbusStatus === 'reconnecting' || dbusStatus === 'failed'"
-          class="rounded-corner px-2 py-1 text-xs text-tx-main"
+          class="rounded-corner-m px-2 py-1 text-label-xs text-tx-main"
           :class="dbusStatus === 'reconnecting' ? 'bg-status-warning' : 'bg-status-error'"
         >
           {{ dbusMessage }}

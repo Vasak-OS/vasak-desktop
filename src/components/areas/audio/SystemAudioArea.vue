@@ -2,6 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ListCard } from '@vasakgroup/vue-libvasak';
 import AudioDeviceSelector from '@/components/controls/AudioDeviceSelector.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
 
@@ -15,8 +16,8 @@ const { t } = useI18n();
       <VolumeControl />
     </div>
     <h2 class="text-xl font-semibold mb-2">{{ t('components.SystemAudioArea.deviceSelector') }}</h2>
-    <div class="bg-ui-bg/80 rounded-corner p-4">
-      <AudioDeviceSelector />
-    </div>
+    <ListCard>
+      <AudioDeviceSelector class="min-w-0 flex-1" />
+    </ListCard>
   </div>
 </template>

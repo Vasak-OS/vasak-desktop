@@ -139,7 +139,7 @@ onMounted(async () => {
 });
 
 const CHIP =
-	'flex max-w-full min-w-0 items-center gap-1 rounded-corner bg-ui-surface/70 px-2 py-0.5 text-xs text-tx-main';
+	'flex max-w-full min-w-0 items-center gap-1 rounded-corner-m bg-ui-surface/70 px-2 py-0.5 text-label-xs text-tx-main';
 </script>
 
 <template>
@@ -177,7 +177,7 @@ const CHIP =
 					<button
 						v-if="output"
 						type="button"
-						:class="[CHIP, 'transition-colors hover:bg-ui-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary']"
+						:class="[CHIP, 'transition-colors hover:bg-ui-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary']"
 						:title="t('views.musicApplet.chooseOutput')"
 						:aria-label="outputAnnouncement"
 						:aria-expanded="pickingOutput"
@@ -198,22 +198,22 @@ const CHIP =
 			     se anuncia cuál está puesta y las flechas pasan de una a otra. -->
 			<div
 				v-if="pickingOutput"
-				class="absolute inset-0 z-10 flex min-h-0 flex-col gap-2 rounded-corner bg-ui-surface p-2"
+				class="absolute inset-0 z-10 flex min-h-0 flex-col gap-2 rounded-corner-m bg-ui-surface p-2"
 			>
 				<div class="flex items-center gap-2">
 					<button
 						type="button"
-						class="flex h-7 w-7 items-center justify-center rounded-full text-tx-main hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+						class="flex h-7 w-7 items-center justify-center rounded-corner-full text-tx-main hover:bg-ui-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
 						:title="t('views.musicApplet.back')"
 						:aria-label="t('views.musicApplet.back')"
 						@click="pickingOutput = false"
 					>
 						<ThemeIcon name="go-previous" type="symbol" :size="16" />
 					</button>
-					<h2 class="text-sm font-medium text-tx-main">{{ t('views.musicApplet.chooseOutput') }}</h2>
+					<h2 class="text-label-m font-medium text-tx-main">{{ t('views.musicApplet.chooseOutput') }}</h2>
 				</div>
 
-				<p v-if="devices.length === 0" class="px-2 text-xs text-tx-muted">
+				<p v-if="devices.length === 0" class="px-2 text-label-xs text-tx-muted">
 					{{ t('views.musicApplet.noOutputs') }}
 				</p>
 				<fieldset v-else class="flex min-h-0 flex-col gap-1 overflow-y-auto">
@@ -221,8 +221,8 @@ const CHIP =
 					<label
 						v-for="device in devices"
 						:key="device.id"
-						class="flex w-full cursor-pointer items-center gap-2 rounded-corner px-2 py-1.5 text-left text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary has-[:disabled]:cursor-wait"
-						:class="device.id === output?.id ? 'bg-primary text-tx-on-primary' : 'text-tx-main hover:bg-primary/20'"
+						class="flex w-full cursor-pointer items-center gap-2 rounded-corner-m px-2 py-1.5 text-left text-label-m transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary has-[:disabled]:cursor-wait"
+						:class="device.id === output?.id ? 'bg-primary text-tx-on-primary' : 'text-tx-main hover:bg-ui-hover'"
 					>
 						<input
 							type="radio"

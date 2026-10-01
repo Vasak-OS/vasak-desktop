@@ -100,12 +100,18 @@ const toggleNetworkApplet = async () => {
 	  :alt="networkAlt"
 	  :tooltip="networkAlt"
 	  :custom-class="{ relative: true, ...openClasses }"
-		:icon-class="{ 'filter brightness-90': !networkState.is_connected, 'drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]': vpnConnected }"
+		:icon-class="{ 'filter brightness-90': !networkState.is_connected }"
 	  @click="toggleNetworkApplet"
 	>
+	  <!-- Con la VPN puesta el punto lleva un anillo del primario. Antes era un
+	       resplandor azul escrito a mano alrededor del icono, que no salía del
+	       esquema. -->
 	  <div
-			class="absolute top-3 right-0.5 w-2.5 h-2.5 rounded-full transition-all duration-300 ring-1 ring-ui-bg"
-			:class="networkState.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-error'"
+			class="absolute top-3 right-0.5 w-2.5 h-2.5 rounded-corner-full transition-colors duration-300"
+			:class="[
+				networkState.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-error',
+				vpnConnected ? 'ring-2 ring-primary' : 'ring-1 ring-ui-bg',
+			]"
 	  ></div>
 
 	</TrayIconButton>

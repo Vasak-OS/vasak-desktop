@@ -71,8 +71,8 @@ export function useVolumeState() {
 	}
 
 	function getPercentageClass(percentage: number) {
-		if (volumeInfo.value.is_muted) return 'text-red-500';
-		if (percentage > 80) return 'text-green-500';
+		if (volumeInfo.value.is_muted) return 'text-status-error';
+		if (percentage > 80) return 'text-status-success';
 		return '';
 	}
 

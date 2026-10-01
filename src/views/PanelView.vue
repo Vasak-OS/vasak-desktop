@@ -254,7 +254,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 <template>
 	<nav
 		@contextmenu.prevent="openPanelContextMenu"
-		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80"
+		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner-m bg-ui-bg/80 border border-ui-line"
 		:class="BAR_CLASSES[position]"
 	>
     <div class="flex items-center gap-1" :class="vertical ? 'flex-col' : ''">
@@ -264,7 +264,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       <button
         ref="menuButton"
         type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        class="cursor-pointer p-0.5 rounded-corner-m hover:bg-ui-hover transform ease-in-out"
         :class="menuOpenClasses"
         :aria-expanded="menuIsOpen"
         :title="t('views.panel.menuAlt')"
@@ -278,7 +278,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 			<div class="bg-ui-bg/80" :class="vertical ? 'h-1 w-7' : 'w-1 h-7'"></div>
       <button
         type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        class="cursor-pointer p-0.5 rounded-corner-m hover:bg-ui-hover transform ease-in-out"
         :title="t('views.panel.settingsAlt')"
         :aria-label="t('views.panel.settingsAlt')"
         @click="openConfig"
@@ -287,7 +287,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       </button>
       <button
         type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        class="cursor-pointer p-0.5 rounded-corner-m hover:bg-ui-hover transform ease-in-out"
         :title="t('views.panel.filesAlt')"
         :aria-label="t('views.panel.filesAlt')"
         @click="openFileManager"
@@ -300,7 +300,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       <div v-if="hasPhone" class="relative">
         <button
         type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+        class="cursor-pointer p-0.5 rounded-corner-m hover:bg-ui-hover transform ease-in-out"
         :title="t('views.connect.menuAlt')"
         :aria-label="t('views.connect.menuAlt')"
         @click="openPhoneMenu"
@@ -310,7 +310,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         <div
           v-if="phoneNeedsAuth"
           :title="t('views.connect.unauthorized')"
-          class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-status-warning"
+          class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-corner-full bg-status-warning"
         ></div>
       </div>
     </div>
@@ -332,7 +332,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
           class="p-0.5"
           :class="{ 'animate-bell-shake': hasNewNotifications }"
         />
-        <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary text-tx-on-primary rounded-full min-w-3 h-3 flex items-center justify-center text-[8px] font-semibold leading-none px-0.5">
+        <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary text-tx-on-primary rounded-corner-full min-w-3 h-3 flex items-center justify-center text-[8px] font-semibold leading-none px-0.5">
           {{ notifications.length > 99 ? "99+" : notifications.length }}
         </div>
       </button>

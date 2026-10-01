@@ -83,7 +83,7 @@ const toggleTwingateApplet = async () => {
          hay algo que autorizar; cuántos, lo dice el applet. -->
     <div
       v-if="pendingAuth > 0"
-      class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-status-warning ring-1 ring-ui-bg"
+      class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-corner-full bg-status-warning ring-1 ring-ui-bg"
     ></div>
   </TrayIconButton>
 </template>

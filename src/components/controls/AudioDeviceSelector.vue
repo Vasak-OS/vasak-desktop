@@ -75,7 +75,9 @@ function getDeviceName(device: AudioDevice): string {
 
 <template>
   <div class="space-y-2">
-    <div class="flex items-center gap-2 text-sm font-medium text-ui-surface">
+    <!-- `tx-muted` y no `ui-surface`: la superficie es un fondo, y como color
+         de texto sobre otra superficie no llegaba ni a 2:1. -->
+    <div class="flex items-center gap-2 text-label-m font-medium text-tx-muted">
       <ThemeIcon name="audio-speakers-symbolic" type="symbol" :size="16" :alt="t('components.AudioDeviceSelector.speakerAlt')" />
       <span>{{ t('components.AudioDeviceSelector.title') }}</span>
     </div>
@@ -95,44 +97,49 @@ function getDeviceName(device: AudioDevice): string {
       :aria-label="t('components.AudioDeviceSelector.title')">
       <button v-for="device in devices" :key="device.id" type="button" role="radio"
         :aria-checked="selectedDeviceId === device.id"
-        class="flex w-full items-center gap-2 p-2 rounded-corner cursor-pointer transition-colors text-left" :class="[
+        class="flex w-full min-w-0 items-center gap-2 p-2 rounded-corner-m cursor-pointer text-left transition-colors duration-200 ease-ui focus-visible:-outline-offset-2" :class="[
           selectedDeviceId === device.id
-            ? 'bg-primary text-tx-on-primary ring-1 ring-secondary'
-            : 'bg-bg-ui-bg/80 hover:bg-primary ',
+            ? 'bg-ui-selected-accent font-semibold'
+            : 'hover:bg-ui-hover active:bg-ui-pressed',
         ]" @click="onDeviceChange(device.id)">
 
+        <!-- El punto de la opción: el contorno de un control lleva 3:1
+             (`ui-border-strong`), y la elegida, el primario con el punto en el
+             texto que va encima del primario. Nada de blanco escrito a mano. -->
         <div
-          class="w-4 h-4 rounded-full border-2 border-primary flex items-center justify-center transition-colors"
+          class="w-4 h-4 shrink-0 rounded-corner-full border-2 flex items-center justify-center transition-colors duration-200 ease-ui"
           :class="[
             selectedDeviceId === device.id
               ? 'bg-primary border-primary'
-              : '',
+              : 'border-ui-border-strong',
           ]">
-          <div v-if="selectedDeviceId === device.id" class="w-2 h-2 bg-white rounded-full" />
+          <div v-if="selectedDeviceId === device.id" class="w-2 h-2 bg-tx-on-primary rounded-corner-full" />
         </div>
 
         <!-- Device info -->
         <div class="flex-1 min-w-0">
-          <div class="text-xs font-medium truncate">
+          <div class="text-label-xs font-medium break-words">
             {{ getDeviceName(device) }}
           </div>
-          <div class="text-xs text-ui-surface/70">
+          <div class="text-label-xs text-tx-muted">
             {{ t('components.AudioDeviceSelector.volume').replace('{0}', String(Math.round(device.volume * 100))) }}
           </div>
         </div>
 
+        <!-- La insignia de la librería (la de `SideButton`): antes el texto iba
+             en `primary` sobre fondo `primary`, o sea que no se leía. -->
         <div v-if="device.is_default"
-          class="px-2 py-0.5 bg-primary rounded-corner text-xs font-medium text-primary">
+          class="flex h-5 shrink-0 items-center rounded-corner-full bg-ui-selected px-2 text-label-xs font-semibold text-tx-main">
           {{ t('components.AudioDeviceSelector.default') }}
         </div>
       </button>
     </div>
 
-    <div v-else-if="isLoading" class="text-xs text-ui-surface">
+    <div v-else-if="isLoading" class="text-label-xs text-tx-muted">
       {{ t('components.AudioDeviceSelector.loadingDevices') }}
     </div>
 
-    <div v-else class="text-xs text-tx-muted">
+    <div v-else class="text-label-xs text-tx-muted">
       {{ t('components.AudioDeviceSelector.noDevices') }}
     </div>
   </div>

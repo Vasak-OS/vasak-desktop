@@ -5,21 +5,21 @@
        misma decisión que en los iconos de la bandeja: que no se resalte lo que
        no se puede tocar. -->
   <div
-    class="bg-ui-bg/80 rounded-corner border border-ui-border p-4 flex items-center gap-4 w-full transition-all duration-300"
+    class="bg-ui-bg/80 rounded-corner-m border border-ui-line p-4 flex items-center gap-4 w-full transition-all duration-300"
     :class="{
       'opacity-0 translate-y-4': !isLoaded,
       'opacity-100 translate-y-0': isLoaded,
     }"
   >
     <!-- El redondeo va también en la imagen, y el recorte en la caja: el
-         `rounded-full` estaba sólo acá afuera, y como la imagen no hereda el
+         `rounded-corner-full` estaba sólo acá afuera, y como la imagen no hereda el
          redondeo de su contenedor ni lo desborda, la foto se veía cuadrada
          dentro de un círculo que no recortaba nada. -->
-    <div class="relative w-16 h-16 shrink-0 overflow-hidden rounded-full">
+    <div class="relative w-16 h-16 shrink-0 overflow-hidden rounded-corner-full">
       <img
         :src="userInfo.avatar_data"
         :alt="userInfo.full_name"
-        class="h-full w-full aspect-square rounded-full object-cover transition-all duration-300"
+        class="h-full w-full aspect-square rounded-corner-full object-cover transition-all duration-300"
         :class="{
           'opacity-0 scale-90': !isLoaded,
           'opacity-100 scale-100': isLoaded,
@@ -34,13 +34,13 @@
         {{ userInfo.full_name }}
       </h2>
       <p
-        class="text-sm text-tx-muted"
+        class="text-label-m text-tx-muted"
       >
         {{ userInfo.username }}
       </p>
     </div>
     <div
-      class="text-right space-y-1 transition-all duration-700"
+      class="text-right space-y-1 transition-all duration-300"
     >
       <div
         class="text-2xl font-medium transition-all duration-300 tabular-nums text-primary"
@@ -49,7 +49,7 @@
         {{ currentTime }}
       </div>
       <div
-        class="text-sm text-tx-muted transition-all duration-300 capitalize"
+        class="text-label-m text-tx-muted transition-all duration-300 capitalize"
       >
         {{ currentDate }}
       </div>

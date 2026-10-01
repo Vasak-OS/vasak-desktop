@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ActionButton } from '@vasakgroup/vue-libvasak';
 import { computed, onUnmounted, ref } from 'vue';
 import { CELL_GAP, CELL_SIZE, type WidgetPlacement } from '@/tools/widgets/catalog';
 
@@ -20,6 +22,8 @@ const props = defineProps<{
 	minSize: { w: number; h: number };
 	maxSize: { w: number; h: number };
 }>();
+
+const { t } = useI18n();
 
 const emit = defineEmits<{
 	(e: 'move', posicion: { x: number; y: number }): void;
@@ -157,8 +161,11 @@ function empezarRedimensionado(evento: PointerEvent) {
 		@pointerdown="empezarArrastre"
 	>
 		<!--
-			El marco de todos los widgets vive acá y no en cada uno: fondo, blur,
-			borde y esquinas. Repetirlo en cada componente era lo que hacía que
+			El marco de todos los widgets vive acá y no en cada uno: fondo,
+			borde, esquinas y sombra. Es lo que flota sobre el fondo de
+			pantalla, así que va con la superficie opaca `ui-float`, el canto
+			fino, el radio `l` y la sombra `surface-m` de la librería; el
+			desenfoque que tenía no veía nada detrás. Repetirlo en cada componente era lo que hacía que
 			cada widget tuviera su propia opacidad y su propio blur —o ninguno—,
 			y que agregar uno nuevo empezara con la pregunta de qué clases copiar.
 
@@ -170,7 +177,7 @@ function empezarRedimensionado(evento: PointerEvent) {
 		-->
 		<div
 			style="container-type: size"
-			class="h-full w-full overflow-hidden rounded-corner border border-ui-border bg-ui-bg/80 backdrop-blur-md"
+			class="h-full w-full overflow-hidden rounded-corner-l border border-ui-line bg-ui-float shadow-surface-m"
 			:class="editing ? 'pointer-events-none select-none' : ''"
 		>
 			<slot />
@@ -178,22 +185,28 @@ function empezarRedimensionado(evento: PointerEvent) {
 
 		<template v-if="editing">
 			<div
-				class="pointer-events-none absolute inset-0 rounded-corner border-2 border-dashed border-primary/70"
+				class="pointer-events-none absolute inset-0 rounded-corner-l border-2 border-dashed border-primary/70"
 			></div>
 
-			<button
-				type="button"
-				class="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-status-error text-xs font-bold text-white shadow-lg"
-				:title="$props.placement.type"
-				@pointerdown.stop
-				@click.stop="emit('remove')"
-			>
-				×
-			</button>
+			<!-- El botón de la librería, con la cruz del tema y no una «×» escrita:
+			     el envoltorio es el que corta el arrastre, porque el botón no
+			     declara `pointerdown`. -->
+			<span class="absolute -right-2 -top-2" @pointerdown.stop>
+				<ActionButton
+					label=""
+					icon="window-close"
+					:icon-alt="t('widgets.remove')"
+					:title="t('widgets.remove')"
+					variant="danger"
+					size="sm"
+					stop-propagation
+					@click="emit('remove')"
+				/>
+			</span>
 
 			<!-- La manija va abajo a la derecha, que es donde la busca todo el mundo. -->
 			<div
-				class="absolute -bottom-1 -right-1 h-5 w-5 cursor-nwse-resize rounded-tl-corner border-b-2 border-r-2 border-primary bg-ui-bg/80"
+				class="absolute -bottom-1 -right-1 h-5 w-5 cursor-nwse-resize rounded-tl-corner-m border-b-2 border-r-2 border-primary bg-ui-float"
 				@pointerdown="empezarRedimensionado"
 			></div>
 		</template>

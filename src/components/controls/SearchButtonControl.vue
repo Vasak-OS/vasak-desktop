@@ -22,7 +22,7 @@
 
 import { Command } from '@tauri-apps/plugin-shell';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ToggleControl } from '@vasakgroup/vue-libvasak';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -38,22 +38,13 @@ const openSearch = async () => {
 </script>
 
 <template>
-  <button
+  <!-- La baldosa de la librería, la misma que los interruptores de al lado:
+       sin `pressed`, porque abrir la búsqueda no prende ni apaga nada. Antes
+       era un botón propio con anillo del primario, sombras sueltas y un velo
+       de degradado que nunca se veía (opacidad cero). -->
+  <ToggleControl
+    name="search"
+    :label="t('components.SearchButtonControl.openSearch')"
     @click="openSearch"
-    class="p-2 rounded-corner bg-ui-bg/80 transition-all duration-500 h-17 w-17 group relative overflow-hidden hover:scale-105 active:scale-95 ring-2 ring-primary"
-    :title="t('components.SearchButtonControl.openSearch')" :aria-label="t('components.SearchButtonControl.openSearch')">
-    <!-- Overlay decorativo como ThemeToggle -->
-    <div
-      class="absolute inset-0 rounded-corner transition-all duration-500"
-      :class="'bg-linear-to-br from-primary to-secondary'"
-      style="opacity: 0"
-    ></div>
-
-    <ThemeIcon
-      name="search"
-      :size="48"
-      :alt="t('components.SearchButtonControl.searchAlt')"
-      class="m-auto transition-all duration-500 group-hover:scale-110 relative z-10 drop-shadow-lg group-hover:drop-shadow-xl"
-    />
-  </button>
+  />
 </template>

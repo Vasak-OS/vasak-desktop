@@ -71,7 +71,7 @@ onUnmounted(() => {
 <template>
   <div
     class="flex items-center justify-center p-1 font-mono"
-    :class="vertical ? 'flex-col text-xs leading-tight' : 'text-sm'"
+    :class="vertical ? 'flex-col text-label-xs leading-tight' : 'text-label-m'"
   >
     <span
       :title="`${timeData.day}/${timeData.month}/${timeData.year}`"

@@ -65,7 +65,7 @@ const nombreDelDia = (fecha: string) => {
     <!-- Variante corta: una sola tarjeta, en fila, para una celda ancha y baja. -->
     <div
       v-else-if="soloHoy"
-      class="flex h-full items-center justify-center gap-[5cqmin] rounded-corner border border-primary bg-ui-surface/80 p-[3cqmin]"
+      class="flex h-full items-center justify-center gap-[5cqmin] rounded-corner-m border border-primary bg-ui-selected-accent p-[3cqmin]"
     >
       <WeatherIcon
         :code="current.weather_code"
@@ -90,7 +90,7 @@ const nombreDelDia = (fecha: string) => {
     <!-- Variante extendida: hoy a la izquierda, la semana a la derecha. -->
     <div v-else class="grid h-full min-h-0 gap-[3cqmin]" style="grid-template-columns: 2fr 3fr">
       <div
-        class="flex min-h-0 flex-col items-center justify-center gap-[3cqmin] rounded-corner border border-primary bg-ui-surface/80 p-[3cqmin]"
+        class="flex min-h-0 flex-col items-center justify-center gap-[3cqmin] rounded-corner-m border border-primary bg-ui-selected-accent p-[3cqmin]"
       >
         <div class="font-bold leading-none tabular-nums" style="font-size: 18cqmin">
           {{ Math.round(current.temperature_2m) }}{{ weather.current_units.temperature_2m }}

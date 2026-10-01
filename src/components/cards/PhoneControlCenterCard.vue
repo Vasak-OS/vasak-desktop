@@ -193,12 +193,12 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
 </script>
 
 <template>
-  <div v-if="device" class="flex flex-col gap-2 rounded-corner bg-ui-surface/40 p-3 text-tx-main">
+  <div v-if="device" class="flex flex-col gap-2 rounded-corner-m bg-ui-surface/40 p-3 text-tx-main">
     <button type="button" class="flex items-center gap-3 text-left" @click="toggleConnectMenu()">
       <ThemeIcon name="smartphone" :size="32" />
       <div class="min-w-0 flex-1">
         <p class="truncate font-semibold text-tx-main">{{ device.model }}</p>
-        <p class="truncate text-xs text-tx-muted">
+        <p class="truncate text-label-xs text-tx-muted">
           <span v-if="device.state === 'unauthorized'" class="text-status-warning">
             {{ t('views.connect.unauthorized') }}
           </span>
@@ -212,7 +212,7 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
         </p>
       </div>
       <div
-        class="h-2.5 w-2.5 shrink-0 rounded-full"
+        class="h-2.5 w-2.5 shrink-0 rounded-corner-full"
         :class="{
           'bg-status-success': device.state === 'ready',
           'bg-status-warning': device.state === 'unauthorized',
@@ -228,13 +228,13 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
       <li
         v-for="app in running"
         :key="app.package"
-        class="flex items-center gap-2 rounded-corner px-2 py-1 text-sm hover:bg-primary/10"
+        class="flex items-center gap-2 rounded-corner-m px-2 py-1 text-label-m hover:bg-ui-hover"
       >
         <span class="min-w-0 flex-1 truncate text-tx-main">{{ app.label }}</span>
         <button
           type="button"
           :title="t('views.connect.close')"
-          class="shrink-0 rounded-corner px-2 text-xs text-primary hover:bg-primary hover:text-tx-on-primary"
+          class="shrink-0 rounded-corner-m px-2 text-label-xs text-primary hover:bg-ui-hover"
           @click="close(app)"
         >
           {{ t('views.connect.close') }}
@@ -249,10 +249,10 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
          cuadros por segundo va en Ajustes, que es donde entran tres selectores. -->
     <div
       v-if="mostrarWebcam"
-      class="flex flex-col gap-1 border-t border-ui-border/60 pt-2"
+      class="flex flex-col gap-1 border-t border-ui-line pt-2"
     >
       <div class="flex items-center gap-2">
-        <span class="min-w-0 flex-1 text-sm text-tx-main">{{ t('views.connect.webcam') }}</span>
+        <span class="min-w-0 flex-1 text-label-m text-tx-main">{{ t('views.connect.webcam') }}</span>
         <SwitchToggle
           :label="t('views.connect.webcam')"
           :model-value="webcamEncendida"
@@ -263,10 +263,10 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
       <!-- El error de una acción primero, y el de la lectura del estado
            después: los dos son texto del demonio y ninguno se puede reemplazar
            por el consejo del módulo, que sería un diagnóstico inventado. -->
-      <p v-if="errorWebcam || errorEstadoWebcam" class="text-status-error text-xs">
+      <p v-if="errorWebcam || errorEstadoWebcam" class="text-status-error text-label-xs">
         {{ errorWebcam || errorEstadoWebcam }}
       </p>
-      <p v-else-if="detalleWebcam" class="text-tx-muted text-xs">{{ detalleWebcam }}</p>
+      <p v-else-if="detalleWebcam" class="text-tx-muted text-label-xs">{{ detalleWebcam }}</p>
     </div>
   </div>
 </template>

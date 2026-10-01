@@ -17,7 +17,9 @@
  * funcionaba. Pero al declarar el emit esa caída se corta, así que había que
  * cablearlo a mano en la plantilla: declararlo sin reemitir deja el botón mudo,
  * y apagar, reiniciar, cerrar sesión y suspender dejan de responder sin que
- * nada avise.
+ * nada avise. Ya no existe: los botones de sesión del menú son el
+ * `ActionButton` de la librería, que declara `click` y lo prueba allá; lo que
+ * se vigila acá es que el menú siga escuchándolo.
  *
  * Se fija por el texto del componente y no montándolo porque este repositorio
  * no tiene con qué montar; lo que se vigila es que la declaración y el cable
@@ -46,15 +48,14 @@ describe('los eventos van declarados', () => {
 		expect(fuente).toMatch(/@action="\$emit\('action'\)"/);
 	});
 
-	test('SessionButton declara `click`', () => {
-		const fuente = leer('src/components/buttons/SessionButton.vue');
+	test('los botones de sesión del menú escuchan el `click` del botón de la librería', () => {
+		// Si el menú dejara de pasar el manejador, los cinco botones quedarían
+		// mudos sin que nada avise.
+		const fuente = leer('src/views/MenuView.vue');
+		const boton = fuente.slice(fuente.indexOf('<ActionButton'), fuente.indexOf('/>', fuente.indexOf('<ActionButton')));
 
-		expect(fuente).toMatch(/defineEmits<\{\s*click:/);
-	});
-
-	test('y lo cablea en el botón, o los cuatro botones quedan mudos', () => {
-		const fuente = leer('src/components/buttons/SessionButton.vue');
-
-		expect(fuente).toMatch(/<button[^>]*@click="emit\('click', \$event\)"/s);
+		expect(boton).toMatch(/v-for="action in sessionActions"/);
+		expect(boton).toMatch(/@click="action\.handler"/);
+		expect(fuente).not.toMatch(/SessionButton/);
 	});
 });

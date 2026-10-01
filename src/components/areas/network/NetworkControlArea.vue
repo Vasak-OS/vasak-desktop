@@ -1,84 +1,64 @@
 <template>
-  <div class="flex flex-col h-full p-2">
+  <!-- Las piezas son las de la librería: el botón de cerrar y el de actualizar
+       son `ActionButton`, cada bloque es una tarjeta (`ListCard`), la rueda de
+       carga es `LoadingState` y los iconos salen del tema por `ThemeIcon`.
+       Antes cada uno era un dibujo a mano —seis SVG en línea— que no seguía
+       al tema de iconos que eligió la persona.
+
+       Es un contenedor: con menos de 24rem las dos tarjetas de cable se
+       apilan en vez de cortar lo que dicen. -->
+  <div class="@container flex flex-col h-full p-2">
     <!-- Header -->
-    <div class="flex justify-between items-center mb-4">
-      <h2 class="text-xl font-semibold text-tx-main">{{ t('components.NetworkControlArea.title') }}</h2>
-      <button
+    <div class="flex justify-between items-center gap-3 mb-4">
+      <h2 class="min-w-0 break-words text-xl font-semibold text-tx-main">{{ t('components.NetworkControlArea.title') }}</h2>
+      <ActionButton
         v-if="!hideX"
+        label=""
+        icon="window-close"
+        :icon-alt="t('common.close')"
+        :title="t('common.close')"
+        variant="secondary"
         @click="closeApplet"
-        class="p-2 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors"
-      >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M6 18L18 6M6 6l12 12"
-          ></path>
-        </svg>
-      </button>
+      />
     </div>
 
     <!-- Wi-Fi, with the live traffic riding along on the same row: it used to
          own a block of its own, and that block was most of the space the list
          of networks was missing. -->
-    <div
-      class="flex items-center gap-3 mb-4 p-3 rounded-corner border border-ui-border bg-ui-surface/45"
-    >
+    <ListCard custom-class="mb-4 flex-wrap">
       <template v-if="wifiAvailable">
-        <div class="p-2 rounded-full bg-primary/10">
-          <svg
-            class="w-5 h-5 text-primary"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"
-            ></path>
-          </svg>
-        </div>
+        <span class="flex shrink-0 items-center justify-center rounded-corner-full bg-ui-selected-accent p-2">
+          <ThemeIcon name="network-wireless" type="symbol" :size="20" alt="" />
+        </span>
         <div class="min-w-0">
           <h3 class="font-medium text-tx-main">Wi-Fi</h3>
-          <p class="text-sm text-tx-muted truncate">{{ wifiStatus }}</p>
+          <p class="text-label-m text-tx-muted truncate" :title="wifiStatus">{{ wifiStatus }}</p>
         </div>
       </template>
 
-      <span v-else class="text-sm text-tx-muted">{{
+      <span v-else class="text-label-m text-tx-muted">{{
         t('components.NetworkControlArea.wifiUnavailable')
       }}</span>
 
       <div class="flex-1"></div>
 
       <div
-        class="flex items-center gap-3 text-xs text-tx-muted"
+        class="flex min-w-0 flex-wrap items-center gap-3 text-label-xs text-tx-muted"
         :title="t('components.NetworkControlArea.realtimeTraffic')"
       >
-        <span class="truncate max-w-28">{{ statsInterfaceLabel }}</span>
+        <span class="truncate max-w-28" :title="statsInterfaceLabel">{{ statsInterfaceLabel }}</span>
         <span
           class="flex items-center gap-1 tabular-nums"
           :title="t('components.NetworkControlArea.download')"
         >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m0 0l-6-6m6 6l6-6"></path>
-          </svg>
+          <ThemeIcon name="go-down" type="symbol" :size="14" :alt="t('components.NetworkControlArea.download')" />
           {{ downloadSpeedLabel }}
         </span>
         <span
           class="flex items-center gap-1 tabular-nums"
           :title="t('components.NetworkControlArea.upload')"
         >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 20V4m0 0l-6 6m6-6l6 6"></path>
-          </svg>
+          <ThemeIcon name="go-up" type="symbol" :size="14" :alt="t('components.NetworkControlArea.upload')" />
           {{ uploadSpeedLabel }}
         </span>
       </div>
@@ -88,17 +68,15 @@
         :model-value="wifiEnabled"
         @update:model-value="toggleWifi"
       />
-    </div>
+    </ListCard>
 
     <div v-if="wifiAvailable && wifiEnabled" class="flex-1 flex flex-col min-h-0">
-      <h3 class="text-sm font-medium text-tx-main mb-3">
+      <h3 class="text-label-m font-medium text-tx-main mb-3">
         {{ t('components.NetworkControlArea.availableNetworks') }}
       </h3>
 
-      <div v-if="loading" class="flex-1 flex items-center justify-center py-8">
-        <div
-          class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"
-        ></div>
+      <div v-if="loading" class="flex-1 flex items-center justify-center">
+        <LoadingState :label="t('common.loading')" />
       </div>
 
       <div v-else class="flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
@@ -109,74 +87,62 @@
         />
       </div>
 
-      <button
+      <ActionButton
+        :label="t('components.NetworkControlArea.refresh')"
+        variant="secondary"
+        full-width
+        class="mt-4"
         @click="refreshNetworks"
-        class="w-full mt-4 p-2 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors text-sm text-tx-main"
-      >
-        {{ t('components.NetworkControlArea.refresh') }}
-      </button>
+      />
     </div>
 
     <!-- The two wired states, side by side: one line each is all they say. -->
-    <div class="mt-4 grid grid-cols-2 gap-3">
-      <div
-        class="flex items-center gap-3 p-3 rounded-corner border border-ui-border bg-ui-surface/45"
-      >
-        <div class="p-2 rounded-full bg-primary/10">
-          <svg
-            class="w-5 h-5 text-primary"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"
-            ></path>
-          </svg>
+    <div class="mt-4 grid grid-cols-1 gap-3 @sm:grid-cols-2">
+      <ListCard>
+        <div class="flex min-w-0 flex-1 items-center gap-3">
+          <span class="flex shrink-0 items-center justify-center rounded-corner-full bg-ui-selected-accent p-2">
+            <ThemeIcon name="network-wired" type="symbol" :size="20" alt="" />
+          </span>
+          <div class="min-w-0">
+            <h3 class="font-medium text-tx-main">Ethernet</h3>
+            <p class="text-label-m text-tx-muted truncate" :title="ethernetStatus">{{ ethernetStatus }}</p>
+          </div>
         </div>
-        <div class="min-w-0">
-          <h3 class="font-medium text-tx-main">Ethernet</h3>
-          <p class="text-sm text-tx-muted truncate">{{ ethernetStatus }}</p>
-        </div>
-      </div>
+      </ListCard>
 
-      <div
-        class="flex items-center gap-3 p-3 rounded-corner border border-ui-border bg-ui-surface/45"
-      >
-        <div class="p-2 rounded-full bg-primary/10">
-          <svg
-            class="w-5 h-5"
+      <ListCard>
+        <div class="flex min-w-0 flex-1 items-center gap-3">
+        <span class="flex shrink-0 items-center justify-center rounded-corner-full bg-ui-selected-accent p-2">
+          <ThemeIcon
+            name="network-vpn"
+            type="symbol"
+            :size="20"
+            alt=""
             :class="vpnConnected ? 'text-status-success' : 'text-tx-muted'"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 3l7 3v5c0 4.418-2.99 8.166-7 9-4.01-.834-7-4.582-7-9V6l7-3z"
-            ></path>
-          </svg>
-        </div>
+          />
+        </span>
         <div class="min-w-0">
           <h3 class="font-medium text-tx-main">VPN</h3>
-          <p class="text-sm text-tx-muted truncate">{{ vpnLabel }}</p>
+          <p class="text-label-m text-tx-muted truncate" :title="vpnLabel">{{ vpnLabel }}</p>
           <!-- Por dónde sale y con qué dirección: lo que alguien mira cuando
                quiere saber si está entrando a la red de la oficina. -->
-          <p v-if="vpnDetail" class="text-xs text-tx-muted truncate">{{ vpnDetail }}</p>
+          <p v-if="vpnDetail" class="text-label-xs text-tx-muted truncate" :title="vpnDetail">{{ vpnDetail }}</p>
         </div>
-      </div>
+        </div>
+      </ListCard>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SwitchToggle } from '@vasakgroup/vue-libvasak';
+import {
+	ActionButton,
+	ListCard,
+	LoadingState,
+	SwitchToggle,
+	ThemeIcon,
+} from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import NetworkWiFiCard from '@/components/cards/NetworkWiFiCard.vue';
 import {

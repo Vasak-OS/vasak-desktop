@@ -20,9 +20,18 @@ import { logWarning } from '@/utils/logger';
  *
  * Reemplaza a `AppletFrame`: lo que hace es lo mismo —el borde, el fondo, la
  * animación, cerrarse con Escape—, pero ahora el applet cuelga del botón que lo
- * abrió y la entrada **crece desde el botón**. El backend dice de qué lado está
- * el panel y dónde quedó el botón a lo largo del applet (`applet-anchor.ts`); la
- * primera vez por la ruta, después por `applet-shown`.
+ * abrió y la entrada **crece desde el botón**.
+ *
+ * La forma es la de algo que sale del panel en Once UI (vue-libvasak#74,
+ * §5.3): `rounded-corner-xl`, el canto fino `ui-line`, la superficie opaca
+ * `ui-float` y la sombra `surface-l`, todo de `tokens.css`. Opaca y sin
+ * desenfoque: una superficie de capa transparente no ve el escritorio, así que
+ * el desenfoque que tenía no desenfocaba nada y sólo costaba. La entrada
+ * dura 200 ms con `ease-ui-out` —arranca rápido y frena—, y la salida 120.
+ *
+ * El backend dice de qué lado está el panel y dónde quedó el botón a lo largo
+ * del applet (`applet-anchor.ts`); la primera vez por la ruta, después por
+ * `applet-shown`.
  *
  * La superficie es más grande que el applet —el margen de sombra de
  * `anchored_applet.rs`, para que la sombra no se corte en el canto—: el applet
@@ -122,7 +131,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
     <div
       role="dialog"
       :class="[
-        'applet-popover absolute overflow-hidden rounded-corner border border-ui-border bg-ui-bg/80 backdrop-blur-md',
+        'applet-popover absolute overflow-hidden rounded-corner-xl border border-ui-line bg-ui-float shadow-surface-l',
         compact ? 'p-1' : 'p-4',
         `applet-popover-${phase}`,
       ]"
@@ -175,16 +184,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
   }
 }
 
-/* La sombra de algo que sale del panel. El token lo trae el estilo nuevo de la
-   librería (vue-libvasak#74, `--shadow-surface-l`); mientras no esté, sin
-   sombra, y nunca un color escrito acá. El lugar para dibujarla ya lo deja el
-   margen de la superficie. */
-.applet-popover {
-  box-shadow: var(--shadow-surface-l, none);
-}
-
 .applet-popover-enter {
-  animation: applet-popover-in 180ms ease-out both;
+  animation: applet-popover-in 200ms var(--ease-ui-out) both;
 }
 
 /* La salida, al revés y más corta. `forwards` la deja invisible hasta que el

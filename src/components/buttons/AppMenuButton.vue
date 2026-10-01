@@ -1,10 +1,18 @@
-
 <script lang="ts" setup>
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { DropdownMenuItem, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { openApp as sysOpenApp } from '@/services/app.service';
 import { dismissMenu } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
+/**
+ * Un resultado de la búsqueda del menú: el icono solo, con el nombre en el
+ * globo y como nombre accesible.
+ *
+ * Es el ítem de menú de la librería, igual que la fila de la lista. El que
+ * marcan las flechas desde el campo es **lo elegido**, y lo elegido va con el
+ * velo del acento (`ui-selected-accent`, decisión 4 de vue-libvasak#74); antes
+ * crecía un 10 % y se corría al pasar por encima.
+ */
 const props = defineProps({
 	app: {
 		type: Object,
@@ -29,17 +37,11 @@ const openApp = async () => {
 </script>
 
 <template>
-  <button
+  <DropdownMenuItem
     :title="app.name"
-    @click="openApp()"
-    :class="[
-      'transform hover:translate-y-1 hover:scale-110 transition-transform duration-200 rounded-corner',
-      selected ? 'bg-primary/20 border border-secondary scale-110' : ''
-    ]"
-  >
-    <ThemeIcon :name="app.icon" :size="40" class="m-2" :alt="app.name" />
-    <span style="display: none">{{ app.name }}</span>
-    <span style="display: none">{{ app.description }}</span>
-    <span style="display: none">{{ app.keywords }}</span>
-  </button>
+    :class="selected ? 'bg-ui-selected-accent font-semibold' : ''"
+    :aria-current="selected || undefined"
+    @select="openApp">
+    <ThemeIcon :name="app.icon" :size="40" :alt="app.name" />
+  </DropdownMenuItem>
 </template>

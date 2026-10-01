@@ -29,14 +29,14 @@ const initial = computed(() => initialFor(props.app.label, props.app.package));
 </script>
 
 <template>
-  <div class="group flex items-center gap-3 rounded-corner p-2 hover:bg-primary/20">
+  <div class="group flex items-center gap-3 rounded-corner-m p-2 hover:bg-ui-hover">
     <button type="button" class="flex min-w-0 flex-1 items-center gap-3 text-left" @click="emit('open')">
       <img v-if="app.icon" :src="app.icon" alt="" class="h-8 w-8 shrink-0" />
       <ThemeIcon v-else-if="themeName" :name="themeName" :size="32" />
       <span
         v-else
         aria-hidden="true"
-        class="grid h-8 w-8 shrink-0 place-items-center rounded-corner bg-ui-surface font-semibold text-primary"
+        class="grid h-8 w-8 shrink-0 place-items-center rounded-corner-m bg-ui-surface font-semibold text-primary"
       >
         {{ initial }}
       </span>

@@ -37,7 +37,7 @@ const toggleBT = async (): Promise<void> => {
   <div class="theme-transition relative inline-block">
     <!-- Indicador de estado -->
     <div
-      class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-300"
+      class="absolute top-1 right-1 w-3 h-3 rounded-corner-full transition-all duration-300"
       :class="{
         'bg-primary animate-pulse': isBluetoothOn && connectedDevicesCount > 0,
         'bg-primary': isBluetoothOn && connectedDevicesCount === 0,
@@ -48,7 +48,7 @@ const toggleBT = async (): Promise<void> => {
     <!-- Badge de dispositivos conectados -->
     <div
       v-if="connectedDevicesCount > 0"
-      class="absolute bottom-1 right-1 bg-primary text-tx-main text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold"
+      class="absolute bottom-1 right-1 bg-primary text-tx-main text-label-xs rounded-corner-full w-4 h-4 flex items-center justify-center font-bold"
     >
       {{ connectedDevicesCount }}
     </div>
