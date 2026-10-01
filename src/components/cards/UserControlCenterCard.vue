@@ -13,15 +13,17 @@
     }"
   >
     <Avatar :src="userInfo.avatar_data || null" :name="userInfo.full_name" size="xl" />
-    <div class="flex min-w-0 flex-1 flex-col gap-1">
-      <h2 class="break-words text-lg font-semibold">
+    <!-- El nombre se parte entre palabras, nunca adentro de una: la columna
+         no baja de su palabra más larga, y la de la hora se acomoda. -->
+    <div class="flex flex-1 flex-col gap-1">
+      <h2 class="text-lg font-semibold">
         {{ userInfo.full_name }}
       </h2>
-      <p class="truncate text-label-m text-tx-muted">
+      <p class="text-label-m text-tx-muted">
         {{ userInfo.username }}
       </p>
     </div>
-    <div class="shrink-0 space-y-1 text-right">
+    <div class="min-w-0 space-y-1 text-right">
       <div
         class="text-2xl font-medium tabular-nums text-primary"
         :class="{ 'animate-pulse': isTimeUpdating }"

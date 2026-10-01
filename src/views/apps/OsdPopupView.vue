@@ -105,7 +105,7 @@ onUnmounted(() => {
 			<div class="w-16 h-16 flex items-center justify-center">
 				<ThemeIcon :name="iconName" :size="56" :alt="displayLabel" />
 			</div>
-			<span class="min-w-0 max-w-full truncate text-label-m font-medium text-tx-main text-center">{{ displayLabel }}</span>
+			<span class="min-w-0 max-w-full shrink-0 truncate text-label-m font-medium text-tx-main text-center">{{ displayLabel }}</span>
 			<!-- La barra fina de la librería (`ProgressBar size="xs"`, 2.1.0): la
 			     misma vía de 4 px, y además el `role="progressbar"` con su valor,
 			     que la copia a mano no tenía. -->
