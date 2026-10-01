@@ -82,6 +82,7 @@ mod tests {
             is_minimized: minimized,
             icon: "app-icon".to_string(),
             demands_attention: None,
+            app_id: None,
         }
     }
 

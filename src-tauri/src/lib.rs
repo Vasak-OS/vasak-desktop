@@ -126,6 +126,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(wm_state)
         .manage(tray_manager)
+        .manage(tray::launcher_entry::create_launcher_entry_store())
         .manage(SystrayPopupState(std::sync::Mutex::new(None)))
         .manage(WeatherCache::default())
         .plugin(tauri_plugin_positioner::init())
@@ -192,6 +193,7 @@ pub fn run() {
             hide_control_center,
             init_sni_watcher,
             get_tray_items,
+            get_launcher_entries,
             tray_item_activate,
             tray_item_secondary_activate,
             get_tray_menu,

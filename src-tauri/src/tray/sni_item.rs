@@ -1,5 +1,8 @@
 use zbus::proxy;
 
+/// `ToolTip`: `(sa(iiay)ss)`, icono por nombre, mapas de bits, título y descripción.
+pub type ToolTip = (String, Vec<(i32, i32, Vec<u8>)>, String, String);
+
 #[proxy(
     interface = "org.kde.StatusNotifierItem",
     default_service = "org.kde.StatusNotifierItem",
@@ -36,8 +39,16 @@ trait SniItem {
     fn status(&self) -> zbus::Result<String>;
 
     /// WindowId property
+    ///
+    /// La especificación dice `u` y Chromium manda `i` (medido con Discord,
+    /// Chrome y Claude): declararla con un tipo fijo hacía fallar la lectura
+    /// con uno de los dos. Se lee como valor suelto.
     #[zbus(property)]
-    fn window_id(&self) -> zbus::Result<u32>;
+    fn window_id(&self) -> zbus::Result<zbus::zvariant::OwnedValue>;
+
+    /// IconThemePath property: carpetas donde buscar los `IconName` propios.
+    #[zbus(property)]
+    fn icon_theme_path(&self) -> zbus::Result<String>;
 
     /// IconName property
     #[zbus(property)]
@@ -67,9 +78,11 @@ trait SniItem {
     #[zbus(property)]
     fn attention_movie_name(&self) -> zbus::Result<String>;
 
-    /// ToolTip property
+    /// ToolTip property: `(sa(iiay)ss)`, icono por nombre, icono por mapa de
+    /// bits, título y descripción. Declarada como `String` fallaba siempre, y
+    /// el panel no mostraba nunca el globo de ningún elemento.
     #[zbus(property)]
-    fn tool_tip(&self) -> zbus::Result<String>;
+    fn tool_tip(&self) -> zbus::Result<ToolTip>;
 
     /// Menu property
     ///

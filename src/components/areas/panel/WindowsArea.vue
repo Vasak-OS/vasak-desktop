@@ -4,10 +4,13 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 import { onMounted, ref } from 'vue';
 import WindowPanelButton from '@/components/buttons/WindowPanelButton.vue';
+import type { LauncherEntryView } from '@/interfaces/tray';
 import type { WindowInfo } from '@/interfaces/window';
+import { getLauncherEntries } from '@/services/tray.service';
 import { getWindows } from '@/services/window.service';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
+import { launcherForApp } from '@/tools/tray-item';
 import { logError } from '@/utils/logger';
 
 interface WindowDelta {
@@ -56,11 +59,29 @@ const applyDelta = (delta: WindowDelta): void => {
 	}
 };
 
+/**
+ * Lo que publican las aplicaciones por `LauncherEntry` (contador, progreso):
+ * se dibuja sobre su ventana. Sólo llega lo visible.
+ */
+const launcherEntries = ref<LauncherEntryView[]>([]);
+
+const refreshLauncherEntries = async (): Promise<void> => {
+	try {
+		launcherEntries.value = await getLauncherEntries();
+	} catch (error) {
+		logError('[Windows] Error obteniendo LauncherEntry:', error);
+	}
+};
+
 onMounted(async () => {
 	await refreshWindows();
+	await refreshLauncherEntries();
 });
 
 useSharedEvent<WindowDelta>('window-delta', applyDelta);
+useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
+	launcherEntries.value = Array.isArray(entries) ? entries : [];
+});
 </script>
 
 <template>
@@ -80,6 +101,7 @@ useSharedEvent<WindowDelta>('window-delta', applyDelta);
         v-for="window in windows"
         :key="window.id"
         v-bind="window"
+        :launcher="launcherForApp(launcherEntries, window.app_id)"
       />
     </TransitionGroup>
   </div>

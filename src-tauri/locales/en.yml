@@ -116,8 +116,14 @@ views:
       fallbackTitle: Application
       menuLabel: "{0} menu"
       noItems: This application has no actions.
+      disposition:
+        informative: Information
+        warning: Warning
+        alert: Alert
 
 components:
+  tray:
+    progress: "{0} progress"
   AudioDeviceSelector:
     title: Audio device
     speakerAlt: Speaker

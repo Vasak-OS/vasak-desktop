@@ -2,7 +2,15 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { TrayMenu } from '@/interfaces/tray';
-import { hasActions, menuFocusTarget, trayMenuRows } from '@/tools/tray-menu';
+import {
+	DISPOSITION_STYLE,
+	entryRole,
+	hasActions,
+	menuFocusTarget,
+	shortcutLabel,
+	toggleIconName,
+	trayMenuRows,
+} from '@/tools/tray-menu';
 
 const entry = (id: number, label: string, extra: Partial<TrayMenu> = {}): TrayMenu => ({
 	id,
@@ -124,18 +132,99 @@ describe('las medidas del menú coinciden con las del backend', () => {
 	const constant = (name: string) =>
 		Number(rust.match(new RegExp(`const ${name}: f64 = ([0-9.]+);`))?.[1]);
 
+	// Las filas son los componentes del menú de la librería: las alturas salen
+	// de sus clases, que se leen del paquete instalado y no de una copia.
+	const library = readFileSync(
+		join(root, 'node_modules/@vasakgroup/vue-libvasak/dist/vue-libvasak.es.js'),
+		'utf8'
+	);
+
 	test.each([
-		['TRAY_MENU_ITEM', 32, 'class="flex h-8 w-full'],
-		['TRAY_MENU_CAPTION', 28, 'class="flex h-7 items-center'],
-		['TRAY_MENU_SEPARATOR', 9, 'class="mx-2 my-1 h-px'],
-	])('%s = %d px, y la vista usa esa altura', (name, px, cls) => {
+		// min-h-8, y la etiqueta en una línea (`truncate`): 32 px.
+		['TRAY_MENU_ITEM', 32, 'flex min-h-8 min-w-0 items-center', '<DropdownMenuItem'],
+		// pt-2 + pb-1 + la línea de text-label-xs (1rem): 28 px.
+		['TRAY_MENU_CAPTION', 28, 'px-3 pt-2 pb-1 font-semibold text-label-xs', '<DropdownMenuLabel'],
+		// my-1 + h-px: 9 px.
+		['TRAY_MENU_SEPARATOR', 9, '-mx-1 my-1 h-px', '<DropdownMenuSeparator'],
+	])('%s = %d px, y la vista usa el componente que mide eso', (name, px, cls, tag) => {
 		expect(constant(name)).toBe(px);
-		expect(view).toContain(cls);
+		expect(library).toContain(cls);
+		expect(view).toContain(tag);
+	});
+
+	test('la etiqueta de cada fila no se parte en dos líneas', () => {
+		// Una etiqueta partida haría la fila más alta que lo que midió el backend.
+		expect(view).toContain('<span class="min-w-0 flex-1 truncate">{{ row.item.label }}</span>');
+		expect(view).toMatch(/<DropdownMenuLabel[^>]*class="truncate"/);
 	});
 
 	test('el contenedor compacto suma p-1 y el borde: 10 px', () => {
 		expect(constant('TRAY_MENU_CHROME')).toBe(10);
 		expect(popover).toContain("compact ? 'p-1' : 'p-4'");
 		expect(view).toContain('<AppletPopover applet="tray" compact');
+	});
+});
+
+describe('lo que trae cada entrada', () => {
+	test('el atajo se escribe como en un menú', () => {
+		expect(shortcutLabel([['Control', 'q']])).toBe('Ctrl+Q');
+		expect(
+			shortcutLabel([
+				['Control', 'Q'],
+				['Alt', 'X'],
+			])
+		).toBe('Ctrl+Q, Alt+X');
+		expect(shortcutLabel([['Super', 'Shift', 'Delete']])).toBe('Super+Shift+Delete');
+		expect(shortcutLabel(undefined)).toBeUndefined();
+		expect(shortcutLabel([[]])).toBeUndefined();
+	});
+
+	test('casilla, radio e indeterminado tienen su rol y su estado', () => {
+		const e = (toggle?: TrayMenu['toggle']) => entry(1, 'x', { toggle });
+		expect(entryRole(e())).toEqual({ role: 'menuitem' });
+		expect(entryRole(e({ kind: 'checkmark', state: 'on' }))).toEqual({
+			role: 'menuitemcheckbox',
+			checked: 'true',
+		});
+		expect(entryRole(e({ kind: 'checkmark', state: 'indeterminate' }))).toEqual({
+			role: 'menuitemcheckbox',
+			checked: 'mixed',
+		});
+		// Radio no admite `mixed` en ARIA.
+		expect(entryRole(e({ kind: 'radio', state: 'indeterminate' }))).toEqual({
+			role: 'menuitemradio',
+			checked: 'false',
+		});
+	});
+
+	test('el indicador sale del tema, distinto para cada estado', () => {
+		expect(toggleIconName(undefined)).toBeUndefined();
+		expect(toggleIconName({ kind: 'checkmark', state: 'on' })).toBe('checkbox-checked-symbolic');
+		expect(toggleIconName({ kind: 'checkmark', state: 'off' })).toBe('checkbox-symbolic');
+		expect(toggleIconName({ kind: 'checkmark', state: 'indeterminate' })).toBe(
+			'checkbox-mixed-symbolic'
+		);
+		expect(toggleIconName({ kind: 'radio', state: 'on' })).toBe('radio-checked-symbolic');
+		expect(toggleIconName({ kind: 'radio', state: 'indeterminate' })).toBe('radio-mixed-symbolic');
+	});
+
+	test('cada disposición tiene su tono y su icono', () => {
+		expect(DISPOSITION_STYLE.informative).toEqual({
+			tone: 'info',
+			icon: 'dialog-information-symbolic',
+		});
+		expect(DISPOSITION_STYLE.warning.tone).toBe('warning');
+		expect(DISPOSITION_STYLE.alert).toEqual({ tone: 'error', icon: 'dialog-error-symbolic' });
+	});
+
+	test('la vista dibuja cada cosa sólo si viene', () => {
+		const view = readFileSync(
+			join(import.meta.dir, '..', 'views', 'applets', 'TrayPopupView.vue'),
+			'utf8'
+		);
+		expect(view).toContain('v-if="hasLeadingColumn"');
+		expect(view).toContain('v-if="row.item.toggle"');
+		expect(view).toContain('v-if="row.item.disposition"');
+		expect(view).toContain('v-if="shortcutLabel(row.item.shortcut)"');
 	});
 });

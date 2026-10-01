@@ -2,6 +2,8 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ProgressBar } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
 import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
@@ -15,6 +17,7 @@ import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import TrayNetworkRateControl from '@/components/controls/TrayNetworkRateControl.vue';
 import TrayWeatherControl from '@/components/controls/TrayWeatherControl.vue';
+import TrayCountBadge from '@/components/indicators/TrayCountBadge.vue';
 import type { TrayItem } from '@/interfaces/tray';
 import { batteryExists } from '@/services/core.service';
 import {
@@ -30,11 +33,20 @@ import { OPEN_APPLET_CLASSES, useOpenApplet } from '@/tools/composables/useOpenA
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
 import { createSerialQueue } from '@/tools/serial-queue';
+import {
+	countLabel,
+	itemName,
+	needsAttention,
+	progressPercent,
+	tooltipText,
+} from '@/tools/tray-item';
 import { logError, logWarning } from '@/utils/logger';
 
 // Qué partes del panel están encendidas, y de qué lado va la barra: a los
 // costados los iconos se apilan en lugar de alinearse.
 const { showWeather, showMusic, showTransfer, showTray, showPrivacy, vertical } = usePanelConfig();
+
+const { t } = useI18n();
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
 const existBattery: Ref<boolean> = ref(false);
@@ -93,9 +105,20 @@ const trayPopupQueue = createSerialQueue();
 const isTrayPopupOwner = (item: TrayItem) =>
 	trayPopupOpen.value && trayPopupOwner.value === item.service_name;
 
+/**
+ * `ItemIsMenu`: el elemento sólo tiene menú, y la especificación pide abrirlo
+ * también con el clic principal en vez de mandarle `Activate`.
+ */
+const opensMenu = (item: TrayItem, event: MouseEvent) =>
+	event.button === 2 || (event.button === 0 && item.item_is_menu === true);
+
+/** La barra de progreso nombra a quién progresa, para un lector de pantalla. */
+const progressLabel = (item: TrayItem) =>
+	t('components.tray.progress').replace('{0}', itemName(item));
+
 const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
 	try {
-		if (event.button === 2) {
+		if (opensMenu(item, event)) {
 			event.preventDefault();
 			trayPopupOwner.value = item.service_name;
 			// El rectángulo se mide ahora: `currentTarget` sólo vale mientras
@@ -121,9 +144,7 @@ const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
 };
 
 const getItemPulseClass = (item: TrayItem) => {
-	return item.status === 'NeedsAttention'
-		? 'animate-[pulse-attention_2s_infinite_ease-in-out]'
-		: '';
+	return needsAttention(item) ? 'animate-[pulse-attention_2s_infinite_ease-in-out]' : '';
 };
 
 const getItemStatusClass = (item: TrayItem) => {
@@ -197,15 +218,37 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
         @animationend="onAnimationEnd"
         @transitionstart="onTransitionStart"
         @transitionend="onTransitionEnd"
-        :title="item.tooltip || item.title"
+        :title="tooltipText(item)"
       >
-        <!-- Icon: own pixmap, then the theme, then the initial -->
-        <div class="relative w-4 h-4 flex items-center justify-center">
-          <TrayItemButton :item="item" />
-        </div>
+        <!-- Icono: el mapa de bits propio, el tema o la inicial; y la insignia
+             superpuesta si la manda -->
+        <TrayItemButton :item="item" />
 
-        <!-- Status indicator -->
-        <div v-if="item.status === 'NeedsAttention'" class="absolute -top-1 -right-1 w-2 h-2 bg-status-error rounded-corner-full animate-pulse" />
+        <!-- El contador de LauncherEntry, sólo si la aplicación lo hace visible:
+             el mismo de las ventanas del panel (ver TrayCountBadge.vue). -->
+        <TrayCountBadge
+          v-if="countLabel(item.launcher?.count)"
+          class="pointer-events-none absolute -top-1 -right-1"
+          :label="countLabel(item.launcher?.count) ?? ''"
+        />
+        <!-- Pide atención y no hay contador que ya lo diga: el punto. -->
+        <div
+          v-else-if="needsAttention(item)"
+          data-tray-attention
+          class="absolute -top-1 -right-1 size-2 rounded-corner-full bg-status-error animate-pulse"
+        />
+
+        <!-- El progreso de LauncherEntry, sólo con progress-visible. -->
+        <div
+          v-if="progressPercent(item.launcher?.progress) !== undefined"
+          data-tray-progress
+          class="pointer-events-none absolute inset-x-0.5 -bottom-1"
+        >
+          <ProgressBar
+            :value="progressPercent(item.launcher?.progress) ?? 0"
+            :label="progressLabel(item)"
+          />
+        </div>
       </div>
       <TrayIconPrivacy v-if="showPrivacy" key="icon-privacy" />
       <TrayIconSound key="icon-sound" />

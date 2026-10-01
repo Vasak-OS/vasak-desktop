@@ -2,13 +2,30 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import {
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	ThemeIcon,
+	TOAST_TONE_CLASSES,
+} from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, onMounted, ref } from 'vue';
+import TrayPixmap from '@/components/buttons/TrayPixmap.vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import type { SystrayPopupPayload, TrayMenu } from '@/interfaces/tray';
 import { getTrayPopupData, trayPopupClick } from '@/services/tray.service';
 import { dismissApplet } from '@/services/window.service';
-import { hasActions, menuFocusTarget, trayMenuRows } from '@/tools/tray-menu';
+import { useSharedEvent } from '@/tools/event.bus';
+import { iconSource } from '@/tools/tray-item';
+import {
+	DISPOSITION_STYLE,
+	entryRole,
+	hasActions,
+	menuFocusTarget,
+	shortcutLabel,
+	toggleIconName,
+	trayMenuRows,
+} from '@/tools/tray-menu';
 import { logError } from '@/utils/logger';
 
 /**
@@ -21,6 +38,17 @@ import { logError } from '@/utils/logger';
  *
  * El alto lo calcula el backend antes de abrir (`tray_menu_size`), con las
  * mismas medidas que las clases de acá: ver `tools/tray-menu.ts`.
+ *
+ * Cada entrada es un `DropdownMenuItem` de la librería y dibuja **sólo lo que
+ * manda**: el icono (por nombre o el PNG de la aplicación), la etiqueta, el
+ * atajo, la casilla o la opción de radio con su estado —indeterminado
+ * incluido—, y la disposición con su tono. Una entrada sin icono no tiene un
+ * hueco para el icono.
+ *
+ * Provisorio hasta vue-libvasak 2.2.0, que trae `DropdownMenuItem` con
+ * `checked`, `inset` y la ranura `shortcut` (con `Kbd`): hasta entonces el
+ * `role`/`aria-checked` se pasa como atributo —la raíz del ítem lo recibe— y
+ * el atajo va como texto atenuado.
  */
 
 const { t } = useI18n();
@@ -31,10 +59,29 @@ const menu = ref<HTMLElement | null>(null);
 const rows = computed(() => trayMenuRows(data.value?.items));
 const empty = computed(() => !hasActions(rows.value));
 
+/** Si alguna entrada tiene icono o casilla: entonces todas reservan el lugar,
+ * para que las etiquetas queden alineadas. Si ninguna tiene, nadie reserva. */
+const hasLeadingColumn = computed(() =>
+	rows.value.some((row) => row.kind === 'item' && (iconSource(row.item.icon) || row.item.toggle))
+);
+
+/**
+ * El `role` y el `aria-checked` de la entrada, como atributos sueltos: el
+ * `DropdownMenuItem` de la 2.0.0 no los declara (llegan como propiedades en la
+ * 2.2.0) y su raíz los recibe por `$attrs`, pisando el `menuitem` fijo.
+ */
+const entryAttrs = (item: TrayMenu): Record<string, string> => {
+	const { role, checked } = entryRole(item);
+	return checked === undefined ? { role } : { role, 'aria-checked': checked };
+};
+
+const dispositionLabel = (item: TrayMenu) =>
+	item.disposition ? t(`views.applets.tray.disposition.${item.disposition}`) : '';
+
 const menuLabel = computed(() =>
 	t('views.applets.tray.menuLabel').replace(
 		'{0}',
-		data.value?.title || data.value?.tooltip || t('views.applets.tray.fallbackTitle')
+		data.value?.title || data.value?.tooltip?.title || t('views.applets.tray.fallbackTitle')
 	)
 );
 
@@ -50,15 +97,15 @@ const handleItemClick = async (item: TrayMenu) => {
 	void close();
 };
 
-const entries = (): HTMLButtonElement[] => [
-	...(menu.value?.querySelectorAll<HTMLButtonElement>('[data-tray-entry]') ?? []),
+const entries = (): HTMLElement[] => [
+	...(menu.value?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? []),
 ];
 
 const onKeydown = (event: KeyboardEvent) => {
 	const buttons = entries();
-	const from = buttons.indexOf(document.activeElement as HTMLButtonElement);
+	const from = buttons.indexOf(document.activeElement as HTMLElement);
 	const target = menuFocusTarget(
-		buttons.map((button) => !button.disabled),
+		buttons.map((button) => button.getAttribute('aria-disabled') !== 'true'),
 		from,
 		event.key
 	);
@@ -86,6 +133,16 @@ const loadData = async () => {
 };
 
 onMounted(loadData);
+
+// El programa cambió su menú con el menú abierto (`ItemsPropertiesUpdated` o
+// `LayoutUpdated`): se vuelve a pedir sin mover el foco.
+useSharedEvent('tray-popup-update', async () => {
+	try {
+		data.value = await getTrayPopupData();
+	} catch (error) {
+		logError('[TrayPopup] Error refreshing popup data:', error);
+	}
+});
 </script>
 
 <template>
@@ -106,41 +163,60 @@ onMounted(loadData);
       </p>
 
       <template v-for="row in empty ? [] : rows" :key="row.kind === 'separator' ? row.key : `${row.kind}-${row.item.id}`">
-        <div
-          v-if="row.kind === 'separator'"
-          role="separator"
-          class="mx-2 my-1 h-px bg-ui-border"
-        />
+        <DropdownMenuSeparator v-if="row.kind === 'separator'" />
 
-        <p
+        <DropdownMenuLabel
           v-else-if="row.kind === 'caption'"
-          role="presentation"
-          class="flex h-7 items-center truncate px-3 text-label-xs font-semibold text-tx-muted"
+          class="truncate"
           :style="{ paddingLeft: `${0.75 + row.depth}rem` }"
         >
           {{ row.item.label }}
-        </p>
+        </DropdownMenuLabel>
 
-        <button
+        <DropdownMenuItem
           v-else
-          data-tray-entry
-          type="button"
-          :role="row.item.checked === undefined || row.item.checked === null ? 'menuitem' : 'menuitemcheckbox'"
-          :aria-checked="row.item.checked ?? undefined"
+          v-bind="entryAttrs(row.item)"
           :disabled="!row.item.enabled"
-          class="flex h-8 w-full items-center gap-2 rounded-corner-xs pr-3 text-left text-label-m text-tx-main transition-colors hover:bg-ui-hover focus-visible:bg-primary focus-visible:text-tx-on-primary focus-visible:outline-none disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-tx-main"
+          :class="row.item.disposition ? TOAST_TONE_CLASSES[DISPOSITION_STYLE[row.item.disposition].tone] : ''"
           :style="{ paddingLeft: `${0.75 + row.depth}rem` }"
-          @click="handleItemClick(row.item)"
+          @select="handleItemClick(row.item)"
         >
+          <span v-if="hasLeadingColumn" class="inline-flex size-4 shrink-0 items-center justify-center">
+            <ThemeIcon
+              v-if="row.item.toggle"
+              :name="toggleIconName(row.item.toggle) ?? ''"
+              type="symbol"
+              :size="16"
+              alt=""
+            />
+            <TrayPixmap
+              v-else-if="iconSource(row.item.icon)?.kind === 'pixmap'"
+              :data="row.item.icon?.data"
+              :size="16"
+            />
+            <ThemeIcon
+              v-else-if="iconSource(row.item.icon)?.kind === 'theme'"
+              :name="row.item.icon?.name ?? ''"
+              :size="16"
+              alt=""
+            />
+          </span>
           <span class="min-w-0 flex-1 truncate">{{ row.item.label }}</span>
           <ThemeIcon
-            v-if="row.item.checked"
-            name="object-select-symbolic"
+            v-if="row.item.disposition"
+            :name="DISPOSITION_STYLE[row.item.disposition].icon"
             type="symbol"
             :size="14"
-            alt=""
+            :alt="dispositionLabel(row.item)"
           />
-        </button>
+          <span
+            v-if="shortcutLabel(row.item.shortcut)"
+            data-tray-shortcut
+            class="shrink-0 text-label-xs text-tx-muted"
+          >
+            {{ shortcutLabel(row.item.shortcut) }}
+          </span>
+        </DropdownMenuItem>
       </template>
     </div>
   </AppletPopover>
