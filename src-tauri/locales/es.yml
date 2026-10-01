@@ -116,8 +116,14 @@ views:
       fallbackTitle: Programa
       menuLabel: "Menú de {0}"
       noItems: Este programa no tiene acciones.
+      disposition:
+        informative: Información
+        warning: Advertencia
+        alert: Alerta
 
 components:
+  tray:
+    progress: "Progreso de {0}"
   AudioDeviceSelector:
     title: Dispositivo de audio
     speakerAlt: Altavoz

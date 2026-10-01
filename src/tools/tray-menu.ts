@@ -1,4 +1,4 @@
-import type { TrayMenu } from '@/interfaces/tray';
+import type { MenuDisposition, TrayMenu, TrayToggle } from '@/interfaces/tray';
 
 /**
  * El menú de un icono de la bandeja, listo para dibujar como menú contextual.
@@ -24,7 +24,7 @@ export type TrayMenuRow =
  * `enabled: true` —el protocolo usa `enabled` como el control de activación—.
  */
 export function trayMenuRows(
-	items: readonly TrayMenu[] | undefined,
+	items: readonly TrayMenu[] | null | undefined,
 	depth = 0,
 	parentEnabled = true
 ): TrayMenuRow[] {
@@ -81,3 +81,72 @@ export function menuFocusTarget(
 			return null;
 	}
 }
+
+/** Cómo se llaman las teclas modificadoras de dbusmenu en una tecla. */
+const MODIFIER_LABELS: Record<string, string> = {
+	Control: 'Ctrl',
+	Alt: 'Alt',
+	Shift: 'Shift',
+	Super: 'Super',
+};
+
+/**
+ * El atajo de una entrada, como se escribe en un menú: `[["Control", "q"]]`
+ * es «Ctrl+Q» y `[["Control", "Q"], ["Alt", "X"]]` es «Ctrl+Q, Alt+X». Sin
+ * atajo, nada: no se reserva lugar.
+ */
+export function shortcutLabel(shortcut: readonly string[][] | undefined): string | undefined {
+	const chords = (shortcut ?? [])
+		.filter((chord) => chord.length > 0)
+		.map((chord) =>
+			chord
+				.map((key, index) => {
+					if (index < chord.length - 1) return MODIFIER_LABELS[key] ?? key;
+					return key.length === 1 ? key.toUpperCase() : key;
+				})
+				.join('+')
+		);
+	return chords.length > 0 ? chords.join(', ') : undefined;
+}
+
+/**
+ * El `role` y el `aria-checked` de una entrada. Una casilla indeterminada es
+ * `mixed`; una opción de radio no admite `mixed` en ARIA, así que se anuncia
+ * sin marcar y la diferencia la dice el dibujo.
+ */
+export function entryRole(item: TrayMenu): {
+	role: 'menuitem' | 'menuitemcheckbox' | 'menuitemradio';
+	checked?: 'true' | 'false' | 'mixed';
+} {
+	const toggle = item.toggle;
+	if (!toggle) return { role: 'menuitem' };
+	if (toggle.kind === 'radio') {
+		return { role: 'menuitemradio', checked: toggle.state === 'on' ? 'true' : 'false' };
+	}
+	const checked = toggle.state === 'on' ? 'true' : toggle.state === 'off' ? 'false' : 'mixed';
+	return { role: 'menuitemcheckbox', checked };
+}
+
+/** El indicador de la casilla o la opción de radio, del tema del sistema. */
+export function toggleIconName(toggle: TrayToggle | undefined): string | undefined {
+	if (!toggle) return undefined;
+	const base = toggle.kind === 'radio' ? 'radio' : 'checkbox';
+	switch (toggle.state) {
+		case 'on':
+			return `${base}-checked-symbolic`;
+		case 'indeterminate':
+			return `${base}-mixed-symbolic`;
+		default:
+			return `${base}-symbolic`;
+	}
+}
+
+/** El tono y el icono de `disposition`. `normal` no llega. */
+export const DISPOSITION_STYLE: Record<
+	MenuDisposition,
+	{ tone: 'info' | 'warning' | 'error'; icon: string }
+> = {
+	informative: { tone: 'info', icon: 'dialog-information-symbolic' },
+	warning: { tone: 'warning', icon: 'dialog-warning-symbolic' },
+	alert: { tone: 'error', icon: 'dialog-error-symbolic' },
+};

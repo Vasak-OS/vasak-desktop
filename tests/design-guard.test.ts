@@ -52,7 +52,7 @@ const LIBRARY_TOKENS = `${ROOT}node_modules/@vasakgroup/vue-libvasak/dist/tokens
  * (`IconPixmap` de StatusNotifierItem) cuando no trae un nombre del tema. No es
  * un icono propio: es el de un tercero, que el tema no puede tener.
  */
-const THIRD_PARTY_PIXMAP = ['components/buttons/TrayItemButton.vue'];
+const THIRD_PARTY_PIXMAP = ['components/buttons/TrayPixmap.vue'];
 
 /**
  * Sin comentarios: lo que se explica no es lo que se dibuja.

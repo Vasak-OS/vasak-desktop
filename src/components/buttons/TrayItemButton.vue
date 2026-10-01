@@ -1,59 +1,73 @@
 <script setup lang="ts">
 import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
+import TrayPixmap from '@/components/buttons/TrayPixmap.vue';
 import type { TrayItem } from '@/interfaces/tray';
+import { itemName, mainIcon, overlayIcon } from '@/tools/tray-item';
 
 const props = defineProps<{
 	item: TrayItem;
 }>();
 
 /**
- * Three sources, in the order the spec puts them.
+ * El icono del elemento y, si la manda, su insignia superpuesta.
  *
- * `IconPixmap` es el mapa de bits de la propia aplicación y gana siempre: es lo
- * que la aplicación dibujó, no algo que se le parece. `IconName` necesita el
- * tema de iconos, y de eso se encarga `ThemeIcon` — sabe cuál está puesto y
- * vuelve a resolver cuando cambia, cosa que la lista fija de seis rutas bajo
- * `hicolor` que tenía el panel no hacía.
+ * El icono sale de `mainIcon` (`tools/tray-item.ts`): el mapa de bits de la
+ * aplicación gana porque es lo que ella dibujó; el nombre va por `ThemeIcon`,
+ * que sabe cuál tema está puesto y vuelve a resolver cuando cambia. Con
+ * `NeedsAttention`, el icono de atención si lo hay.
  *
- * When neither resolves there is still an item to click, so it gets the initial
- * of its name rather than a blank space. That last case is real: Arch-Update asks
- * for `cachy-update_updates-available-blue`, which is not installed under any
- * name, and an empty square gave no hint that anything was there.
+ * Cuando no hay ni uno ni otro todavía hay un elemento que tocar, así que va
+ * la inicial de su nombre y no un hueco. Ese caso existe: Arch-Update pide
+ * `cachy-update_updates-available-blue`, que no está instalado con ningún
+ * nombre, y un cuadrado vacío no decía que ahí hubiera algo.
+ *
+ * La insignia (`OverlayIconName` / `OverlayIconPixmap`) va en la esquina de
+ * abajo a la derecha, a la mitad del tamaño, como la dibujan KDE y GNOME. Sin
+ * insignia no hay nada en esa esquina.
  */
-const themeName = computed(() => props.item.icon_name ?? '');
-
-/** El mapa de bits propio, si lo mandó. */
-const pixmapSource = computed(() =>
-	props.item.icon_data ? `data:image/png;base64,${props.item.icon_data}` : ''
-);
+const icon = computed(() => mainIcon(props.item));
+const overlay = computed(() => overlayIcon(props.item));
+const name = computed(() => itemName(props.item));
 
 const initial = computed(() => {
-	const source = props.item.title || props.item.id || props.item.service_name;
-	const letter = source.match(/\p{L}|\p{N}/u);
+	const letter = name.value.match(/\p{L}|\p{N}/u) ?? props.item.service_name.match(/\p{L}|\p{N}/u);
 	return letter ? letter[0].toUpperCase() : '?';
 });
 </script>
 
 <template>
-  <img
-    v-if="pixmapSource"
-    :src="pixmapSource"
-    :alt="item.title || item.id"
-    class="w-4 h-4 object-contain transition-all duration-300 group-hover:brightness-110"
-  />
-  <ThemeIcon
-    v-else-if="themeName"
-    :name="themeName"
-    :size="16"
-    :alt="item.title || item.id"
-    class="object-contain transition-all duration-300 group-hover:brightness-110"
-  />
-  <span
-    v-else
-    aria-hidden="true"
-    class="grid w-4 h-4 place-items-center rounded-corner-m bg-ui-surface text-[0.625rem] font-semibold leading-none text-primary transition-all duration-300"
-  >
-    {{ initial }}
+  <span class="relative inline-flex size-4 shrink-0 items-center justify-center">
+    <TrayPixmap
+      v-if="icon?.kind === 'pixmap'"
+      :data="icon.data"
+      :size="16"
+      :alt="name"
+      class="transition-[filter] duration-200 ease-ui group-hover:brightness-110"
+    />
+    <ThemeIcon
+      v-else-if="icon?.kind === 'theme'"
+      :name="icon.name"
+      :size="16"
+      :alt="name"
+      class="object-contain transition-[filter] duration-200 ease-ui group-hover:brightness-110"
+    />
+    <span
+      v-else
+      aria-hidden="true"
+      class="grid size-4 place-items-center rounded-corner-m bg-ui-surface text-[0.625rem] font-semibold leading-none text-primary"
+    >
+      {{ initial }}
+    </span>
+
+    <span
+      v-if="overlay"
+      data-tray-overlay
+      aria-hidden="true"
+      class="absolute -right-0.5 -bottom-0.5 inline-flex size-2.5 items-center justify-center"
+    >
+      <TrayPixmap v-if="overlay.kind === 'pixmap'" :data="overlay.data" :size="10" />
+      <ThemeIcon v-else :name="overlay.name" :size="10" alt="" />
+    </span>
   </span>
 </template>

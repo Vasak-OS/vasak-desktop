@@ -35,3 +35,8 @@ export const getTrayPopupData = <T = any>(args?: any): Promise<T> => {
 export const trayPopupClick = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('tray_popup_click', args);
 };
+
+/** Progreso y contadores de `LauncherEntry`, para las ventanas del panel. */
+export const getLauncherEntries = <T = any>(args?: any): Promise<T> => {
+	return invoke<T>('get_launcher_entries', args);
+};
