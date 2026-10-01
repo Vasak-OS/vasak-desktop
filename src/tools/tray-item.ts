@@ -94,10 +94,7 @@ export function progressPercent(progress: number | undefined): number | undefine
  */
 export function normaliseAppId(id: string): string {
 	const DOMAIN = new Set(['org', 'com', 'io', 'net', 'dev', 'app', 'me', 'de', 'fr', 'es', 'ar']);
-	const segments = id
-		.toLowerCase()
-		.split('.')
-		.filter(Boolean);
+	const segments = id.toLowerCase().split('.').filter(Boolean);
 	if (segments.length > 1 && DOMAIN.has(segments[0])) segments.shift();
 	return segments.join('').replace(/[^\p{L}\p{N}]/gu, '');
 }
