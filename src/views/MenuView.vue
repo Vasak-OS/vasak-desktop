@@ -250,7 +250,7 @@ const onKeydown = (event: KeyboardEvent) => {
            `autofocus` cubre el primer montaje, que es el único que hay: la
            superficie se esconde en vez de destruirse. Las aperturas siguientes
            las cubre `prepareMenuSearch` desde el aviso `shown` del applet, y
-           por eso el `ref` — el campo expone `enfocar()`, que dice si el foco
+           por eso el `ref` — el campo expone `focus()`, que dice si el foco
            llegó. -->
       <SearchField
         ref="searchField"
