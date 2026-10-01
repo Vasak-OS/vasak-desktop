@@ -1,9 +1,9 @@
 /**
  * Dejar el menú listo para escribir cada vez que se abre.
  *
- * La ventana del menú se **esconde**, no se destruye (`toggle_menu` en
- * `src-tauri/src/commands/menu.rs` usa `hide()` a propósito, para no recargar la
- * página en cada apertura). Así que la vista se monta una sola vez en la vida
+ * La superficie del menú se **esconde**, no se destruye (es un applet, y
+ * `anchored_applet.rs` los esconde a propósito, para no recargar la página en
+ * cada apertura). Así que la vista se monta una sola vez en la vida
  * del proceso, y todo lo que dependa de un montaje corre una sola vez: el
  * `autofocus` del campo de la librería enfocaba la primera apertura y ninguna
  * de las siguientes.
@@ -15,8 +15,10 @@
  *
  * Vive acá y no adentro del `.vue` porque este repositorio no tiene con qué
  * montar componentes, y lo que se rompió es justo la lógica: que esto se llame
- * desde el evento de foco de la ventana —el único que sí corre en cada
- * apertura— y no desde un gancho de montaje.
+ * desde el aviso `shown` del applet —lo único que sí corre en cada apertura— y
+ * no desde un gancho de montaje. (Antes era el evento de foco de la ventana de
+ * Tauri; dentro de una superficie de capa esa ventana es la vacía y el evento
+ * no llega nunca.)
  */
 
 /** Lo mínimo que este módulo necesita del campo de búsqueda. */

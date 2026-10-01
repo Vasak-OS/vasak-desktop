@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
-import { dismissApplet, toggleApplet } from './window.service';
+import {
+	dismissApplet,
+	dismissMenu,
+	reportMenuButton,
+	toggleApplet,
+	toggleMenu,
+} from './window.service';
 
 /**
  * Lo que el panel le manda al backend para abrir un applet.
@@ -62,5 +68,54 @@ describe('cerrar un applet', () => {
 		await dismissApplet('tray');
 
 		expect(calls).toEqual([{ cmd: 'dismiss_applet', args: { applet: 'tray' } }]);
+	});
+});
+
+describe('el menú de aplicaciones', () => {
+	test('se abre colgado del botón que lo pidió', async () => {
+		const button = {
+			getBoundingClientRect: () => ({ x: 17, y: 3, width: 32, height: 32, left: 17 }),
+		};
+
+		await toggleMenu(button);
+
+		expect(calls).toEqual([
+			{ cmd: 'toggle_menu', args: { anchor: { x: 17, y: 3, width: 32, height: 32 } } },
+		]);
+	});
+
+	test('sin botón manda `null`, y el backend lo ancla al botón del menú', async () => {
+		await toggleMenu();
+
+		expect(calls).toEqual([{ cmd: 'toggle_menu', args: { anchor: null } }]);
+	});
+
+	test('se cierra como applet, no cerrando la ventana', async () => {
+		await dismissMenu();
+
+		expect(calls).toEqual([{ cmd: 'dismiss_applet', args: { applet: 'menu' } }]);
+	});
+
+	test('el panel informa dónde quedó el botón y de qué lado está', async () => {
+		const button = {
+			getBoundingClientRect: () => ({ x: 3, y: 17, width: 32, height: 32 }),
+		};
+
+		await reportMenuButton('left', button);
+
+		expect(calls).toEqual([
+			{
+				cmd: 'set_menu_button',
+				args: { side: 'left', anchor: { x: 3, y: 17, width: 32, height: 32 } },
+			},
+		]);
+	});
+
+	test('sin botón que medir no informa nada', async () => {
+		// El `ref` está vacío hasta que Vue monta. Mandar un rectángulo vacío
+		// pisaría uno bueno con ceros.
+		await reportMenuButton('top', null);
+
+		expect(calls).toEqual([]);
 	});
 });

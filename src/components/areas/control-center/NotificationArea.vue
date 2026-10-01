@@ -69,14 +69,14 @@ import {
 	getAllNotifications,
 } from '@/services/notification.service';
 import { useSharedEvent } from '@/tools/event.bus';
-import { agruparNotificaciones } from '@/tools/notificaciones';
+import { groupNotifications } from '@/tools/notifications';
 
 const { t } = useI18n();
 
 const notifications = ref<Notification[]>([]);
 
 const groupedNotifications = computed<NotificationGroupData[]>(() =>
-	agruparNotificaciones(notifications.value)
+	groupNotifications(notifications.value)
 );
 
 async function loadNotifications() {

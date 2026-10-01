@@ -6,7 +6,6 @@ use tauri::{AppHandle, Manager, Monitor};
 use crate::logger::{log_debug, log_error, log_info};
 use crate::windows_apps::control_center::{create_control_center_window, CONTROL_CENTER_LABEL};
 use crate::windows_apps::desktop::create_desktops;
-use crate::windows_apps::menu::MENU_LABEL;
 use crate::windows_apps::panel::create_panels;
 use crate::windows_apps::shell_layer::destroy_layer_windows;
 
@@ -111,33 +110,35 @@ pub fn find_gdk_monitor(monitor: &Monitor) -> Option<gdk::Monitor> {
 
 /// Los prefijos de las superficies que se rehacen al cambiar los monitores.
 ///
-/// El centro de control y el menú **también**, aunque no se vean.
+/// El centro de control **también**, aunque no se vea.
 ///
-/// Las dos se crean una sola vez —el centro de control al arrancar, el menú la
-/// primera vez que se abre— y quedan atadas al monitor de ese momento con
+/// Se crea una sola vez, al arrancar, y queda atado al monitor de ese momento con
 /// `set_monitor`, con su alto calculado a partir de esa pantalla. Al conectar o
-/// desconectar un monitor no se las tocaba, así que el centro de control conservaba
-/// el alto del monitor que había cuando arrancó la sesión y seguía anclado a una
-/// salida que podía haber cambiado de geometría o ya no existir: aparecía fuera de
-/// lugar o del tamaño equivocado.
-const SUPERFICIES: [&str; 4] = ["panel", "desktop", CONTROL_CENTER_LABEL, MENU_LABEL];
+/// desconectar un monitor no se lo tocaba, así que conservaba el alto del monitor
+/// que había cuando arrancó la sesión y seguía anclado a una salida que podía haber
+/// cambiado de geometría o ya no existir: aparecía fuera de lugar o del tamaño
+/// equivocado.
+///
+/// El menú tenía el mismo problema y estaba en esta lista. Ahora es un applet
+/// (`windows_apps/menu.rs`), y a los applets los baja `destroy_applets`, más abajo.
+const SHELL_SURFACES: [&str; 3] = ["panel", "desktop", CONTROL_CENTER_LABEL];
 
 /// Cada cuánto se vuelve a mirar si las etiquetas quedaron libres.
-const ESPERA_ENTRE_INTENTOS: Duration = Duration::from_millis(120);
+const RETRY_INTERVAL: Duration = Duration::from_millis(120);
 
 /// Cuántas veces: medio segundo en total, de sobra para lo que tarda el cierre
 /// de una ventana y poco como para no dejar la pantalla vacía si algo falló.
-const INTENTOS: u32 = 4;
+const RETRIES: u32 = 4;
 
 pub fn rebuild_shell_surfaces(app: &AppHandle) {
     log_info("Reconstruyendo las superficies del shell por cambio de monitores");
 
-    destroy_layer_windows(app, &SUPERFICIES);
-    // Los applets no se esperan ni se recrean: van atados al monitor en que se
-    // abrieron, que puede no existir más, y la próxima vez que se pidan se
-    // crean en el que toque.
+    destroy_layer_windows(app, &SHELL_SURFACES);
+    // Los applets —el menú entre ellos— no se esperan ni se recrean: van atados
+    // al monitor en que se abrieron, que puede no existir más, y la próxima vez
+    // que se pidan se crean en el que toque.
     crate::windows_apps::anchored_applet::destroy_applets(app);
-    recrear_cuando_se_liberen(app.clone(), 0);
+    recreate_when_released(app.clone(), 0);
 }
 
 /// Qué etiquetas siguen ocupadas.
@@ -147,21 +148,21 @@ pub fn rebuild_shell_surfaces(app: &AppHandle) {
 /// label `panel` already exists», y ahí no queda ni panel ni escritorio: la
 /// pantalla se ve negra hasta reiniciar la sesión. Es exactamente lo que pasaba
 /// al desconectar un monitor.
-fn ocupadas<'a>(etiquetas: impl Iterator<Item = &'a str>, prefijos: &[&str]) -> Vec<String> {
-    etiquetas
-        .filter(|etiqueta| prefijos.iter().any(|prefijo| etiqueta.starts_with(prefijo)))
+fn busy_labels<'a>(labels: impl Iterator<Item = &'a str>, prefixes: &[&str]) -> Vec<String> {
+    labels
+        .filter(|label| prefixes.iter().any(|prefix| label.starts_with(prefix)))
         .map(str::to_string)
         .collect()
 }
 
-fn recrear_cuando_se_liberen(app: AppHandle, intento: u32) {
-    let ventanas = app.webview_windows();
-    let pendientes = ocupadas(ventanas.keys().map(String::as_str), &SUPERFICIES);
+fn recreate_when_released(app: AppHandle, attempt: u32) {
+    let windows = app.webview_windows();
+    let pending = busy_labels(windows.keys().map(String::as_str), &SHELL_SURFACES);
 
-    if !pendientes.is_empty() {
-        if intento < INTENTOS {
-            gtk::glib::timeout_add_local_once(ESPERA_ENTRE_INTENTOS, move || {
-                recrear_cuando_se_liberen(app, intento + 1);
+    if !pending.is_empty() {
+        if attempt < RETRIES {
+            gtk::glib::timeout_add_local_once(RETRY_INTERVAL, move || {
+                recreate_when_released(app, attempt + 1);
             });
             return;
         }
@@ -170,7 +171,7 @@ fn recrear_cuando_se_liberen(app: AppHandle, intento: u32) {
         // pero las demás pueden crearse y algo es mejor que una pantalla negra.
         log_error(&format!(
             "Estas ventanas no terminaron de cerrarse: {}. Se recrea igual.",
-            pendientes.join(", ")
+            pending.join(", ")
         ));
     }
 
@@ -190,8 +191,8 @@ fn recrear_cuando_se_liberen(app: AppHandle, intento: u32) {
     // principal de GTK justamente porque hacerlo desde una tarea de Tokio tumbaba el
     // proceso. Acá estamos en ese hilo, dentro del temporizador.
     //
-    // El menú, en cambio, se crea solo la próxima vez que se abra, que es su ciclo
-    // normal: recrearlo ahora sería levantar una ventana que nadie pidió.
+    // El menú, como todo applet, se crea solo la próxima vez que se abra, que es
+    // su ciclo normal: recrearlo ahora sería levantar una ventana que nadie pidió.
     if let Err(error) = create_control_center_window(&app) {
         log_error(&format!(
             "No se pudo recrear el centro de control: {}",
@@ -259,51 +260,51 @@ mod tests {
     /// negra. Esto es lo que decide si conviene esperar un poco más.
     #[test]
     fn una_etiqueta_del_shell_todavia_ocupada_se_reconoce() {
-        let etiquetas = ["panel", "menu", "control_center", "applet_network"];
+        let labels = ["panel", "applet_menu", "control_center", "applet_network"];
 
-        // Las tres del shell, y el applet no.
+        // Las dos del shell, y los applets —el menú incluido— no.
         assert_eq!(
-            ocupadas(etiquetas.into_iter(), &SUPERFICIES),
-            vec![
-                "panel".to_string(),
-                "menu".to_string(),
-                "control_center".to_string()
-            ]
+            busy_labels(labels.into_iter(), &SHELL_SURFACES),
+            vec!["panel".to_string(), "control_center".to_string()]
         );
     }
 
     #[test]
     fn el_centro_de_control_y_el_menu_se_rehacen() {
-        // Es el arreglo: las dos se creaban una sola vez y quedaban atadas al
+        // Es el arreglo: los dos se creaban una sola vez y quedaban atados al
         // monitor de ese momento con `set_monitor`, con su alto sacado de esa
         // pantalla. Sin estar en la lista, al cambiar de monitor el centro de
         // control conservaba el alto viejo y seguía anclado a una salida que podía
         // no existir.
-        assert!(SUPERFICIES.contains(&CONTROL_CENTER_LABEL));
-        assert!(SUPERFICIES.contains(&MENU_LABEL));
+        assert!(SHELL_SURFACES.contains(&CONTROL_CENTER_LABEL));
+        // El menú ya no está en la lista porque es un applet: lo baja
+        // `destroy_applets`, que corre en la misma reconstrucción.
+        use crate::windows_apps::anchored_applet::applet_spec;
+        use crate::windows_apps::menu::MENU_APPLET;
+        assert!(applet_spec(MENU_APPLET).is_some());
     }
 
     #[test]
     fn los_escritorios_de_los_otros_monitores_cuentan() {
         // En un monitor secundario la etiqueta lleva el índice, y esa ventana
         // también hay que esperar a que se cierre.
-        let etiquetas = ["desktop", "desktop_1", "desktop_2"];
+        let labels = ["desktop", "desktop_1", "desktop_2"];
 
-        assert_eq!(ocupadas(etiquetas.into_iter(), &SUPERFICIES).len(), 3);
+        assert_eq!(busy_labels(labels.into_iter(), &SHELL_SURFACES).len(), 3);
     }
 
     #[test]
     fn las_ventanas_que_no_son_del_shell_no_frenan_nada() {
         // Un applet, el popup de la bandeja o el menú contextual no tienen nada que
         // ver con rehacer las superficies: esperarlos sería esperar para siempre.
-        let etiquetas = [
+        let labels = [
             "applet_network",
             "applet_tray",
             "osd_popup",
             "session_popup",
         ];
 
-        assert!(ocupadas(etiquetas.into_iter(), &SUPERFICIES).is_empty());
+        assert!(busy_labels(labels.into_iter(), &SHELL_SURFACES).is_empty());
     }
 
     #[test]
@@ -313,13 +314,13 @@ mod tests {
         // cambio de monitor esperaría a que se cierre un menú contextual que no
         // tiene nada que ver, y el shell no se rehace hasta que se agoten los
         // intentos.
-        let etiquetas = ["vsk_context_menu", "app_terminal", "connect"];
+        let labels = ["vsk_context_menu", "app_terminal", "connect"];
 
-        assert!(ocupadas(etiquetas.into_iter(), &SUPERFICIES).is_empty());
+        assert!(busy_labels(labels.into_iter(), &SHELL_SURFACES).is_empty());
     }
 
     #[test]
     fn sin_ventanas_no_hay_nada_que_esperar() {
-        assert!(ocupadas(std::iter::empty(), &SUPERFICIES).is_empty());
+        assert!(busy_labels(std::iter::empty(), &SHELL_SURFACES).is_empty());
     }
 }

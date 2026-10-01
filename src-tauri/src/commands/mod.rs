@@ -30,7 +30,7 @@ pub use brightness::{get_brightness_info, set_brightness_info};
 pub use connect::toggle_connect_menu;
 pub use control_center::{hide_control_center, toggle_control_center};
 pub use logger::{get_last_log_lines, get_log_file_path, log_from_frontend, read_log_file};
-pub use menu::{get_menu_items, toggle_menu};
+pub use menu::{get_menu_items, set_menu_button, toggle_menu};
 pub use music::{
     music_artwork, music_next_track, music_now_playing, music_play_pause, music_players,
     music_previous_track, music_raise, music_select_player, music_set_loop, music_set_position,

@@ -9,7 +9,9 @@
 //!
 //! Hay **un solo camino** para abrir un applet, [`toggle_anchored_applet`], y
 //! una sola tabla que dice cuáles hay y cuánto miden, [`APPLETS`]. Un applet
-//! nuevo es una fila en esa tabla y una ruta en la interfaz.
+//! nuevo es una fila en esa tabla y una ruta en la interfaz. El menú de
+//! aplicaciones también es una fila: lo único que tiene propio es de dónde sale
+//! el ancla cuando se abre sin clic, y eso vive en `menu.rs`.
 //!
 //! # Uno por vez
 //!
@@ -39,11 +41,27 @@ use crate::monitor_manager::{find_gdk_monitor, get_primary_monitor};
 use crate::panel_position::{self, PanelPosition, PANEL_THICKNESS, SCREEN_MARGIN};
 use crate::windows_apps::shell_layer::{
     destroy_layer_windows, hide_layer_window, layer_window_exists, layer_window_visible,
-    relocate_layer_window, show_layer_window, spawn_layer_window, Geometry, LayerSpec,
+    relocate_layer_window, set_layer_input_region, show_layer_window, spawn_layer_window, Geometry,
+    LayerSpec,
 };
 
 /// Lo que se aparta el applet del borde interno del panel.
 pub const PANEL_GAP: i32 = 8;
+
+/// Cuánto crece la superficie alrededor del applet para que su sombra tenga
+/// dónde dibujarse, en píxeles lógicos por lado.
+///
+/// Sin esto la superficie mide lo mismo que el applet y la página lo llena
+/// entero, así que cualquier sombra se corta en el canto. Son 24 —lo que ocupa
+/// la sombra `surface-l` de la especificación del estilo nuevo
+/// (vue-libvasak#74, §5.3)—, descontados de los márgenes: el applet que se ve
+/// queda exactamente donde quedaba.
+///
+/// La página dibuja el applet a [`Placement::inset`] de cada canto
+/// (`AppletPopover.vue`), y la superficie sólo recibe el puntero sobre esa parte
+/// ([`Placement::input_rect`]): el margen se mete encima del panel, y sin el
+/// recorte se quedaría con los clics de esa franja de la barra.
+pub const SHADOW_BLEED: i32 = 24;
 
 /// Cuánto dura la salida en la página, antes de esconder la superficie.
 ///
@@ -114,6 +132,11 @@ pub const APPLETS: &[AppletSpec] = &[
     // el relleno del contenedor). Cuando llegue el ecualizador, este es el
     // número que crece.
     AppletSpec { id: "music", route: "music", size: (400.0, 272.0) },
+    // El menú de aplicaciones (`menu.rs`). Es el único que se abre también sin
+    // botón —la tecla Super—, pero por lo demás es uno más: se esconde y no se
+    // destruye, uno por vez, y el panel realza su botón. El tamaño es el de
+    // siempre: cambia dónde se abre, no cómo se ve.
+    AppletSpec { id: "menu", route: "menu", size: (900.0, 620.0) },
 ];
 
 pub fn applet_spec(id: &str) -> Option<&'static AppletSpec> {
@@ -136,14 +159,60 @@ pub struct AnchorRect {
 pub struct Placement {
     /// Bordes anclados: (izquierda, derecha, arriba, abajo).
     pub anchors: (bool, bool, bool, bool),
-    /// Separación de cada borde, en el mismo orden.
+    /// Separación de cada borde, en el mismo orden. Es la de la **superficie**,
+    /// que con margen de sombra empieza antes que el applet.
     pub margins: (i32, i32, i32, i32),
-    /// El tamaño con que se abre: el pedido, o menos si no entra.
+    /// El tamaño de la superficie: el pedido, o menos si no entra, más el margen
+    /// de sombra de cada lado.
     pub size: (f64, f64),
     /// Dónde queda el centro del botón a lo largo del applet, medido desde su
     /// borde izquierdo (panel arriba o abajo) o desde el de arriba (a los
     /// costados). Es de donde crece la animación de entrada.
     pub origin: f64,
+    /// Cuánto hay entre el canto de la superficie y el del applet, de cada lado:
+    /// (izquierda, derecha, arriba, abajo). Cero sin margen de sombra. No es
+    /// siempre [`SHADOW_BLEED`]: contra el borde del monitor la superficie no
+    /// puede salirse, y ahí el margen se come lo que haya.
+    pub inset: (i32, i32, i32, i32),
+}
+
+impl Placement {
+    /// La parte de la superficie que ocupa el applet: (x, y, ancho, alto),
+    /// relativo a la superficie. Es la única que recibe el puntero.
+    pub fn input_rect(&self) -> (i32, i32, i32, i32) {
+        let (left, right, top, bottom) = self.inset;
+        (
+            left,
+            top,
+            (self.size.0.round() as i32 - left - right).max(1),
+            (self.size.1.round() as i32 - top - bottom).max(1),
+        )
+    }
+
+    /// El rectángulo del applet que se ve, sin el margen de sombra: (x, y,
+    /// ancho, alto) en el monitor. Es contra lo que se prueba que no tape el
+    /// panel ni se salga de la pantalla.
+    pub fn visible_rect(&self, monitor: (f64, f64)) -> (f64, f64, f64, f64) {
+        let (left, right, top, bottom) = self.margins;
+        let (inset_left, inset_right, inset_top, inset_bottom) = self.inset;
+        let (width, height) = self.size;
+        let x = if self.anchors.0 {
+            left as f64
+        } else {
+            monitor.0 - right as f64 - width
+        };
+        let y = if self.anchors.2 {
+            top as f64
+        } else {
+            monitor.1 - bottom as f64 - height
+        };
+        (
+            x + inset_left as f64,
+            y + inset_top as f64,
+            width - (inset_left + inset_right) as f64,
+            height - (inset_top + inset_bottom) as f64,
+        )
+    }
 }
 
 /// Lo que recibe la página al mostrarse: de qué lado está el panel y dónde
@@ -153,6 +222,29 @@ pub struct AppletShown {
     pub applet: &'static str,
     pub side: &'static str,
     pub origin: f64,
+    /// A cuánto de cada canto de la superficie dibujar el applet: el margen de
+    /// sombra que quedó de cada lado.
+    pub inset: Inset,
+}
+
+/// [`Placement::inset`] con nombre para la página.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+pub struct Inset {
+    pub left: i32,
+    pub right: i32,
+    pub top: i32,
+    pub bottom: i32,
+}
+
+impl From<(i32, i32, i32, i32)> for Inset {
+    fn from((left, right, top, bottom): (i32, i32, i32, i32)) -> Self {
+        Self {
+            left,
+            right,
+            top,
+            bottom,
+        }
+    }
 }
 
 /// Lo que recibe el panel cuando cambia el applet abierto.
@@ -193,69 +285,115 @@ pub fn place_applet(
     requested: (f64, f64),
     monitor: (f64, f64),
 ) -> Placement {
+    place_applet_with_bleed(anchor, side, requested, monitor, SHADOW_BLEED)
+}
+
+/// [`place_applet`] con un margen de sombra de `bleed` píxeles por lado.
+///
+/// El applet queda exactamente donde quedaría sin margen —el canto que se ve a
+/// [`PANEL_GAP`] del panel, a [`SCREEN_MARGIN`] del monitor—, y la superficie
+/// crece alrededor: hacia el panel lo que pida (el margen hacia el panel es de
+/// sobra), y hacia los bordes del monitor sólo hasta el borde, porque una
+/// superficie no puede salirse.
+///
+/// Hacia el panel la superficie **se mete encima de la barra** (el applet va en
+/// la capa de arriba): ese margen transparente se queda con los clics sobre esa
+/// franja del panel. Antes de encender el margen hay que recortar la región de
+/// entrada de la superficie a su parte visible, o cerrar al tocar el margen.
+pub fn place_applet_with_bleed(
+    anchor: Option<&AnchorRect>,
+    side: PanelPosition,
+    requested: (f64, f64),
+    monitor: (f64, f64),
+    bleed: i32,
+) -> Placement {
     let (screen_width, screen_height) = monitor;
     let thickness = PANEL_THICKNESS as f64;
     let gap = PANEL_GAP as f64;
     let margin = SCREEN_MARGIN as f64;
     let (panel_x, panel_y) = side.origin(screen_width, screen_height);
     let away_from_panel = PANEL_THICKNESS + PANEL_GAP;
+    let bleed = bleed.max(0);
 
-    if side.is_vertical() {
-        let width = requested
-            .0
-            .min(screen_width - thickness - gap - margin)
-            .max(1.0);
-        let height = requested.1.min(screen_height - 2.0 * margin).max(1.0);
-
-        let center = anchor
-            .map(|rect| panel_y + rect.y + rect.height / 2.0)
-            .unwrap_or(screen_height / 2.0);
-        let top = clamp_to(
-            center - height / 2.0,
-            margin,
-            screen_height - margin - height,
-        );
-        let origin = clamp_to(center - top, 0.0, height);
-        let top = top.round() as i32;
-
-        let (anchors, margins) = if side == PanelPosition::Left {
-            ((true, false, true, false), (away_from_panel, 0, top, 0))
-        } else {
-            ((false, true, true, false), (0, away_from_panel, top, 0))
-        };
-
-        Placement {
-            anchors,
-            margins,
-            size: (width, height),
-            origin,
-        }
+    // A lo largo del panel y a lo ancho, en los ejes de la pantalla.
+    let (along_length, across_length) = if side.is_vertical() {
+        (screen_height, screen_width)
     } else {
-        let width = requested.0.min(screen_width - 2.0 * margin).max(1.0);
-        let height = requested
-            .1
-            .min(screen_height - thickness - gap - margin)
-            .max(1.0);
+        (screen_width, screen_height)
+    };
+    let (along_requested, across_requested) = if side.is_vertical() {
+        (requested.1, requested.0)
+    } else {
+        requested
+    };
 
-        let center = anchor
-            .map(|rect| panel_x + rect.x + rect.width / 2.0)
-            .unwrap_or(screen_width / 2.0);
-        let left = clamp_to(center - width / 2.0, margin, screen_width - margin - width);
-        let origin = clamp_to(center - left, 0.0, width);
-        let left = left.round() as i32;
+    let along_size = along_requested.min(along_length - 2.0 * margin).max(1.0);
+    let across_size = across_requested
+        .min(across_length - thickness - gap - margin)
+        .max(1.0);
 
-        let (anchors, margins) = if side == PanelPosition::Top {
-            ((true, false, true, false), (left, 0, away_from_panel, 0))
-        } else {
-            ((true, false, false, true), (left, 0, 0, away_from_panel))
-        };
+    let center = anchor
+        .map(|rect| {
+            if side.is_vertical() {
+                panel_y + rect.y + rect.height / 2.0
+            } else {
+                panel_x + rect.x + rect.width / 2.0
+            }
+        })
+        .unwrap_or(along_length / 2.0);
+    let start = clamp_to(
+        center - along_size / 2.0,
+        margin,
+        along_length - margin - along_size,
+    );
+    let origin = clamp_to(center - start, 0.0, along_size);
+    let start = start.round() as i32;
 
-        Placement {
-            anchors,
-            margins,
-            size: (width, height),
-            origin,
-        }
+    // Lo que cabe de margen de sombra de cada lado sin salirse del monitor.
+    let room = |space: f64| bleed.min(space.floor().max(0.0) as i32);
+    let before = room(start as f64);
+    let after = room(along_length - start as f64 - along_size);
+    let toward_panel = bleed.min(away_from_panel);
+    let far = room(across_length - away_from_panel as f64 - across_size);
+
+    let surface_along = along_size + (before + after) as f64;
+    let surface_across = across_size + (toward_panel + far) as f64;
+    let along_margin = start - before;
+    let panel_margin = away_from_panel - toward_panel;
+
+    let (anchors, margins, size, inset) = match side {
+        PanelPosition::Top => (
+            (true, false, true, false),
+            (along_margin, 0, panel_margin, 0),
+            (surface_along, surface_across),
+            (before, after, toward_panel, far),
+        ),
+        PanelPosition::Bottom => (
+            (true, false, false, true),
+            (along_margin, 0, 0, panel_margin),
+            (surface_along, surface_across),
+            (before, after, far, toward_panel),
+        ),
+        PanelPosition::Left => (
+            (true, false, true, false),
+            (panel_margin, 0, along_margin, 0),
+            (surface_across, surface_along),
+            (toward_panel, far, before, after),
+        ),
+        PanelPosition::Right => (
+            (false, true, true, false),
+            (0, panel_margin, along_margin, 0),
+            (surface_across, surface_along),
+            (far, toward_panel, before, after),
+        ),
+    };
+
+    Placement {
+        anchors,
+        margins,
+        size,
+        origin,
+        inset,
     }
 }
 
@@ -267,6 +405,54 @@ fn closes_a_recent_dismissal(
     now: Instant,
 ) -> bool {
     matches!(recent, Some((dismissed, at)) if dismissed == id && now.duration_since(at) < REOPEN_GUARD)
+}
+
+/// Qué hace un pedido de abrir o cerrar un applet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ToggleAction {
+    /// Está a la vista: se cierra con su salida.
+    Dismiss,
+    /// Se acaba de cerrar por este mismo clic: ver [`REOPEN_GUARD`].
+    Ignore,
+    /// Se abre, o se muestra si ya estaba construido.
+    Open,
+}
+
+/// Qué hacer con el pedido de `id`, sabiendo cuál está abierto, si su superficie
+/// se ve y cuál se cerró último.
+fn toggle_action(
+    open: Option<&str>,
+    visible: bool,
+    dismissed: Option<(&'static str, Instant)>,
+    id: &str,
+    now: Instant,
+) -> ToggleAction {
+    if open == Some(id) && visible {
+        ToggleAction::Dismiss
+    } else if closes_a_recent_dismissal(dismissed, id, now) {
+        ToggleAction::Ignore
+    } else {
+        ToggleAction::Open
+    }
+}
+
+/// Cómo se pone a la vista un applet.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ShowPlan {
+    /// La superficie ya existe, escondida: se vuelve a anclar y se muestra.
+    /// La página sigue siendo la misma —no se recarga— y se entera por
+    /// `applet-shown`.
+    Reuse,
+    /// Es la primera vez, o los monitores cambiaron y se destruyó: se construye.
+    Spawn,
+}
+
+fn show_plan(surface_exists: bool) -> ShowPlan {
+    if surface_exists {
+        ShowPlan::Reuse
+    } else {
+        ShowPlan::Spawn
+    }
 }
 
 /// Qué está abierto, en el hilo principal de GTK.
@@ -333,18 +519,16 @@ fn toggle_on_main(app: &AppHandle, spec: &'static AppletSpec, anchor: Option<Anc
         (state.open, state.dismissed)
     });
 
-    if open == Some(spec.id) && layer_window_visible(&label).unwrap_or(false) {
-        log_info(&format!("[applet] cerrando {}", spec.id));
-        dismiss_on_main(app, spec);
-        return;
-    }
-
-    if closes_a_recent_dismissal(dismissed, spec.id, Instant::now()) {
+    let visible = layer_window_visible(&label).unwrap_or(false);
+    match toggle_action(open, visible, dismissed, spec.id, Instant::now()) {
+        ToggleAction::Dismiss => {
+            log_info(&format!("[applet] cerrando {}", spec.id));
+            dismiss_on_main(app, spec);
+        }
         // El clic que lo cerró fue este mismo: ver `REOPEN_GUARD`.
-        return;
+        ToggleAction::Ignore => {}
+        ToggleAction::Open => open_on_main(app, spec, anchor.as_ref(), None),
     }
-
-    open_on_main(app, spec, anchor.as_ref(), None);
 }
 
 fn open_on_main(
@@ -386,9 +570,10 @@ fn open_on_main(
         applet: spec.id,
         side: side.key(),
         origin: placement.origin,
+        inset: placement.inset.into(),
     };
 
-    if layer_window_exists(&label) {
+    if show_plan(layer_window_exists(&label)) == ShowPlan::Reuse {
         relocate_layer_window(
             &label,
             &Geometry {
@@ -398,6 +583,7 @@ fn open_on_main(
                 exclusive_zone: Some(-1),
             },
         );
+        set_layer_input_region(&label, Some(placement.input_rect()));
         if let Some(webview) = app.get_webview_window(&label) {
             let _ = webview.emit("applet-shown", shown);
         }
@@ -408,12 +594,30 @@ fn open_on_main(
     }
 
     log_info(&format!(
-        "[applet] {} abierto en {:?}, {:?}",
-        spec.id, placement.margins, placement.size
+        "[applet] {} abierto en {:?}, {:?} (se ve en {:?})",
+        spec.id,
+        placement.margins,
+        placement.size,
+        placement.visible_rect(monitor)
     ));
 
     STATE.with(|state| state.borrow_mut().open = Some(spec.id));
     announce(app, Some(spec.id));
+}
+
+/// La ruta de la primera apertura, con el lado, el origen y el margen de sombra
+/// en la consulta (`applet-anchor.ts` la lee con `anchorFromQuery`).
+fn applet_route(spec: &AppletSpec, shown: &AppletShown) -> String {
+    let Inset {
+        left,
+        right,
+        top,
+        bottom,
+    } = shown.inset;
+    format!(
+        "index.html#/applets/{}?side={}&origin={}&inset={left},{right},{top},{bottom}",
+        spec.route, shown.side, shown.origin
+    )
 }
 
 fn spawn_applet(
@@ -428,10 +632,7 @@ fn spawn_applet(
 
     // La primera vez, el lado y el origen van en la ruta: el evento de
     // `applet-shown` saldría antes de que la página exista para oírlo.
-    let route = format!(
-        "index.html#/applets/{}?side={}&origin={}",
-        spec.route, shown.side, shown.origin
-    );
+    let route = applet_route(spec, shown);
 
     let on_dismiss = {
         let app = app.clone();
@@ -474,6 +675,8 @@ fn spawn_applet(
             dismiss_on_unfocus: true,
             on_dismiss: Some(on_dismiss),
             on_hide: Some(on_hide),
+            // Antes de mostrarse: ver `LayerSpec::input_region`.
+            input_region: Some(placement.input_rect()),
         },
     )
 }
@@ -593,6 +796,19 @@ mod tests {
     const AWAY: i32 = PANEL_THICKNESS + PANEL_GAP;
     const M: i32 = SCREEN_MARGIN;
 
+    /// Dónde queda el applet que se ve, sin el margen de sombra alrededor.
+    ///
+    /// Las pruebas de lugar se escriben contra el canto visible: que con el
+    /// margen de sombra quede exactamente igual lo prueban las de más abajo.
+    fn place_visible(
+        anchor: Option<&AnchorRect>,
+        side: PanelPosition,
+        requested: (f64, f64),
+        monitor: (f64, f64),
+    ) -> Placement {
+        place_applet_with_bleed(anchor, side, requested, monitor, 0)
+    }
+
     /// Un botón de 30 píxeles, con su centro en `center` a lo largo del panel.
     fn button(side: PanelPosition, center: f64) -> AnchorRect {
         if side.is_vertical() {
@@ -614,7 +830,7 @@ mod tests {
 
     #[test]
     fn con_el_panel_arriba_el_applet_cuelga_debajo_del_boton() {
-        let placement = place_applet(
+        let placement = place_visible(
             Some(&button(PanelPosition::Top, 900.0)),
             PanelPosition::Top,
             APPLET,
@@ -630,7 +846,7 @@ mod tests {
 
     #[test]
     fn con_el_panel_abajo_el_applet_sube_desde_el_boton() {
-        let placement = place_applet(
+        let placement = place_visible(
             Some(&button(PanelPosition::Bottom, 900.0)),
             PanelPosition::Bottom,
             APPLET,
@@ -644,7 +860,7 @@ mod tests {
 
     #[test]
     fn con_el_panel_a_la_izquierda_el_applet_sale_hacia_la_derecha() {
-        let placement = place_applet(
+        let placement = place_visible(
             Some(&button(PanelPosition::Left, 500.0)),
             PanelPosition::Left,
             APPLET,
@@ -661,7 +877,7 @@ mod tests {
     fn con_el_panel_a_la_derecha_el_applet_sale_hacia_la_izquierda() {
         // El rectángulo es relativo al panel, y el panel de la derecha también
         // empieza arriba: la `y` no cambia.
-        let placement = place_applet(
+        let placement = place_visible(
             Some(&button(PanelPosition::Right, 500.0)),
             PanelPosition::Right,
             APPLET,
@@ -675,7 +891,7 @@ mod tests {
 
     #[test]
     fn un_boton_pegado_al_borde_izquierdo_no_saca_el_applet_del_monitor() {
-        let placement = place_applet(
+        let placement = place_visible(
             Some(&button(PanelPosition::Top, 20.0)),
             PanelPosition::Top,
             APPLET,
@@ -690,7 +906,7 @@ mod tests {
 
     #[test]
     fn un_boton_pegado_al_borde_derecho_tampoco() {
-        let placement = place_applet(
+        let placement = place_visible(
             Some(&button(PanelPosition::Bottom, 1905.0)),
             PanelPosition::Bottom,
             APPLET,
@@ -709,54 +925,54 @@ mod tests {
 
     #[test]
     fn a_los_costados_un_boton_pegado_arriba_o_abajo_tampoco() {
-        let arriba = place_applet(
+        let near_top = place_visible(
             Some(&button(PanelPosition::Left, 10.0)),
             PanelPosition::Left,
             APPLET,
             MONITOR,
         );
-        assert_eq!(arriba.margins, (AWAY, 0, M, 0));
-        assert_eq!(arriba.origin, 0.0);
+        assert_eq!(near_top.margins, (AWAY, 0, M, 0));
+        assert_eq!(near_top.origin, 0.0);
 
-        let abajo = place_applet(
+        let near_bottom = place_visible(
             Some(&button(PanelPosition::Right, 1075.0)),
             PanelPosition::Right,
             APPLET,
             MONITOR,
         );
-        assert_eq!(abajo.margins, (0, AWAY, 1080 - M - 300, 0));
+        assert_eq!(near_bottom.margins, (0, AWAY, 1080 - M - 300, 0));
         // El botón queda más allá del borde del applet: el origen se queda en
         // el borde, no afuera.
-        assert_eq!(abajo.origin, 300.0);
+        assert_eq!(near_bottom.origin, 300.0);
     }
 
     #[test]
     fn un_applet_mas_grande_que_el_monitor_se_achica_para_entrar() {
-        let chico = (800.0, 600.0);
+        let small = (800.0, 600.0);
 
-        let arriba = place_applet(
+        let top = place_visible(
             Some(&button(PanelPosition::Top, 400.0)),
             PanelPosition::Top,
             (1000.0, 700.0),
-            chico,
+            small,
         );
         assert_eq!(
-            arriba.size,
+            top.size,
             (800.0 - 2.0 * M as f64, 600.0 - (AWAY + M) as f64)
         );
-        assert_eq!(arriba.margins, (M, 0, AWAY, 0));
+        assert_eq!(top.margins, (M, 0, AWAY, 0));
 
-        let costado = place_applet(
+        let side = place_visible(
             Some(&button(PanelPosition::Right, 300.0)),
             PanelPosition::Right,
             (1000.0, 700.0),
-            chico,
+            small,
         );
         assert_eq!(
-            costado.size,
+            side.size,
             (800.0 - (AWAY + M) as f64, 600.0 - 2.0 * M as f64)
         );
-        assert_eq!(costado.margins, (0, AWAY, M, 0));
+        assert_eq!(side.margins, (0, AWAY, M, 0));
     }
 
     #[test]
@@ -770,18 +986,7 @@ mod tests {
             let mut center = 0.0;
             while center <= length {
                 let placement = place_applet(Some(&button(side, center)), side, APPLET, MONITOR);
-                let (left, right, top, bottom) = placement.margins;
-                let (width, height) = placement.size;
-                let x = if placement.anchors.0 {
-                    left as f64
-                } else {
-                    MONITOR.0 - right as f64 - width
-                };
-                let y = if placement.anchors.2 {
-                    top as f64
-                } else {
-                    MONITOR.1 - bottom as f64 - height
-                };
+                let (x, y, width, height) = placement.visible_rect(MONITOR);
 
                 assert!(x >= 0.0 && x + width <= MONITOR.0, "{side:?} {center}");
                 assert!(y >= 0.0 && y + height <= MONITOR.1, "{side:?} {center}");
@@ -798,17 +1003,22 @@ mod tests {
     #[test]
     fn nunca_tapa_el_panel() {
         // El applet cuelga del panel: su borde más cercano queda a 8 píxeles del
-        // borde interno de la barra, en los cuatro lados.
+        // borde interno de la barra, en los cuatro lados — el que se ve, con el
+        // margen de sombra puesto.
         for side in PanelPosition::ALL {
             let placement = place_applet(Some(&button(side, 300.0)), side, APPLET, MONITOR);
-            let (left, right, top, bottom) = placement.margins;
+            let (x, y, width, height) = placement.visible_rect(MONITOR);
             let toward_panel = match side {
-                PanelPosition::Top => top,
-                PanelPosition::Bottom => bottom,
-                PanelPosition::Left => left,
-                PanelPosition::Right => right,
+                PanelPosition::Top => y,
+                PanelPosition::Bottom => MONITOR.1 - (y + height),
+                PanelPosition::Left => x,
+                PanelPosition::Right => MONITOR.0 - (x + width),
             };
-            assert_eq!(toward_panel, PANEL_THICKNESS + PANEL_GAP, "{side:?}");
+            assert_eq!(
+                toward_panel,
+                (PANEL_THICKNESS + PANEL_GAP) as f64,
+                "{side:?}"
+            );
         }
     }
 
@@ -816,7 +1026,7 @@ mod tests {
     fn sin_boton_va_centrado_en_el_eje_del_panel() {
         // Lo que abre un applet desde fuera del panel —el centro de control— no
         // tiene botón en la barra del que colgarlo.
-        let placement = place_applet(None, PanelPosition::Top, APPLET, MONITOR);
+        let placement = place_visible(None, PanelPosition::Top, APPLET, MONITOR);
         assert_eq!(placement.margins, (760, 0, AWAY, 0));
         assert_eq!(placement.origin, 200.0);
     }
@@ -836,10 +1046,10 @@ mod tests {
     /// Si una etiqueta de ventana entra en un patrón de la capability. Tauri
     /// acepta `*` como comodín; la capability usa sólo el del final
     /// (`desktop*`), y eso es lo que se reconoce.
-    fn cubre(patron: &str, etiqueta: &str) -> bool {
-        match patron.strip_suffix('*') {
-            Some(prefijo) => etiqueta.starts_with(prefijo),
-            None => patron == etiqueta,
+    fn covers(pattern: &str, label: &str) -> bool {
+        match pattern.strip_suffix('*') {
+            Some(prefix) => label.starts_with(prefix),
+            None => pattern == label,
         }
     }
 
@@ -856,43 +1066,43 @@ mod tests {
         let capability: serde_json::Value =
             serde_json::from_str(include_str!("../../capabilities/default.json"))
                 .expect("capabilities/default.json se lee");
-        let ventanas: Vec<&str> = capability["windows"]
+        let windows: Vec<&str> = capability["windows"]
             .as_array()
             .expect("la capability declara sus ventanas")
             .iter()
             .filter_map(|v| v.as_str())
             .collect();
-        assert!(!ventanas.is_empty(), "la lista de ventanas vino vacía");
+        assert!(!windows.is_empty(), "la lista de ventanas vino vacía");
 
-        let sin_permisos: Vec<String> = APPLETS
+        let without_permissions: Vec<String> = APPLETS
             .iter()
             .map(AppletSpec::label)
-            .filter(|etiqueta| !ventanas.iter().any(|patron| cubre(patron, etiqueta)))
+            .filter(|label| !windows.iter().any(|pattern| covers(pattern, label)))
             .collect();
         assert!(
-            sin_permisos.is_empty(),
+            without_permissions.is_empty(),
             "estos applets no están en capabilities/default.json y se abren sin permisos \
-             (sin tema, sin datos): {sin_permisos:?}"
+             (sin tema, sin datos): {without_permissions:?}"
         );
     }
 
     #[test]
     fn el_comodin_de_la_capability_se_lee_como_tauri() {
-        assert!(cubre("desktop*", "desktop_1"));
-        assert!(cubre("applet_tray", "applet_tray"));
-        assert!(!cubre("applet_tray", "applet_tray2"));
-        assert!(!cubre("desktop*", "panel"));
+        assert!(covers("desktop*", "desktop_1"));
+        assert!(covers("applet_tray", "applet_tray"));
+        assert!(!covers("applet_tray", "applet_tray2"));
+        assert!(!covers("desktop*", "panel"));
     }
 
     #[test]
     fn las_etiquetas_de_los_applets_no_chocan_con_las_del_shell() {
         // Rehacer el shell espera a que se liberen las etiquetas del panel, el
-        // escritorio, el centro de control y el menú, por prefijo. Un applet
-        // que empezara con uno de esos haría esperar a la reconstrucción por
-        // algo que no tiene que ver.
+        // escritorio y el centro de control, por prefijo. Un applet que
+        // empezara con uno de esos haría esperar a la reconstrucción por algo
+        // que no tiene que ver.
         for spec in APPLETS {
             let label = spec.label();
-            for shell in ["panel", "desktop", "control_center", "menu"] {
+            for shell in ["panel", "desktop", "control_center"] {
                 assert!(!label.starts_with(shell), "{label}");
             }
         }
@@ -923,5 +1133,152 @@ mod tests {
             now + REOPEN_GUARD + Duration::from_millis(1)
         ));
         assert!(!closes_a_recent_dismissal(None, "audio", now));
+    }
+
+    #[test]
+    fn tocar_el_boton_con_el_applet_a_la_vista_lo_cierra() {
+        let now = Instant::now();
+        assert_eq!(
+            toggle_action(Some("menu"), true, None, "menu", now),
+            ToggleAction::Dismiss
+        );
+        // Abierto según el estado pero escondido —lo escondió el compositor, o
+        // la salida terminó—: se vuelve a abrir.
+        assert_eq!(
+            toggle_action(Some("menu"), false, None, "menu", now),
+            ToggleAction::Open
+        );
+        // Con otro a la vista, se abre éste (y el otro se va).
+        assert_eq!(
+            toggle_action(Some("audio"), true, None, "menu", now),
+            ToggleAction::Open
+        );
+        // El clic que acaba de sacarle el foco no lo vuelve a abrir.
+        assert_eq!(
+            toggle_action(None, false, Some(("menu", now)), "menu", now),
+            ToggleAction::Ignore
+        );
+    }
+
+    #[test]
+    fn la_primera_apertura_lleva_el_lugar_en_la_ruta() {
+        // La página todavía no existe para oír `applet-shown`.
+        let spec = applet_spec("menu").expect("el menú está en la tabla");
+        let shown = AppletShown {
+            applet: spec.id,
+            side: "left",
+            origin: 33.0,
+            inset: (24, 24, 10, 24).into(),
+        };
+        assert_eq!(
+            applet_route(spec, &shown),
+            "index.html#/applets/menu?side=left&origin=33&inset=24,24,10,24"
+        );
+    }
+
+    #[test]
+    fn esconder_y_volver_a_mostrar_no_reconstruye_la_superficie() {
+        // Cerrar esconde (`hide_layer_window`), nunca destruye: así la página
+        // no se recarga, Vue no vuelve a montar y el menú no relee sus
+        // aplicaciones. La segunda apertura encuentra la superficie y la
+        // reusa; sólo se construye la primera vez o después de que un cambio
+        // de monitores la bajó.
+        assert_eq!(show_plan(true), ShowPlan::Reuse);
+        assert_eq!(show_plan(false), ShowPlan::Spawn);
+    }
+
+    #[test]
+    fn la_superficie_crece_alrededor_del_applet_para_la_sombra() {
+        let b = SHADOW_BLEED;
+        let placement = place_applet(
+            Some(&button(PanelPosition::Top, 900.0)),
+            PanelPosition::Top,
+            APPLET,
+            MONITOR,
+        );
+
+        assert_eq!(placement.inset, (b, b, b, b));
+        assert_eq!(
+            placement.size,
+            (400.0 + 2.0 * b as f64, 300.0 + 2.0 * b as f64)
+        );
+        // Lo que crece se descuenta de los márgenes: hacia el panel quedan
+        // 46 − 24, y el applet sigue a 8 del panel.
+        assert_eq!(placement.margins, (700 - b, 0, AWAY - b, 0));
+        assert_eq!(
+            placement.visible_rect(MONITOR),
+            (700.0, AWAY as f64, 400.0, 300.0)
+        );
+        // Y sólo el applet recibe el puntero: el margen deja pasar los clics
+        // al panel que tiene debajo.
+        assert_eq!(placement.input_rect(), (b, b, 400, 300));
+    }
+
+    #[test]
+    fn con_margen_de_sombra_el_applet_que_se_ve_no_se_mueve() {
+        // El margen agranda la superficie alrededor; el canto que se ve queda
+        // donde quedaba sin margen, en los cuatro lados y en los bordes.
+        for side in PanelPosition::ALL {
+            for center in [0.0, 20.0, 500.0, 1075.0, 1905.0] {
+                let anchor = button(side, center);
+                let plain = place_visible(Some(&anchor), side, APPLET, MONITOR);
+                let bled = place_applet(Some(&anchor), side, APPLET, MONITOR);
+
+                assert_eq!(
+                    bled.visible_rect(MONITOR),
+                    plain.visible_rect(MONITOR),
+                    "{side:?} {center}"
+                );
+                assert_eq!(bled.origin, plain.origin, "{side:?} {center}");
+                assert_eq!(bled.anchors, plain.anchors, "{side:?} {center}");
+            }
+        }
+    }
+
+    #[test]
+    fn con_margen_de_sombra_la_superficie_no_sale_del_monitor() {
+        for side in PanelPosition::ALL {
+            let length = if side.is_vertical() {
+                MONITOR.1
+            } else {
+                MONITOR.0
+            };
+            let mut center = 0.0;
+            while center <= length {
+                let placement = place_applet(Some(&button(side, center)), side, APPLET, MONITOR);
+                let (left, right, top, bottom) = placement.margins;
+                assert!(
+                    left >= 0 && right >= 0 && top >= 0 && bottom >= 0,
+                    "{side:?}"
+                );
+                let (x, y, width, height) = placement.visible_rect(MONITOR);
+                let (il, ir, it, ib) = placement.inset;
+                assert!(x - il as f64 >= 0.0, "{side:?} {center}");
+                assert!(x + width + ir as f64 <= MONITOR.0, "{side:?} {center}");
+                assert!(y - it as f64 >= 0.0, "{side:?} {center}");
+                assert!(y + height + ib as f64 <= MONITOR.1, "{side:?} {center}");
+                center += 37.0;
+            }
+        }
+    }
+
+    #[test]
+    fn con_margen_de_sombra_contra_el_borde_del_monitor_hay_menos_margen() {
+        // El applet queda a 10 del borde izquierdo: la superficie sólo puede
+        // crecer 10 hacia ese lado, no 24. Hacia el panel sí crece entero.
+        let b = SHADOW_BLEED;
+        let placement = place_applet(
+            Some(&button(PanelPosition::Top, 20.0)),
+            PanelPosition::Top,
+            APPLET,
+            MONITOR,
+        );
+        assert_eq!(placement.inset, (M, b, b, b));
+        assert_eq!(placement.margins, (0, 0, AWAY - b, 0));
+        assert_eq!(
+            placement.size,
+            (400.0 + (M + b) as f64, 300.0 + 2.0 * b as f64)
+        );
+        assert_eq!(placement.input_rect(), (M, b, 400, 300));
     }
 }

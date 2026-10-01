@@ -5,7 +5,6 @@
   "windows": [
     "desktop*",
     "panel",
-    "menu",
     "connect",
     "control_center",
     "applet_bluetooth",
@@ -15,6 +14,7 @@
     "applet_privacy",
     "applet_twingate",
     "applet_music",
+    "applet_menu",
     "app_terminal",
     "session_popup",
     "osd_popup"
