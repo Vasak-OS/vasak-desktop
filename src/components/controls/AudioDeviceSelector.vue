@@ -43,10 +43,22 @@ async function loadDevices() {
 	}
 }
 
+/**
+ * La salida marcada en el grupo, **controlada**: sólo cambia cuando el sistema
+ * confirma. `OptionGroup` mueve su marca antes de avisar, y sin quien escuche
+ * `update:model-value` se queda con esa marca aunque el cambio falle —la
+ * salida que no se pudo poner quedaba elegida—. Con el setter vacío manda el
+ * valor de acá, que es el que leyó el sistema.
+ */
+const checkedDevice = computed<string | null>({
+	get: () => selectedDeviceId.value || null,
+	set: () => {},
+});
+
 async function onDeviceChange(deviceId: string) {
-	selectedDeviceId.value = deviceId;
 	try {
 		await setAudioDevice({ deviceId });
+		selectedDeviceId.value = deviceId;
 		await loadDevices();
 	} catch (e) {
 		logError('[audio] Failed to set device:', e);
@@ -106,7 +118,7 @@ const options = computed<OptionGroupOption<string>[]>(() =>
          una de las cuatro copias del mismo selector en el taller. -->
     <OptionGroup
       v-if="!isLoading && devices.length > 0"
-      :model-value="selectedDeviceId"
+      v-model="checkedDevice"
       :options="options"
       :label="t('components.AudioDeviceSelector.title')"
       size="sm"

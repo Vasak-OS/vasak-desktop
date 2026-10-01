@@ -92,6 +92,22 @@ describe('lo que dibujaban a mano no vuelve', () => {
 	});
 });
 
+describe('la salida de audio la marca el sistema, no el clic', () => {
+	test.each([
+		['components/controls/AudioDeviceSelector.vue', 'checkedDevice'],
+		['views/applets/MusicAppletView.vue', 'checkedOutput'],
+	])('%s', (file, model) => {
+		// `OptionGroup` mueve su marca antes de avisar: sin un `v-model` que
+		// mande, una salida que no se pudo poner quedaba elegida. El setter
+		// vacío deja que la marca la ponga lo que confirmó el sistema.
+		const text = read(file);
+		expect(template(file)).toContain(`v-model="${model}"`);
+		const declaration = text.slice(text.indexOf(`const ${model} = computed`));
+		expect(declaration.length).toBeGreaterThan(0);
+		expect(declaration.slice(0, declaration.indexOf('});'))).toContain('set: () => {}');
+	});
+});
+
 describe('el marco de los widgets', () => {
 	test('es uno solo, propio del escritorio, y lo usan los dos lugares', () => {
 		expect(template('components/widgets/WidgetHost.vue')).toContain('<WidgetFrame');

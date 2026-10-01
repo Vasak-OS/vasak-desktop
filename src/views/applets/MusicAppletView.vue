@@ -154,6 +154,16 @@ const outputOptions = computed<OptionGroupOption<string>[]>(() =>
 	}))
 );
 
+/**
+ * La salida marcada, controlada por la que el sistema confirma: `OptionGroup`
+ * mueve su marca antes de avisar, y si el cambio falla, sin esto la salida
+ * que no se pudo poner quedaba elegida y volver a tocarla no hacía nada.
+ */
+const checkedOutput = computed({
+	get: () => output.value?.id ?? null,
+	set: () => {},
+});
+
 function onOutputChange(id: string): void {
 	const device = devices.value.find((candidate) => candidate.id === id);
 	if (device) void chooseOutput(device);
@@ -235,7 +245,7 @@ function onOutputChange(id: string): void {
 				</p>
 				<div v-else class="min-h-0 overflow-y-auto">
 					<OptionGroup
-						:model-value="output?.id ?? null"
+						v-model="checkedOutput"
 						:options="outputOptions"
 						:label="t('views.musicApplet.chooseOutput')"
 						:disabled="switching !== null"
