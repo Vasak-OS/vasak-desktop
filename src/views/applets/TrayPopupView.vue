@@ -6,6 +6,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
+	Kbd,
 	ThemeIcon,
 	TOAST_TONE_CLASSES,
 } from '@vasakgroup/vue-libvasak';
@@ -19,11 +20,12 @@ import { useSharedEvent } from '@/tools/event.bus';
 import { iconSource } from '@/tools/tray-item';
 import {
 	DISPOSITION_STYLE,
+	entryCheck,
 	entryRole,
 	hasActions,
 	menuFocusTarget,
+	shortcutChords,
 	shortcutLabel,
-	toggleIconName,
 	trayMenuRows,
 } from '@/tools/tray-menu';
 import { logError } from '@/utils/logger';
@@ -45,10 +47,11 @@ import { logError } from '@/utils/logger';
  * incluido—, y la disposición con su tono. Una entrada sin icono no tiene un
  * hueco para el icono.
  *
- * Provisorio hasta vue-libvasak 2.2.0, que trae `DropdownMenuItem` con
- * `checked`, `inset` y la ranura `shortcut` (con `Kbd`): hasta entonces el
- * `role`/`aria-checked` se pasa como atributo —la raíz del ítem lo recibe— y
- * el atajo va como texto atenuado.
+ * Desde vue-libvasak 2.2.0 la marca es `checked` del ítem (la tilde o el
+ * punto en su columna), la sangría es `inset` —una columna de icono por nivel
+ * de submenú, y una más para alinear con las que tienen icono— y el atajo es
+ * `Kbd`, una tecla por recuadro. Lo único que la librería no modela es el
+ * indeterminado de dbusmenu: ver `entryCheck`.
  */
 
 const { t } = useI18n();
@@ -65,12 +68,26 @@ const hasLeadingColumn = computed(() =>
 	rows.value.some((row) => row.kind === 'item' && (iconSource(row.item.icon) || row.item.toggle))
 );
 
+/** Si la entrada dibuja algo en la columna del icono: la marca, el indeterminado o su icono. */
+const ownsLeadingColumn = (item: TrayMenu) => Boolean(item.toggle || iconSource(item.icon));
+
 /**
- * El `role` y el `aria-checked` de la entrada, como atributos sueltos: el
- * `DropdownMenuItem` de la 2.0.0 no los declara (llegan como propiedades en la
- * 2.2.0) y su raíz los recibe por `$attrs`, pisando el `menuitem` fijo.
+ * Cuántas columnas de icono se corre la entrada: una por nivel de submenú, y
+ * una más si no tiene nada que poner en la columna que reservan las demás.
  */
-const entryAttrs = (item: TrayMenu): Record<string, string> => {
+const entryInset = (item: TrayMenu, depth: number) =>
+	depth + (hasLeadingColumn.value && !ownsLeadingColumn(item) ? 1 : 0);
+
+/** El título de un submenú, con la misma sangría por nivel que sus entradas. */
+const captionStyle = (depth: number) => ({ paddingLeft: `calc(0.75rem + ${depth * 1.75}rem)` });
+
+/**
+ * El `role` y el `aria-checked` sólo del indeterminado: el resto lo pone el
+ * ítem de la librería a partir de `checked`. Van como atributos, que la raíz
+ * del ítem recibe por encima de los suyos.
+ */
+const mixedAttrs = (item: TrayMenu): Record<string, string> => {
+	if (!entryCheck(item).mixedIcon) return {};
 	const { role, checked } = entryRole(item);
 	return checked === undefined ? { role } : { role, 'aria-checked': checked };
 };
@@ -168,23 +185,28 @@ useSharedEvent('tray-popup-update', async () => {
         <DropdownMenuLabel
           v-else-if="row.kind === 'caption'"
           class="truncate"
-          :style="{ paddingLeft: `${0.75 + row.depth}rem` }"
+          :style="captionStyle(row.depth)"
         >
           {{ row.item.label }}
         </DropdownMenuLabel>
 
         <DropdownMenuItem
           v-else
-          v-bind="entryAttrs(row.item)"
+          v-bind="mixedAttrs(row.item)"
+          :checked="entryCheck(row.item).checked"
+          :toggle="entryCheck(row.item).toggle"
+          :inset="entryInset(row.item, row.depth)"
           :disabled="!row.item.enabled"
           :class="row.item.disposition ? TOAST_TONE_CLASSES[DISPOSITION_STYLE[row.item.disposition].tone] : ''"
-          :style="{ paddingLeft: `${0.75 + row.depth}rem` }"
           @select="handleItemClick(row.item)"
         >
-          <span v-if="hasLeadingColumn" class="inline-flex size-4 shrink-0 items-center justify-center">
+          <!-- La columna del icono: el indeterminado, que la librería no
+               dibuja, o el icono que manda el programa (por nombre o en PNG).
+               Una entrada con marca no lleva además su icono, como antes. -->
+          <template v-if="entryCheck(row.item).mixedIcon || (!row.item.toggle && iconSource(row.item.icon))" #prefix>
             <ThemeIcon
-              v-if="row.item.toggle"
-              :name="toggleIconName(row.item.toggle) ?? ''"
+              v-if="entryCheck(row.item).mixedIcon"
+              :name="entryCheck(row.item).mixedIcon ?? ''"
               type="symbol"
               :size="16"
               alt=""
@@ -195,27 +217,31 @@ useSharedEvent('tray-popup-update', async () => {
               :size="16"
             />
             <ThemeIcon
-              v-else-if="iconSource(row.item.icon)?.kind === 'theme'"
+              v-else
               :name="row.item.icon?.name ?? ''"
               :size="16"
               alt=""
             />
+          </template>
+          <span class="flex min-w-0 items-center gap-2">
+            <span class="min-w-0 flex-1 truncate">{{ row.item.label }}</span>
+            <ThemeIcon
+              v-if="row.item.disposition"
+              :name="DISPOSITION_STYLE[row.item.disposition].icon"
+              type="symbol"
+              :size="14"
+              :alt="dispositionLabel(row.item)"
+            />
           </span>
-          <span class="min-w-0 flex-1 truncate">{{ row.item.label }}</span>
-          <ThemeIcon
-            v-if="row.item.disposition"
-            :name="DISPOSITION_STYLE[row.item.disposition].icon"
-            type="symbol"
-            :size="14"
-            :alt="dispositionLabel(row.item)"
-          />
-          <span
-            v-if="shortcutLabel(row.item.shortcut)"
-            data-tray-shortcut
-            class="shrink-0 text-label-xs text-tx-muted"
-          >
-            {{ shortcutLabel(row.item.shortcut) }}
-          </span>
+          <template v-if="shortcutLabel(row.item.shortcut)" #shortcut>
+            <span data-tray-shortcut class="flex items-center gap-1">
+              <span class="sr-only">{{ shortcutLabel(row.item.shortcut) }}</span>
+              <template v-for="(chord, index) in shortcutChords(row.item.shortcut)" :key="index">
+                <span v-if="index > 0" aria-hidden="true" class="text-label-xs">,</span>
+                <Kbd :keys="chord" aria-hidden="true" />
+              </template>
+            </span>
+          </template>
         </DropdownMenuItem>
       </template>
     </div>
