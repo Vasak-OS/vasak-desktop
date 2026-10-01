@@ -2,7 +2,14 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SwitchToggle, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import {
+	ActionButton,
+	ListRow,
+	Panel,
+	StatusDot,
+	type StatusDotTone,
+	SwitchToggle,
+} from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import type { ConnectDevice, ConnectRunningApp, ConnectWebcamState } from '@/interfaces/connect';
 import {
@@ -17,11 +24,11 @@ import {
 } from '@/services/connect.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import {
-	camaraPorDefecto,
-	diagnosticoWebcam,
-	encendidaEn,
-	interruptorHabilitado,
-	tamanioPorDefecto,
+	defaultCamera,
+	defaultSize,
+	isActiveOn,
+	switchEnabled,
+	webcamDiagnosis,
 } from '@/tools/webcam';
 
 /**
@@ -38,10 +45,17 @@ const running: Ref<ConnectRunningApp[]> = ref([]);
 
 const device = computed(() => devices.value[0]);
 
+/** El punto del estado: listo, sin autorizar, o en camino. */
+const deviceTone = computed<StatusDotTone>(() => {
+	if (device.value?.state === 'ready') return 'success';
+	if (device.value?.state === 'unauthorized') return 'warning';
+	return 'neutral';
+});
+
 const webcam: Ref<ConnectWebcamState | null> = ref(null);
-const cambiandoWebcam = ref(false);
-const errorWebcam = ref('');
-const errorEstadoWebcam = ref('');
+const togglingWebcam = ref(false);
+const webcamError = ref('');
+const webcamStateError = ref('');
 
 /**
  * Relee lo que dice el demonio sobre la cámara.
@@ -53,12 +67,12 @@ const errorEstadoWebcam = ref('');
  * v4l2loopback, se arregla con un `modprobe` o reiniciando— y decir eso por un
  * error de bus manda a alguien a reiniciar al vacío.
  */
-const refrescarWebcam = async () => {
+const refreshWebcam = async () => {
 	try {
 		webcam.value = await connectWebcamState();
-		errorEstadoWebcam.value = '';
+		webcamStateError.value = '';
 	} catch (reason) {
-		errorEstadoWebcam.value = String(reason);
+		webcamStateError.value = String(reason);
 	}
 };
 
@@ -67,7 +81,7 @@ const refresh = async () => {
 	running.value = devices.value.length > 0 ? await listConnectRunning() : [];
 	// Sólo con un teléfono a la vista: sin ninguno la tarjeta no se dibuja, y
 	// preguntar por la webcam sería una llamada al bus para nadie.
-	if (devices.value.length > 0) await refrescarWebcam();
+	if (devices.value.length > 0) await refreshWebcam();
 };
 
 const close = async (app: ConnectRunningApp) => {
@@ -78,7 +92,7 @@ const close = async (app: ConnectRunningApp) => {
 // ── La cámara como webcam ───────────────────────────────────────────────────
 
 /** Si la está usando este teléfono. */
-const webcamEncendida = computed(() => encendidaEn(webcam.value, device.value?.serial));
+const webcamActive = computed(() => isActiveOn(webcam.value, device.value?.serial));
 
 /**
  * Cuándo se muestra la fila de la webcam.
@@ -87,14 +101,14 @@ const webcamEncendida = computed(() => encendidaEn(webcam.value, device.value?.s
  * aunque deje de estarlo: si el teléfono se bloquea a mitad de una llamada, la
  * fila se llevaría con ella el único interruptor que puede apagar la cámara.
  */
-const mostrarWebcam = computed(() => device.value?.state === 'ready' || webcamEncendida.value);
+const showWebcam = computed(() => device.value?.state === 'ready' || webcamActive.value);
 
-const interruptorHabilitadoAhora = computed(() =>
-	interruptorHabilitado({
-		estado: webcam.value,
+const webcamSwitchEnabled = computed(() =>
+	switchEnabled({
+		state: webcam.value,
 		serial: device.value?.serial,
-		telefonoListo: device.value?.state === 'ready',
-		enCurso: cambiandoWebcam.value,
+		phoneReady: device.value?.state === 'ready',
+		inProgress: togglingWebcam.value,
 	})
 );
 
@@ -107,50 +121,50 @@ const interruptorHabilitadoAhora = computed(() =>
  * OBS hasta que el puente está transmitiendo, y esas aplicaciones enumeran las
  * cámaras al arrancar. Prenderla después significa cerrar y reabrir la llamada.
  */
-const detalleWebcam = computed(() => {
-	if (cambiandoWebcam.value) return t('views.connect.webcamWorking');
+const webcamDetail = computed(() => {
+	if (togglingWebcam.value) return t('views.connect.webcamWorking');
 
-	switch (diagnosticoWebcam(webcam.value, device.value?.serial)) {
+	switch (webcamDiagnosis(webcam.value, device.value?.serial)) {
 		// Callarse hasta saber: sin estado leído no se puede afirmar nada, y el
 		// que estaría más a mano —«falta el módulo»— manda a reiniciar el equipo.
-		case 'desconocido':
+		case 'unknown':
 			return '';
-		case 'sin-modulo':
+		case 'no-module':
 			return t('views.connect.webcamNoModule');
-		case 'ocupada':
+		case 'busy':
 			return t('views.connect.webcamBusy');
-		case 'encendida':
+		case 'active':
 			return t('views.connect.webcamActive').replace('{0}', webcam.value?.device ?? '');
 		default:
 			return t('views.connect.webcamHint');
 	}
 });
 
-const alternarWebcam = async (encender: boolean) => {
+const toggleWebcam = async (turnOn: boolean) => {
 	const serial = device.value?.serial;
-	if (!serial || cambiandoWebcam.value) return;
+	if (!serial || togglingWebcam.value) return;
 
-	cambiandoWebcam.value = true;
-	errorWebcam.value = '';
+	togglingWebcam.value = true;
+	webcamError.value = '';
 
 	try {
-		if (!encender) {
+		if (!turnOn) {
 			// `StopWebcam` no lleva serial: corta lo que esté transmitiendo,
 			// porque el dispositivo de vídeo admite un solo productor. Así que se
 			// relee antes de cortar — si entre que se dibujó el interruptor y el
 			// clic la cámara pasó a ser de otro teléfono, apagaríamos la de él.
-			await refrescarWebcam();
-			if (!encendidaEn(webcam.value, serial)) return;
+			await refreshWebcam();
+			if (!isActiveOn(webcam.value, serial)) return;
 			await stopConnectWebcam();
 		} else {
 			// Las cámaras se piden acá y no al abrir la tarjeta: la primera
 			// consulta hace que scrcpy le pregunte al teléfono y tarda, y la
 			// mayoría de las veces que alguien abre el centro de notificaciones
 			// no viene a prender la webcam.
-			const camaras = await listConnectCameras(serial);
-			const elegida = camaraPorDefecto(camaras);
-			if (!elegida) {
-				errorWebcam.value = t('views.connect.webcamNoCameras');
+			const cameras = await listConnectCameras(serial);
+			const chosen = defaultCamera(cameras);
+			if (!chosen) {
+				webcamError.value = t('views.connect.webcamNoCameras');
 				return;
 			}
 			// El tamaño se elige acá y no se deja en manos del teléfono: sin
@@ -164,16 +178,16 @@ const alternarWebcam = async (encender: boolean) => {
 			// lista no hay nada mejor que pedir, y negarse convertiría un
 			// arranque que quizá funciona en uno que seguro no. Si falla, el
 			// motivo lo pone el teléfono y se ve acá abajo.
-			await startConnectWebcam(serial, elegida.id, tamanioPorDefecto(elegida));
+			await startConnectWebcam(serial, chosen.id, defaultSize(chosen));
 		}
 	} catch (reason) {
 		// El demonio explica bien sus fallos —falta el módulo, otra aplicación
 		// tiene la cámara, el teléfono se bloqueó— y perder ese texto es lo que
 		// vuelve incontestable un «no prendió».
-		errorWebcam.value = String(reason);
+		webcamError.value = String(reason);
 	} finally {
-		cambiandoWebcam.value = false;
-		await refrescarWebcam();
+		togglingWebcam.value = false;
+		await refreshWebcam();
 	}
 };
 
@@ -187,58 +201,53 @@ useSharedEvent('connect-app-closed', refresh);
 // lo haya pedido —el teléfono se bloquea, otra de sus aplicaciones se queda con
 // la cámara— y un interruptor que siga diciendo «encendido» después de eso hace
 // creer que hay una cámara alimentando la llamada.
-useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
-	webcam.value = estado;
+useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (state) => {
+	webcam.value = state;
 });
 </script>
 
 <template>
-  <div v-if="device" class="flex flex-col gap-2 rounded-corner-m bg-ui-surface/40 p-3 text-tx-main">
-    <button type="button" class="flex items-center gap-3 text-left" @click="toggleConnectMenu()">
-      <ThemeIcon name="smartphone" :size="32" />
-      <div class="min-w-0 flex-1">
-        <p class="truncate font-semibold text-tx-main">{{ device.model }}</p>
-        <p class="truncate text-label-xs text-tx-muted">
-          <span v-if="device.state === 'unauthorized'" class="text-status-warning">
-            {{ t('views.connect.unauthorized') }}
-          </span>
-          <span v-else-if="device.state === 'ready'">
+  <Panel v-if="device" padding="sm" class="gap-2">
+    <!-- El teléfono: abre su menú. La fila es `ListRow` de la librería, con el
+         estado en un `StatusDot` y no en un punto pintado a mano. -->
+    <ListRow
+      role="button"
+      icon="smartphone"
+      @click="toggleConnectMenu()"
+    >
+      <span class="flex min-w-0 flex-col">
+        <span class="truncate text-label-m font-semibold">{{ device.model }}</span>
+        <span class="truncate text-body-xs font-normal text-tx-muted">
+          <template v-if="device.state === 'unauthorized'">{{ t('views.connect.unauthorized') }}</template>
+          <template v-else-if="device.state === 'ready'">
             {{ device.transport === 'usb' ? 'USB' : device.address }}
             <template v-if="running.length > 0">
               · {{ t('views.connect.openApps').replace('{0}', String(running.length)) }}
             </template>
-          </span>
-          <span v-else>{{ t('views.connect.connecting') }}</span>
-        </p>
-      </div>
-      <div
-        class="h-2.5 w-2.5 shrink-0 rounded-corner-full"
-        :class="{
-          'bg-status-success': device.state === 'ready',
-          'bg-status-warning': device.state === 'unauthorized',
-          'bg-tx-muted': device.state !== 'ready' && device.state !== 'unauthorized',
-        }"
-      ></div>
-    </button>
+          </template>
+          <template v-else>{{ t('views.connect.connecting') }}</template>
+        </span>
+      </span>
+      <template #trailing>
+        <StatusDot :tone="deviceTone" size="md" />
+      </template>
+    </ListRow>
 
     <!-- The open windows, with a way to close them. A window whose app is on a
          virtual display is easy to lose behind others, and this is the only
          place that knows they exist. -->
-    <ul v-if="running.length > 0" class="space-y-1">
-      <li
-        v-for="app in running"
-        :key="app.package"
-        class="flex items-center gap-2 rounded-corner-m px-2 py-1 text-label-m hover:bg-ui-hover"
-      >
-        <span class="min-w-0 flex-1 truncate text-tx-main">{{ app.label }}</span>
-        <button
-          type="button"
-          :title="t('views.connect.close')"
-          class="shrink-0 rounded-corner-m px-2 text-label-xs text-primary hover:bg-ui-hover"
-          @click="close(app)"
-        >
-          {{ t('views.connect.close') }}
-        </button>
+    <ul v-if="running.length > 0" class="flex flex-col gap-1">
+      <li v-for="app in running" :key="app.package">
+        <ListRow :title="app.label" truncate class="py-1">
+          <template #trailing>
+            <ActionButton
+              :label="t('views.connect.close')"
+              variant="ghost"
+              size="sm"
+              @click="close(app)"
+            />
+          </template>
+        </ListRow>
       </li>
     </ul>
 
@@ -247,26 +256,26 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (estado) => {
          videollamada, y ésta es la única superficie que aparece exactamente
          cuando hay un teléfono enchufado. La elección de cámara, resolución y
          cuadros por segundo va en Ajustes, que es donde entran tres selectores. -->
-    <div
-      v-if="mostrarWebcam"
-      class="flex flex-col gap-1 border-t border-ui-line pt-2"
-    >
-      <div class="flex items-center gap-2">
-        <span class="min-w-0 flex-1 text-label-m text-tx-main">{{ t('views.connect.webcam') }}</span>
+    <!-- Una fila suelta y no `SettingRow`: ésa apila el interruptor debajo
+         del nombre por debajo de 320 px, y el centro de control mide 350, así
+         que la fila crecía el doble de alto. -->
+    <div v-if="showWebcam" class="flex flex-col gap-1 border-t border-ui-line-weak px-3 pt-2">
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="min-w-0 flex-1 break-words text-label-m text-tx-main">{{ t('views.connect.webcam') }}</span>
         <SwitchToggle
           :label="t('views.connect.webcam')"
-          :model-value="webcamEncendida"
-          :disabled="!interruptorHabilitadoAhora"
-          @update:model-value="alternarWebcam"
+          :model-value="webcamActive"
+          :disabled="!webcamSwitchEnabled"
+          @update:model-value="toggleWebcam"
         />
       </div>
       <!-- El error de una acción primero, y el de la lectura del estado
            después: los dos son texto del demonio y ninguno se puede reemplazar
            por el consejo del módulo, que sería un diagnóstico inventado. -->
-      <p v-if="errorWebcam || errorEstadoWebcam" class="text-status-error text-label-xs">
-        {{ errorWebcam || errorEstadoWebcam }}
+      <p v-if="webcamError || webcamStateError" class="text-body-xs text-status-error">
+        {{ webcamError || webcamStateError }}
       </p>
-      <p v-else-if="detalleWebcam" class="text-tx-muted text-label-xs">{{ detalleWebcam }}</p>
+      <p v-else-if="webcamDetail" class="text-body-xs text-tx-muted">{{ webcamDetail }}</p>
     </div>
-  </div>
+  </Panel>
 </template>

@@ -4,9 +4,11 @@ import { join } from 'node:path';
 import type { TrayMenu } from '@/interfaces/tray';
 import {
 	DISPOSITION_STYLE,
+	entryCheck,
 	entryRole,
 	hasActions,
 	menuFocusTarget,
+	shortcutChords,
 	shortcutLabel,
 	toggleIconName,
 	trayMenuRows,
@@ -222,9 +224,60 @@ describe('lo que trae cada entrada', () => {
 			join(import.meta.dir, '..', 'views', 'applets', 'TrayPopupView.vue'),
 			'utf8'
 		);
-		expect(view).toContain('v-if="hasLeadingColumn"');
-		expect(view).toContain('v-if="row.item.toggle"');
+		// La columna del icono sólo se ocupa si hay algo que poner, y la
+		// reserva de las demás va por `inset`, no por un hueco vacío.
+		expect(view).toContain('ownsLeadingColumn(item) ? 1 : 0');
 		expect(view).toContain('v-if="row.item.disposition"');
-		expect(view).toContain('v-if="shortcutLabel(row.item.shortcut)"');
+		expect(view).toContain('v-if="shortcutLabel(row.item.shortcut)" #shortcut');
+	});
+
+	test('la vista usa la marca, la sangría y las teclas de la librería', () => {
+		const view = readFileSync(
+			join(import.meta.dir, '..', 'views', 'applets', 'TrayPopupView.vue'),
+			'utf8'
+		);
+		expect(view).toContain(':checked="entryCheck(row.item).checked"');
+		expect(view).toContain(':inset="entryInset(row.item, row.depth)"');
+		expect(view).toContain('<Kbd :keys="chord"');
+		// Ni el `role` suelto para todas ni la sangría en línea de la 2.0.
+		expect(view).not.toContain('entryAttrs');
+		expect(view).not.toMatch(/<DropdownMenuItem[^>]*paddingLeft/);
+	});
+});
+
+describe('la marca y el atajo, para la librería', () => {
+	const e = (toggle?: TrayMenu['toggle']) => entry(1, 'x', { toggle });
+
+	test('prendido y apagado son `checked`; sin casilla, `null`', () => {
+		expect(entryCheck(e())).toEqual({ checked: null, toggle: 'checkbox' });
+		expect(entryCheck(e({ kind: 'checkmark', state: 'on' }))).toEqual({
+			checked: true,
+			toggle: 'checkbox',
+		});
+		expect(entryCheck(e({ kind: 'checkmark', state: 'off' }))).toEqual({
+			checked: false,
+			toggle: 'checkbox',
+		});
+		expect(entryCheck(e({ kind: 'radio', state: 'on' }))).toEqual({
+			checked: true,
+			toggle: 'radio',
+		});
+	});
+
+	test('el indeterminado no tiene marca propia: lleva su dibujo en la columna del icono', () => {
+		expect(entryCheck(e({ kind: 'checkmark', state: 'indeterminate' }))).toEqual({
+			checked: null,
+			toggle: 'checkbox',
+			mixedIcon: 'checkbox-mixed-symbolic',
+		});
+	});
+
+	test('las teclas de cada combinación, una por recuadro', () => {
+		expect(shortcutChords([['Control', 'q']])).toEqual([['Ctrl', 'Q']]);
+		expect(shortcutChords([['Control', 'Q'], [], ['Alt', 'F4']])).toEqual([
+			['Ctrl', 'Q'],
+			['Alt', 'F4'],
+		]);
+		expect(shortcutChords(undefined)).toEqual([]);
 	});
 });

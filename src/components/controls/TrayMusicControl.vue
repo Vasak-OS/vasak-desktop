@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ActionButton } from '@vasakgroup/vue-libvasak';
+import { ActionButton, SpinningCover } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { toggleApplet } from '@/services/window.service';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
@@ -53,20 +53,8 @@ const summary = computed(() => {
 	return lines.join('\n');
 });
 
-/**
- * El giro de la portada: puesto mientras hay algo cargado, congelado en pausa.
- *
- * Antes la clase se ponía y se sacaba con `isPlaying`, y sacarla devuelve la
- * rotación a cero: la portada saltaba cada vez que se pausaba. Congelada con
- * `animation-play-state` se queda donde estaba, igual que el disco del
- * reproductor desplegable.
- */
+/** Si suena, está en pausa o no hay nada: el disco gira, se congela o se queda quieto. */
 const state = computed(() => playbackStateOf(musicInfo.value.status));
-const coverSpin = computed(() =>
-	state.value === 'stopped'
-		? {}
-		: { animationPlayState: state.value === 'playing' ? 'running' : 'paused' }
-);
 
 /**
  * El reproductor desplegable, colgado de este control.
@@ -74,7 +62,7 @@ const coverSpin = computed(() =>
  * Lo abre la portada —que es lo que se ve siempre, con o sin el mouse encima—
  * y no los botones del transporte, que siguen haciendo lo suyo sin abrir nada.
  */
-const opener = ref<HTMLButtonElement | null>(null);
+const opener = ref<HTMLElement | null>(null);
 const { openClasses } = useOpenApplet('music');
 
 async function openPlayer(): Promise<void> {
@@ -123,37 +111,26 @@ onUnmounted(() => {
     @mouseenter="onEnter"
     @mouseleave="onLeave"
   >
-    <!-- La portada, que gira mientras suena. `motion-reduce` la deja quieta:
-         quien pidió que el escritorio no se mueva no pidió una excepción para
-         la bandeja. Debajo, el aro de progreso dice por dónde va sin ocupar
-         una fila más, que en 22 píxeles de panel no existe. -->
-    <button
-      ref="opener"
-      type="button"
-      class="relative w-5.5 h-5.5 shrink-0 rounded-corner-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-focus"
-      :title="summary"
-      :aria-label="t('components.TrayMusicControl.openPlayer')"
-      @click="openPlayer"
-    >
-      <img
+    <!-- La portada, que gira mientras suena, con el aro de progreso alrededor:
+         es `SpinningCover` de la librería (2.2.0), que se congela en pausa en
+         vez de volver a cero, se queda quieta con `motion-reduce`, y con
+         `interactive` es un botón con nombre que suma el avance. El aro dice
+         por dónde va sin ocupar una fila más, que en 22 píxeles de panel no
+         existe. El envoltorio es el ancla del reproductor desplegable. -->
+    <span ref="opener" class="flex shrink-0" :title="summary">
+      <SpinningCover
+        class="size-5.5"
         :src="imgSrc"
         :alt="musicInfo.title"
-        class="w-full h-full rounded-corner-full origin-center object-cover"
-        :class="{ 'animate-spin motion-reduce:animate-none': state !== 'stopped' }"
-        :style="coverSpin"
+        :state="state"
+        :progress="musicInfo.length > 0 ? progress * 100 : null"
+        :progress-label="t('components.TrayMusicControl.progress')"
+        interactive
+        :label="t('components.TrayMusicControl.openPlayer')"
+        @click="openPlayer"
         @error="onImgError"
       />
-      <div
-        v-if="musicInfo.length > 0"
-        class="pointer-events-none absolute inset-0 rounded-corner-full"
-        :style="{
-          background: `conic-gradient(var(--color-primary) ${progress * 360}deg, transparent 0deg)`,
-          mask: 'radial-gradient(circle, transparent 72%, black 74%)',
-          WebkitMask: 'radial-gradient(circle, transparent 72%, black 74%)',
-        }"
-        aria-hidden="true"
-      ></div>
-    </button>
+    </span>
 
     <div
       v-show="visible || isHiding"

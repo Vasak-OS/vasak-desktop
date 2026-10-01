@@ -3,54 +3,34 @@
        fondo, se agrandaba y le pintaba el nombre de otro color a algo que no
        hace nada al hacerle clic, así que prometía un botón que no existe. Es la
        misma decisión que en los iconos de la bandeja: que no se resalte lo que
-       no se puede tocar. -->
+       no se puede tocar. La cara es `Avatar` de la librería (2.2.0): la foto
+       recortada en círculo, o las iniciales si no hay foto o no carga. -->
   <div
-    class="bg-ui-bg/80 rounded-corner-m border border-ui-line p-4 flex items-center gap-4 w-full transition-all duration-300"
+    class="flex w-full min-w-0 items-center gap-4 rounded-corner-l border border-ui-line bg-ui-surface/70 p-4 transition-[opacity,translate] duration-300 ease-ui-out"
     :class="{
       'opacity-0 translate-y-4': !isLoaded,
       'opacity-100 translate-y-0': isLoaded,
     }"
   >
-    <!-- El redondeo va también en la imagen, y el recorte en la caja: el
-         `rounded-corner-full` estaba sólo acá afuera, y como la imagen no hereda el
-         redondeo de su contenedor ni lo desborda, la foto se veía cuadrada
-         dentro de un círculo que no recortaba nada. -->
-    <div class="relative w-16 h-16 shrink-0 overflow-hidden rounded-corner-full">
-      <img
-        :src="userInfo.avatar_data"
-        :alt="userInfo.full_name"
-        class="h-full w-full aspect-square rounded-corner-full object-cover transition-all duration-300"
-        :class="{
-          'opacity-0 scale-90': !isLoaded,
-          'opacity-100 scale-100': isLoaded,
-        }"
-      />
-
-    </div>
-    <div class="flex flex-col flex-1 space-y-1">
-      <h2
-        class="text-lg font-semibold"
-      >
+    <Avatar :src="userInfo.avatar_data || null" :name="userInfo.full_name" size="xl" />
+    <!-- El nombre se parte entre palabras, nunca adentro de una: la columna
+         no baja de su palabra más larga, y la de la hora se acomoda. -->
+    <div class="flex flex-1 flex-col gap-1">
+      <h2 class="text-lg font-semibold">
         {{ userInfo.full_name }}
       </h2>
-      <p
-        class="text-label-m text-tx-muted"
-      >
+      <p class="text-label-m text-tx-muted">
         {{ userInfo.username }}
       </p>
     </div>
-    <div
-      class="text-right space-y-1 transition-all duration-300"
-    >
+    <div class="min-w-0 space-y-1 text-right">
       <div
-        class="text-2xl font-medium transition-all duration-300 tabular-nums text-primary"
+        class="text-2xl font-medium tabular-nums text-primary"
         :class="{ 'animate-pulse': isTimeUpdating }"
       >
         {{ currentTime }}
       </div>
-      <div
-        class="text-label-m text-tx-muted transition-all duration-300 capitalize"
-      >
+      <div class="text-label-m text-tx-muted capitalize">
         {{ currentDate }}
       </div>
     </div>
@@ -60,6 +40,7 @@
 <script setup lang="ts">
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { Avatar } from '@vasakgroup/vue-libvasak';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { logError } from '@/utils/logger';
 

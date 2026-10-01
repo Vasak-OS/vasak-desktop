@@ -74,10 +74,7 @@ describe('las filas que se abren enteras', () => {
 	// `ListCard` y `DeviceCard` ya no están acá: se fueron a la librería, con su
 	// teclado puesto. Ver Vasak-OS/vue-libvasak#22, que es el barrido de las
 	// copias.
-	const CON_BOTONES_ADENTRO = [
-		'components/cards/NotificationCard.vue',
-		'components/cards/NotificationGroupCard.vue',
-	];
+	const CON_BOTONES_ADENTRO = ['components/cards/NotificationCard.vue'];
 
 	test.each(CON_BOTONES_ADENTRO)('%s se enfoca y se activa con el teclado', (ruta) => {
 		const texto = leer(ruta);
@@ -95,11 +92,13 @@ describe('las filas que se abren enteras', () => {
 	});
 
 	test('el grupo de notificaciones dice si está desplegado', () => {
-		// Despliega y repliega: sin esto se anuncia como un botón cualquiera y
-		// no se sabe que hay algo plegado detrás.
-		expect(leer('components/cards/NotificationGroupCard.vue')).toContain(
-			':aria-expanded="isExpanded"'
-		);
+		// Despliega y repliega: sin `aria-expanded` se anuncia como un botón
+		// cualquiera y no se sabe que hay algo plegado detrás. Desde la 2.2.0
+		// la cabecera es `Disclosure` de la librería, un `<button>` con
+		// `aria-expanded` y `aria-controls`; el de descartar va afuera de él.
+		const texto = leer('components/cards/NotificationGroupCard.vue');
+		expect(texto).toContain('<Disclosure v-model:open="isExpanded"');
+		expect(texto).not.toContain('role="button"');
 	});
 
 	test('el selector de audio es un grupo de opciones, no cinco botones iguales', () => {
@@ -107,11 +106,15 @@ describe('las filas que se abren enteras', () => {
 		// elegir una salida es elegir **una de varias**: sin `radio` se leen
 		// cinco botones iguales y no se sabe cuál está puesta, que es
 		// justamente lo que dibuja el punto de la izquierda.
-		const texto = leer('components/controls/AudioDeviceSelector.vue');
-
-		expect(texto).toContain('role="radiogroup"');
-		expect(texto).toMatch(/<button[^>]*role="radio"/s);
-		expect(texto).toContain(':aria-checked="selectedDeviceId === device.id"');
+		// Desde vue-libvasak 2.2.0 es `OptionGroup` de la librería, que es
+		// `role="radiogroup"` con un `<button role="radio">` por opción, las
+		// flechas y un solo Tab (lo prueba la librería montado). Acá queda que
+		// las dos copias del escritorio lo pidan a ella.
+		for (const ruta of ['components/controls/AudioDeviceSelector.vue', 'views/applets/MusicAppletView.vue']) {
+			const texto = leer(ruta);
+			expect(texto).toMatch(/<OptionGroup\b/);
+			expect(texto).not.toMatch(/role="radio(group)?"|type="radio"/);
+		}
 	});
 });
 

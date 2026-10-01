@@ -4,6 +4,7 @@ import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import FilesWidget from '@/components/widgets/FilesWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
+import WidgetFrame from '@/components/widgets/WidgetFrame.vue';
 import { WIDGETS, type WidgetType } from '@/tools/widgets/catalog';
 
 /**
@@ -28,30 +29,24 @@ const props = withDefaults(
 	{ type: 'weather', variant: undefined }
 );
 
-const componentes = {
+const WIDGET_COMPONENTS = {
 	clock: DesktopClockWidget,
 	music: MusicWidget,
 	weather: WeatherWidget,
 	files: FilesWidget,
 } as const;
 
-const componente = computed(() => componentes[props.type]);
+const widgetComponent = computed(() => WIDGET_COMPONENTS[props.type]);
 
 /** La forma por omisión del widget, si quien lo pone no eligió una. */
-const variante = computed(() => props.variant ?? WIDGETS[props.type].variants?.[0]?.id);
+const widgetVariant = computed(() => props.variant ?? WIDGETS[props.type].variants?.[0]?.id);
 </script>
 
 <template>
-	<!-- La tarjeta de lo que se apoya —la superficie, el canto fino y el radio
-	     `l`, como `ListCard`—, y el contenedor contra el que se miden las
-	     unidades de adentro. No es `ListCard` porque ésa trae su relleno y su
-	     fila, y el widget tiene que llenar el marco entero: se mide en
-	     unidades de contenedor. Sin desenfoque: detrás no hay nada que
-	     desenfocar. -->
-	<div
-		style="container-type: size"
-		class="h-full w-full overflow-hidden rounded-corner-l border border-ui-line bg-ui-surface/70"
-	>
-		<component :is="componente" :variant="variante" />
-	</div>
+	<!-- La tarjeta de lo que se apoya dentro de otra ventana, y el contenedor
+	     contra el que se miden las unidades de adentro: es `WidgetFrame` con
+	     la superficie `surface`, la misma caja del escritorio. -->
+	<WidgetFrame surface="surface">
+		<component :is="widgetComponent" :variant="widgetVariant" />
+	</WidgetFrame>
 </template>

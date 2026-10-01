@@ -247,6 +247,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
           <ProgressBar
             :value="progressPercent(item.launcher?.progress) ?? 0"
             :label="progressLabel(item)"
+            size="xs"
           />
         </div>
       </div>

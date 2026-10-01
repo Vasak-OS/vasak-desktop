@@ -27,12 +27,18 @@
       <div class="flex items-start justify-between gap-2">
         <h3 class="text-label-m font-medium text-tx-main truncate">{{ notification.summary }}</h3>
         <div class="flex items-center gap-1 shrink-0">
-          <span class="text-[11px] text-tx-muted">{{ formatTime(notification.timestamp) }}</span>
-          <button @click.stop="$emit('seen', notification.id)"
+          <span class="text-label-xs text-tx-muted">{{ formatTime(notification.timestamp) }}</span>
+          <ActionButton
+            label=""
+            icon="window-close-symbolic"
+            :icon-alt="t('common.close')"
             :title="t('common.close')"
-            class="flex items-center justify-center w-4 h-4 rounded-corner-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/nc:opacity-100 focus-visible:opacity-100 hover:text-status-error" :aria-label="t('common.close')">
-            <ThemeIcon name="window-close-symbolic" type="symbol" :size="10" :alt="t('common.close')" />
-          </button>
+            variant="ghost"
+            size="sm"
+            stop-propagation
+            custom-class="opacity-0 group-hover/nc:opacity-100 focus-visible:opacity-100"
+            @click="$emit('seen', notification.id)"
+          />
         </div>
       </div>
       <p v-if="notification.body" class="text-label-xs text-tx-muted line-clamp-2">
@@ -46,7 +52,7 @@
           :key="action.key"
           :label="action.label"
           variant="secondary"
-          custom-class="text-label-xs"
+          size="sm"
           @click="() => handleAction(action.key)"
         />
       </div>

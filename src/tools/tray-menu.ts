@@ -91,21 +91,28 @@ const MODIFIER_LABELS: Record<string, string> = {
 };
 
 /**
- * El atajo de una entrada, como se escribe en un menú: `[["Control", "q"]]`
- * es «Ctrl+Q» y `[["Control", "Q"], ["Alt", "X"]]` es «Ctrl+Q, Alt+X». Sin
- * atajo, nada: no se reserva lugar.
+ * Las teclas de cada combinación del atajo, como se escriben en un menú:
+ * `[["Control", "q"]]` es `[["Ctrl", "Q"]]`. Es lo que dibuja `Kbd` de la
+ * librería, una tecla por recuadro. Las combinaciones vacías se descartan.
  */
-export function shortcutLabel(shortcut: readonly string[][] | undefined): string | undefined {
-	const chords = (shortcut ?? [])
+export function shortcutChords(shortcut: readonly string[][] | undefined): string[][] {
+	return (shortcut ?? [])
 		.filter((chord) => chord.length > 0)
 		.map((chord) =>
-			chord
-				.map((key, index) => {
-					if (index < chord.length - 1) return MODIFIER_LABELS[key] ?? key;
-					return key.length === 1 ? key.toUpperCase() : key;
-				})
-				.join('+')
+			chord.map((key, index) => {
+				if (index < chord.length - 1) return MODIFIER_LABELS[key] ?? key;
+				return key.length === 1 ? key.toUpperCase() : key;
+			})
 		);
+}
+
+/**
+ * El atajo de una entrada en texto: `[["Control", "q"]]` es «Ctrl+Q» y
+ * `[["Control", "Q"], ["Alt", "X"]]` es «Ctrl+Q, Alt+X». Es lo que oye un
+ * lector de pantalla; sin atajo, nada: no se reserva lugar.
+ */
+export function shortcutLabel(shortcut: readonly string[][] | undefined): string | undefined {
+	const chords = shortcutChords(shortcut).map((chord) => chord.join('+'));
 	return chords.length > 0 ? chords.join(', ') : undefined;
 }
 
@@ -125,6 +132,29 @@ export function entryRole(item: TrayMenu): {
 	}
 	const checked = toggle.state === 'on' ? 'true' : toggle.state === 'off' ? 'false' : 'mixed';
 	return { role: 'menuitemcheckbox', checked };
+}
+
+/**
+ * Cómo se marca la entrada en `DropdownMenuItem` de la librería.
+ *
+ * La librería sabe de casillas y radios prendidos o apagados (`checked`), pero
+ * no del indeterminado, que dbusmenu sí manda. Ése va como entrada **sin**
+ * marca propia (`checked: null`) y con su dibujo en la columna del icono
+ * (`mixedIcon`); el `role` y el `aria-checked="mixed"` de `entryRole` se le
+ * pasan como atributos, que la raíz del ítem recibe por encima de los suyos.
+ */
+export function entryCheck(item: TrayMenu): {
+	checked: boolean | null;
+	toggle: 'checkbox' | 'radio';
+	mixedIcon?: string;
+} {
+	const toggle = item.toggle;
+	if (!toggle) return { checked: null, toggle: 'checkbox' };
+	const kind = toggle.kind === 'radio' ? 'radio' : 'checkbox';
+	if (toggle.state === 'indeterminate') {
+		return { checked: null, toggle: kind, mixedIcon: toggleIconName(toggle) };
+	}
+	return { checked: toggle.state === 'on', toggle: kind };
 }
 
 /** El indicador de la casilla o la opción de radio, del tema del sistema. */

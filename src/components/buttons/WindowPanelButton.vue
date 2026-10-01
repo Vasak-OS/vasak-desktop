@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ProgressBar, TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import type { WindowPanelButtonProps } from '@/interfaces/window';
 import { toggleWindow as sysToggleWindow } from '@/services/window.service';
@@ -17,7 +17,13 @@ const iconName = computed(() => props.icon?.trim() || 'application-x-executable'
 const badge = computed(() =>
 	countLabel(props.launcher?.count) ? (props.launcher?.count ?? null) : null
 );
-/** El progreso, en porcentaje, sólo con `progress-visible`. */
+/**
+ * El progreso, en porcentaje, sólo con `progress-visible`. Lo dibuja la propia
+ * `TrayIconButton` desde vue-libvasak 2.2.0 —la línea fina al pie, la de
+ * `ProgressBar size="xs"`— y lo suma al nombre del botón: lo de adentro de un
+ * botón no se anuncia aparte, así que una barra metida en la ranura no la oía
+ * nadie. Sin progreso no hay línea.
+ */
 const progress = computed(() => progressPercent(props.launcher?.progress));
 
 const toggleWindow = async (): Promise<void> => {
@@ -38,17 +44,9 @@ const toggleWindow = async (): Promise<void> => {
     :alt="title"
     :tooltip="title"
     :badge="badge"
+    :progress="progress ?? null"
+    :progress-label="t('components.tray.progress').replace('{0}', title)"
     :icon-class="{ 'opacity-50': Boolean(is_minimized) }"
     @click="toggleWindow"
-  >
-    <!-- El progreso que publica la aplicación (una descarga, una copia), sólo
-         si lo hace visible. Sin progreso no hay barra. -->
-    <div
-      v-if="progress !== undefined"
-      data-window-progress
-      class="pointer-events-none absolute inset-x-1 bottom-0"
-    >
-      <ProgressBar :value="progress" :label="t('components.tray.progress').replace('{0}', title)" />
-    </div>
-  </TrayIconButton>
+  />
 </template>

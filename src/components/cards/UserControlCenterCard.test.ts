@@ -24,14 +24,18 @@ describe('tarjeta del usuario', () => {
 		expect(reacciones).toEqual([]);
 	});
 
-	test('la foto del usuario es un círculo', () => {
-		const foto = COMPONENTE.slice(COMPONENTE.indexOf('<img'), COMPONENTE.indexOf('</div>'));
+	test('la foto del usuario es la de la librería', () => {
+		// `Avatar` la recorta en círculo con `rounded-corner-full` —el radio que
+		// eligió la persona— y cae a las iniciales si no hay foto o no carga.
+		// La copia a mano dejaba la foto cuadrada dentro de un círculo que no
+		// recortaba nada.
+		expect(COMPONENTE).toMatch(/<Avatar[^>]*size="xl"/);
+		expect(COMPONENTE).not.toContain('<img');
+	});
 
-		// En la imagen, porque no hereda el redondeo del contenedor...
-		// Con la escala del radio que eligió la persona, no con un radio fijo.
-		expect(foto).toContain('rounded-corner-full');
-		// ...y recortada por la caja, para que un avatar que no sea cuadrado
-		// tampoco se salga.
-		expect(COMPONENTE).toContain('overflow-hidden rounded-corner-full');
+	test('sin el fondo de la ventana encima de la ventana', () => {
+		// `ui-bg` es el fondo de la ventana; una tarjeta va en la superficie.
+		expect(COMPONENTE).not.toMatch(/bg-ui-bg\b/);
+		expect(COMPONENTE).toContain('bg-ui-surface/70');
 	});
 });

@@ -3,7 +3,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ToggleControl } from '@vasakgroup/vue-libvasak';
+import { ToggleControl, type ToggleIndicator } from '@vasakgroup/vue-libvasak';
 import { computed, type Ref, ref } from 'vue';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { logError } from '@/utils/logger';
@@ -21,6 +21,17 @@ const bluetoothIcon = computed(() => {
 	return connectedDevicesCount.value > 0 ? 'bluetooth-active-symbolic' : 'bluetooth-symbolic';
 });
 
+/**
+ * El punto de la esquina y el contador de dispositivos, que son los de
+ * `ToggleControl` (vue-libvasak 2.2.0) y no un punto y un número a mano encima
+ * del botón —el número iba en `tx-main` sobre el primario—. El anillo de
+ * `custom-class` repetía lo que ya dicen el punto y el resaltado de encendido.
+ */
+const indicator = computed<ToggleIndicator>(() => {
+	if (!isBluetoothOn.value) return { tone: 'neutral' };
+	return { tone: 'accent', pulse: connectedDevicesCount.value > 0 };
+});
+
 const toggleBT = async (): Promise<void> => {
 	try {
 		isTogglingBluetooth.value = true;
@@ -34,36 +45,16 @@ const toggleBT = async (): Promise<void> => {
 </script>
 
 <template>
-  <div class="theme-transition relative inline-block">
-    <!-- Indicador de estado -->
-    <div
-      class="absolute top-1 right-1 w-3 h-3 rounded-corner-full transition-all duration-300"
-      :class="{
-        'bg-primary animate-pulse': isBluetoothOn && connectedDevicesCount > 0,
-        'bg-primary': isBluetoothOn && connectedDevicesCount === 0,
-        'bg-tx-muted': !isBluetoothOn,
-      }"
-    ></div>
-
-    <!-- Badge de dispositivos conectados -->
-    <div
-      v-if="connectedDevicesCount > 0"
-      class="absolute bottom-1 right-1 bg-primary text-tx-main text-label-xs rounded-corner-full w-4 h-4 flex items-center justify-center font-bold"
-    >
-      {{ connectedDevicesCount }}
-    </div>
-
-    <ToggleControl
-      :name="bluetoothIcon"
-      type="symbol"
-      :label="t('components.BluetoothControl.toggle')"
-      :pressed="isBluetoothOn"
-      :is-active="isBluetoothOn"
-      :is-loading="isTogglingBluetooth"
-      :custom-class="{
-        'ring-2 ring-primary/50': isBluetoothOn,
-      }"
-      @click="toggleBT"
-    />
-  </div>
+  <ToggleControl
+    class="theme-transition"
+    :name="bluetoothIcon"
+    type="symbol"
+    :label="t('components.BluetoothControl.toggle')"
+    :pressed="isBluetoothOn"
+    :is-active="isBluetoothOn"
+    :is-loading="isTogglingBluetooth"
+    :indicator="indicator"
+    :badge="connectedDevicesCount"
+    @click="toggleBT"
+  />
 </template>

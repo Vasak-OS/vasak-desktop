@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ActionButton, Badge, ListRow, StatusDot } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import {
@@ -152,14 +153,11 @@ const authorize = async (resource: TwingateResource) => {
 					</p>
 				</div>
 
-				<span
+				<Badge
 					v-if="pendingAuth.length > 0"
-					class="shrink-0 rounded-corner-m bg-status-warning/20 px-2 py-1 text-[11px] font-semibold text-status-warning"
-				>
-					{{
-						t('components.TwingateArea.pendingCount').replace('{0}', String(pendingAuth.length))
-					}}
-				</span>
+					tone="warning"
+					:label="t('components.TwingateArea.pendingCount').replace('{0}', String(pendingAuth.length))"
+				/>
 			</header>
 
 			<p v-if="loading" class="text-label-m text-tx-muted">
@@ -182,39 +180,29 @@ const authorize = async (resource: TwingateResource) => {
 			     se desplaza, que con setenta recursos es la diferencia entre
 			     poder usarlo y no. -->
 			<ul v-else class="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
-				<li
-					v-for="resource in sorted"
-					:key="resource.name"
-					class="flex items-center gap-2 rounded-corner-m border border-ui-line bg-ui-surface/45 px-2 py-1.5"
-				>
-					<span
-						class="h-2 w-2 shrink-0 rounded-corner-full"
-						:class="resource.needs_auth ? 'bg-status-warning' : 'bg-status-success'"
-						aria-hidden="true"
-					></span>
-
-					<div class="min-w-0 flex-1">
-						<p class="truncate text-label-xs font-medium text-tx-main" :title="resource.name">
-							{{ resource.name }}
-						</p>
-						<p class="truncate text-[10px] text-tx-muted" :title="resource.address">
-							{{ displayName(resource) }} · {{ statusDetail(resource) }}
-						</p>
-					</div>
-
-					<button
-						v-if="resource.needs_auth"
-						type="button"
-						class="shrink-0 rounded-corner-m bg-primary px-2 py-1 text-[10px] font-semibold text-tx-on-primary disabled:opacity-50"
-						:disabled="authorizing === resource.name"
-						@click="authorize(resource)"
+				<li v-for="resource in sorted" :key="resource.name">
+					<ListRow
+						:title="resource.name"
+						:description="`${displayName(resource)} · ${statusDetail(resource)}`"
+						truncate
+						class="border border-ui-line bg-ui-surface/70 py-1.5"
 					>
-						{{
-							authorizing === resource.name
-								? t('components.TwingateArea.authorizing')
-								: t('components.TwingateArea.authorize')
-						}}
-					</button>
+						<template #leading>
+							<StatusDot :tone="resource.needs_auth ? 'warning' : 'success'" />
+						</template>
+						<template v-if="resource.needs_auth" #trailing>
+							<ActionButton
+								:label="
+									authorizing === resource.name
+										? t('components.TwingateArea.authorizing')
+										: t('components.TwingateArea.authorize')
+								"
+								size="sm"
+								:loading="authorizing === resource.name"
+								@click="authorize(resource)"
+							/>
+						</template>
+					</ListRow>
 				</li>
 			</ul>
 		</div>

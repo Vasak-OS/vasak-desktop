@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { NowPlayingCard, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import {
+	ActionButton,
+	Badge,
+	NowPlayingCard,
+	OptionGroup,
+	type OptionGroupOption,
+} from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import type { AudioDevice } from '@/interfaces/audio-device';
@@ -138,8 +144,30 @@ onMounted(async () => {
 	await refresh();
 });
 
-const CHIP =
-	'flex max-w-full min-w-0 items-center gap-1 rounded-corner-m bg-ui-surface/70 px-2 py-0.5 text-label-xs text-tx-main';
+/** Las salidas como opciones del grupo, con el icono de cada una. */
+const outputOptions = computed<OptionGroupOption<string>[]>(() =>
+	devices.value.map((device) => ({
+		value: device.id,
+		label: outputLabel(device),
+		icon: outputIcon(device),
+		iconType: 'symbol',
+	}))
+);
+
+/**
+ * La salida marcada, controlada por la que el sistema confirma: `OptionGroup`
+ * mueve su marca antes de avisar, y si el cambio falla, sin esto la salida
+ * que no se pudo poner quedaba elegida y volver a tocarla no hacía nada.
+ */
+const checkedOutput = computed({
+	get: () => output.value?.id ?? null,
+	set: () => {},
+});
+
+function onOutputChange(id: string): void {
+	const device = devices.value.find((candidate) => candidate.id === id);
+	if (device) void chooseOutput(device);
+}
 </script>
 
 <template>
@@ -174,69 +202,57 @@ const CHIP =
 				@cover-error="onImgError"
 			>
 				<template #details>
-					<button
+					<!-- La salida y por dónde suena: un botón chico de la librería que
+					     abre el selector, y una insignia que sólo informa. -->
+					<ActionButton
 						v-if="output"
-						type="button"
-						:class="[CHIP, 'transition-colors hover:bg-ui-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary']"
+						:label="outputLabel(output)"
+						:icon="outputIcon(output)"
+						variant="secondary"
+						size="sm"
 						:title="t('views.musicApplet.chooseOutput')"
 						:aria-label="outputAnnouncement"
 						:aria-expanded="pickingOutput"
 						@click="pickingOutput = true"
-					>
-						<ThemeIcon :name="outputIcon(output)" type="symbol" :size="14" />
-						<span class="truncate">{{ outputLabel(output) }}</span>
-					</button>
-					<span v-if="via" :class="[CHIP, 'text-tx-muted']" :title="via">
-						<span class="truncate">{{ via }}</span>
-					</span>
+					/>
+					<Badge v-if="via" :label="via" :title="via" />
 				</template>
 			</NowPlayingCard>
 
 			<!-- El selector de salida, encima de la tarjeta: el applet mide lo
 			     que mide y una lista que empujara la tarjeta la sacaría de la
-			     ventana. Elegir una de varias es un grupo de `radio` nativos: así
-			     se anuncia cuál está puesta y las flechas pasan de una a otra. -->
+			     ventana. Es `OptionGroup` de la librería, el mismo del applet de
+			     audio: un `radiogroup` con las flechas y un solo Tab. -->
 			<div
 				v-if="pickingOutput"
 				class="absolute inset-0 z-10 flex min-h-0 flex-col gap-2 rounded-corner-m bg-ui-surface p-2"
 			>
-				<div class="flex items-center gap-2">
-					<button
-						type="button"
-						class="flex h-7 w-7 items-center justify-center rounded-corner-full text-tx-main hover:bg-ui-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+				<div class="flex min-w-0 items-center gap-2">
+					<ActionButton
+						label=""
+						icon="go-previous"
+						:icon-alt="t('views.musicApplet.back')"
 						:title="t('views.musicApplet.back')"
-						:aria-label="t('views.musicApplet.back')"
+						variant="ghost"
+						size="sm"
 						@click="pickingOutput = false"
-					>
-						<ThemeIcon name="go-previous" type="symbol" :size="16" />
-					</button>
-					<h2 class="text-label-m font-medium text-tx-main">{{ t('views.musicApplet.chooseOutput') }}</h2>
+					/>
+					<h2 class="min-w-0 truncate text-label-m font-medium text-tx-main">{{ t('views.musicApplet.chooseOutput') }}</h2>
 				</div>
 
 				<p v-if="devices.length === 0" class="px-2 text-label-xs text-tx-muted">
 					{{ t('views.musicApplet.noOutputs') }}
 				</p>
-				<fieldset v-else class="flex min-h-0 flex-col gap-1 overflow-y-auto">
-					<legend class="sr-only">{{ t('views.musicApplet.chooseOutput') }}</legend>
-					<label
-						v-for="device in devices"
-						:key="device.id"
-						class="flex w-full cursor-pointer items-center gap-2 rounded-corner-m px-2 py-1.5 text-left text-label-m transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary has-[:disabled]:cursor-wait"
-						:class="device.id === output?.id ? 'bg-primary text-tx-on-primary' : 'text-tx-main hover:bg-ui-hover'"
-					>
-						<input
-							type="radio"
-							name="music-applet-output"
-							class="sr-only"
-							:value="device.id"
-							:checked="device.id === output?.id"
-							:disabled="switching !== null"
-							@change="chooseOutput(device)"
-						/>
-						<ThemeIcon :name="outputIcon(device)" type="symbol" :size="16" />
-						<span class="min-w-0 flex-1 truncate">{{ outputLabel(device) }}</span>
-					</label>
-				</fieldset>
+				<div v-else class="min-h-0 overflow-y-auto">
+					<OptionGroup
+						v-model="checkedOutput"
+						:options="outputOptions"
+						:label="t('views.musicApplet.chooseOutput')"
+						:disabled="switching !== null"
+						size="sm"
+						@change="onOutputChange"
+					/>
+				</div>
 			</div>
 		</div>
 	</AppletPopover>

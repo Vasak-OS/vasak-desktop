@@ -52,6 +52,7 @@ views:
     categories: Categories
   connect:
     title: Phone
+    chooseDevice: Choose the phone
     menuAlt: Phone applications
     noDevice: No phone
     plugIn: Plug in an Android phone with USB debugging enabled.
@@ -164,6 +165,10 @@ components:
     loopTrack: Repeat track
     raise: Go to the player
     choosePlayer: Choose player
+  NetworkControl:
+    connected: Connected
+    vpn: Connected through VPN
+    disconnected: Disconnected
   NetworkControlArea:
     title: Networks
     wifiUnavailable: Wi-Fi not available on this device
@@ -249,6 +254,7 @@ components:
     disconnected: "Twingate: disconnected"
     pending: "Twingate: {0} resources to authorize"
   TrayMusicControl:
+    progress: Track progress
     openPlayer: Open the player
     nothingPlaying: Nothing is playing
     previous: Previous

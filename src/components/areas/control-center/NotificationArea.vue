@@ -23,23 +23,23 @@
           }})
         </span>
       </span>
-      <button
+      <ActionButton
+        :label="t('components.NotificationArea.clearAll')"
+        size="sm"
+        custom-class="shrink-0"
         @click="clearAllNotifications"
-        class="shrink-0 text-label-xs px-3 py-1 bg-primary text-tx-on-primary rounded-corner-m hover:bg-primary/90 transition-colors"
-      >
-        {{ t('components.NotificationArea.clearAll') }}
-      </button>
+      />
     </div>
 
-    <div
+    <EmptyState
       v-if="groupedNotifications.length === 0"
-      class="text-center transition-opacity duration-300 ease-in-out text-tx-muted py-6"
-    >
-      <ThemeIcon name="preferences-desktop-notification" type="symbol" :size="24" class="opacity-60 mx-auto" />
-      <p class="mt-1 text-label-m">{{ t('components.NotificationArea.empty') }}</p>
-    </div>
+      :title="t('components.NotificationArea.empty')"
+      icon="preferences-desktop-notification"
+      icon-type="symbol"
+      size="sm"
+    />
 
-    <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-active-class="transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-from-class="opacity-0 translate-x-full scale-90" leave-to-class="opacity-0 translate-x-[-30%] scale-95" tag="div" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-1">
+    <TransitionGroup move-class="transition-transform duration-300 ease-ui" enter-active-class="transition-[opacity,translate] duration-300 ease-ui-out" leave-active-class="transition-[opacity,translate] duration-200 ease-ui" enter-from-class="opacity-0 translate-x-4" leave-to-class="opacity-0 -translate-x-4" tag="div" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-1">
       <NotificationGroupCard
         v-for="group in groupedNotifications"
         :key="group.app_name"
@@ -55,7 +55,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ActionButton, EmptyState } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
 import type {

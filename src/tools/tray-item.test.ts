@@ -149,9 +149,25 @@ describe('lo que no viene no se dibuja', () => {
 		expect(button).toContain('v-if="overlay"');
 	});
 
-	test('el contador de la librería', () => {
-		// El de `TrayIconButton`: sale de la librería, no se dibuja a mano.
+	test('el contador y el progreso de las ventanas son los de la librería', () => {
+		// Los de `TrayIconButton` 2.2.0: salen de la librería, no se dibujan a
+		// mano. Sin progreso le llega `null`, y la librería no dibuja la línea.
 		expect(windowButton).toContain(':badge="badge"');
-		expect(windowButton).toContain('v-if="progress !== undefined"');
+		expect(windowButton).toContain(':progress="progress ?? null"');
+		expect(windowButton).not.toContain('<ProgressBar');
+	});
+
+	test('la barra de la bandeja es la fina de la librería', () => {
+		expect(panel).toMatch(/<ProgressBar[^>]*size="xs"/);
+	});
+
+	test('el contador de la bandeja no se parte', () => {
+		// `Badge` de la librería parte «99+» en columna sobre un icono de
+		// 28 px (ver TrayCountBadge.vue): hasta que se arregle allá, el local
+		// no se corta y no se envuelve.
+		const badge = read('src/components/indicators/TrayCountBadge.vue');
+		const template = badge.slice(badge.indexOf('<template>'));
+		expect(template).toContain('whitespace-nowrap');
+		expect(template).not.toMatch(/break-words|max-w-full/);
 	});
 });
