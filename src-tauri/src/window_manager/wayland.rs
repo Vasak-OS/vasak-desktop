@@ -145,6 +145,7 @@ impl WaylandManager {
             is_minimized: view.minimized.unwrap_or(false),
             icon,
             demands_attention: None,
+            app_id: Self::field(view.app_id.as_deref()).map(str::to_string),
         })
     }
 }

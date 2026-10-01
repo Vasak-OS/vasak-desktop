@@ -2,6 +2,11 @@ use serde::Deserialize;
 use zbus::zvariant::{Type, OwnedValue};
 use zbus::proxy;
 
+/// Cuánto se espera a `AboutToShow`, que es opcional.
+const ABOUT_TO_SHOW_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
+/// Cuánto se espera a `GetLayout` antes de dar el menú por perdido.
+const GET_LAYOUT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+
 /// Estructura que representa un nodo del menú DBusMenu
 #[derive(Debug, Deserialize, Type)]
 pub struct DbusMenuLayout(
@@ -26,13 +31,19 @@ pub async fn call_get_layout(
     menu_path: &str,
     parent_id: i32,
 ) -> zbus::Result<(i32, DbusMenuLayout)> {
-    let reply = conn.call_method(
+    let args = (parent_id, -1i32, Vec::<&str>::new());
+    let call = conn.call_method(
         Some(bus_name),
         menu_path,
         Some("com.canonical.dbusmenu"),
         "GetLayout",
-        &(parent_id, -1i32, Vec::<&str>::new()),
-    ).await?;
+        &args,
+    );
+    // zbus 4 no pone tope a una llamada: un programa colgado que no contesta
+    // dejaba el clic derecho esperando para siempre.
+    let reply = tokio::time::timeout(GET_LAYOUT_TIMEOUT, call)
+        .await
+        .map_err(|_| zbus::Error::Failure("GetLayout no contestó a tiempo".into()))??;
 
     let body = reply.body();
     let data = body.data();
@@ -58,13 +69,15 @@ pub async fn call_about_to_show(
     menu_path: &str,
     id: i32,
 ) {
-    let _ = conn.call_method(
+    let call = conn.call_method(
         Some(bus_name),
         menu_path,
         Some("com.canonical.dbusmenu"),
         "AboutToShow",
         &id,
-    ).await;
+    );
+    // Es un aviso: si no contesta enseguida, el menú se pide igual.
+    let _ = tokio::time::timeout(ABOUT_TO_SHOW_TIMEOUT, call).await;
 }
 
 #[proxy(

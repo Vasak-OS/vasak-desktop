@@ -107,18 +107,106 @@ pub struct AudioDevice {
     pub volume: f64,
 }
 
+/// Un icono tal como lo manda el elemento: por nombre del tema, por mapa de
+/// bits, o las dos cosas. Los campos ausentes no se dibujan.
+///
+/// `data` es siempre un PNG en base64 que ya pasó por el tope de tamaño
+/// (`tray::pixmap`): el mapa de bits ARGB32 de StatusNotifierItem se convierte,
+/// y el `icon-data` de dbusmenu se valida antes de reenviarlo.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct TrayIcon {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub data: Option<String>,
+}
+
+impl TrayIcon {
+    /// `None` cuando no trae ni nombre ni mapa de bits: un icono vacío no es un
+    /// icono, y la vista no tiene que dibujar un hueco por él.
+    pub fn non_empty(self) -> Option<Self> {
+        if self.name.is_none() && self.data.is_none() {
+            None
+        } else {
+            Some(self)
+        }
+    }
+}
+
+/// El globo del elemento (`ToolTip` de StatusNotifierItem): icono, título y
+/// descripción. La descripción puede venir con el subconjunto de XHTML que
+/// admite la especificación; acá llega ya como texto plano.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct TrayTooltip {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub icon: Option<TrayIcon>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub description: Option<String>,
+}
+
+/// Lo que `com.canonical.Unity.LauncherEntry` dice de la aplicación del
+/// elemento, **sólo lo visible**: un contador con `count-visible` en falso no
+/// llega acá. Ver `tray::launcher_entry`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct LauncherBadge {
+    /// El contador, mayor que cero.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub count: Option<i64>,
+    /// El progreso, de 0 a 1.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub progress: Option<f64>,
+    /// La aplicación pide atención.
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub urgent: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrayItem {
     pub id: String,
     pub service_name: String,
     pub bus_name: Option<String>,
+    /// `IconName`. Ausente si vino vacío.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub icon_name: Option<String>,
+    /// `IconPixmap`, convertido a PNG. Ausente si vino vacío o no sirve.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub icon_data: Option<String>,
+    /// La insignia superpuesta (`OverlayIconName` / `OverlayIconPixmap`).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub overlay_icon: Option<TrayIcon>,
+    /// El icono de atención (`AttentionIconName` / `AttentionIconPixmap`).
+    /// Sólo se dibuja con `status = NeedsAttention`.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub attention_icon: Option<TrayIcon>,
+    /// `AttentionMovieName`: un nombre del tema o una ruta absoluta.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub attention_movie_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub title: Option<String>,
-    pub tooltip: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub tooltip: Option<TrayTooltip>,
     pub status: TrayStatus,
     pub category: TrayCategory,
     pub menu_path: Option<String>,
+    /// `ItemIsMenu`: el elemento sólo tiene menú, así que el clic principal
+    /// también lo abre.
+    #[serde(default)]
+    pub item_is_menu: bool,
+    /// Progreso, contador y urgencia de la aplicación, si los publica.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub launcher: Option<LauncherBadge>,
+    /// La ruta del objeto, para reconocer de quién es una señal.
+    #[serde(skip)]
+    pub object_path: String,
+    /// El nombre único (`:1.42`) del dueño: las señales llegan con ése, aunque
+    /// el elemento se haya registrado con un nombre conocido.
+    #[serde(skip)]
+    pub unique_name: Option<String>,
+    /// El proceso dueño, para asociarle su `LauncherEntry`.
+    #[serde(skip)]
+    pub pid: Option<u32>,
 }
 
 /// Estado de un elemento del system tray
@@ -130,6 +218,18 @@ pub enum TrayStatus {
     Passive,
     /// El elemento necesita atención
     NeedsAttention,
+}
+
+impl TrayStatus {
+    /// Un valor fuera de la especificación cuenta como `Passive`, que es lo
+    /// que ya se hacía al leer la propiedad.
+    pub fn parse(value: &str) -> Self {
+        match value {
+            "Active" => TrayStatus::Active,
+            "NeedsAttention" => TrayStatus::NeedsAttention,
+            _ => TrayStatus::Passive,
+        }
+    }
 }
 
 /// Categoría de un elemento del system tray
@@ -145,7 +245,40 @@ pub enum TrayCategory {
     Hardware,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// `toggle-type` de dbusmenu.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ToggleKind {
+    Checkmark,
+    Radio,
+}
+
+/// `toggle-state` de dbusmenu: 0 apagado, 1 encendido y cualquier otro valor
+/// —el −1 por omisión incluido— indeterminado.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ToggleState {
+    Off,
+    On,
+    Indeterminate,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TrayToggle {
+    pub kind: ToggleKind,
+    pub state: ToggleState,
+}
+
+/// `disposition` de dbusmenu. `normal` no se manda: es la entrada de siempre.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum MenuDisposition {
+    Informative,
+    Warning,
+    Alert,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct TrayMenu {
     pub id: i32,
     pub label: String,
@@ -153,9 +286,30 @@ pub struct TrayMenu {
     pub visible: bool,
     #[serde(rename = "type")]
     pub menu_type: String,
-    pub checked: Option<bool>,
-    pub icon: Option<String>,
+    /// Casilla u opción de radio, con su estado. Ausente si no es tildable.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub toggle: Option<TrayToggle>,
+    /// `icon-name` y/o `icon-data` (PNG validado).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub icon: Option<TrayIcon>,
+    /// `shortcut`: cada elemento es una pulsación, con los modificadores y la
+    /// tecla al final (`[["Control", "q"]]`).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub shortcut: Option<Vec<Vec<String>>>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub disposition: Option<MenuDisposition>,
     pub children: Option<Vec<TrayMenu>>,
+    /// Lo que mandó el elemento, sin interpretar: `toggle` se arma con los
+    /// dos, y una actualización parcial (`ItemsPropertiesUpdated`) puede traer
+    /// sólo uno.
+    #[serde(skip)]
+    pub raw_toggle_type: Option<String>,
+    #[serde(skip)]
+    pub raw_toggle_state: Option<i32>,
+    #[serde(skip)]
+    pub raw_children_display: Option<String>,
+    #[serde(skip)]
+    pub raw_type: Option<String>,
 }
 
 pub type TrayManager = Arc<AsyncRwLock<HashMap<String, TrayItem>>>;
@@ -164,7 +318,7 @@ pub type TrayManager = Arc<AsyncRwLock<HashMap<String, TrayItem>>>;
 pub struct SystrayPopupPayload {
     pub icon_id: String,
     pub icon_data: Option<String>,
-    pub tooltip: Option<String>,
+    pub tooltip: Option<TrayTooltip>,
     pub status: Option<TrayStatus>,
     pub title: String,
     pub service_name: String,

@@ -14,6 +14,11 @@ pub struct WindowInfo {
     pub is_minimized: bool,
     pub icon: String,
     pub demands_attention: Option<bool>,
+    /// El `app-id` de la ventana, que en Wayland es el id de su `.desktop`. Con
+    /// él se le asocia el contador y el progreso que la aplicación publica por
+    /// `com.canonical.Unity.LauncherEntry`.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub app_id: Option<String>,
 }
 
 pub trait WindowManagerBackend: Send + Sync {

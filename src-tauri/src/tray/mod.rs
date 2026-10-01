@@ -1,6 +1,13 @@
+#[cfg(test)]
+mod bus_tests;
+pub mod dbus_menu;
+pub mod item_props;
+pub mod launcher_entry;
+pub mod menu_props;
+pub mod pixmap;
+pub mod signals;
 pub mod sni_item;
 pub mod sni_watcher;
-pub mod dbus_menu;
 
 use crate::structs::TrayManager;
 use std::collections::HashMap;

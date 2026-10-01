@@ -1,9 +1,9 @@
 use super::{emit_tray_update, TrayManager};
 use crate::dbus_pool::DbusPool;
 use crate::logger::{log_debug, log_error, log_info, log_warning};
-use crate::structs::{TrayCategory, TrayItem, TrayStatus};
+use crate::tray::item_props::read_item;
+use crate::tray::launcher_entry::{attach_badges, connection_pid, unique_name_of, LauncherEntryStore};
 use crate::tray::sni_item::SniItemProxy;
-use base64::{engine::general_purpose, Engine as _};
 use futures_util::stream::StreamExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -39,6 +39,28 @@ fn normalise_service(service: &str, sender: Option<&str>) -> Option<String> {
     } else {
         Some(service.to_string())
     }
+}
+
+/// Los nombres conocidos con los que se registran los elementos.
+fn is_item_bus_name(name: &str) -> bool {
+    name.starts_with("org.kde.StatusNotifierItem-")
+        || name.starts_with("org.freedesktop.StatusNotifierItem-")
+}
+
+/// Un proxy del elemento **sin caché de propiedades**. El elemento no emite
+/// `PropertiesChanged` —avisa con `NewIcon` y compañía—, así que un proxy con
+/// caché contestaría para siempre lo primero que leyó.
+pub async fn sni_proxy<'a>(
+    connection: &Connection,
+    bus_name: &'a str,
+    object_path: &'a str,
+) -> zbus::Result<SniItemProxy<'a>> {
+    SniItemProxy::builder(connection)
+        .destination(bus_name)?
+        .path(object_path)?
+        .cache_properties(zbus::CacheProperties::No)
+        .build()
+        .await
 }
 
 /// True when `id` (a normalised item identifier) belongs to `bus_name`.
@@ -378,6 +400,31 @@ impl SniWatcher {
             }
         });
 
+        // Lo que cambia después de registrarse: iconos, globo, estado y menú.
+        if let Err(e) = crate::tray::signals::start(
+            self.connection.clone(),
+            self.tray_manager.clone(),
+            self.app_handle.clone(),
+        )
+        .await
+        {
+            log_error(&format!("[SNI] No se pudieron escuchar las señales de los elementos: {e}"));
+        }
+
+        // Progreso, contador y urgencia de las aplicaciones.
+        if let Some(store) = self.app_handle.try_state::<LauncherEntryStore>() {
+            if let Err(e) = crate::tray::launcher_entry::start(
+                self.connection.clone(),
+                self.tray_manager.clone(),
+                (*store).clone(),
+                self.app_handle.clone(),
+            )
+            .await
+            {
+                log_error(&format!("[LauncherEntry] No se pudo escuchar Update: {e}"));
+            }
+        }
+
         // Spawn periodic reconciliation task (every 30s)
         self.start_periodic_reconciliation();
 
@@ -493,17 +540,23 @@ impl SniWatcher {
             (service_name, "/StatusNotifierItem".to_string())
         };
 
-        let proxy = SniItemProxy::builder(connection)
-            .destination(bus_name)?
-            .path(object_path)?
-            .build()
-            .await?;
+        let proxy = sni_proxy(connection, bus_name, &object_path).await?;
 
-        let item = Self::create_tray_item_from_proxy(&proxy, service_name, bus_name).await?;
+        let mut item = read_item(&proxy, service_name, bus_name, &object_path).await;
+        item.menu_path = Self::read_menu_path(&proxy, &item.id).await;
+        item.unique_name = unique_name_of(connection, bus_name).await;
+        item.pid = connection_pid(connection, bus_name).await;
 
         {
             let mut manager = tray_manager.write().await;
             manager.insert(service_name.to_string(), item);
+        }
+
+        // Si la aplicación ya había publicado progreso o contador, le toca ahora.
+        if let Some(store) = app_handle.try_state::<LauncherEntryStore>() {
+            let entries = store.read().await;
+            let mut manager = tray_manager.write().await;
+            attach_badges(&mut manager, &entries);
         }
 
         emit_tray_update(app_handle).await;
@@ -529,41 +582,12 @@ impl SniWatcher {
         emit_tray_update(app_handle).await;
     }
 
-    async fn create_tray_item_from_proxy(
-        proxy: &SniItemProxy<'_>,
-        service_name: &str,
-        bus_name: &str,
-    ) -> Result<TrayItem, Box<dyn std::error::Error>> {
-        let id = proxy
-            .id()
-            .await
-            .unwrap_or_else(|_| service_name.to_string());
-        let title = proxy.title().await.ok();
-        let tooltip = proxy.tool_tip().await.ok();
-        let icon_name = proxy.icon_name().await.ok();
-
-        let status = match proxy.status().await.unwrap_or_default().as_str() {
-            "Active" => TrayStatus::Active,
-            "Passive" => TrayStatus::Passive,
-            "NeedsAttention" => TrayStatus::NeedsAttention,
-            _ => TrayStatus::Passive,
-        };
-
-        let category = match proxy.category().await.unwrap_or_default().as_str() {
-            "ApplicationStatus" => TrayCategory::ApplicationStatus,
-            "Communications" => TrayCategory::Communications,
-            "SystemServices" => TrayCategory::SystemServices,
-            "Hardware" => TrayCategory::Hardware,
-            _ => TrayCategory::ApplicationStatus,
-        };
-
-        let icon_data = Self::get_icon_data(proxy).await;
-        // The path the item actually publishes wins. The fallback below is the
-        // libayatana convention and it is a guess: it only happens to be right
-        // for apps built on libayatana-appindicator, so reaching for it when the
-        // item did tell us where its menu lives is how items ended up with no
-        // context menu at all.
-        let menu_path = match proxy
+    /// El camino del menú. El que publica el elemento gana; el de libayatana es
+    /// una suposición que sólo acierta con las aplicaciones hechas sobre
+    /// libayatana-appindicator, así que ir a buscarlo cuando el elemento sí dijo
+    /// dónde vive su menú es como quedaban elementos sin menú contextual.
+    async fn read_menu_path(proxy: &SniItemProxy<'_>, id: &str) -> Option<String> {
+        match proxy
             .menu()
             .await
             .ok()
@@ -577,115 +601,7 @@ impl SniWatcher {
                 ));
                 Some(format!("/org/ayatana/NotificationItem/{}/Menu", id))
             }
-        };
-
-        Ok(TrayItem {
-            id,
-            service_name: service_name.to_string(),
-            bus_name: Some(bus_name.to_string()),
-            icon_name,
-            icon_data,
-            title,
-            tooltip,
-            status,
-            category,
-            menu_path,
-        })
-    }
-
-    async fn get_icon_data(proxy: &SniItemProxy<'_>) -> Option<String> {
-        // Try to get icon pixmap first
-        if let Ok(pixmaps) = proxy.icon_pixmap().await {
-            if let Some(pixmap) = Self::pick_pixmap(&pixmaps) {
-                if let Ok(base64_data) = Self::convert_pixmap_to_base64(pixmap) {
-                    return Some(base64_data);
-                }
-            }
         }
-
-        // Fallback to icon theme lookup if icon_name is available
-        if let Ok(icon_name) = proxy.icon_name().await {
-            return Self::get_icon_from_theme(&icon_name).await;
-        }
-
-        None
-    }
-
-    /// Las aplicaciones publican el mismo icono en varios tamanos. El panel lo
-    /// dibuja a 16 px logicos, que en pantallas con escala son 32 o mas, asi que
-    /// tomar el primero (normalmente 16x16) daba un icono borroso al ampliarlo.
-    /// Se elige el mas chico que llegue a 48 px, y si ninguno llega, el mayor.
-    fn pick_pixmap(pixmaps: &[(i32, i32, Vec<u8>)]) -> Option<&(i32, i32, Vec<u8>)> {
-        let valido = |p: &&(i32, i32, Vec<u8>)| {
-            p.0 > 0 && p.1 > 0 && p.2.len() == (p.0 as usize) * (p.1 as usize) * 4
-        };
-        pixmaps
-            .iter()
-            .filter(valido)
-            .filter(|p| p.0.min(p.1) >= 48)
-            .min_by_key(|p| p.0.min(p.1))
-            .or_else(|| pixmaps.iter().filter(valido).max_by_key(|p| p.0.min(p.1)))
-    }
-
-    fn convert_pixmap_to_base64(
-        pixmap: &(i32, i32, Vec<u8>),
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let (width, height, data) = pixmap;
-
-        // IconPixmap viene en ARGB32 con orden de red (big-endian), o sea que
-        // cada pixel son los bytes [A, R, G, B]. Antes se reordenaba como
-        // [G, R, A, B], que rotaba los canales: el azul de Telegram salia
-        // violeta y su insignia roja quedaba como un halo semitransparente.
-        let mut rgba_data = Vec::with_capacity(data.len());
-        for chunk in data.chunks(4) {
-            if chunk.len() == 4 {
-                rgba_data.extend_from_slice(&[chunk[1], chunk[2], chunk[3], chunk[0]]);
-            }
-        }
-
-        let img = image::RgbaImage::from_raw(*width as u32, *height as u32, rgba_data)
-            .ok_or("Failed to create image")?;
-
-        let mut buffer = Vec::new();
-        img.write_to(
-            &mut std::io::Cursor::new(&mut buffer),
-            image::ImageFormat::Png,
-        )?;
-
-        Ok(general_purpose::STANDARD.encode(&buffer))
-    }
-
-    async fn get_icon_from_theme(icon_name: &str) -> Option<String> {
-        // Cache for icon lookups
-        static ICON_CACHE: std::sync::OnceLock<crate::utils::performance::TtlCache<String, String>> = std::sync::OnceLock::new();
-        let cache = ICON_CACHE.get_or_init(|| crate::utils::performance::TtlCache::new(300)); // 5 min TTL
-
-        // Check cache first
-        if let Some(cached) = cache.get(&icon_name.to_string()) {
-            return Some(cached);
-        }
-
-        // Simple icon theme lookup - you might want to use a proper icon theme library
-        let common_paths = [
-            format!("/usr/share/icons/hicolor/16x16/apps/{}.png", icon_name),
-            format!("/usr/share/icons/hicolor/22x22/apps/{}.png", icon_name),
-            format!("/usr/share/icons/hicolor/24x24/apps/{}.png", icon_name),
-            format!("/usr/share/pixmaps/{}.png", icon_name),
-             // Add more paths or sizes as needed
-            format!("/usr/share/icons/hicolor/48x48/apps/{}.png", icon_name),
-            format!("/usr/share/icons/hicolor/scalable/apps/{}.svg", icon_name),
-        ];
-
-        for path in &common_paths {
-            if let Ok(data) = tokio::fs::read(path).await {
-                let encoded = general_purpose::STANDARD.encode(&data);
-                // Cache the result
-                cache.insert(icon_name.to_string(), encoded.clone());
-                return Some(encoded);
-            }
-        }
-
-        None
     }
 
     async fn discover_existing_items(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -701,7 +617,12 @@ impl SniWatcher {
         let names: Vec<String> = proxy.call("ListNames", &()).await?;
 
         for name in names {
-            if name.starts_with("org.kde.StatusNotifierItem") {
+            // La especificación de freedesktop nombra los elementos
+            // `org.freedesktop.StatusNotifierItem-PID-ID` y la de KDE
+            // `org.kde.StatusNotifierItem-…`. Sólo se buscaba la segunda, y
+            // Chromium, Electron y Qt usan la primera: los que ya estaban
+            // abiertos al arrancar el panel no aparecían hasta re-registrarse.
+            if is_item_bus_name(&name) {
                 // The error is flattened to a String right away: `Box<dyn Error>` is
                 // not `Send` and would poison this future for the applet runtime.
                 let registered = Self::register_item(

@@ -3,6 +3,8 @@ use crate::monitor_manager::get_primary_monitor;
 use crate::panel_position;
 use crate::structs::{SystrayPopupPayload, SystrayPopupState, TrayItem, TrayManager, TrayMenu};
 use crate::tray::dbus_menu::{call_about_to_show, call_get_layout, DbusMenuLayout, DbusMenuProxy};
+use crate::tray::launcher_entry::{visible_entries, LauncherEntryStore, LauncherEntryView};
+use crate::tray::menu_props::parse_layout;
 use crate::tray::sni_item::SniItemProxy;
 use crate::tray::sni_watcher::SniWatcher;
 use crate::windows_apps::anchored_applet::{open_anchored_applet, AnchorRect};
@@ -60,6 +62,16 @@ pub async fn init_sni_watcher(
 
     log_info("SNI watcher iniciado correctamente");
     Ok(())
+}
+
+/// Progreso, contador y urgencia de las aplicaciones que los publican por
+/// `com.canonical.Unity.LauncherEntry`, para las ventanas del panel. Sólo lo
+/// visible; los cambios llegan después con `launcher-entry-update`.
+#[tauri::command]
+pub async fn get_launcher_entries(
+    store: tauri::State<'_, LauncherEntryStore>,
+) -> Result<Vec<LauncherEntryView>, String> {
+    Ok(visible_entries(&*store.read().await))
 }
 
 #[tauri::command]
@@ -141,158 +153,7 @@ pub async fn tray_item_secondary_activate(
     Ok(())
 }
 
-fn get_string(v: &Value) -> String {
-    match v {
-        Value::Str(s) => s.as_str().to_string(),
-        Value::Value(inner) => get_string(inner.as_ref()),
-        _ => String::new(),
-    }
-}
-
-fn get_bool(v: &Value) -> bool {
-    match v {
-        Value::Bool(b) => *b,
-        Value::Value(inner) => get_bool(inner.as_ref()),
-        _ => true, // default
-    }
-}
-
-fn get_i32(v: &Value) -> Option<i32> {
-    match v {
-        Value::I32(i) => Some(*i),
-        Value::Value(inner) => get_i32(inner.as_ref()),
-        _ => None,
-    }
-}
-
-// Helper to extract properties from zvariant::Dict
-/// La etiqueta de una entrada de dbusmenu, sin la marca del atajo de teclado.
-///
-/// La especificación marca la letra del atajo con un guion bajo adelante
-/// («_Salir») y escribe `__` para un guion bajo de verdad. El nivel superior del
-/// menú los borraba todos —y con ellos el literal— y el de los hijos ninguno,
-/// así que en los submenús se leía «_Salir».
-fn menu_label(raw: &str) -> String {
-    let mut label = String::with_capacity(raw.len());
-    let mut chars = raw.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '_' {
-            if chars.peek() == Some(&'_') {
-                chars.next();
-                label.push('_');
-            }
-        } else {
-            label.push(c);
-        }
-    }
-    label
-}
-
-/// Si una entrada está tildada, sólo si es tildable.
-///
-/// `toggle-state` no significa nada sin `toggle-type` («checkmark» o «radio»), y
-/// hay programas que lo mandan en 0 o -1 en entradas comunes: tomarlo igual las
-/// dibujaba como casillas destildadas.
-fn menu_checked(toggle_type: Option<&str>, toggle_state: Option<i32>) -> Option<bool> {
-    match toggle_type {
-        Some("checkmark") | Some("radio") => Some(toggle_state == Some(1)),
-        _ => None,
-    }
-}
-
-fn extract_props_from_dict(
-    dict: &zbus::zvariant::Dict,
-) -> (String, bool, bool, String, Option<String>, Option<bool>) {
-    let mut label = String::new();
-    let mut enabled = true;
-    let mut visible = true;
-    let mut menu_type = "standard".to_string();
-    let mut icon_name = None;
-    let mut toggle_type = None;
-    let mut toggle_state = None;
-
-    for (k, v) in dict.iter() {
-        // k and v are &Value
-        let key_str = match k {
-            Value::Str(s) => s.as_str(),
-            _ => continue,
-        };
-
-        match key_str {
-            "label" => label = menu_label(&get_string(v)),
-            "enabled" => enabled = get_bool(v),
-            "visible" => visible = get_bool(v),
-            "type" => menu_type = get_string(v),
-            "children-display" => {
-                let child_display = get_string(v);
-                if child_display == "submenu" {
-                    menu_type = "submenu".to_string();
-                }
-            }
-            "icon-name" => icon_name = Some(get_string(v)),
-            "toggle-type" => toggle_type = Some(get_string(v)),
-            "toggle-state" => toggle_state = get_i32(v),
-            _ => {}
-        }
-    }
-
-    let checked = menu_checked(toggle_type.as_deref(), toggle_state);
-    (label, enabled, visible, menu_type, icon_name, checked)
-}
-
-fn parse_dbus_menu_value(v: &Value) -> Option<TrayMenu> {
-    let s = match v {
-        Value::Structure(s) => s,
-        _ => return None,
-    };
-
-    let fields = s.fields();
-    if fields.len() < 3 {
-        return None;
-    }
-
-    let id = get_i32(&fields[0]).unwrap_or(0);
-
-    let (label, enabled, visible, menu_type, icon_name, checked) = match &fields[1] {
-        Value::Dict(d) => extract_props_from_dict(d),
-        _ => (
-            String::new(),
-            true,
-            true,
-            "standard".to_string(),
-            None,
-            None,
-        ),
-    };
-
-    let mut children = Vec::new();
-    if let Value::Array(a) = &fields[2] {
-        for child in a.iter() {
-            if let Some(menu) = parse_dbus_menu_value(child) {
-                children.push(menu);
-            }
-        }
-    }
-
-    Some(TrayMenu {
-        id,
-        // Ya viene sin la marca del atajo: `extract_props_from_dict` la sacó.
-        // Otra pasada convertía `mi__archivo` en `miarchivo`.
-        label,
-        enabled,
-        visible,
-        menu_type,
-        checked,
-        icon: icon_name,
-        children: if children.is_empty() {
-            None
-        } else {
-            Some(children)
-        },
-    })
-}
-
-fn load_dbus_menu_level<'a>(
+pub fn load_dbus_menu_level<'a>(
     conn: &'a Connection,
     bus_name: &'a str,
     menu_path: &'a str,
@@ -329,49 +190,8 @@ fn load_dbus_menu_level<'a>(
 }
 
 fn parse_dbus_menu_layout(layout: DbusMenuLayout) -> TrayMenu {
-    let DbusMenuLayout(id, props, children_variants) = layout;
-
-    let label = props
-        .get("label")
-        .map(|v| get_string(v))
-        .unwrap_or_default();
-    let enabled = props.get("enabled").map(|v| get_bool(v)).unwrap_or(true);
-    let visible = props.get("visible").map(|v| get_bool(v)).unwrap_or(true);
-    let menu_type = props
-        .get("type")
-        .map(|v| get_string(v))
-        .unwrap_or_else(|| "standard".to_string());
-    let icon_name = props.get("icon-name").map(|v| get_string(v));
-
-    let toggle_type = props.get("toggle-type").map(|v| get_string(v));
-    let checked = menu_checked(
-        toggle_type.as_deref(),
-        props.get("toggle-state").and_then(|v| get_i32(v)),
-    );
-
-    let mut children: Vec<TrayMenu> = Vec::new();
-
-    for child_variant in children_variants {
-        // child_variant is OwnedValue -> &Value
-        if let Some(child_menu) = parse_dbus_menu_value(&child_variant) {
-            children.push(child_menu);
-        }
-    }
-
-    TrayMenu {
-        id,
-        label: label.replace("_", ""),
-        enabled,
-        visible,
-        menu_type,
-        checked,
-        icon: icon_name,
-        children: if children.is_empty() {
-            None
-        } else {
-            Some(children)
-        },
-    }
+    let DbusMenuLayout(id, props, children) = layout;
+    parse_layout(id, &props, &children)
 }
 
 #[tauri::command]
@@ -641,7 +461,7 @@ pub async fn open_tray_popup(
     *popup_state
         .0
         .lock()
-        .unwrap_or_else(|envenenado| envenenado.into_inner()) = Some(payload);
+        .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(payload);
 
     // Se abre siempre, aunque ya estuviera abierto: el mismo applet muestra
     // el menú de otro icono, y tiene que mudarse debajo de ése. La página vuelve
@@ -668,7 +488,7 @@ pub async fn get_tray_popup_data(
     let data = popup_state
         .0
         .lock()
-        .unwrap_or_else(|envenenado| envenenado.into_inner())
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
         .clone();
     Ok(data)
 }
@@ -683,7 +503,7 @@ pub async fn tray_popup_click(
         let data = popup_state
             .0
             .lock()
-            .unwrap_or_else(|envenenado| envenenado.into_inner());
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         data.as_ref().map(|d| d.service_name.clone())
     }
     .ok_or("No popup data available")?;
@@ -722,14 +542,8 @@ mod tests {
 
     fn entry(label: &str) -> TrayMenu {
         TrayMenu {
-            id: 1,
             label: label.into(),
-            enabled: true,
-            visible: true,
-            menu_type: "standard".into(),
-            checked: None,
-            icon: None,
-            children: None,
+            ..crate::tray::menu_props::new_entry(1)
         }
     }
 
@@ -786,33 +600,6 @@ mod tests {
     #[test]
     fn un_menu_vacio_tiene_lugar_para_el_aviso() {
         assert_eq!(tray_menu_size(&[]).1, TRAY_MENU_CHROME + TRAY_MENU_ITEM);
-    }
-
-    #[test]
-    fn la_marca_del_atajo_se_va_y_el_guion_bajo_literal_queda() {
-        assert_eq!(menu_label("_Salir"), "Salir");
-        assert_eq!(menu_label("Abrir _carpeta"), "Abrir carpeta");
-        assert_eq!(menu_label("mi__archivo"), "mi_archivo");
-        assert_eq!(menu_label("Sin atajo"), "Sin atajo");
-    }
-
-    #[test]
-    fn solo_se_tilda_lo_que_es_tildable() {
-        assert_eq!(menu_checked(Some("checkmark"), Some(1)), Some(true));
-        assert_eq!(menu_checked(Some("radio"), Some(0)), Some(false));
-        assert_eq!(menu_checked(Some("checkmark"), None), Some(false));
-        assert_eq!(menu_checked(None, Some(0)), None);
-        assert_eq!(menu_checked(Some(""), Some(-1)), None);
-    }
-
-    #[test]
-    fn el_parser_completo_conserva_el_guion_bajo_literal() {
-        use std::collections::HashMap;
-        let mut props: HashMap<String, Value> = HashMap::new();
-        props.insert("label".into(), Value::from("mi__archivo"));
-        let child = Value::from((7i32, props, Vec::<Value>::new()));
-        let parsed = parse_dbus_menu_value(&child).expect("la entrada se lee");
-        assert_eq!(parsed.label, "mi_archivo");
     }
 
     #[test]
