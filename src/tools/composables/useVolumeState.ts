@@ -3,7 +3,11 @@ import type { VolumeInfo } from '@/interfaces/volume';
 import { getAudioVolume, setAudioVolume, toggleAudioMute } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
-import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
+import {
+	calculateVolumePercentage,
+	getVolumeIconName,
+	volumePercentageClass,
+} from '@/utils/volume';
 
 export function useVolumeState() {
 	const volumeInfo = ref<VolumeInfo>({
@@ -71,9 +75,7 @@ export function useVolumeState() {
 	}
 
 	function getPercentageClass(percentage: number) {
-		if (volumeInfo.value.is_muted) return 'text-status-error';
-		if (percentage > 80) return 'text-status-success';
-		return '';
+		return volumePercentageClass(volumeInfo.value.is_muted, percentage);
 	}
 
 	useSharedEvent<VolumeInfo>(
