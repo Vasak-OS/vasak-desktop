@@ -17,7 +17,7 @@ import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import TrayNetworkRateControl from '@/components/controls/TrayNetworkRateControl.vue';
 import TrayWeatherControl from '@/components/controls/TrayWeatherControl.vue';
-import Badge from '@/components/indicators/Badge.vue';
+import TrayCountBadge from '@/components/indicators/TrayCountBadge.vue';
 import type { TrayItem } from '@/interfaces/tray';
 import { batteryExists } from '@/services/core.service';
 import {
@@ -224,14 +224,12 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
              superpuesta si la manda -->
         <TrayItemButton :item="item" />
 
-        <!-- El contador de LauncherEntry, sólo si la aplicación lo hace visible.
-             Copia provisoria de la Badge de la 2.1.0: ver Badge.vue. -->
-        <Badge
+        <!-- El contador de LauncherEntry, sólo si la aplicación lo hace visible:
+             el mismo de las ventanas del panel (ver TrayCountBadge.vue). -->
+        <TrayCountBadge
           v-if="countLabel(item.launcher?.count)"
-          tone="accent"
-          variant="solid"
           class="pointer-events-none absolute -top-1 -right-1"
-          :label="countLabel(item.launcher?.count)"
+          :label="countLabel(item.launcher?.count) ?? ''"
         />
         <!-- Pide atención y no hay contador que ya lo diga: el punto. -->
         <div
