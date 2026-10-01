@@ -2,7 +2,9 @@ use super::{emit_tray_update, TrayManager};
 use crate::dbus_pool::DbusPool;
 use crate::logger::{log_debug, log_error, log_info, log_warning};
 use crate::tray::item_props::read_item;
-use crate::tray::launcher_entry::{attach_badges, connection_pid, unique_name_of, LauncherEntryStore};
+use crate::tray::launcher_entry::{
+    attach_badges, connection_pid, unique_name_of, LauncherEntryStore,
+};
 use crate::tray::sni_item::SniItemProxy;
 use futures_util::stream::StreamExt;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -348,9 +350,9 @@ impl SniWatcher {
             .await
         {
             Ok(_) => log_info("[SNI] Nombre org.kde.StatusNotifierWatcher adquirido"),
-            Err(zbus::Error::NameTaken) => log_warning(
-                "[SNI] Otro StatusNotifierWatcher posee el nombre, no se reemplaza",
-            ),
+            Err(zbus::Error::NameTaken) => {
+                log_warning("[SNI] Otro StatusNotifierWatcher posee el nombre, no se reemplaza")
+            }
             Err(e) => return Err(e.into()),
         }
 
@@ -388,7 +390,9 @@ impl SniWatcher {
                     let is_tracked = {
                         let manager = tray_manager.read().await;
                         manager.contains_key(name)
-                            || manager.values().any(|v| v.bus_name.as_deref() == Some(name))
+                            || manager
+                                .values()
+                                .any(|v| v.bus_name.as_deref() == Some(name))
                     };
                     if is_tracked {
                         log_debug(&format!("[SNI] Name owner changed, removing: {}", name));
@@ -408,7 +412,9 @@ impl SniWatcher {
         )
         .await
         {
-            log_error(&format!("[SNI] No se pudieron escuchar las señales de los elementos: {e}"));
+            log_error(&format!(
+                "[SNI] No se pudieron escuchar las señales de los elementos: {e}"
+            ));
         }
 
         // Progreso, contador y urgencia de las aplicaciones.
@@ -466,7 +472,9 @@ impl SniWatcher {
                         continue;
                     }
                     Err(_) => {
-                        log_debug("[SNI] Reconciliation: ListNames timed out (5s). Skipping cycle.");
+                        log_debug(
+                            "[SNI] Reconciliation: ListNames timed out (5s). Skipping cycle.",
+                        );
                         continue;
                     }
                 };
@@ -563,11 +571,7 @@ impl SniWatcher {
         Ok(())
     }
 
-    async fn unregister_item(
-        tray_manager: &TrayManager,
-        app_handle: &AppHandle,
-        name: &str,
-    ) {
+    async fn unregister_item(tray_manager: &TrayManager, app_handle: &AppHandle, name: &str) {
         log_info(&format!("[SNI] Desregistrando item: {}", name));
 
         {

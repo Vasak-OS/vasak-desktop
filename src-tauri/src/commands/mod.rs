@@ -48,8 +48,8 @@ pub use session::{detect_display_server, logout, reboot, shutdown, suspend};
 pub use session_popup::toggle_session_popup;
 pub use tray::{
     get_launcher_entries, get_tray_items, get_tray_menu, get_tray_popup_data, init_sni_watcher,
-    load_dbus_menu_level, open_tray_popup,
-    tray_item_activate, tray_item_secondary_activate, tray_menu_item_click, tray_popup_click,
+    load_dbus_menu_level, open_tray_popup, tray_item_activate, tray_item_secondary_activate,
+    tray_menu_item_click, tray_popup_click,
 };
 pub use twingate::{twingate_authorize, twingate_info};
 pub use weather::{

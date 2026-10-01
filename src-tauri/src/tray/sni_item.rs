@@ -1,5 +1,8 @@
 use zbus::proxy;
 
+/// `ToolTip`: `(sa(iiay)ss)`, icono por nombre, mapas de bits, título y descripción.
+pub type ToolTip = (String, Vec<(i32, i32, Vec<u8>)>, String, String);
+
 #[proxy(
     interface = "org.kde.StatusNotifierItem",
     default_service = "org.kde.StatusNotifierItem",
@@ -79,7 +82,7 @@ trait SniItem {
     /// bits, título y descripción. Declarada como `String` fallaba siempre, y
     /// el panel no mostraba nunca el globo de ningún elemento.
     #[zbus(property)]
-    fn tool_tip(&self) -> zbus::Result<(String, Vec<(i32, i32, Vec<u8>)>, String, String)>;
+    fn tool_tip(&self) -> zbus::Result<ToolTip>;
 
     /// Menu property
     ///

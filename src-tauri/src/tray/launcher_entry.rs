@@ -431,7 +431,12 @@ pub async fn start(
         let store = store.clone();
         let app_handle = app_handle.clone();
         async move {
-            while let Some(Ok(message)) = updates.next().await {
+            // Un error suelto del flujo no lo corta: sólo `None` es el final.
+            while let Some(message) = updates.next().await {
+                let Ok(message) = message else {
+                    log_debug("[LauncherEntry] Error en el flujo de Update; se sigue");
+                    continue;
+                };
                 if record_signal(&connection, &store, &message).await {
                     publish(&app_handle, &tray_manager, &store).await;
                 }
@@ -440,7 +445,8 @@ pub async fn start(
     });
 
     tokio::spawn(async move {
-        while let Some(Ok(message)) = owners.next().await {
+        while let Some(message) = owners.next().await {
+            let Ok(message) = message else { continue };
             let body = message.body();
             let Ok((name, _old, new_owner)) = body.deserialize::<(&str, &str, &str)>() else {
                 continue;

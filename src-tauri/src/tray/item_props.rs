@@ -124,33 +124,47 @@ pub fn icon_from_parts(
     TrayIcon { name, data }.non_empty()
 }
 
-/// Busca `<nombre>.png` en la carpeta (hasta cuatro niveles: `hicolor/22x22/apps`).
+/// Los tamaños que se prueban en un `IconThemePath`, del que mejor se achica
+/// al que peor.
+const THEME_PATH_SIZES: [&str; 7] = [
+    "48x48", "64x64", "32x32", "128x128", "24x24", "22x22", "16x16",
+];
+
+/// Busca `<nombre>.png` en un `IconThemePath`, **sólo** en los lugares donde lo
+/// pone un tema de iconos: la carpeta misma, `<tamaño>/<contexto>/` y
+/// `hicolor/<tamaño>/<contexto>/`. No se recorre la carpeta: el camino lo da
+/// cualquier cliente del bus, y un `/` haría leer medio disco por cada icono.
+/// Son, como mucho, 29 `stat`.
 pub fn find_in_theme_path(path: &str, name: &str) -> Option<String> {
-    if path.trim().is_empty() || name.contains('/') {
+    if path.trim().is_empty() || name.is_empty() || name.contains('/') || name.contains("..") {
         return None;
     }
-    fn walk(dir: &std::path::Path, file: &str, depth: u8) -> Option<std::path::PathBuf> {
-        let candidate = dir.join(file);
-        if candidate.is_file() {
-            return Some(candidate);
+    let root = std::path::Path::new(path);
+    let file = format!("{name}.png");
+    let mut candidates = vec![root.join(&file)];
+    for base in [root.to_path_buf(), root.join("hicolor")] {
+        for size in THEME_PATH_SIZES {
+            for context in ["apps", "status"] {
+                candidates.push(base.join(size).join(context).join(&file));
+            }
         }
-        if depth == 0 {
-            return None;
-        }
-        let mut subdirs: Vec<_> = std::fs::read_dir(dir)
-            .ok()?
-            .filter_map(Result::ok)
-            .map(|e| e.path())
-            .filter(|p| p.is_dir())
-            .collect();
-        // Los tamaños grandes primero: se achica mejor que se agranda.
-        subdirs.sort();
-        subdirs.reverse();
-        subdirs.into_iter().find_map(|d| walk(&d, file, depth - 1))
     }
-    let found = walk(std::path::Path::new(path), &format!("{name}.png"), 4)?;
+    let found = candidates.into_iter().find(|c| c.is_file())?;
     let bytes = std::fs::read(found).ok()?;
     menu_icon_png_base64(&bytes)
+}
+
+/// [`icon_from_parts`] fuera del hilo del runtime: convierte mapas de bits y
+/// puede tocar el disco.
+async fn resolve_icon(
+    name: Option<String>,
+    pixmaps: Option<Vec<Pixmap>>,
+    theme_path: Option<String>,
+) -> Option<TrayIcon> {
+    tokio::task::spawn_blocking(move || icon_from_parts(name, pixmaps, theme_path.as_deref()))
+        .await
+        .ok()
+        .flatten()
 }
 
 /// El globo, o `None` si vino todo vacío.
@@ -179,42 +193,48 @@ fn parse_category(value: &str) -> TrayCategory {
 
 async fn read_icon(
     proxy: &SniItemProxy<'_>,
-    theme_path: Option<&str>,
+    theme_path: Option<String>,
 ) -> (Option<String>, Option<String>) {
-    let icon = icon_from_parts(
+    let icon = resolve_icon(
         proxy.icon_name().await.ok(),
         proxy.icon_pixmap().await.ok(),
         theme_path,
-    );
+    )
+    .await;
     match icon {
         Some(TrayIcon { name, data }) => (name, data),
         None => (None, None),
     }
 }
 
-async fn read_overlay(proxy: &SniItemProxy<'_>, theme_path: Option<&str>) -> Option<TrayIcon> {
-    icon_from_parts(
+async fn read_overlay(proxy: &SniItemProxy<'_>, theme_path: Option<String>) -> Option<TrayIcon> {
+    resolve_icon(
         proxy.overlay_icon_name().await.ok(),
         proxy.overlay_icon_pixmap().await.ok(),
         theme_path,
     )
+    .await
 }
 
 async fn read_attention(
     proxy: &SniItemProxy<'_>,
-    theme_path: Option<&str>,
+    theme_path: Option<String>,
 ) -> (Option<TrayIcon>, Option<String>) {
-    let icon = icon_from_parts(
+    let icon = resolve_icon(
         proxy.attention_icon_name().await.ok(),
         proxy.attention_icon_pixmap().await.ok(),
         theme_path,
-    );
+    )
+    .await;
     (icon, non_empty(proxy.attention_movie_name().await.ok()))
 }
 
 async fn read_tooltip(proxy: &SniItemProxy<'_>) -> Option<TrayTooltip> {
     let (name, pixmaps, title, description) = proxy.tool_tip().await.ok()?;
-    tooltip_from_parts(name, pixmaps, title, description)
+    tokio::task::spawn_blocking(move || tooltip_from_parts(name, pixmaps, title, description))
+        .await
+        .ok()
+        .flatten()
 }
 
 async fn read_theme_path(proxy: &SniItemProxy<'_>) -> Option<String> {
@@ -230,9 +250,8 @@ pub async fn read_item(
 ) -> TrayItem {
     let id = non_empty(proxy.id().await.ok()).unwrap_or_else(|| service_name.to_string());
     let theme_path = read_theme_path(proxy).await;
-    let theme_path = theme_path.as_deref();
-    let (icon_name, icon_data) = read_icon(proxy, theme_path).await;
-    let (attention_icon, attention_movie_name) = read_attention(proxy, theme_path).await;
+    let (icon_name, icon_data) = read_icon(proxy, theme_path.clone()).await;
+    let (attention_icon, attention_movie_name) = read_attention(proxy, theme_path.clone()).await;
 
     TrayItem {
         id,
@@ -257,18 +276,21 @@ pub async fn read_item(
 }
 
 /// Relee lo que pide una señal y lo deja en `item`.
+///
+/// `IconThemePath` se pide sólo para las señales de iconos: el título o el
+/// globo no lo usan.
 pub async fn refresh_item(proxy: &SniItemProxy<'_>, item: &mut TrayItem, refresh: Refresh) {
-    let theme_path = read_theme_path(proxy).await;
-    let theme_path = theme_path.as_deref();
     match refresh {
         Refresh::Icon => {
-            let (name, data) = read_icon(proxy, theme_path).await;
+            let (name, data) = read_icon(proxy, read_theme_path(proxy).await).await;
             item.icon_name = name;
             item.icon_data = data;
         }
-        Refresh::OverlayIcon => item.overlay_icon = read_overlay(proxy, theme_path).await,
+        Refresh::OverlayIcon => {
+            item.overlay_icon = read_overlay(proxy, read_theme_path(proxy).await).await
+        }
         Refresh::AttentionIcon => {
-            let (icon, movie) = read_attention(proxy, theme_path).await;
+            let (icon, movie) = read_attention(proxy, read_theme_path(proxy).await).await;
             item.attention_icon = icon;
             item.attention_movie_name = movie;
         }
@@ -394,6 +416,14 @@ mod tests {
         // Lo que no está queda como nombre para el tema del sistema.
         let other = icon_from_parts(Some("otra".into()), None, dir.to_str()).unwrap();
         assert_eq!((other.name.as_deref(), other.data), (Some("otra"), None));
+        // Fuera de los lugares de un tema no se busca: la carpeta no se recorre.
+        let odd = dir.join("cualquier/cosa/honda");
+        std::fs::create_dir_all(&odd).unwrap();
+        std::fs::write(odd.join("escondido.png"), png_bytes(22, 22)).unwrap();
+        assert_eq!(find_in_theme_path(dir.to_str().unwrap(), "escondido"), None);
+        // En la raíz de la carpeta, sí.
+        std::fs::write(dir.join("suelto.png"), png_bytes(16, 16)).unwrap();
+        assert!(find_in_theme_path(dir.to_str().unwrap(), "suelto").is_some());
         // Un nombre con barras no sale de la carpeta.
         assert_eq!(find_in_theme_path(dir.to_str().unwrap(), "../x"), None);
         std::fs::remove_dir_all(dir).unwrap();

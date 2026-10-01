@@ -1,6 +1,6 @@
 use serde::Deserialize;
-use zbus::zvariant::{Type, OwnedValue};
 use zbus::proxy;
+use zbus::zvariant::{OwnedValue, Type};
 
 /// Cuánto se espera a `AboutToShow`, que es opcional.
 const ABOUT_TO_SHOW_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
@@ -10,9 +10,9 @@ const GET_LAYOUT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3
 /// Estructura que representa un nodo del menú DBusMenu
 #[derive(Debug, Deserialize, Type)]
 pub struct DbusMenuLayout(
-    pub i32,                          // id
+    pub i32,                                           // id
     pub std::collections::HashMap<String, OwnedValue>, // properties
-    pub Vec<OwnedValue>, // children (recursive variant)
+    pub Vec<OwnedValue>,                               // children (recursive variant)
 );
 
 /// Get the D-Bus menu layout by manually calling GetLayout.
@@ -63,12 +63,7 @@ pub async fn call_get_layout(
 }
 
 /// Call AboutToShow on the D-Bus menu (optional notification, ignore failures).
-pub async fn call_about_to_show(
-    conn: &zbus::Connection,
-    bus_name: &str,
-    menu_path: &str,
-    id: i32,
-) {
+pub async fn call_about_to_show(conn: &zbus::Connection, bus_name: &str, menu_path: &str, id: i32) {
     let call = conn.call_method(
         Some(bus_name),
         menu_path,
@@ -80,12 +75,16 @@ pub async fn call_about_to_show(
     let _ = tokio::time::timeout(ABOUT_TO_SHOW_TIMEOUT, call).await;
 }
 
-#[proxy(
-    interface = "com.canonical.dbusmenu",
-)]
+#[proxy(interface = "com.canonical.dbusmenu")]
 trait DbusMenu {
     /// Event method
-    fn event(&self, id: i32, event_id: &str, data: &zvariant::Value<'_>, timestamp: u32) -> zbus::Result<()>;
+    fn event(
+        &self,
+        id: i32,
+        event_id: &str,
+        data: &zvariant::Value<'_>,
+        timestamp: u32,
+    ) -> zbus::Result<()>;
 
     /// AboutToShow method
     fn about_to_show(&self, id: i32) -> zbus::Result<bool>;

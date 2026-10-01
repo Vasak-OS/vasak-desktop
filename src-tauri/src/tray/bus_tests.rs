@@ -482,12 +482,7 @@ fn menu_entry(id: i32, props: Vec<(&str, Value<'static>)>) -> Value<'static> {
 
 #[interface(name = "com.canonical.dbusmenu")]
 impl FakeMenu {
-    fn get_layout(
-        &self,
-        _parent: i32,
-        _depth: i32,
-        _props: Vec<String>,
-    ) -> (u32, LayoutNode) {
+    fn get_layout(&self, _parent: i32, _depth: i32, _props: Vec<String>) -> (u32, LayoutNode) {
         let png = Value::Array(zbus::zvariant::Array::from(png_bytes(16, 16)));
         let broken = Value::Array(zbus::zvariant::Array::from(
             b"\x89PNG\r\n\x1a\nroto".to_vec(),

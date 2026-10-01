@@ -9,10 +9,10 @@ pub mod signals;
 pub mod sni_item;
 pub mod sni_watcher;
 
+use crate::logger::log_error;
 use crate::structs::TrayManager;
 use std::collections::HashMap;
 use std::sync::Arc;
-use crate::logger::log_error;
 use tauri::{async_runtime::RwLock, AppHandle, Emitter};
 
 pub fn create_tray_manager() -> TrayManager {
