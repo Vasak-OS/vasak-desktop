@@ -41,8 +41,8 @@ use crate::monitor_manager::{find_gdk_monitor, get_primary_monitor};
 use crate::panel_position::{self, PanelPosition, PANEL_THICKNESS, SCREEN_MARGIN};
 use crate::windows_apps::shell_layer::{
     destroy_layer_windows, hide_layer_window, layer_window_exists, layer_window_visible,
-    relocate_layer_window, set_layer_input_region, show_layer_window, spawn_layer_window,
-    Geometry, LayerSpec,
+    relocate_layer_window, set_layer_input_region, show_layer_window, spawn_layer_window, Geometry,
+    LayerSpec,
 };
 
 /// Lo que se aparta el applet del borde interno del panel.
@@ -1014,7 +1014,11 @@ mod tests {
                 PanelPosition::Left => x,
                 PanelPosition::Right => MONITOR.0 - (x + width),
             };
-            assert_eq!(toward_panel, (PANEL_THICKNESS + PANEL_GAP) as f64, "{side:?}");
+            assert_eq!(
+                toward_panel,
+                (PANEL_THICKNESS + PANEL_GAP) as f64,
+                "{side:?}"
+            );
         }
     }
 
@@ -1194,11 +1198,17 @@ mod tests {
         );
 
         assert_eq!(placement.inset, (b, b, b, b));
-        assert_eq!(placement.size, (400.0 + 2.0 * b as f64, 300.0 + 2.0 * b as f64));
+        assert_eq!(
+            placement.size,
+            (400.0 + 2.0 * b as f64, 300.0 + 2.0 * b as f64)
+        );
         // Lo que crece se descuenta de los márgenes: hacia el panel quedan
         // 46 − 24, y el applet sigue a 8 del panel.
         assert_eq!(placement.margins, (700 - b, 0, AWAY - b, 0));
-        assert_eq!(placement.visible_rect(MONITOR), (700.0, AWAY as f64, 400.0, 300.0));
+        assert_eq!(
+            placement.visible_rect(MONITOR),
+            (700.0, AWAY as f64, 400.0, 300.0)
+        );
         // Y sólo el applet recibe el puntero: el margen deja pasar los clics
         // al panel que tiene debajo.
         assert_eq!(placement.input_rect(), (b, b, 400, 300));
@@ -1237,7 +1247,10 @@ mod tests {
             while center <= length {
                 let placement = place_applet(Some(&button(side, center)), side, APPLET, MONITOR);
                 let (left, right, top, bottom) = placement.margins;
-                assert!(left >= 0 && right >= 0 && top >= 0 && bottom >= 0, "{side:?}");
+                assert!(
+                    left >= 0 && right >= 0 && top >= 0 && bottom >= 0,
+                    "{side:?}"
+                );
                 let (x, y, width, height) = placement.visible_rect(MONITOR);
                 let (il, ir, it, ib) = placement.inset;
                 assert!(x - il as f64 >= 0.0, "{side:?} {center}");

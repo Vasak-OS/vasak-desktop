@@ -138,7 +138,9 @@ mod tests {
     const M: f64 = SCREEN_MARGIN as f64;
 
     fn menu_size() -> (f64, f64) {
-        applet_spec(MENU_APPLET).expect("el menú está en la tabla").size
+        applet_spec(MENU_APPLET)
+            .expect("el menú está en la tabla")
+            .size
     }
 
     fn rect(x: f64, y: f64) -> AnchorRect {
