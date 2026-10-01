@@ -591,8 +591,6 @@ fn open_on_main(
     } else if let Err(error) = spawn_applet(app, spec, &placement, &shown) {
         log_error(&format!("[applet] no se pudo abrir {}: {error}", spec.id));
         return;
-    } else {
-        set_layer_input_region(&label, Some(placement.input_rect()));
     }
 
     log_info(&format!(
@@ -677,6 +675,8 @@ fn spawn_applet(
             dismiss_on_unfocus: true,
             on_dismiss: Some(on_dismiss),
             on_hide: Some(on_hide),
+            // Antes de mostrarse: ver `LayerSpec::input_region`.
+            input_region: Some(placement.input_rect()),
         },
     )
 }

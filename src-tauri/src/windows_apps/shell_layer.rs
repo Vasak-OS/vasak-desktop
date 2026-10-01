@@ -53,6 +53,13 @@ pub struct LayerSpec {
     /// Es lo que le permite al panel saber que un applet se cerró sin tener que
     /// adivinarlo.
     pub on_hide: Option<Box<dyn Fn()>>,
+    /// La parte de la superficie que recibe el puntero, (x, y, ancho, alto)
+    /// relativo a ella; `None` la deja entera. Ver [`set_layer_input_region`].
+    ///
+    /// Va acá y no sólo después de construirla porque la superficie se muestra
+    /// al construirse: recortarla después deja un instante en que el margen se
+    /// queda con los clics de lo que tiene debajo.
+    pub input_region: Option<(i32, i32, i32, i32)>,
 }
 
 impl Default for LayerSpec {
@@ -68,6 +75,7 @@ impl Default for LayerSpec {
             dismiss_on_unfocus: false,
             on_dismiss: None,
             on_hide: None,
+            input_region: None,
         }
     }
 }
@@ -177,6 +185,7 @@ pub fn spawn_layer_window(
         },
     );
     layer_win.set_keyboard_mode(spec.keyboard);
+    apply_input_region(&layer_win, spec.input_region);
 
     reparent_webview(&gtk_window, &layer_win)?;
     apply_transparency(&layer_win);
@@ -315,18 +324,22 @@ pub fn set_layer_input_region(label: &str, rect: Option<(i32, i32, i32, i32)>) -
             let Some(window) = windows.get(label) else {
                 return false;
             };
-            match rect {
-                Some((x, y, width, height)) => {
-                    let region = gtk::cairo::Region::create_rectangle(
-                        &gtk::cairo::RectangleInt::new(x, y, width, height),
-                    );
-                    window.input_shape_combine_region(Some(&region));
-                }
-                None => window.input_shape_combine_region(None),
-            }
+            apply_input_region(window, rect);
             true
         })
         .unwrap_or(false)
+}
+
+fn apply_input_region(window: &gtk::Window, rect: Option<(i32, i32, i32, i32)>) {
+    match rect {
+        Some((x, y, width, height)) => {
+            let region = gtk::cairo::Region::create_rectangle(&gtk::cairo::RectangleInt::new(
+                x, y, width, height,
+            ));
+            window.input_shape_combine_region(Some(&region));
+        }
+        None => window.input_shape_combine_region(None),
+    }
 }
 
 /// Tears down every shell surface whose label starts with one of `prefixes`,
