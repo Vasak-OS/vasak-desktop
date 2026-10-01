@@ -136,7 +136,7 @@ const disconnect = async (device: any) => {
       <!-- El botón de la librería: mientras busca, la rueda ocupa el lugar
            del icono y el ancho no cambia. `view-refresh` y no
            `refreshstructure`, que no es un nombre del estándar de freedesktop
-           y no todos los temas lo tienen. -->
+           y no lo trae cualquier tema. -->
       <ActionButton
         label=""
         icon="view-refresh"

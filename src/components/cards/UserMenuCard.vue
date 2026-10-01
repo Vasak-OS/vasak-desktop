@@ -23,7 +23,7 @@ onMounted(loadUserInfo);
 
 <template>
   <!-- El avatar va en `rounded-corner-full`, que sale del radio que eligió la
-       persona (con radio 0 es cuadrado, como todo lo demás), y con el canto
+       persona (con radio 0 es cuadrado, igual que el resto), y con el canto
        fino del esquema: el acento queda para lo que actúa. El nombre no se
        corta: se parte. -->
   <div v-if="userInfo" class="flex min-w-0 items-center gap-3">

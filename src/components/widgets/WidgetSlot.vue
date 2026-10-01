@@ -45,7 +45,7 @@ const variante = computed(() => props.variant ?? WIDGETS[props.type].variants?.[
 	<!-- La tarjeta de lo que se apoya —la superficie, el canto fino y el radio
 	     `l`, como `ListCard`—, y el contenedor contra el que se miden las
 	     unidades de adentro. No es `ListCard` porque ésa trae su relleno y su
-	     fila, y el widget tiene que llenar el marco entero: mide todo en
+	     fila, y el widget tiene que llenar el marco entero: se mide en
 	     unidades de contenedor. Sin desenfoque: detrás no hay nada que
 	     desenfocar. -->
 	<div

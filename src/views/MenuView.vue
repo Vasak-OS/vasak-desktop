@@ -14,6 +14,7 @@ import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import WidgetSlot from '@/components/widgets/WidgetSlot.vue';
 import { getMenuItems, openApp } from '@/services/app.service';
 import { dismissMenu, openSettings, toggleSessionPopup } from '@/services/window.service';
+import { resolveMenuKey } from '@/tools/menu-keyboard';
 import {
 	type FocusableSearchField,
 	focusMenuSearch,
@@ -233,27 +234,26 @@ watch(appsFiltred, (list) => {
  * Las flechas y Enter sobre los resultados de la búsqueda.
  *
  * Escape no va acá: lo atrapa la superficie, y si se lo queda el campo lo toma
- * `AppletPopover`. Atenderlo también acá cerraría dos veces.
+ * `AppletPopover`. Atenderlo también acá cerraría dos veces. Y un Enter que ya
+ * atendió el resultado enfocado tampoco: ver `resolveMenuKey`.
  */
 const onKeydown = (event: KeyboardEvent) => {
 	if (!filter.value) return;
 
 	const list = appsFiltred.value;
-	if (list.length === 0) return;
+	const action = resolveMenuKey(event, list.length, selectedIndex.value);
+	if (action.kind === 'none') return;
 
-	if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-		event.preventDefault();
-		selectedIndex.value = (selectedIndex.value + 1) % list.length;
-	} else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-		event.preventDefault();
-		selectedIndex.value = (selectedIndex.value - 1 + list.length) % list.length;
-	} else if (event.key === 'Enter') {
-		event.preventDefault();
-		const app = list[selectedIndex.value];
-		if (app?.path) {
-			openApp({ path: app.path });
-			void dismissMenu();
-		}
+	event.preventDefault();
+	if (action.kind === 'move') {
+		selectedIndex.value = action.index;
+		return;
+	}
+
+	const app = list[action.index];
+	if (app?.path) {
+		openApp({ path: app.path });
+		void dismissMenu();
 	}
 };
 </script>

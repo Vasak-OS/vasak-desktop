@@ -161,7 +161,7 @@ function empezarRedimensionado(evento: PointerEvent) {
 		@pointerdown="empezarArrastre"
 	>
 		<!--
-			El marco de todos los widgets vive acá y no en cada uno: fondo,
+			El marco de los widgets vive acá, una sola vez, y no en cada uno: fondo,
 			borde, esquinas y sombra. Es lo que flota sobre el fondo de
 			pantalla, así que va con la superficie opaca `ui-float`, el canto
 			fino, el radio `l` y la sombra `surface-m` de la librería; el

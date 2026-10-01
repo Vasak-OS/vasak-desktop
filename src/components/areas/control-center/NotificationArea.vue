@@ -25,7 +25,7 @@
       </span>
       <button
         @click="clearAllNotifications"
-        class="shrink-0 text-label-xs px-3 py-1 bg-primary text-tx-on-primary rounded-corner-m hover:bg-ui-hover transition-colors"
+        class="shrink-0 text-label-xs px-3 py-1 bg-primary text-tx-on-primary rounded-corner-m hover:bg-primary/90 transition-colors"
       >
         {{ t('components.NotificationArea.clearAll') }}
       </button>

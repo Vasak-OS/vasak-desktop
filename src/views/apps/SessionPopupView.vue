@@ -171,7 +171,7 @@ onUnmounted(() => {
             {{ t('common.cancel') }}
           </button>
           <button
-            class="flex-1 px-5 py-3 rounded-corner-m bg-primary hover:bg-ui-hover transition-colors text-label-m font-bold text-tx-on-primary flex items-center justify-center gap-2"
+            class="flex-1 px-5 py-3 rounded-corner-m bg-primary hover:bg-primary/90 transition-colors text-label-m font-bold text-tx-on-primary flex items-center justify-center gap-2"
             @click="executeAction"
             :disabled="confirming"
           >

@@ -150,7 +150,7 @@ const EMBEDDED_ICON =
 	/<svg[\s>]|data:image\/|['"][^'"\s]+\.(?:svg|png|ico|webp|gif)['"]|(?<![\w-])(?:fa[srlbd]?-[a-z0-9-]+|mdi-[a-z0-9-]+|material-icons|material-symbols(?:-[a-z]+)?)(?![\w-])/g;
 
 const VIEWPORT =
-	/(?<![\w@-])(?:max-|min-)?(?:sm|md|lg|xl|2xl)(?:\/[a-z]+)?:[a-z-]|(?<![\w@-])(?:max|min)-\[[^\]]+\]:|matchMedia\(\s*[`'"]\(?\s*(?:max|min)-(?:width|height)/g;
+	/(?<![\w@-])(?:max-|min-)?(?:sm|md|lg|xl|2xl)(?:\/[a-z]+)?:[a-z-]|(?<![\w@-])(?:max|min)-\[[^\]]+\]:|matchMedia\(\s*[`'"]\(?\s*(?:max|min)-(?:width|height)|@media\b[^{}]*\(\s*(?:max|min)-(?:width|height)\b/g;
 
 const FORBIDDEN_SHAPE: Array<[string, RegExp]> = [
 	[
@@ -316,11 +316,15 @@ describe('los iconos salen del tema del sistema', () => {
 
 describe('ningún punto de corte de la pantalla', () => {
 	test('un componente no sabe en qué ventana está', async () => {
-		expect(await findAll(sources('**/*.{vue,ts}'), VIEWPORT)).toEqual([]);
+		// También en los `<style>` y en las hojas: un `@media (min-width)` es
+		// el mismo punto de corte escrito a mano.
+		expect(await findAll(sources('**/*.{vue,ts,css}'), VIEWPORT)).toEqual([]);
 	});
 
 	test('la guardia deja pasar los de contenedor', () => {
 		expect([...'md:w-72 sm:flex-row'.matchAll(VIEWPORT)]).toHaveLength(2);
+		expect([...'@media (min-width: 640px) {} @media screen and (max-height: 20rem)'.matchAll(VIEWPORT)]).toHaveLength(2);
+		expect([...'@media (prefers-reduced-motion: reduce)'.matchAll(VIEWPORT)]).toHaveLength(0);
 		expect([...'@sm:flex-row @md:w-72 @min-[40rem]:grid-cols-2'.matchAll(VIEWPORT)]).toHaveLength(0);
 	});
 });
