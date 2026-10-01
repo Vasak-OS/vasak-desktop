@@ -23,7 +23,7 @@ describe('cada superficie pide sus piezas a la librería', () => {
 		['views/apps/SessionPopupView.vue', ['<ActionButton']],
 		['views/ConnectMenuView.vue', ['<SegmentedControl', '<AlertMessage', '<EmptyState', '<LoadingState', '<SettingRow', '<ActionButton']],
 		['components/buttons/ConnectAppButton.vue', ['<ListRow']],
-		['components/cards/PhoneControlCenterCard.vue', ['<Panel', '<ListRow', '<StatusDot', '<SettingRow', '<ActionButton']],
+		['components/cards/PhoneControlCenterCard.vue', ['<Panel', '<ListRow', '<StatusDot', '<SwitchToggle', '<ActionButton']],
 		['components/cards/NotificationGroupCard.vue', ['<Disclosure', '<Badge', '<ActionButton']],
 		['components/cards/NotificationCard.vue', ['<ActionButton']],
 		['components/areas/control-center/NotificationArea.vue', ['<ActionButton', '<EmptyState']],

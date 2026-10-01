@@ -6,7 +6,6 @@ import {
 	ActionButton,
 	ListRow,
 	Panel,
-	SettingRow,
 	StatusDot,
 	type StatusDotTone,
 	SwitchToggle,
@@ -257,25 +256,26 @@ useSharedEvent<ConnectWebcamState>('connect-webcam-changed', (state) => {
          videollamada, y ésta es la única superficie que aparece exactamente
          cuando hay un teléfono enchufado. La elección de cámara, resolución y
          cuadros por segundo va en Ajustes, que es donde entran tres selectores. -->
-    <div v-if="showWebcam" class="border-t border-ui-line-weak px-3 pt-2">
-      <SettingRow :label="t('views.connect.webcam')">
+    <!-- Una fila suelta y no `SettingRow`: ésa apila el interruptor debajo
+         del nombre por debajo de 320 px, y el centro de control mide 350, así
+         que la fila crecía el doble de alto. -->
+    <div v-if="showWebcam" class="flex flex-col gap-1 border-t border-ui-line-weak px-3 pt-2">
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="min-w-0 flex-1 break-words text-label-m text-tx-main">{{ t('views.connect.webcam') }}</span>
         <SwitchToggle
           :label="t('views.connect.webcam')"
           :model-value="webcamActive"
           :disabled="!webcamSwitchEnabled"
           @update:model-value="toggleWebcam"
         />
-        <!-- El error de una acción primero, y el de la lectura del estado
-             después: los dos son texto del demonio y ninguno se puede
-             reemplazar por el consejo del módulo, que sería un diagnóstico
-             inventado. -->
-        <template #footer>
-          <p v-if="webcamError || webcamStateError" class="text-body-xs text-status-error">
-            {{ webcamError || webcamStateError }}
-          </p>
-          <p v-else-if="webcamDetail" class="text-body-xs text-tx-muted">{{ webcamDetail }}</p>
-        </template>
-      </SettingRow>
+      </div>
+      <!-- El error de una acción primero, y el de la lectura del estado
+           después: los dos son texto del demonio y ninguno se puede reemplazar
+           por el consejo del módulo, que sería un diagnóstico inventado. -->
+      <p v-if="webcamError || webcamStateError" class="text-body-xs text-status-error">
+        {{ webcamError || webcamStateError }}
+      </p>
+      <p v-else-if="webcamDetail" class="text-body-xs text-tx-muted">{{ webcamDetail }}</p>
     </div>
   </Panel>
 </template>

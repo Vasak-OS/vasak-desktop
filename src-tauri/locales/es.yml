@@ -52,6 +52,7 @@ views:
     categories: Categorías
   connect:
     title: Teléfono
+    chooseDevice: Elegir el teléfono
     menuAlt: Aplicaciones del teléfono
     noDevice: Sin teléfono
     plugIn: Conectá un teléfono Android con la depuración USB activada.
@@ -164,6 +165,10 @@ components:
     loopTrack: Repetir la pista
     raise: Ir al reproductor
     choosePlayer: Elegir reproductor
+  NetworkControl:
+    connected: Conectado
+    vpn: Conectado por VPN
+    disconnected: Sin conexión
   NetworkControlArea:
     title: Redes
     wifiUnavailable: Wi-Fi no disponible en este dispositivo
@@ -249,6 +254,7 @@ components:
     disconnected: "Twingate: sin conexión"
     pending: "Twingate: {0} recursos por autorizar"
   TrayMusicControl:
+    progress: Avance de la pista
     openPlayer: Abrir el reproductor
     nothingPlaying: No hay nada sonando
     previous: Anterior

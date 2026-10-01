@@ -14,7 +14,7 @@
   >
     <Avatar :src="userInfo.avatar_data || null" :name="userInfo.full_name" size="xl" />
     <div class="flex min-w-0 flex-1 flex-col gap-1">
-      <h2 class="truncate text-lg font-semibold">
+      <h2 class="break-words text-lg font-semibold">
         {{ userInfo.full_name }}
       </h2>
       <p class="truncate text-label-m text-tx-muted">
