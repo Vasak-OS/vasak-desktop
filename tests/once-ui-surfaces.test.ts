@@ -9,12 +9,27 @@ import { join } from 'node:path';
  * mano; la conducta de cada pieza (el teclado, el ARIA, los estados) se prueba
  * montada en la librería, que es donde vive.
  */
+/** Saca los comentarios HTML cortando por sus delimitadores, sin expresiones regulares. */
+function stripHtmlComments(text: string): string {
+	let out = '';
+	let index = 0;
+	while (index < text.length) {
+		const start = text.indexOf('<!--', index);
+		if (start === -1) return out + text.slice(index);
+		out += text.slice(index, start);
+		const end = text.indexOf('-->', start + 4);
+		if (end === -1) return out;
+		index = end + 3;
+	}
+	return out;
+}
+
 const ROOT = join(import.meta.dir, '..', 'src');
 const read = (file: string) => readFileSync(join(ROOT, file), 'utf8');
 const template = (file: string) => {
 	const text = read(file);
 	// Sin comentarios: lo que se explica no es lo que se dibuja.
-	return text.slice(text.indexOf('<template>'), text.lastIndexOf('</template>')).replace(/<!--[\s\S]*?-->/g, '');
+	return stripHtmlComments(text.slice(text.indexOf('<template>'), text.lastIndexOf('</template>')));
 };
 
 describe('cada superficie pide sus piezas a la librería', () => {

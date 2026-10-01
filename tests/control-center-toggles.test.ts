@@ -10,6 +10,21 @@ import { join } from 'node:path';
  * ranura `overlay` del propio botón: el estado entra en su nombre accesible y
  * la forma es la de la librería (vue-libvasak#74).
  */
+/** Saca los comentarios HTML cortando por sus delimitadores, sin expresiones regulares. */
+function stripHtmlComments(text: string): string {
+	let out = '';
+	let index = 0;
+	while (index < text.length) {
+		const start = text.indexOf('<!--', index);
+		if (start === -1) return out + text.slice(index);
+		out += text.slice(index, start);
+		const end = text.indexOf('-->', start + 4);
+		if (end === -1) return out;
+		index = end + 3;
+	}
+	return out;
+}
+
 const ROOT = join(import.meta.dir, '..');
 const read = (file: string) => readFileSync(join(ROOT, 'src/components/controls', file), 'utf8');
 const template = (text: string) => text.slice(text.indexOf('<template>'), text.lastIndexOf('</template>'));
@@ -22,7 +37,7 @@ describe('los botones del centro de control', () => {
 			const view = template(read(file));
 			expect(view).toContain(':indicator="indicator"');
 			// La raíz es el botón: nada dibujado encima a mano ni un envoltorio.
-			expect(view.trimStart().slice('<template>'.length).trimStart()).toMatch(/^(<!--[\s\S]*?-->\s*)*<ToggleControl/);
+			expect(stripHtmlComments(view.slice('<template>'.length)).trimStart().startsWith('<ToggleControl')).toBe(true);
 			expect(view).not.toMatch(/custom-class/);
 			expect(view).not.toMatch(/\bring-\d/);
 		});
