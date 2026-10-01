@@ -80,15 +80,21 @@ export function defaultSize(camera: ConnectCamera | undefined): string {
 
 	const area = ({ pixels: [width, height] }: (typeof measured)[number]) => width * height;
 
+	type Measured = (typeof measured)[number];
+
 	if (fitting.length > 0) {
-		return fitting.reduce((largest, candidate) =>
-			area(candidate) > area(largest) ? candidate : largest
-		).size;
+		const largest = fitting.reduce<Measured | undefined>(
+			(best, candidate) => (!best || area(candidate) > area(best) ? candidate : best),
+			undefined
+		);
+		return largest?.size ?? '';
 	}
 
-	return measured.reduce((smallest, candidate) =>
-		area(candidate) < area(smallest) ? candidate : smallest
-	).size;
+	const smallest = measured.reduce<Measured | undefined>(
+		(best, candidate) => (!best || area(candidate) < area(best) ? candidate : best),
+		undefined
+	);
+	return smallest?.size ?? '';
 }
 
 /**
