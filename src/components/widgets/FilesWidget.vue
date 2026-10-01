@@ -108,7 +108,7 @@ watch(showHidden, () => void cargar());
 	>
 		<div
 			v-if="files.length === 0"
-			class="flex h-full items-center justify-center p-3 text-center text-sm text-tx-muted"
+			class="flex h-full items-center justify-center p-3 text-center text-label-m text-tx-muted"
 		>
 			{{ t('widgets.files.empty') }}
 		</div>
@@ -122,7 +122,7 @@ watch(showHidden, () => void cargar());
 					v-for="file in files"
 					:key="file.path"
 					type="button"
-					class="flex flex-col items-center justify-start rounded-corner p-2 transition-colors hover:bg-ui-surface/50"
+					class="flex flex-col items-center justify-start rounded-corner-m p-2 transition-colors hover:bg-ui-hover"
 					:title="file.name"
 					@dblclick="abrir(file)"
 					@keydown.enter.prevent="abrir(file)"

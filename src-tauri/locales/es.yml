@@ -47,6 +47,9 @@ views:
     logout: Cerrar sesión
     suspend: Suspender
     noApps: No hay aplicaciones disponibles
+    applications: Aplicaciones
+    results: Resultados de la búsqueda
+    categories: Categorías
   connect:
     title: Teléfono
     menuAlt: Aplicaciones del teléfono
@@ -278,6 +281,7 @@ components:
     vpnOn: activa
     vpnOff: VPN inactiva
 widgets:
+  remove: Quitar el widget
   menu:
     edit: Editar los widgets
     wallpaper: Cambiar el fondo de pantalla

@@ -26,7 +26,7 @@ import {
 } from '@/services/tray.service';
 import { animationBudget } from '@/tools/animation.budget';
 import { anchorOf } from '@/tools/applet-anchor';
-import { useOpenApplet } from '@/tools/composables/useOpenApplet';
+import { OPEN_APPLET_CLASSES, useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
 import { createSerialQueue } from '@/tools/serial-queue';
@@ -170,8 +170,8 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
     :class="vertical ? 'flex-col py-2 w-full' : 'px-2 h-full'"
   >
     <TransitionGroup
-      :move-class="shouldAnimate ? 'transition-transform duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
-      :enter-active-class="shouldAnimate ? 'transition-all duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
+      :move-class="shouldAnimate ? 'transition-transform duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
+      :enter-active-class="shouldAnimate ? 'transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
       :leave-active-class="shouldAnimate ? 'transition-all duration-300 ease-[cubic-bezier(0.55,0,0.45,1)]' : ''"
       :enter-from-class="shouldAnimate ? 'opacity-0 -translate-x-5 scale-80 -rotate-12' : ''"
       :leave-to-class="shouldAnimate ? 'opacity-0 translate-x-5 scale-80 rotate-12' : ''"
@@ -186,10 +186,10 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
         v-for="item in (showTray ? trayItems : [])"
         :key="item.service_name"
         :class="[
-          'relative flex items-center justify-center w-7 h-7 rounded-corner cursor-pointer transform transition-all duration-300 ease-out hover:bg-white/15 hover:scale-110 hover:rotate-3 active:scale-95 active:rotate-0 group',
+          'relative flex items-center justify-center w-7 h-7 rounded-corner-m cursor-pointer transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed group',
           getItemStatusClass(item),
           getItemPulseClass(item),
-          { 'bg-primary text-tx-on-primary': isTrayPopupOwner(item) },
+          { [OPEN_APPLET_CLASSES]: isTrayPopupOwner(item) },
         ]"
         @mousedown.prevent="(e) => handleTrayClick(item, e)"
         @contextmenu.prevent.stop
@@ -205,7 +205,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
         </div>
 
         <!-- Status indicator -->
-        <div v-if="item.status === 'NeedsAttention'" class="absolute -top-1 -right-1 w-2 h-2 bg-status-error rounded-full animate-pulse shadow-lg shadow-red-500/50" />
+        <div v-if="item.status === 'NeedsAttention'" class="absolute -top-1 -right-1 w-2 h-2 bg-status-error rounded-corner-full animate-pulse" />
       </div>
       <TrayIconPrivacy v-if="showPrivacy" key="icon-privacy" />
       <TrayIconSound key="icon-sound" />

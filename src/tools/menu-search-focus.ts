@@ -26,11 +26,12 @@ export interface FocusableSearchField {
 	/**
 	 * Pide el foco y devuelve si llegó.
 	 *
-	 * El nombre es el que expone `SearchField` de `vue-libvasak`. Lo que se
-	 * describe acá es el contrato mínimo, para no atar esto a la librería entera
-	 * ni al DOM.
+	 * El nombre es el que expone `SearchField` de `vue-libvasak` desde la 2.0.0
+	 * (`enfocar()` en la 1.x, que queda como alias obsoleto hasta la 3.0). Lo
+	 * que se describe acá es el contrato mínimo, para no atar esto a la
+	 * librería entera ni al DOM.
 	 */
-	enfocar(): boolean;
+	focus(): boolean;
 }
 
 /**
@@ -78,7 +79,7 @@ export interface MenuSearchOptions extends FocusMenuSearchOptions {
 
 /**
  * El WebView puede no tener todavía el foco del documento en el instante en que
- * el compositor se lo da a la ventana. `enfocar()` dice si llegó, así que se
+ * el compositor se lo da a la ventana. `focus()` dice si llegó, así que se
  * insiste sólo mientras no haya llegado, y con un tope: sin él, un campo que
  * nunca acepta dejaría un temporizador rebotando para siempre.
  */
@@ -111,7 +112,7 @@ export function focusMenuSearch(options: FocusMenuSearchOptions): SearchFocusAtt
 	const attempt = () => {
 		cancelPending = null;
 		if (cancelled) return;
-		if (field()?.enfocar()) return;
+		if (field()?.focus()) return;
 		if (left <= 0) return;
 		left -= 1;
 		cancelPending = schedule(attempt, retryDelayMs);

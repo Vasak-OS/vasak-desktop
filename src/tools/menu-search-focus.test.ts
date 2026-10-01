@@ -27,13 +27,13 @@ import {
 /**
  * Un campo de juguete que cuenta los intentos y decide cuándo acepta el foco.
  *
- * `enfocar()` devuelve si el foco llegó, que es lo que distingue «pedí el foco»
+ * `focus()` devuelve si el foco llegó, que es lo que distingue «pedí el foco»
  * de «el campo lo tiene».
  */
 function fieldThatAcceptsAfter(attemptsToRefuse: number) {
 	let attempts = 0;
 	const field: FocusableSearchField & { attempts(): number } = {
-		enfocar() {
+		focus() {
 			attempts += 1;
 			return attempts > attemptsToRefuse;
 		},
@@ -236,7 +236,7 @@ describe('focusMenuSearch', () => {
 		let enabled = false;
 		let focusedTimes = 0;
 		const field: FocusableSearchField = {
-			enfocar: () => {
+			focus: () => {
 				if (!enabled) return false;
 				focusedTimes += 1;
 				return true;
@@ -281,7 +281,7 @@ describe('el cable en la vista', () => {
 		expect(source).toMatch(/<SearchField\s[^>]*ref="searchField"/);
 	});
 
-	test('el campo de la librería sigue exponiendo `enfocar`', () => {
+	test('el campo de la librería expone `focus`', () => {
 		// Todo el arreglo se apoya en esto. Si una versión de `vue-libvasak`
 		// renombra o saca el método, el `ref` queda apuntando a algo que no
 		// enfoca y el menú vuelve a abrir mudo — sin que nada falle, porque el
@@ -302,8 +302,8 @@ describe('el cable en la vista', () => {
 			'utf8'
 		);
 
-		expect(contract).toMatch(/enfocar:\s*typeof\s+enfocar/);
-		expect(contract).toMatch(/declare\s+function\s+enfocar\(\):\s*boolean/);
+		expect(contract).toMatch(/\bfocus:\s*typeof\s+focus/);
+		expect(contract).toMatch(/declare\s+function\s+focus\(\):\s*boolean/);
 	});
 
 	test('el menú reenfoca cuando el campo deja de estar desactivado', () => {

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
 import { useSharedEvent } from '@/tools/event.bus';
 
@@ -43,14 +44,14 @@ const subida = computed(() => legible(tasa.value?.up ?? 0));
        intervalo en tener dos lecturas que comparar. -->
   <div
     v-if="tasa"
-    class="flex flex-col justify-center rounded-corner px-1 leading-none"
+    class="flex flex-col justify-center rounded-corner-m px-1 leading-none"
     :title="t('components.TrayNetworkRateControl.title')"
   >
     <span class="flex items-center gap-0.5 text-[9px] tabular-nums text-tx-main">
-      <span aria-hidden="true" class="text-tx-muted">▼</span>{{ bajada }}
+      <ThemeIcon name="go-down" type="symbol" :size="10" :alt="t('components.NetworkControlArea.download')" class="text-tx-muted" />{{ bajada }}
     </span>
     <span class="flex items-center gap-0.5 text-[9px] tabular-nums text-tx-main">
-      <span aria-hidden="true" class="text-tx-muted">▲</span>{{ subida }}
+      <ThemeIcon name="go-up" type="symbol" :size="10" :alt="t('components.NetworkControlArea.upload')" class="text-tx-muted" />{{ subida }}
     </span>
   </div>
 </template>

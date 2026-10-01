@@ -20,8 +20,17 @@ export function applyAppletChanged(payload: { applet?: string | null } | null | 
 	openApplet.value = payload?.applet ?? null;
 }
 
-/** Las clases del botón cuyo applet está abierto: así se lee de dónde salió. */
-export const OPEN_APPLET_CLASSES = 'bg-primary text-tx-on-primary';
+/**
+ * Las clases del botón cuyo applet está abierto: así se lee de dónde salió.
+ *
+ * Es lo **elegido**, y lo elegido va con el velo del acento
+ * (`ui-selected-accent`, decisión 4 de vue-libvasak#74), no con el relleno
+ * entero del primario: un botón de 30 píxeles pintado de rosa en el panel era
+ * lo más llamativo de la pantalla, y lo que se abrió es el applet, no el botón.
+ * El texto y el icono siguen con su color, que sobre el velo sigue pasando
+ * 4,5:1.
+ */
+export const OPEN_APPLET_CLASSES = 'bg-ui-selected-accent';
 
 export interface OpenAppletState {
 	isOpen: ComputedRef<boolean>;

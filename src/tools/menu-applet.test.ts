@@ -57,7 +57,10 @@ describe('el panel', () => {
 
 	test('manda el botón del menú al abrirlo', () => {
 		expect(panel).toMatch(/toggleMenu\(menuButton\.value\)/);
-		expect(panel).toMatch(/<button\s+ref="menuButton"/);
+		// El botón es el de la bandeja de la librería: el `ref` es la instancia,
+		// y `anchorOf` le lee el `$el`.
+		expect(panel).toMatch(/<TrayIconButton\s+ref="menuButton"/);
+		expect(panel).toMatch(/menuButton\.value\?\.\$el/);
 	});
 
 	test('informa dónde quedó el botón al montarse y al cambiar de lado', () => {

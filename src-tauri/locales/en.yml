@@ -47,6 +47,9 @@ views:
     logout: Log out
     suspend: Suspend
     noApps: No applications available
+    applications: Applications
+    results: Search results
+    categories: Categories
   connect:
     title: Phone
     menuAlt: Phone applications
@@ -278,6 +281,7 @@ components:
     vpnOn: active
     vpnOff: VPN inactive
 widgets:
+  remove: Remove widget
   menu:
     edit: Edit the widgets
     wallpaper: Change the wallpaper

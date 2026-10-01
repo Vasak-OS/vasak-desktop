@@ -88,12 +88,12 @@ const stopScreen = async (session: string) => {
 				<h2 class="text-lg font-medium text-tx-main">
 					{{ t('views.privacyApplet.title') }}
 				</h2>
-				<p class="truncate text-xs text-tx-muted">
+				<p class="truncate text-label-xs text-tx-muted">
 					{{ t('views.privacyApplet.subtitle') }}
 				</p>
 			</header>
 
-			<p v-if="nobody" class="text-sm text-tx-muted">
+			<p v-if="nobody" class="text-label-m text-tx-muted">
 				{{ t('views.privacyApplet.nobody') }}
 			</p>
 
@@ -101,53 +101,53 @@ const stopScreen = async (session: string) => {
 				<section v-if="camera.length > 0" class="flex flex-col gap-2">
 					<div class="flex items-center gap-2">
 						<ThemeIcon name="camera-web" type="symbol" :size="16" />
-						<h3 class="text-sm font-medium text-tx-main">
+						<h3 class="text-label-m font-medium text-tx-main">
 							{{ t('views.privacyApplet.camera') }}
 						</h3>
 					</div>
 					<div
 						v-for="usage in camera"
 						:key="`camera-${usage.aplicacion}-${usage.detalle}`"
-						class="rounded-corner bg-ui-surface/70 px-3 py-2"
+						class="rounded-corner-m bg-ui-surface/70 px-3 py-2"
 					>
-						<p class="truncate text-sm text-tx-main">{{ usage.aplicacion }}</p>
-						<p class="truncate text-xs text-tx-muted">{{ usage.detalle }}</p>
+						<p class="truncate text-label-m text-tx-main">{{ usage.aplicacion }}</p>
+						<p class="truncate text-label-xs text-tx-muted">{{ usage.detalle }}</p>
 					</div>
 				</section>
 
 				<section v-if="microphone.length > 0" class="flex flex-col gap-2">
 					<div class="flex items-center gap-2">
 						<ThemeIcon name="microphone-sensitivity-high" type="symbol" :size="16" />
-						<h3 class="text-sm font-medium text-tx-main">
+						<h3 class="text-label-m font-medium text-tx-main">
 							{{ t('views.privacyApplet.microphone') }}
 						</h3>
 					</div>
 					<div
 						v-for="usage in microphone"
 						:key="`microphone-${usage.aplicacion}-${usage.detalle}`"
-						class="rounded-corner bg-ui-surface/70 px-3 py-2"
+						class="rounded-corner-m bg-ui-surface/70 px-3 py-2"
 					>
-						<p class="truncate text-sm text-tx-main">{{ usage.aplicacion }}</p>
-						<p class="truncate text-xs text-tx-muted">{{ usage.detalle }}</p>
+						<p class="truncate text-label-m text-tx-main">{{ usage.aplicacion }}</p>
+						<p class="truncate text-label-xs text-tx-muted">{{ usage.detalle }}</p>
 					</div>
 				</section>
 
 				<section v-if="screen.length > 0" class="flex flex-col gap-2">
 					<div class="flex items-center gap-2">
 						<ThemeIcon name="video-display" type="symbol" :size="16" />
-						<h3 class="text-sm font-medium text-tx-main">
+						<h3 class="text-label-m font-medium text-tx-main">
 							{{ t('views.privacyApplet.screen') }}
 						</h3>
 					</div>
 					<div
 						v-for="usage in screen"
 						:key="`screen-${usage.detalle}`"
-						class="flex items-center justify-between gap-2 rounded-corner bg-ui-surface/70 px-3 py-2"
+						class="flex items-center justify-between gap-2 rounded-corner-m bg-ui-surface/70 px-3 py-2"
 					>
-						<p class="min-w-0 truncate text-sm text-tx-main">{{ usage.aplicacion }}</p>
+						<p class="min-w-0 truncate text-label-m text-tx-main">{{ usage.aplicacion }}</p>
 						<button
 							type="button"
-							class="shrink-0 rounded-corner border border-ui-border px-2 py-1 text-xs font-medium hover:bg-ui-surface disabled:opacity-50"
+							class="shrink-0 rounded-corner-m border border-ui-line px-2 py-1 text-label-xs font-medium hover:bg-ui-hover disabled:opacity-50"
 							:disabled="stopping === usage.detalle"
 							@click="stopScreen(usage.detalle)"
 						>

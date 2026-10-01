@@ -1,8 +1,12 @@
-/* biome-ignore-all lint/style/noDescendingSpecificity: el `body *` de más abajo
-   fija el color del texto y el bloque de `@layer base` fija `border-color`. La
-   regla compara selectores sin mirar qué propiedad tocan, así que ve un conflicto
-   donde no hay ninguno: ninguna de las dos declaraciones puede pisar a la otra. */
 @import "tailwindcss";
+
+/* La forma de los componentes, con el criterio de Once UI: radios derivados
+   del que eligió la persona, bordes finos, velos de estado, la superficie de lo
+   que flota, sombras, roles de texto y curvas. Va después de Tailwind, como
+   pide la librería, y trae también el piso del anillo de foco con `ui-focus`
+   (vue-libvasak#74, `docs/once-ui.md`). Los colores no están ahí: los deriva de
+   las `--use-*` de abajo, que pisa el config-manager con el esquema. */
+@import "@vasakgroup/vue-libvasak/tokens.css";
 
 /* Tailwind no mira adentro de `node_modules`, así que las clases que sólo usa
    la librería de componentes no llegan a la hoja de estilos y el componente se
@@ -162,15 +166,11 @@
   --font-title: var(--vsk-font-title);
   --font-mono: var(--vsk-font-terminal);
 
-  /* radius */
-  --radius-corner: var(--corner-radius);
-  /* El radio chico, para lo que no es una tarjeta: chips, insignias, el pulgar de
-     una barra. Derivado del que la persona configuró y no fijo, así que un
-     escritorio con esquinas rectas o muy redondeadas se ve coherente hasta en los
-     detalles — con `rounded-sm` a 2px, subir el radio general dejaba las tarjetas
-     redondas y los chips cuadrados. */
-  --radius-corner-sm: calc(var(--corner-radius) / 2.5);
-  --radius-corner-window: calc(var(--corner-radius) + 2px);
+  /* Los radios —`rounded-corner-xs…xl`, `-full` y `-window`— los declara
+     `tokens.css`, derivados todos de `--corner-radius` con `calc()`. Acá
+     había una copia (`corner`, `corner-sm` y `corner-window`) con los mismos
+     valores; dos lugares que dicen lo mismo terminan diciendo cosas
+     distintas. */
 
   /* Colores de Marca - responsive a dark mode */
   --color-primary: var(--use-primary);
@@ -227,8 +227,20 @@ body {
   overflow: hidden;
 }
 
-body * {
-  @apply text-tx-main;
+/* El color del texto se hereda del cuerpo y va en la capa `base`.
+
+   Era `body * { @apply text-tx-main }` suelto, fuera de toda capa, y en CSS
+   lo que no está en una capa le gana a lo que sí, sin mirar la especificidad:
+   pisaba **todas** las utilidades de color de texto, que Tailwind 4 emite en
+   `@layer utilities`. Medido en el banco: el «Conectar» de una tarjeta de
+   Bluetooth salía `#cdd6f4` sobre el primario `#eba0ac` (1,4:1) en vez del
+   `text-tx-on-primary` que pide la librería, y cada `text-tx-muted` del
+   escritorio se dibujaba con el color principal. Heredado desde el cuerpo,
+   lo que no pide color sigue en `tx-main` y lo que lo pide, lo recibe. */
+@layer base {
+  body {
+    color: var(--color-tx-main);
+  }
 }
 
 .theme-transition {
@@ -238,17 +250,15 @@ body * {
     border-color 300ms ease;
 }
 
-.background {
-  @apply bg-ui-bg/80;
-}
-
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentColor);
+    /* El canto fino del esquema y no `gray-200`, que es un gris de la paleta
+       de Tailwind: un `border` sin color queda como los de la librería. */
+    border-color: var(--color-ui-line-weak, currentColor);
   }
 }
 
@@ -265,7 +275,7 @@ body * {
   /* Con `rgba(255,255,255,.2)` la barra era blanca sobre fondo claro, o sea
      invisible. El token sigue al tema. */
   background: color-mix(in srgb, var(--color-tx-muted) 45%, transparent);
-  border-radius: 4px;
+  border-radius: var(--radius-corner-xs);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -277,26 +287,12 @@ body * {
 /*
  * El foco del teclado tiene que verse (WCAG 2.4.7).
  *
- * Medido antes de escribir esto: 259 botones en el escritorio, 56 lugares con
- * `outline-none` y sólo 21 con `focus-visible:`. Seis de las ocho aplicaciones no
- * tenían ni uno, así que recorrer con Tab era hacerlo a ciegas.
- *
- * Va con `:where()` para que tenga especificidad cero: cualquier componente que
- * quiera su propio indicador lo pisa sin peleas, y esto queda como piso.
+ * El piso del anillo lo trae ahora `tokens.css`, con especificidad cero como
+ * tenía acá, pero en `ui-focus` en vez de `primary`: el primario por omisión da
+ * 2,64:1 contra el fondo claro y un indicador de foco necesita 3:1. La copia de
+ * acá, por venir después en el archivo, le ganaba y volvía a dejar el anillo
+ * por debajo del mínimo.
  */
-:where(
-  a,
-  button,
-  input,
-  select,
-  textarea,
-  summary,
-  [role="button"],
-  [tabindex]:not([tabindex="-1"])
-):focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
 
 /*
  * Menos movimiento para quien lo pidió (WCAG 2.3.3, y 2.2.2 para lo que no para).

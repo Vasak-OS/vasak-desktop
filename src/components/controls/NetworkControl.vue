@@ -26,7 +26,7 @@ onMounted(async () => {
 	<div class="theme-transition relative inline-block">
 		<!-- Indicador de estado -->
 		<div
-			class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-300"
+			class="absolute top-1 right-1 w-3 h-3 rounded-corner-full transition-all duration-300"
 			:class="networkState.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-error'"
 		></div>
 
@@ -35,7 +35,7 @@ onMounted(async () => {
 			<div
 				v-for="i in 4"
 				:key="i"
-				class="w-1 bg-primary rounded-full transition-all duration-300"
+				class="w-1 bg-primary rounded-corner-full transition-all duration-300"
 				:class="{
 					'opacity-100': i <= Math.ceil(networkState.signal_strength / 25),
 					'opacity-30': i > Math.ceil(networkState.signal_strength / 25),

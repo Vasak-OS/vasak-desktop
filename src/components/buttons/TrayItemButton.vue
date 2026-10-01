@@ -24,7 +24,7 @@ const props = defineProps<{
 const themeName = computed(() => props.item.icon_name ?? '');
 
 /** El mapa de bits propio, si lo mandó. */
-const mapaDeBits = computed(() =>
+const pixmapSource = computed(() =>
 	props.item.icon_data ? `data:image/png;base64,${props.item.icon_data}` : ''
 );
 
@@ -37,22 +37,22 @@ const initial = computed(() => {
 
 <template>
   <img
-    v-if="mapaDeBits"
-    :src="mapaDeBits"
+    v-if="pixmapSource"
+    :src="pixmapSource"
     :alt="item.title || item.id"
-    class="w-4 h-4 object-contain transition-all duration-300 group-hover:brightness-110 group-hover:scale-110 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]"
+    class="w-4 h-4 object-contain transition-all duration-300 group-hover:brightness-110"
   />
   <ThemeIcon
     v-else-if="themeName"
     :name="themeName"
     :size="16"
     :alt="item.title || item.id"
-    class="object-contain transition-all duration-300 group-hover:brightness-110 group-hover:scale-110 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]"
+    class="object-contain transition-all duration-300 group-hover:brightness-110"
   />
   <span
     v-else
     aria-hidden="true"
-    class="grid w-4 h-4 place-items-center rounded-corner bg-ui-surface text-[0.625rem] font-semibold leading-none text-primary transition-all duration-300 group-hover:scale-110"
+    class="grid w-4 h-4 place-items-center rounded-corner-m bg-ui-surface text-[0.625rem] font-semibold leading-none text-primary transition-all duration-300"
   >
     {{ initial }}
   </span>

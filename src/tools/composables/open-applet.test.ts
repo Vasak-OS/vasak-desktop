@@ -43,7 +43,7 @@ describe('el botón cuyo applet está abierto', () => {
 		expect(openAppletForTests.value).toBeNull();
 	});
 
-	test('las clases son las del diseño: relleno primario con su texto', () => {
-		expect(OPEN_APPLET_CLASSES.split(' ').sort()).toEqual(['bg-primary', 'text-tx-on-primary']);
+	test('las clases son las del diseño: el velo del acento de lo elegido', () => {
+		expect(OPEN_APPLET_CLASSES.split(' ').sort()).toEqual(['bg-ui-selected-accent']);
 	});
 });

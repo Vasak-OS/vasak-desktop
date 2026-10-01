@@ -28,9 +28,10 @@ describe('tarjeta del usuario', () => {
 		const foto = COMPONENTE.slice(COMPONENTE.indexOf('<img'), COMPONENTE.indexOf('</div>'));
 
 		// En la imagen, porque no hereda el redondeo del contenedor...
-		expect(foto).toContain('rounded-full');
+		// Con la escala del radio que eligió la persona, no con un radio fijo.
+		expect(foto).toContain('rounded-corner-full');
 		// ...y recortada por la caja, para que un avatar que no sea cuadrado
 		// tampoco se salga.
-		expect(COMPONENTE).toContain('overflow-hidden rounded-full');
+		expect(COMPONENTE).toContain('overflow-hidden rounded-corner-full');
 	});
 });

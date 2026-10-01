@@ -1,38 +1,26 @@
 <template>
   <div class="theme-transition relative inline-block theme-toggle-wrapper" :class="{ 'theme-switching': isSwitching }">
-    <!-- Sun/Moon indicator -->
-    <div class="absolute top-1 right-1 w-3 h-3 rounded-full transition-all duration-500 z-20" :class="{
-      'bg-yellow-400 animate-pulse': !(configStore?.config as any)?.style?.darkmode,
-      'bg-blue-400 animate-pulse': (configStore?.config as any)?.style?.darkmode,
+    <!-- El punto del sol o de la luna, con colores del esquema: el aviso del
+         esquema para el sol y el secundario para la luna. El degradado de
+         fondo se fue: era decoración, y sus naranjas y violetas eran de la
+         paleta de Tailwind, no del esquema que eligió la persona. -->
+    <div class="absolute top-1 right-1 w-3 h-3 rounded-corner-full transition-colors duration-300 z-20" :class="{
+      'bg-status-warning': !(configStore?.config as any)?.style?.darkmode,
+      'bg-secondary': (configStore?.config as any)?.style?.darkmode,
     }"></div>
-
-    <!-- Background gradient effect -->
-    <div
-      class="absolute inset-0 rounded-corner transition-all duration-500 pointer-events-none opacity-0 group-hover:opacity-100 group-hover:opacity-100 transition-opacity !opacity-100"
-      :class="{
-        'bg-linear-to-br from-orange-400/20 to-yellow-400/20':
-          !(configStore?.config as any)?.style?.darkmode,
-        'bg-linear-to-br from-purple-500/20 to-blue-600/20':
-          (configStore?.config as any)?.style?.darkmode,
-      }"></div>
 
     <ToggleControl :name="themeIcon" type="symbol" :label="(configStore?.config as any)?.style?.darkmode
         ? t('components.ThemeToggle.toLight')
         : t('components.ThemeToggle.toDark')
-      " :pressed="Boolean((configStore?.config as any)?.style?.darkmode)" :is-active="true" :is-loading="isSwitching" :custom-class="{
-        'h-[70px] w-[70px] p-2': true,
-        'ring-2 ring-primary': true,
-      }" :icon-class="{
-        'w-[50px] h-[50px]': true,
-        'filter brightness-110': !(configStore?.config as any)?.style?.darkmode,
-      }" @click="toggleTheme" />
+      " :pressed="Boolean((configStore?.config as any)?.style?.darkmode)" :is-active="true" :is-loading="isSwitching" @click="toggleTheme" />
   </div>
 </template>
 
-<!-- Los amarillos, naranjas, azules y violetas de este control **no se
-     tokenizan**: son la ilustración del sol y de la luna, o sea el
-     significado del interruptor. Cambiarlos por los colores de marca haría
-     que los dos modos se vieran iguales y el control dejaría de decir nada. -->
+<!-- El sol y la luna los dibuja el icono del tema (`themeIcon`), que ya dice
+     en qué modo está. Los amarillos, naranjas, azules y violetas que había
+     alrededor eran de la paleta de Tailwind y se fueron (decisión del
+     30/09/2026: los colores salen del esquema, sin excepciones); el punto que
+     queda usa dos colores del esquema que se distinguen entre sí. -->
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */

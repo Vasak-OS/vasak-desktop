@@ -34,10 +34,10 @@ const detalle = computed(() => {
        es peor que no mostrar nada. -->
   <div
     v-if="current"
-    class="flex items-center gap-1 rounded-corner p-1"
+    class="flex items-center gap-1 rounded-corner-m p-1"
     :title="detalle"
   >
     <WeatherIcon :code="current.weather_code" :dayOrNight="dayOrNight" size-class="h-5 w-5" />
-    <span class="text-xs font-semibold tabular-nums text-tx-main">{{ grados }}</span>
+    <span class="text-label-xs font-semibold tabular-nums text-tx-main">{{ grados }}</span>
   </div>
 </template>

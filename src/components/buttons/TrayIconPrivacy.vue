@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ThemeIcon, TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import { privacyInUse } from '@/services/core.service';
 import { toggleApplet } from '@/services/window.service';
@@ -122,7 +122,8 @@ const detail = computed(() => {
 	return [title, ...lines].join('\n');
 });
 
-const button = ref<HTMLButtonElement | null>(null);
+/** La instancia del botón de la librería: `toggleApplet` le lee el `$el`. */
+const button = ref<{ $el?: Element } | null>(null);
 const { openClasses } = useOpenApplet('privacy');
 
 const open = async () => {
@@ -135,14 +136,15 @@ const open = async () => {
 </script>
 
 <template>
-  <button
+  <!-- El botón de la bandeja de la librería, con los símbolos en la ranura en
+       vez del icono único: el mismo velo al pasar, el mismo foco y el mismo
+       nombre accesible (sale de `alt`) que los otros iconos del panel. -->
+  <TrayIconButton
     v-if="visible"
     ref="button"
-    type="button"
-    class="theme-transition p-1 rounded-corner relative flex items-center gap-1 cursor-pointer hover:bg-primary transition-all duration-300"
-    :class="openClasses"
-    :title="detail"
-    :aria-label="detail"
+    :alt="detail"
+    :tooltip="detail"
+    :custom-class="{ 'flex items-center gap-1': true, ...openClasses }"
     @click="open"
   >
     <ThemeIcon
@@ -152,7 +154,6 @@ const open = async () => {
       type="symbol"
       :size="22"
       :alt="symbol.text"
-      class="transition-all duration-300"
     />
-  </button>
+  </TrayIconButton>
 </template>

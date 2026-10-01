@@ -6,7 +6,7 @@ import { emit } from '@tauri-apps/api/event';
 import { Command } from '@tauri-apps/plugin-shell';
 import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
@@ -132,7 +132,12 @@ const openPhoneMenu = async () => {
 /**
  * El botón del menú: de él cuelga el menú, lo abra un clic o la tecla Super.
  */
-const menuButton = ref<HTMLElement | null>(null);
+/**
+ * El botón del menú. Es un componente de la librería, así que el `ref` es la
+ * instancia: `anchorOf` sabe leerle el `$el`, y el observador necesita el
+ * elemento.
+ */
+const menuButton = ref<{ $el?: Element } | null>(null);
 const { isOpen: menuIsOpen, openClasses: menuOpenClasses } = useOpenApplet('menu');
 
 const openMenu = async () => {
@@ -168,9 +173,10 @@ watch(position, async () => {
 
 onMounted(() => {
 	void sendMenuButton();
-	if (typeof ResizeObserver !== 'undefined' && menuButton.value) {
+	const element = menuButton.value?.$el;
+	if (typeof ResizeObserver !== 'undefined' && element instanceof Element) {
 		menuButtonObserver = new ResizeObserver(() => void sendMenuButton());
-		menuButtonObserver.observe(menuButton.value);
+		menuButtonObserver.observe(element);
 	}
 });
 
@@ -252,90 +258,72 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 </script>
 
 <template>
+	<!-- El panel flota sobre el escritorio: la superficie opaca `ui-float`, el
+	     canto fino y el radio `l`, que es el de un contenedor con `p-1`
+	     alrededor de botones `m` (el anidado de Once UI). Sus botones son los
+	     de la bandeja de la librería (`TrayIconButton`): el velo neutro al
+	     pasar en lugar del relleno del primario, sin escala, y el anillo de
+	     foco por dentro, que en una barra de 36 píxeles no se corta. -->
 	<nav
 		@contextmenu.prevent="openPanelContextMenu"
-		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80"
+		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner-l bg-ui-float border border-ui-line"
 		:class="BAR_CLASSES[position]"
 	>
     <div class="flex items-center gap-1" :class="vertical ? 'flex-col' : ''">
-      <!-- Un botón y no una imagen con `@click`: así se alcanza con el teclado
-           y se anuncia como lo que es. Antes eran `img` clicables, que no
-           reciben foco ni salen en la lista de controles. -->
-      <button
+      <TrayIconButton
         ref="menuButton"
-        type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-        :class="menuOpenClasses"
+        name="start-here"
+        :alt="t('views.panel.menuAlt')"
+        :tooltip="t('views.panel.menuAlt')"
+        :custom-class="menuOpenClasses"
         :aria-expanded="menuIsOpen"
-        :title="t('views.panel.menuAlt')"
-        :aria-label="t('views.panel.menuAlt')"
         @click="openMenu"
-      >
-        <ThemeIcon name="start-here" :size="28" />
-      </button>
+      />
 			<!-- El separador gira con la barra: de costado, una raya vertical de
 			     un píxel de ancho entre dos iconos apilados no separa nada. -->
-			<div class="bg-ui-bg/80" :class="vertical ? 'h-1 w-7' : 'w-1 h-7'"></div>
-      <button
-        type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-        :title="t('views.panel.settingsAlt')"
-        :aria-label="t('views.panel.settingsAlt')"
+			<div class="bg-ui-line" :class="vertical ? 'h-px w-7' : 'w-px h-7'"></div>
+      <TrayIconButton
+        name="preferences-system"
+        :alt="t('views.panel.settingsAlt')"
+        :tooltip="t('views.panel.settingsAlt')"
         @click="openConfig"
-      >
-        <ThemeIcon name="preferences-system" :size="24" />
-      </button>
-      <button
-        type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-        :title="t('views.panel.filesAlt')"
-        :aria-label="t('views.panel.filesAlt')"
+      />
+      <TrayIconButton
+        name="system-file-manager"
+        :alt="t('views.panel.filesAlt')"
+        :tooltip="t('views.panel.filesAlt')"
         @click="openFileManager"
-      >
-        <ThemeIcon name="system-file-manager" :size="24" />
-      </button>
+      />
       <!-- Only while a phone is connected: a permanent button for hardware
            most people never plug in is clutter in the one strip of screen that
            is always on top of everything else. -->
-      <div v-if="hasPhone" class="relative">
-        <button
-        type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-        :title="t('views.connect.menuAlt')"
-        :aria-label="t('views.connect.menuAlt')"
+      <TrayIconButton
+        v-if="hasPhone"
+        name="smartphone"
+        :alt="t('views.connect.menuAlt')"
+        :tooltip="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
         @click="openPhoneMenu"
       >
-        <ThemeIcon name="smartphone" :size="24" />
-      </button>
         <div
           v-if="phoneNeedsAuth"
-          :title="t('views.connect.unauthorized')"
-          class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-status-warning"
+          class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-corner-full bg-status-warning"
         ></div>
-      </div>
+      </TrayIconButton>
     </div>
     <WindowsArea />
     <div class="flex content-center items-center" :class="vertical ? 'flex-col' : ''">
       <TrayBarArea />
       <PanelClockwidget />
-      <button
-        type="button"
-        class="relative cursor-pointer"
-        :title="t('views.panel.notificationsAlt')"
-        :aria-label="t('views.panel.notificationsAlt')"
+      <!-- La insignia la dibuja el botón de la librería; el número no pasa de
+           99 para que entre en la píldora. -->
+      <TrayIconButton
+        name="preferences-desktop-notification"
+        :alt="t('views.panel.notificationsAlt')"
+        :tooltip="t('views.panel.notificationsAlt')"
+        :badge="notifications.length > 0 ? Math.min(notifications.length, 99) : null"
+        :icon-class="{ 'animate-bell-shake': hasNewNotifications }"
         @click="openNotificationCenter"
-      >
-        <ThemeIcon
-          name="preferences-desktop-notification"
-          :size="24"
-          :alt="t('views.panel.notificationsAlt')"
-          class="p-0.5"
-          :class="{ 'animate-bell-shake': hasNewNotifications }"
-        />
-        <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary text-tx-on-primary rounded-full min-w-3 h-3 flex items-center justify-center text-[8px] font-semibold leading-none px-0.5">
-          {{ notifications.length > 99 ? "99+" : notifications.length }}
-        </div>
-      </button>
+      />
     </div>
   </nav>
 </template>

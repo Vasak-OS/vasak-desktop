@@ -42,11 +42,15 @@ const variante = computed(() => props.variant ?? WIDGETS[props.type].variants?.[
 </script>
 
 <template>
-	<!-- El mismo marco que en el escritorio: fondo, blur, borde y esquinas, y el
-	     contenedor contra el que se miden las unidades de adentro. -->
+	<!-- La tarjeta de lo que se apoya —la superficie, el canto fino y el radio
+	     `l`, como `ListCard`—, y el contenedor contra el que se miden las
+	     unidades de adentro. No es `ListCard` porque ésa trae su relleno y su
+	     fila, y el widget tiene que llenar el marco entero: se mide en
+	     unidades de contenedor. Sin desenfoque: detrás no hay nada que
+	     desenfocar. -->
 	<div
 		style="container-type: size"
-		class="h-full w-full overflow-hidden rounded-corner border border-ui-border bg-ui-bg/80 backdrop-blur-md"
+		class="h-full w-full overflow-hidden rounded-corner-l border border-ui-line bg-ui-surface/70"
 	>
 		<component :is="componente" :variant="variante" />
 	</div>

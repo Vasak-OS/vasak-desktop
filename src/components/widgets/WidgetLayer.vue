@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { writeConfig } from '@vasakgroup/plugin-config-manager';
 import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ActionButton, ListCard } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import FilesWidget from '@/components/widgets/FilesWidget.vue';
@@ -356,7 +357,7 @@ defineExpose({ openEditing });
 	<div
 		ref="container"
 		class="absolute inset-0 z-20"
-		:class="editing ? 'pointer-events-auto bg-black/20' : 'pointer-events-none'"
+		:class="editing ? 'pointer-events-auto bg-ui-scrim' : 'pointer-events-none'"
 	>
 		<div
 			class="grid h-full w-full"
@@ -386,40 +387,40 @@ defineExpose({ openEditing });
 			</WidgetHost>
 		</div>
 
-		<!-- Panel de widgets disponibles, sólo mientras se edita. -->
+		<!-- Panel de widgets disponibles, sólo mientras se edita.
+
+		     Flota sobre el escritorio como un diálogo: la superficie opaca
+		     `ui-float`, el canto fino, el radio `xl` y la sombra `surface-xl`.
+		     Es un contenedor: las columnas de la lista salen de su ancho y no
+		     del de la pantalla. -->
 		<aside
 			v-if="editing && panelOpen"
 			data-widget-panel
-			class="pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner border border-ui-border bg-ui-bg/90 p-4 shadow-2xl backdrop-blur-lg"
+			class="@container pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner-xl border border-ui-line bg-ui-float p-4 shadow-surface-xl"
 		>
 			<div class="mb-3 flex items-center justify-between">
-				<h2 class="text-sm font-semibold uppercase tracking-wide text-tx-muted">
+				<h2 class="text-label-m font-semibold uppercase tracking-wide text-tx-muted">
 					{{ t('widgets.panelTitle') }}
 				</h2>
-				<button
-					type="button"
-					class="rounded-corner bg-primary px-3 py-1 text-sm font-semibold text-tx-on-primary"
-					@click="finishEditing"
-				>
-					{{ t('widgets.done') }}
-				</button>
+				<ActionButton :label="t('widgets.done')" @click="finishEditing" />
 			</div>
 
-			<p v-if="options.length === 0" class="text-sm text-tx-muted">
+			<p v-if="options.length === 0" class="text-label-m text-tx-muted">
 				{{ t('widgets.allPlaced') }}
 			</p>
 
-			<div v-else class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-				<button
+			<div v-else class="grid gap-2 @lg:grid-cols-2 @2xl:grid-cols-3">
+				<ListCard
 					v-for="option in options"
 					:key="option.key"
-					type="button"
-					class="rounded-corner border border-ui-border bg-ui-surface/40 p-3 text-left transition-colors hover:bg-ui-surface"
+					clickable
 					@click="add(option.type, option.variant, option.size)"
 				>
-					<span class="block text-sm font-medium text-tx-main">{{ option.label }}</span>
-					<span class="block text-xs text-tx-muted">{{ option.description }}</span>
-				</button>
+					<span class="min-w-0 flex-1 text-left">
+						<span class="block text-label-m font-medium text-tx-main">{{ option.label }}</span>
+						<span class="block text-label-xs text-tx-muted">{{ option.description }}</span>
+					</span>
+				</ListCard>
 			</div>
 		</aside>
 	</div>

@@ -160,13 +160,33 @@ describe('AppletPopover', () => {
 	});
 
 	test('la sombra sale de un token, nunca de un color escrito', () => {
-		expect(popover).toContain('box-shadow: var(--shadow-surface-l, none)');
+		expect(popover).toMatch(/'applet-popover [^']*\bshadow-surface-l\b/);
 		expect(popover).not.toMatch(/rgba?\(|#[0-9a-f]{3,8}\b/i);
 	});
 
-	test('entra con opacidad y escala desde 0.96, en 180 ms', () => {
+	test('y el token existe: el escritorio importa la forma de la librería', () => {
+		// Sin `tokens.css` la clase no emite nada y el applet queda sin sombra,
+		// sin que nada avise. Era lo que pasaba con la 1.x: la sombra estaba
+		// pedida y el token no existía.
+		const css = read('src/assets/main.css');
+		const tokens = read('node_modules/@vasakgroup/vue-libvasak/dist/tokens.css');
+		expect(css).toMatch(
+			/@import "tailwindcss";\s[\s\S]*@import "@vasakgroup\/vue-libvasak\/tokens\.css";/
+		);
+		expect(tokens).toMatch(/--shadow-surface-l:/);
+	});
+
+	test('opaco, del canto fino y con el radio de lo que flota', () => {
+		const classes = popover.match(/'applet-popover [^']*'/)?.[0] ?? '';
+		expect(classes).toContain('bg-ui-float');
+		expect(classes).toContain('border-ui-line');
+		expect(classes).toContain('rounded-corner-xl');
+		expect(popover).not.toContain('backdrop-blur');
+	});
+
+	test('entra con opacidad y escala desde 0.96, en 200 ms y frenando', () => {
 		expect(popover).toMatch(/applet-popover-in[\s\S]*scale\(0\.96\)/);
-		expect(popover).toContain('animation: applet-popover-in 180ms');
+		expect(popover).toContain('animation: applet-popover-in 200ms var(--ease-ui-out)');
 	});
 
 	test('sin movimiento, sólo opacidad', () => {

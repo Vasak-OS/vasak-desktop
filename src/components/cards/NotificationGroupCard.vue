@@ -11,26 +11,26 @@
          `role="button"` y no un `<button>` porque adentro está el de descartar
          el grupo entero. -->
     <div
-      class="group/grupo flex items-center gap-2 px-2 py-1.5 bg-ui-surface rounded-t-corner cursor-pointer"
+      class="group/grupo flex items-center gap-2 px-2 py-1.5 bg-ui-surface rounded-t-corner-m cursor-pointer"
       role="button" tabindex="0" :aria-expanded="isExpanded"
       @click="toggleExpanded"
       @keydown.enter.self.prevent="toggleExpanded"
       @keydown.space.self.prevent="toggleExpanded"
-      :class="{ 'rounded-corner': !isExpanded }">
+      :class="{ 'rounded-corner-m': !isExpanded }">
       <ThemeIcon :name="group.app_icon" :size="20" :alt="group.app_name" class="object-contain" />
 
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
-          <h3 class="text-sm font-medium text-tx-main truncate">
+          <h3 class="text-label-m font-medium text-tx-main truncate">
             {{ group.app_name }}
           </h3>
           <span
-            class="inline-flex items-center justify-center min-w-4 h-4 px-1 text-[11px] font-medium rounded-full"
+            class="inline-flex items-center justify-center min-w-4 h-4 px-1 text-[11px] font-medium rounded-corner-full"
             :class="group.has_unread ? 'bg-primary text-tx-on-primary' : 'bg-ui-bg text-tx-muted'">
             {{ group.count }}
           </span>
         </div>
-        <p class="text-xs text-tx-muted truncate">
+        <p class="text-label-xs text-tx-muted truncate">
           {{ formatGroupSummary() }}
         </p>
       </div>
@@ -42,15 +42,13 @@
         <button
           type="button"
           :title="t('components.NotificationGroupCard.removeGroup')"
-          class="flex items-center justify-center w-4 h-4 rounded-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/grupo:opacity-100 focus-visible:opacity-100 hover:text-status-error"
+          class="flex items-center justify-center w-4 h-4 rounded-corner-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/grupo:opacity-100 focus-visible:opacity-100 hover:text-status-error"
           @click.stop="removeAllFromGroup" :aria-label="t('components.NotificationGroupCard.removeGroup')">
           <ThemeIcon name="window-close-symbolic" type="symbol" :size="10" :alt="t('components.NotificationGroupCard.removeGroup')" />
         </button>
         <div class="w-4 h-4 flex items-center justify-center text-tx-muted transition-transform duration-200"
           :class="{ 'rotate-180': isExpanded }">
-          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
+          <ThemeIcon name="go-down" type="symbol" :size="12" alt="" />
         </div>
       </div>
     </div>
@@ -59,14 +57,14 @@
       leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] overflow-hidden"
       enter-from-class="h-0 opacity-0" leave-to-class="h-0 opacity-0" @enter="onEnter" @leave="onLeave">
       <div v-show="isExpanded"
-        class="notifications-list bg-ui-bg/60 rounded-b-corner">
+        class="notifications-list bg-ui-bg/60 rounded-b-corner-m">
         <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           enter-active-class="transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
           leave-active-class="transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
           enter-from-class="opacity-0 translate-x-5" leave-to-class="opacity-0 -translate-x-5" tag="div">
           <NotificationCard v-for="notification in group.notifications" :key="notification.id"
             :notification="notification" @seen="(id: number) => $emit('remove', id)"
-            class="border-b border-ui-border last:border-b-0" />
+            class="border-b border-ui-line last:border-b-0" />
         </TransitionGroup>
       </div>
     </Transition>

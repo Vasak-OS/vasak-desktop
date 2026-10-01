@@ -45,10 +45,12 @@ const formattedDate = computed(() => {
 const dayOrNightType = computed(() => props.dayOrNight as 'day' | 'night');
 </script>
 <template>
-  <div class="group flex flex-col items-center justify-center gap-1 rounded-corner border border-ui-border bg-ui-bg/80 p-2 backdrop-blur-md transition-all duration-200 ease-out hover:-translate-y-1 hover:scale-[1.02]">
-    <div class="text-sm font-medium">{{ formattedDate }}</div>
-	<WeatherIcon :code="weatherCode" :dayOrNight="dayOrNightType" class="weather-icon my-[0.1rem] transition-transform duration-200 ease-in-out group-hover:scale-110" />
-    <div class="flex gap-2 text-sm">
+  <div class="flex min-w-0 flex-col items-center justify-center gap-1 rounded-corner-m border border-ui-line p-2">
+    <div class="text-label-m font-medium">{{ formattedDate }}</div>
+	<!-- Hasta 64 como antes, pero nunca más ancho que la tarjeta: en un menú
+	     angosto el icono fijo se salía por los costados. -->
+	<WeatherIcon :code="weatherCode" :dayOrNight="dayOrNightType" size-class="aspect-square w-full max-w-16 min-w-0" class="weather-icon my-[0.1rem]" />
+    <div class="flex gap-2 text-label-m">
       <span class="font-semibold">{{ max }}°</span>
       <span class="font-normal">{{ min }}°</span>
     </div>

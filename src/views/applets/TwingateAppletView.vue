@@ -140,7 +140,7 @@ const authorize = async (resource: TwingateResource) => {
 			<header class="flex items-center justify-between gap-2">
 				<div class="min-w-0">
 					<h2 class="text-lg font-medium text-tx-main">Twingate</h2>
-					<p class="truncate text-xs text-tx-muted">
+					<p class="truncate text-label-xs text-tx-muted">
 						{{
 							info?.connected
 								? t('components.TwingateArea.resourceCount').replace(
@@ -154,7 +154,7 @@ const authorize = async (resource: TwingateResource) => {
 
 				<span
 					v-if="pendingAuth.length > 0"
-					class="shrink-0 rounded-corner bg-status-warning/20 px-2 py-1 text-[11px] font-semibold text-status-warning"
+					class="shrink-0 rounded-corner-m bg-status-warning/20 px-2 py-1 text-[11px] font-semibold text-status-warning"
 				>
 					{{
 						t('components.TwingateArea.pendingCount').replace('{0}', String(pendingAuth.length))
@@ -162,19 +162,19 @@ const authorize = async (resource: TwingateResource) => {
 				</span>
 			</header>
 
-			<p v-if="loading" class="text-sm text-tx-muted">
+			<p v-if="loading" class="text-label-m text-tx-muted">
 				{{ t('components.TwingateArea.loading') }}
 			</p>
 
-			<p v-else-if="failed" class="text-sm text-status-error">
+			<p v-else-if="failed" class="text-label-m text-status-error">
 				{{ t('components.TwingateArea.failed') }}
 			</p>
 
-			<p v-else-if="!info?.installed" class="text-sm text-tx-muted">
+			<p v-else-if="!info?.installed" class="text-label-m text-tx-muted">
 				{{ t('components.TwingateArea.notInstalled') }}
 			</p>
 
-			<p v-else-if="sorted.length === 0" class="text-sm text-tx-muted">
+			<p v-else-if="sorted.length === 0" class="text-label-m text-tx-muted">
 				{{ t('components.TwingateArea.empty') }}
 			</p>
 
@@ -185,16 +185,16 @@ const authorize = async (resource: TwingateResource) => {
 				<li
 					v-for="resource in sorted"
 					:key="resource.name"
-					class="flex items-center gap-2 rounded-corner border border-ui-border/60 bg-ui-surface/45 px-2 py-1.5"
+					class="flex items-center gap-2 rounded-corner-m border border-ui-line bg-ui-surface/45 px-2 py-1.5"
 				>
 					<span
-						class="h-2 w-2 shrink-0 rounded-full"
+						class="h-2 w-2 shrink-0 rounded-corner-full"
 						:class="resource.needs_auth ? 'bg-status-warning' : 'bg-status-success'"
 						aria-hidden="true"
 					></span>
 
 					<div class="min-w-0 flex-1">
-						<p class="truncate text-xs font-medium text-tx-main" :title="resource.name">
+						<p class="truncate text-label-xs font-medium text-tx-main" :title="resource.name">
 							{{ resource.name }}
 						</p>
 						<p class="truncate text-[10px] text-tx-muted" :title="resource.address">
@@ -205,7 +205,7 @@ const authorize = async (resource: TwingateResource) => {
 					<button
 						v-if="resource.needs_auth"
 						type="button"
-						class="shrink-0 rounded-corner bg-primary px-2 py-1 text-[10px] font-semibold text-tx-on-primary disabled:opacity-50"
+						class="shrink-0 rounded-corner-m bg-primary px-2 py-1 text-[10px] font-semibold text-tx-on-primary disabled:opacity-50"
 						:disabled="authorizing === resource.name"
 						@click="authorize(resource)"
 					>

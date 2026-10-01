@@ -1,9 +1,21 @@
 <script lang="ts" setup>
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { DropdownMenuItem, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { openApp as sysOpenApp } from '@/services/app.service';
 import { dismissMenu } from '@/services/window.service';
 import { logError } from '@/utils/logger';
 
+/**
+ * Una aplicación en la lista de la categoría del menú.
+ *
+ * Es el ítem de menú de la librería (`DropdownMenuItem`): la lista del menú es
+ * literalmente un desplegable largo, y así toma la forma de Once UI —radio `m`,
+ * el velo neutro `ui-hover` al pasar en lugar del relleno del primario, el
+ * anillo de foco por dentro— sin que el menú se dibuje la suya. Antes era un
+ * botón propio que crecía, se corría y se pintaba de rosa al pasar por encima.
+ *
+ * El nombre se parte en dos líneas en vez de cortarse: no hay otro lugar donde
+ * leerlo entero.
+ */
 const props = defineProps({
 	app: {
 		type: Object,
@@ -11,9 +23,9 @@ const props = defineProps({
 	},
 });
 
-const openApp = async (path: string) => {
+const openApp = async () => {
 	try {
-		await sysOpenApp({ path } as any);
+		await sysOpenApp({ path: props.app.path } as any);
 	} catch (error) {
 		logError('Error al abrir aplicación:', error);
 	} finally {
@@ -24,23 +36,8 @@ const openApp = async (path: string) => {
 </script>
 
 <template>
-  <button
-    class="flex flex-row w-full p-2 rounded-corner items-center transform hover:translate-x-1 hover:scale-110 hover:bg-primary hover:border hover:border-secondary transition-transform"
-    @click="openApp(app.path)"
-    :title="app.description"
-  >
-    <ThemeIcon
-      :name="app.icon"
-      :size="40"
-      :alt="app.name"
-      class="img-fluid"
-    />
-    <div class="col-10 app-card-info ps-2 text-left">
-      {{ app.name }}
-      <span class="text-ui-surface" style="display: none">{{
-        app.description
-      }}</span>
-      <span style="display: none">{{ app.keywords }}</span>
-    </div>
-  </button>
+  <DropdownMenuItem :title="app.description" class="w-full" @select="openApp">
+    <ThemeIcon :name="app.icon" :size="32" alt="" />
+    <span class="min-w-0 flex-1 break-words text-left">{{ app.name }}</span>
+  </DropdownMenuItem>
 </template>

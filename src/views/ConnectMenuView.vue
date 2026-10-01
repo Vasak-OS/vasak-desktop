@@ -160,7 +160,7 @@ onBeforeUnmount(() => {
   <Transition appear enter-active-class="enter-active">
     <div
       :class="[
-        'flex h-screen flex-col gap-3 rounded-corner border border-ui-border bg-ui-bg/80 p-4 text-tx-main',
+        'flex h-screen flex-col gap-3 rounded-corner-m border border-ui-line bg-ui-bg/80 p-4 text-tx-main',
         { 'leave-active': leaving },
       ]"
     >
@@ -175,11 +175,11 @@ onBeforeUnmount(() => {
               v-for="d in devices"
               :key="d.serial"
               type="button"
-              class="rounded-corner border border-ui-border px-2 py-1 text-xs"
+              class="rounded-corner-m border border-ui-line px-2 py-1 text-label-xs"
               :class="
                 d.serial === selected
                   ? 'bg-primary text-tx-on-primary'
-                  : 'bg-ui-surface/40 hover:bg-primary/20'
+                  : 'bg-ui-surface/40 hover:bg-ui-hover'
               "
               @click="selected = d.serial; loadApps()"
             >
@@ -189,7 +189,7 @@ onBeforeUnmount(() => {
           <p v-else class="truncate font-semibold">
             {{ device?.model || t('views.connect.noDevice') }}
           </p>
-          <p v-if="device" class="text-xs text-tx-muted">
+          <p v-if="device" class="text-label-xs text-tx-muted">
             {{ device.transport === 'usb' ? 'USB' : device.address }}
           </p>
         </div>
@@ -198,7 +198,7 @@ onBeforeUnmount(() => {
           type="button"
           :title="t('views.connect.refresh')"
           @click="loadApps(true)"
-          class="rounded-corner p-2 hover:bg-primary" :aria-label="t('views.connect.refresh')">
+          class="rounded-corner-m p-2 hover:bg-ui-hover" :aria-label="t('views.connect.refresh')">
           <ThemeIcon name="view-refresh" :size="20" />
         </button>
       </header>
@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
            first-run state, so it gets an explanation rather than an empty list. -->
       <div
         v-if="device && device.state === 'unauthorized'"
-        class="rounded-corner border border-status-warning/40 bg-status-warning/10 p-4 text-sm text-status-warning"
+        class="rounded-corner-m border border-status-warning/40 bg-status-warning/10 p-4 text-label-m text-status-warning"
       >
         {{ t('views.connect.unauthorized') }}
       </div>
@@ -225,7 +225,7 @@ onBeforeUnmount(() => {
 
         <div
           v-else-if="errorMessage"
-          class="rounded-corner border border-status-error/40 bg-status-error/10 p-4 text-sm text-status-error"
+          class="rounded-corner-m border border-status-error/40 bg-status-error/10 p-4 text-label-m text-status-error"
         >
           {{ errorMessage }}
         </div>
@@ -239,7 +239,7 @@ onBeforeUnmount(() => {
                   type="button"
                   :title="t('views.connect.close')"
                   @click="close(app)"
-                  class="shrink-0 rounded-corner border border-ui-border px-2 py-1 text-xs text-primary hover:bg-primary hover:text-tx-on-primary"
+                  class="shrink-0 rounded-corner-m border border-ui-line px-2 py-1 text-label-xs text-primary hover:bg-ui-hover"
                 >
                   {{ t('views.connect.close') }}
                 </button>
@@ -251,7 +251,7 @@ onBeforeUnmount(() => {
           </li>
         </ul>
 
-        <div class="flex items-center justify-between gap-2 text-xs text-tx-muted">
+        <div class="flex items-center justify-between gap-2 text-label-xs text-tx-muted">
           <span>{{ t('views.connect.showSystem') }}</span>
           <SwitchToggle :label="t('views.connect.showSystem')" :model-value="showSystem" @update:model-value="showSystem = $event" />
         </div>

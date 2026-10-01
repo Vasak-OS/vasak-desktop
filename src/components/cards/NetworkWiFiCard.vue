@@ -3,7 +3,17 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ActionButton, ListCard, TextInput, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import {
+	ActionButton,
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	ListCard,
+	TextInput,
+	ThemeIcon,
+} from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref } from 'vue';
 import {
 	connectToWifi,
@@ -60,19 +70,23 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
 </script>
 
 <template>
+  <!-- La tarjeta de la librería tal cual —su superficie, su canto y su radio—:
+       antes se le pisaban el fondo, el borde y el radio con `custom-class`, y
+       dos clases de fondo pelean por el orden en que Tailwind las emite. La
+       conectada suma un anillo del color del éxito, que no pisa nada. -->
   <ListCard
     :clickable="true"
-    :custom-class="`bg-ui-surface/45 border-ui-border rounded-corner px-3 py-2.5 hover:bg-ui-surface/65 transition-colors ${props.is_connected ? 'ring-1 ring-status-success/40' : ''}`"
+    :custom-class="props.is_connected ? 'flex-wrap ring-1 ring-status-success/40' : 'flex-wrap'"
     @click="connectToNetwork()"
   >
-    <div class="flex items-center gap-3 flex-1 min-w-0">
-      <div class="rounded-full bg-primary/10 p-2 border border-ui-border">
+    <div class="flex items-center gap-3 flex-1 min-w-32">
+      <div class="shrink-0 rounded-corner-full bg-ui-selected-accent p-2 border border-ui-line">
         <ThemeIcon :name="props.icon" type="symbol" :size="16" :alt="props.ssid" />
       </div>
 
       <div class="min-w-0">
-        <div class="font-medium text-tx-main truncate">{{ props.ssid || props.name }}</div>
-        <div class="text-xs text-tx-muted flex items-center gap-1.5">
+        <div class="font-medium text-tx-main truncate" :title="props.ssid || props.name">{{ props.ssid || props.name }}</div>
+        <div class="text-label-xs text-tx-muted flex flex-wrap items-center gap-1.5">
           <span>{{ securityLabel }}</span>
           <span v-if="props.is_connected">• {{ t('components.NetworkWiFiCard.connected') }}</span>
         </div>
@@ -87,49 +101,54 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         <div
           v-for="i in 4"
           :key="i"
-          class="w-1 rounded-full bg-primary transition-all"
+          class="w-1 rounded-corner-full bg-primary"
           :class="i <= signalLevel ? 'opacity-100' : 'opacity-25'"
           :style="{ height: `${4 + i * 2}px` }"
         ></div>
       </div>
 
-      <svg
+      <!-- El candado es el del tema, no uno dibujado acá. -->
+      <ThemeIcon
         v-if="props.security_type && String(props.security_type) !== 'none'"
-        class="w-4 h-4 text-tx-muted"
-        fill="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,7C13.4,7 14.8,8.6 14.8,10V11H16V18H8V11H9.2V10C9.2,8.6 10.6,7 12,7M12,8.2C11.2,8.2 10.4,8.7 10.4,10V11H13.6V10C13.6,8.7 12.8,8.2 12,8.2Z"
-        />
-      </svg>
+        name="changes-prevent"
+        type="symbol"
+        :size="16"
+        :alt="securityLabel"
+        class="text-tx-muted"
+      />
 
       <div
-        class="w-2.5 h-2.5 rounded-full"
+        class="w-2.5 h-2.5 rounded-corner-full"
         :class="props.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-error/70'"
       ></div>
     </div>
   </ListCard>
 
-  <!-- Modal para pedir contraseña -->
-  <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-    <div class="w-full max-w-sm rounded-corner border border-ui-border bg-ui-bg p-4 shadow-xl flex flex-col gap-3">
-      <h3 class="text-base font-semibold text-tx-main">
-        {{ t('components.NetworkWiFiCard.connectTo').replace('{0}', String(props.ssid)) }}
-      </h3>
-      <!-- `ariaLabel` además del marcador: un marcador no es un nombre —se
-           borra al escribir, y un lector de pantalla no tiene por qué leerlo—,
-           así que este campo no tenía ninguno. -->
-      <TextInput
-        v-model="password"
-        type="password"
-        autocomplete="current-password"
-        :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
-        :ariaLabel="t('components.NetworkWiFiCard.passwordPlaceholder')"
-        :disabled="connecting"
-      />
-      <div v-if="errorMsg" class="text-status-error text-sm">{{ errorMsg }}</div>
-      <div class="flex gap-2 justify-end mt-2">
+  <!-- La contraseña se pide en el diálogo de la librería: su velo, su panel
+       flotante, su foco atrapado y Escape para cerrarlo, en lugar de una caja
+       fija sobre un velo negro escrito acá. -->
+  <Dialog v-model:open="showModal">
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>
+          {{ t('components.NetworkWiFiCard.connectTo').replace('{0}', String(props.ssid)) }}
+        </DialogTitle>
+      </DialogHeader>
+      <div class="flex flex-col gap-3">
+        <!-- `ariaLabel` además del marcador: un marcador no es un nombre —se
+             borra al escribir, y un lector de pantalla no tiene por qué leerlo—,
+             así que este campo no tenía ninguno. -->
+        <TextInput
+          v-model="password"
+          type="password"
+          autocomplete="current-password"
+          :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
+          :ariaLabel="t('components.NetworkWiFiCard.passwordPlaceholder')"
+          :disabled="connecting"
+        />
+        <div v-if="errorMsg" class="text-status-error text-label-m">{{ errorMsg }}</div>
+      </div>
+      <DialogFooter>
         <ActionButton :label="t('common.cancel')" variant="secondary" @click="showModal = false" />
         <ActionButton
           :label="t('components.NetworkWiFiCard.connectAction')"
@@ -137,7 +156,7 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
           :disabled="!password"
           @click="confirmConnect"
         />
-      </div>
-    </div>
-  </div>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>

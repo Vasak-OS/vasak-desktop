@@ -100,7 +100,7 @@ onMounted(loadData);
     >
       <p
         v-if="empty"
-        class="flex h-8 items-center px-3 text-sm text-tx-muted"
+        class="flex h-8 items-center px-3 text-label-m text-tx-muted"
       >
         {{ t('views.applets.tray.noItems') }}
       </p>
@@ -115,7 +115,7 @@ onMounted(loadData);
         <p
           v-else-if="row.kind === 'caption'"
           role="presentation"
-          class="flex h-7 items-center truncate px-3 text-xs font-semibold text-tx-muted"
+          class="flex h-7 items-center truncate px-3 text-label-xs font-semibold text-tx-muted"
           :style="{ paddingLeft: `${0.75 + row.depth}rem` }"
         >
           {{ row.item.label }}
@@ -128,7 +128,7 @@ onMounted(loadData);
           :role="row.item.checked === undefined || row.item.checked === null ? 'menuitem' : 'menuitemcheckbox'"
           :aria-checked="row.item.checked ?? undefined"
           :disabled="!row.item.enabled"
-          class="flex h-8 w-full items-center gap-2 rounded-corner-sm pr-3 text-left text-sm text-tx-main transition-colors hover:bg-primary hover:text-tx-on-primary focus-visible:bg-primary focus-visible:text-tx-on-primary focus-visible:outline-none disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-tx-main"
+          class="flex h-8 w-full items-center gap-2 rounded-corner-xs pr-3 text-left text-label-m text-tx-main transition-colors hover:bg-ui-hover focus-visible:bg-primary focus-visible:text-tx-on-primary focus-visible:outline-none disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-tx-main"
           :style="{ paddingLeft: `${0.75 + row.depth}rem` }"
           @click="handleItemClick(row.item)"
         >
