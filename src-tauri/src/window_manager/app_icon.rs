@@ -21,11 +21,10 @@
 
 use freedesktop_entry_parser::parse_entry;
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, RwLock};
 
-use crate::menu_manager::{applications_dirs, first_attr};
+use crate::menu_manager::{applications_dirs, first_attr, locale_keys, localized_attr};
 
 /// Icono para cuando no hay nada mejor que ofrecer.
 pub const FALLBACK_ICON: &str = "application-x-executable";
@@ -107,6 +106,37 @@ fn lookup_icon(app_id: &str) -> Option<String> {
 /// Lo mismo, sobre una lista de directorios dada. Separado para poder probarlo
 /// sin tocar el entorno del proceso.
 fn lookup_icon_in(app_id: &str, dirs: &[std::path::PathBuf]) -> Option<String> {
+    lookup_in(app_id, dirs, |section| non_empty(first_attr(section, "Icon")))
+}
+
+/// El nombre que muestra la aplicación, en el idioma de la sesión: la clave
+/// `Name` (o `Name[es]`) de su entrada `.desktop`. Sin entrada, `None`.
+///
+/// Lo usa el tablero de tiempo de pantalla, que guarda por `app-id` y muestra
+/// «Firefox» y no `org.mozilla.firefox`. No se memoriza como el icono: se pide
+/// una vez por aplicación cada vez que se abre el tablero, no en cada evento
+/// del compositor.
+pub fn name_for_app_id(app_id: &str) -> Option<String> {
+    let key = app_id.trim();
+    if key.is_empty() {
+        return None;
+    }
+    let locales = locale_keys();
+    lookup_in(key, &applications_dirs(), |section| {
+        non_empty(Some(localized_attr(section, "Name", &locales).as_str()))
+    })
+}
+
+/// Busca la entrada `.desktop` de `app_id` en `dirs` y devuelve lo que `read`
+/// saque de ella: el icono, el nombre.
+///
+/// Por nombre de archivo primero, que es el caso normal y no cuesta un
+/// escaneo; si no, un recorrido por la caja del nombre o por `StartupWMClass`.
+fn lookup_in(
+    app_id: &str,
+    dirs: &[std::path::PathBuf],
+    read: impl Fn(&freedesktop_entry_parser::Section) -> Option<String>,
+) -> Option<String> {
     // Por nombre de archivo, que es el caso normal y no cuesta un escaneo.
     // Se prueba tal cual y en minúsculas: `com.anthropic.Claude` viene con
     // mayúsculas, otros identificadores llegan con la caja cambiada.
@@ -119,8 +149,11 @@ fn lookup_icon_in(app_id: &str, dirs: &[std::path::PathBuf]) -> Option<String> {
     for dir in dirs {
         for stem in &stems {
             let candidate = dir.join(format!("{stem}.desktop"));
-            if let Some(icon) = read_icon(&candidate) {
-                return Some(icon);
+            let Ok(parsed) = parse_entry(&candidate) else {
+                continue;
+            };
+            if let Some(value) = parsed.section("Desktop Entry").and_then(&read) {
+                return Some(value);
             }
         }
     }
@@ -129,7 +162,7 @@ fn lookup_icon_in(app_id: &str, dirs: &[std::path::PathBuf]) -> Option<String> {
     // con la del `app-id`, y está `StartupWMClass`, que es la clave que existe
     // justamente para atar una ventana a su entrada. Las dos cosas se resuelven
     // en el mismo recorrido, que además se hace una sola vez por `app-id`
-    // porque el resultado queda memorizado.
+    // porque el resultado del icono queda memorizado.
     for dir in dirs {
         let entries = match std::fs::read_dir(dir) {
             Ok(entries) => entries,
@@ -159,20 +192,14 @@ fn lookup_icon_in(app_id: &str, dirs: &[std::path::PathBuf]) -> Option<String> {
                 .is_some_and(|class| class.eq_ignore_ascii_case(app_id));
 
             if same_stem || same_class {
-                if let Some(icon) = non_empty(first_attr(section, "Icon")) {
-                    return Some(icon);
+                if let Some(value) = read(section) {
+                    return Some(value);
                 }
             }
         }
     }
 
     None
-}
-
-/// La clave `Icon` de un archivo, si el archivo existe y la tiene.
-fn read_icon(path: &Path) -> Option<String> {
-    let parsed = parse_entry(path).ok()?;
-    non_empty(first_attr(parsed.section("Desktop Entry")?, "Icon"))
 }
 
 fn non_empty(value: Option<&str>) -> Option<String> {
@@ -201,7 +228,7 @@ pub fn fallback_icon_name(raw: &str) -> String {
 mod tests {
     use super::*;
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     fn write(dir: &Path, name: &str, body: &str) {
         fs::write(dir.join(name), body).expect("no se pudo escribir la entrada");
@@ -238,6 +265,30 @@ mod tests {
         write(&dir, "no-es-entrada.txt", "Icon=trampa\n");
 
         dir
+    }
+
+    #[test]
+    fn el_nombre_sale_de_la_misma_entrada_que_el_icono_y_en_el_idioma() {
+        let dir = applications_dir("nombre");
+        write(
+            &dir,
+            "org.gnome.Nautilus.desktop",
+            "[Desktop Entry]\nName=Files\nName[es]=Archivos\nIcon=nautilus\n",
+        );
+        let dirs = vec![dir.clone()];
+        let locales = vec!["es".to_string()];
+        let name = |app_id: &str| {
+            lookup_in(app_id, &dirs, |section| {
+                non_empty(Some(localized_attr(section, "Name", &locales).as_str()))
+            })
+        };
+
+        assert_eq!(name("org.gnome.Nautilus").as_deref(), Some("Archivos"));
+        // Por `StartupWMClass`, igual que el icono.
+        assert_eq!(name("TelegramDesktop").as_deref(), Some("Telegram"));
+        assert_eq!(name("no-existe"), None);
+        assert_eq!(name_for_app_id("   "), None);
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

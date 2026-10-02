@@ -11,7 +11,8 @@ export type AppletId =
 	| 'privacy'
 	| 'twingate'
 	| 'music'
-	| 'menu';
+	| 'menu'
+	| 'screen-time';
 
 /**
  * Abre o cierra un applet, colgado del botón que lo pidió.

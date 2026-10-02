@@ -15,6 +15,7 @@
     "applet_twingate",
     "applet_music",
     "applet_menu",
+    "applet_screen-time",
     "app_terminal",
     "session_popup",
     "osd_popup"

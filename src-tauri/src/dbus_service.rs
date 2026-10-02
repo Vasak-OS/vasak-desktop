@@ -88,6 +88,18 @@ impl DesktopService {
                     let _ = toggle_session_popup("shutdown".to_string(), app_handle).await;
                 });
             }
+            // Borrar el historial de tiempo de pantalla desde afuera: lo usa el
+            // botón de Configuración (el interruptor no hace falta acá, va por
+            // `screen_time.enabled` en `vasak.conf` como cualquier ajuste). No
+            // contesta, como los demás.
+            "ClearScreenTime" => {
+                log_info("D-Bus: borrando el historial de tiempo de pantalla");
+                if let Err(error) = crate::screen_time::clear() {
+                    log_error(&format!(
+                        "D-Bus: no se pudo borrar el tiempo de pantalla: {error}"
+                    ));
+                }
+            }
             // Pausar y reanudar el fondo en movimiento desde afuera.
             //
             // Lo usa el temporizador de inactividad: un video decodificando

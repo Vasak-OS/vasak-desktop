@@ -24,6 +24,10 @@ pub fn detect_display_server() -> String {
 #[tauri::command]
 pub async fn logout(_display_server: String) -> Result<(), String> {
     log_info("Cerrando sesión de usuario");
+    // Lo que el tiempo de pantalla todavía no guardó (los últimos minutos,
+    // que esperan por si llega un aviso de inactividad): al disco, antes de
+    // que la sesión se lleve el proceso.
+    crate::screen_time::flush();
 
     // The graphical session is managed by uwsm as a systemd user unit hierarchy.
     // `uwsm stop` tears down graphical-session.target and its daemons in order.
@@ -72,6 +76,7 @@ pub async fn logout(_display_server: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn shutdown() -> Result<(), String> {
     log_info("Apagando el sistema");
+    crate::screen_time::flush();
     let connection = Connection::system()
         .await
         .map_err(|e| {
@@ -96,6 +101,7 @@ pub async fn shutdown() -> Result<(), String> {
 #[tauri::command]
 pub async fn reboot() -> Result<(), String> {
     log_info("Reiniciando el sistema");
+    crate::screen_time::flush();
     let connection = Connection::system()
         .await
         .map_err(|e| {

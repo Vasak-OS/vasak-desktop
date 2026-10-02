@@ -8,6 +8,7 @@ import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue'
 import BluetoothControl from '@/components/controls/BluetoothControl.vue';
 import BrightnessControl from '@/components/controls/BrightnessControl.vue';
 import NetworkControl from '@/components/controls/NetworkControl.vue';
+import ScreenTimeControl from '@/components/controls/ScreenTimeControl.vue';
 import SearchButtonControl from '@/components/controls/SearchButtonControl.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
@@ -111,6 +112,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="flex justify-between gap-2 w-full">
           <SearchButtonControl />
+          <ScreenTimeControl />
           <NetworkControl />
           <BluetoothControl v-if="bluetoothInitialized" />
           <ThemeToggle />

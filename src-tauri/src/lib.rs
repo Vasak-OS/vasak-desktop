@@ -57,6 +57,7 @@ mod menu_watcher;
 mod monitor_manager;
 mod notifications;
 mod panel_position;
+mod screen_time;
 mod tray;
 mod utils;
 mod window_manager;
@@ -230,7 +231,9 @@ pub fn run() {
             connect_start_webcam,
             connect_stop_webcam,
             connect_webcam_state,
-            toggle_connect_menu
+            toggle_connect_menu,
+            screen_time::screen_time_range,
+            screen_time::screen_time_clear
         ])
         .setup(move |app| {
             // El puente de `log` se instala **acá**, después de los plugins, y
@@ -337,6 +340,9 @@ pub fn run() {
             }
             watch_monitor_changes(&handle);
             follow_panel_position(app.handle().clone());
+            // El tiempo de pantalla por aplicación (`screen_time/`): un hilo que
+            // mira el foco cada dos segundos y guarda por día.
+            screen_time::start(app.handle());
             menu_watcher::watch_application_dirs(&handle);
             // La carpeta del escritorio, para que el widget de archivos deje de
             // releerla cada diez segundos sin motivo.

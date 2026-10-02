@@ -108,6 +108,39 @@ views:
     viaCaption: via
     players: Open players
     back: Back
+  screenTimeApplet:
+    title: Screen time
+    previousDay: Previous day
+    nextDay: Next day
+    today: Today
+    yesterday: Yesterday
+    dailyAverage: Daily average
+    total: Total for the day
+    noAverage: No data
+    vsYesterday: "{0} vs yesterday"
+    sameAsYesterday: Same as yesterday
+    noYesterday: No data for yesterday
+    more: "{0} more"
+    less: "{0} less"
+    week: This week
+    weekOf: "Week of {0}"
+    apps: Applications
+    empty: No screen time recorded for this day yet.
+    emptyNote: Time counts while an application has focus, with the screen unlocked and someone using it.
+    disabled: Recording is off.
+    disabledNote: Turn it on to start counting. What was already recorded is kept.
+    record: Record screen time
+    clear: Clear history
+    confirmClear: Clear everything
+    cancel: Cancel
+    clearQuestion: All history on this computer will be deleted.
+    privacy: Stored only on this computer.
+    loadError: Could not read the history.
+    duration:
+      hoursMinutes: "{0}h {1}m"
+      hours: "{0}h"
+      minutes: "{0}m"
+      underMinute: under 1m
   applets:
     panelMenu:
       title: Panel options
@@ -217,6 +250,8 @@ components:
   SearchButtonControl:
     openSearch: Open the launcher
     searchAlt: Search
+  ScreenTimeControl:
+    open: Screen time
   SearchMenuComponent:
     placeholder: Search
   SystemAudioArea:

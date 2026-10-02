@@ -136,6 +136,17 @@ describe('las superficies del escritorio dejan ver el desenfoque de Wayfire', ()
 		expect(view).not.toMatch(/backdrop-blur|absolute inset-0/);
 	});
 
+	test('el tablero de tiempo de pantalla es un applet: su raíz es la de AppletPopover', () => {
+		// vasak-desktop#150. La superficie que se mide arriba («el menú, los
+		// applets y la bandeja») es la suya; acá se exige que no dibuje otra
+		// raíz propia ni un bloque opaco encima del escritorio.
+		const view = template('src/views/applets/ScreenTimeAppletView.vue');
+		expect(view.slice('<template>'.length).trimStart().startsWith('<AppletPopover applet="screen-time"')).toBe(true);
+		const opaque = backgroundsOf(view).filter((background) => !isTranslucent(background));
+		expect(opaque).toEqual([]);
+		expect(view).not.toMatch(/backdrop-blur/);
+	});
+
 	test('el marco suelto del menú (el clima) también es translúcido', () => {
 		expect(template('src/components/widgets/WidgetSlot.vue')).toContain('<WidgetFrame surface="surface"');
 	});
