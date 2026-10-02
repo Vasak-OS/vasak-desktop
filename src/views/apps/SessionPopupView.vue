@@ -149,7 +149,7 @@ onUnmounted(() => {
 <template>
   <Transition appear enter-active-class="enter-active">
     <div
-      :class="['h-screen w-screen flex items-center justify-center bg-ui-bg/80 border border-ui-line rounded-corner-window overflow-hidden', { 'leave-active': leaving }]"
+      :class="['h-screen w-screen flex items-center justify-center bg-ui-shell border border-ui-line rounded-corner-window overflow-hidden', { 'leave-active': leaving }]"
     >
       <div class="flex w-full max-w-[380px] min-w-0 flex-col">
         <div class="flex flex-col items-center gap-4 px-8 pt-8 pb-4">

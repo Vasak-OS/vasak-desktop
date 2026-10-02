@@ -88,7 +88,7 @@ onBeforeUnmount(() => {
 <template>
   <Transition appear enter-active-class="enter-active">
     <main
-      :class="['bg-ui-bg/80 h-screen w-screen rounded-corner-m flex flex-col justify-between p-1 border border-ui-line overflow-hidden', { 'leave-active': leaving }]"
+      :class="['bg-ui-shell h-screen w-screen rounded-corner-m flex flex-col justify-between p-1 border border-ui-line overflow-hidden', { 'leave-active': leaving }]"
     >
       <!-- `min-h-0` es lo que hace que el scroll sea de las notificaciones y no
            del centro entero: sin él, un hijo flexible no se deja achicar por

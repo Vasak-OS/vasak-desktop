@@ -23,11 +23,12 @@ import { logWarning } from '@/utils/logger';
  * abrió y la entrada **crece desde el botón**.
  *
  * La forma es la de algo que sale del panel en Once UI (vue-libvasak#74,
- * §5.3): `rounded-corner-xl`, el canto fino `ui-line`, la superficie opaca
- * `ui-float` y la sombra `surface-l`, todo de `tokens.css`. Opaca y sin
- * desenfoque: una superficie de capa transparente no ve el escritorio, así que
- * el desenfoque que tenía no desenfocaba nada y sólo costaba. La entrada
- * dura 200 ms con `ease-ui-out` —arranca rápido y frena—, y la salida 120.
+ * §5.3): `rounded-corner-xl`, el canto fino `ui-line`, la superficie translúcida
+ * `ui-shell` y la sombra `surface-l`, todo de `tokens.css`. Translúcida y sin
+ * desenfoque propio: el del escritorio lo pone Wayfire detrás de la superficie
+ * de capa, y una superficie opaca lo taparía (corrección del 02/10/2026; el
+ * WebView no ve el escritorio, así que desenfocar desde la página no
+ * desenfocaba nada). La entrada dura 200 ms con `ease-ui-out` —arranca rápido y frena—, y la salida 120.
  *
  * El backend dice de qué lado está el panel y dónde quedó el botón a lo largo
  * del applet (`applet-anchor.ts`); la primera vez por la ruta, después por
@@ -131,7 +132,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
     <div
       role="dialog"
       :class="[
-        'applet-popover absolute overflow-hidden rounded-corner-xl border border-ui-line bg-ui-float shadow-surface-l',
+        'applet-popover absolute overflow-hidden rounded-corner-xl border border-ui-line bg-ui-shell shadow-surface-l',
         compact ? 'p-1' : 'p-4',
         `applet-popover-${phase}`,
       ]"

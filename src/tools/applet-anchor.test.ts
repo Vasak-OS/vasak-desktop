@@ -176,9 +176,12 @@ describe('AppletPopover', () => {
 		expect(tokens).toMatch(/--shadow-surface-l:/);
 	});
 
-	test('opaco, del canto fino y con el radio de lo que flota', () => {
+	test('translúcido, del canto fino y con el radio de lo que flota', () => {
 		const classes = popover.match(/'applet-popover [^']*'/)?.[0] ?? '';
-		expect(classes).toContain('bg-ui-float');
+		// `ui-shell` y no `ui-float`: el desenfoque lo pone Wayfire detrás, y
+		// una superficie opaca lo tapa (corrección del 02/10/2026).
+		expect(classes).toContain('bg-ui-shell');
+		expect(classes).not.toContain('bg-ui-float');
 		expect(classes).toContain('border-ui-line');
 		expect(classes).toContain('rounded-corner-xl');
 		expect(popover).not.toContain('backdrop-blur');

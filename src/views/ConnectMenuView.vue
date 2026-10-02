@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
   <Transition appear enter-active-class="enter-active">
     <div
       :class="[
-        'flex h-screen min-w-0 flex-col gap-3 rounded-corner-m border border-ui-line bg-ui-bg/80 p-4 text-tx-main',
+        'flex h-screen min-w-0 flex-col gap-3 rounded-corner-m border border-ui-line bg-ui-shell p-4 text-tx-main',
         { 'leave-active': leaving },
       ]"
     >

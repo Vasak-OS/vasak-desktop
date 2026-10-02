@@ -119,9 +119,10 @@ describe('el marco de los widgets', () => {
 		expect(template('components/widgets/WidgetFrame.vue')).toContain('container-type: size');
 	});
 
-	test('las dos superficies salen del esquema, sin desenfoque', () => {
+	test('las dos superficies salen del esquema, translúcidas y sin desenfoque', () => {
 		const frame = template('components/widgets/WidgetFrame.vue');
-		expect(frame).toContain("'bg-ui-float shadow-surface-m'");
+		expect(frame).toContain("'bg-ui-shell shadow-surface-m'");
+		expect(frame).not.toContain("'bg-ui-float shadow-surface-m'");
 		expect(frame).toContain("'bg-ui-surface/70'");
 		expect(frame).not.toMatch(/backdrop-blur/);
 	});

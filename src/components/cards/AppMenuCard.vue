@@ -13,8 +13,8 @@ import { logError } from '@/utils/logger';
  * anillo de foco por dentro— sin que el menú se dibuje la suya. Antes era un
  * botón propio que crecía, se corría y se pintaba de rosa al pasar por encima.
  *
- * El nombre se parte en dos líneas en vez de cortarse: no hay otro lugar donde
- * leerlo entero.
+ * El icono a la izquierda y el nombre al lado, en fila. El nombre se parte en
+ * dos líneas en vez de cortarse: no hay otro lugar donde leerlo entero.
  */
 const props = defineProps({
 	app: {
@@ -36,8 +36,15 @@ const openApp = async () => {
 </script>
 
 <template>
+  <!-- El icono va en la ranura `prefix` y el nombre en la principal: el ítem
+       de la librería los pone en fila, icono a la izquierda y nombre al lado,
+       como era el menú antes de la migración. Puestos los dos en la ranura
+       principal caían adentro de la columna del texto, y el nombre quedaba
+       debajo del icono. -->
   <DropdownMenuItem :title="app.description" class="w-full" @select="openApp">
-    <ThemeIcon :name="app.icon" :size="32" alt="" />
-    <span class="min-w-0 flex-1 break-words text-left">{{ app.name }}</span>
+    <template #prefix>
+      <ThemeIcon :name="app.icon" :size="32" alt="" />
+    </template>
+    <span class="text-left" data-app-name>{{ app.name }}</span>
   </DropdownMenuItem>
 </template>

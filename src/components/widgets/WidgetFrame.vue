@@ -18,11 +18,12 @@ import { ActionButton } from '@vasakgroup/vue-libvasak';
  *   el contenido de los widgets no usa componentes de la librería, que tienen
  *   medidas fijas (§5 del inventario de vue-libvasak#74).
  * - **Llenar el marco**: el widget ocupa todo, sin relleno propio.
- * - **La superficie**: `float` es lo que flota sobre el fondo de pantalla
- *   (`ui-float` opaca, sombra `surface-m`); `surface` es lo que se apoya dentro
- *   de otra ventana, como el clima del menú (`ui-surface/70`, sin sombra).
- *   Las dos con el canto fino y el radio `l`. Sin desenfoque: detrás de una
- *   superficie de capa no hay nada que desenfocar.
+ * - **La superficie**: `shell` es lo que flota sobre el fondo de pantalla
+ *   (`ui-shell` translúcida, sombra `surface-m`, como el resto del
+ *   escritorio); `surface` es lo que se apoya dentro de otra ventana, como el
+ *   clima del menú (`ui-surface/70`, sin sombra). Las dos translúcidas, con el
+ *   canto fino y el radio `l`. Sin desenfoque propio: cuesta en WebKitGTK y el
+ *   desenfoque del escritorio es de Wayfire.
  * - **La edición**: el canto discontinuo, el botón de quitar y el tirador de
  *   abajo a la derecha. Mientras se edita, lo de adentro no recibe clics: si
  *   los recibiera, arrastrar el reproductor cambiaría de canción.
@@ -33,10 +34,10 @@ import { ActionButton } from '@vasakgroup/vue-libvasak';
  */
 withDefaults(
 	defineProps<{
-		surface?: 'float' | 'surface';
+		surface?: 'shell' | 'surface';
 		editing?: boolean;
 	}>(),
-	{ surface: 'float', editing: false }
+	{ surface: 'shell', editing: false }
 );
 
 const emit = defineEmits<{
@@ -53,7 +54,7 @@ const { t } = useI18n();
       style="container-type: size"
       class="h-full w-full overflow-hidden rounded-corner-l border border-ui-line"
       :class="[
-        surface === 'float' ? 'bg-ui-float shadow-surface-m' : 'bg-ui-surface/70',
+        surface === 'shell' ? 'bg-ui-shell shadow-surface-m' : 'bg-ui-surface/70',
         editing ? 'pointer-events-none select-none' : '',
       ]"
     >
