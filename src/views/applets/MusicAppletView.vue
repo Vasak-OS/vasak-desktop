@@ -2,18 +2,20 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	ActionButton,
-	Badge,
+	Chip,
 	NowPlayingCard,
 	OptionGroup,
 	type OptionGroupOption,
+	PageDots,
 } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import type { AudioDevice } from '@/interfaces/audio-device';
 import { getAudioDevices, setAudioDevice } from '@/services/core.service';
 import { currentOutput, outputIcon, outputLabel } from '@/tools/audio-outputs';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { useSharedEvent } from '@/tools/event.bus';
+import { activePlayerIndex, playerLabels } from '@/tools/music-players';
 import { logError } from '@/utils/logger';
 import { formatDuration, playbackStateOf } from '@/utils/playback';
 
@@ -27,8 +29,9 @@ import { formatDuration, playbackStateOf } from '@/utils/playback';
  * de audio.
  *
  * Muestra el reproductor que ya elige `music.rs`, el activo. Con varios
- * abiertos, cambiar entre ellos queda para cuando se decida cómo (ver el
- * issue #131).
+ * abiertos, unos puntos al pie (`PageDots`) pasan de uno a otro: tocar uno lo
+ * fija con `music_select_player`, el mismo camino que el selector del widget.
+ * Con uno solo los puntos no se dibujan.
  *
  * El espacio del ecualizador (vasak-wireplumber-modules#10) es la ranura
  * `footer` de la tarjeta, que sin contenido no se dibuja: hasta que exista, la
@@ -50,6 +53,9 @@ const {
 	onImgError,
 	initIcons,
 	initMusicInfo,
+	players,
+	loadPlayers,
+	selectPlayer,
 } = useMusicPlayer();
 
 const state = computed(() => playbackStateOf(musicInfo.value.status));
@@ -77,10 +83,26 @@ function seekTo(micros: number): void {
 	if (length > 0) onSeek(micros / length);
 }
 
-const via = computed(() =>
-	musicInfo.value.playerIdentity
-		? t('views.musicApplet.via').replace('{0}', () => musicInfo.value.playerIdentity)
-		: ''
+/** Por dónde suena: el nombre del reproductor, con «vía» delante en la pastilla. */
+const via = computed(() => musicInfo.value.playerIdentity || '');
+
+// ── Los reproductores ───────────────────────────────────────────────────────
+
+const activePlayer = computed(() => activePlayerIndex(players.value, musicInfo.value.player));
+const dotLabels = computed(() => playerLabels(players.value));
+
+function onPlayerChange(index: number): void {
+	const entry = players.value[index];
+	if (entry) void selectPlayer(entry.player);
+}
+
+// Otro reproductor pasó a ser el que suena —se abrió uno, se cerró el que
+// estaba—: la lista que se muestra puede haber cambiado.
+watch(
+	() => musicInfo.value.player,
+	() => {
+		void loadPlayers();
+	}
 );
 
 // ── La salida de audio ──────────────────────────────────────────────────────
@@ -136,7 +158,7 @@ async function chooseOutput(device: AudioDevice): Promise<void> {
  */
 async function refresh(): Promise<void> {
 	pickingOutput.value = false;
-	await Promise.all([initMusicInfo(), loadDevices()]);
+	await Promise.all([initMusicInfo(), loadDevices(), loadPlayers()]);
 }
 
 onMounted(async () => {
@@ -172,61 +194,96 @@ function onOutputChange(id: string): void {
 
 <template>
 	<AppletPopover applet="music" @shown="refresh">
-		<div class="relative h-full min-h-0">
-			<NowPlayingCard
-				:title="musicInfo.title"
-				:artist="musicInfo.artist"
-				:album="musicInfo.album"
-				:cover-src="cover"
-				:fallback-icon="appIcon"
-				:state="state"
-				:position="position"
-				:duration="musicInfo.length"
-				:format="formatDuration"
-				:seek-step="5_000_000"
-				:can-seek="musicInfo.canSeek"
-				:can-go-previous="musicInfo.canGoPrevious"
-				:can-go-next="musicInfo.canGoNext"
-				:can-play-pause="canPlayPause"
-				:previous-label="t('views.musicApplet.previous')"
-				:next-label="t('views.musicApplet.next')"
-				:play-label="t('views.musicApplet.play')"
-				:pause-label="t('views.musicApplet.pause')"
-				:seek-label="t('views.musicApplet.seek')"
-				:by-artist-label="t('views.musicApplet.byArtist')"
-				:nothing-playing-label="t('views.musicApplet.nothingPlaying')"
-				@previous="onPrev"
-				@next="onNext"
-				@toggle="onPlayPause"
-				@seek="seekTo"
-				@cover-error="onImgError"
-			>
-				<template #details>
-					<!-- La salida y por dónde suena: un botón chico de la librería que
-					     abre el selector, y una insignia que sólo informa. -->
-					<ActionButton
-						v-if="output"
-						:label="outputLabel(output)"
-						:icon="outputIcon(output)"
-						variant="secondary"
-						size="sm"
-						:title="t('views.musicApplet.chooseOutput')"
-						:aria-label="outputAnnouncement"
-						:aria-expanded="pickingOutput"
-						@click="pickingOutput = true"
-					/>
-					<Badge v-if="via" :label="via" :title="via" />
-				</template>
-			</NowPlayingCard>
+		<!-- La tarjeta o el selector de salida, uno por vez: el applet mide lo
+		     que mide, y una lista que empujara la tarjeta la sacaría de la
+		     ventana. El selector **reemplaza** a la tarjeta, como una ficha con
+		     volver, en vez de taparla con una capa opaca: así el applet sigue
+		     dejando ver el desenfoque de Wayfire. El alto es el de `APPLETS`, el
+		     del caso más alto (título en dos renglones y los puntos de varios
+		     reproductores); lo que sobra en los demás se reparte arriba y abajo
+		     en vez de quedar como un hueco al pie. En un monitor tan angosto que
+		     el applet no entra en su ancho, la tarjeta pasa a una columna (lo
+		     hace la librería por container query), las pastillas se parten en
+		     renglones y lo que no entra en el alto se desplaza: nada se corta. -->
+		<div class="@container flex h-full min-h-0 flex-col justify-center-safe overflow-y-auto" data-music-applet>
+			<template v-if="!pickingOutput">
+				<NowPlayingCard
+					:title="musicInfo.title"
+					:artist="musicInfo.artist"
+					:cover-src="cover"
+					:fallback-icon="appIcon"
+					:state="state"
+					:position="position"
+					:duration="musicInfo.length"
+					:format="formatDuration"
+					:seek-step="5_000_000"
+					:can-seek="musicInfo.canSeek"
+					:can-go-previous="musicInfo.canGoPrevious"
+					:can-go-next="musicInfo.canGoNext"
+					:can-play-pause="canPlayPause"
+					:previous-label="t('views.musicApplet.previous')"
+					:next-label="t('views.musicApplet.next')"
+					:play-label="t('views.musicApplet.play')"
+					:pause-label="t('views.musicApplet.pause')"
+					:seek-label="t('views.musicApplet.seek')"
+					:by-artist-label="t('views.musicApplet.byArtist')"
+					:nothing-playing-label="t('views.musicApplet.nothingPlaying')"
+					@previous="onPrev"
+					@next="onNext"
+					@toggle="onPlayPause"
+					@seek="seekTo"
+					@cover-error="onImgError"
+				>
+					<template #details>
+						<!-- Dos pastillas en un renglón, como en la referencia: la
+						     salida, que abre el selector, y la aplicación de origen,
+						     que sólo informa. No se parten: cada una se corta con
+						     puntos suspensivos y el nombre entero queda en el globo.
+						     Así la tarjeta mide siempre lo mismo y entra en el alto
+						     de `APPLETS`. -->
+						<div class="flex w-full min-w-0 flex-wrap justify-center gap-1 @xs:flex-nowrap @xs:justify-start" data-chips>
+							<Chip
+								v-if="output"
+								interactive
+								class="min-w-0 shrink"
+								:label="outputLabel(output)"
+								:icon="outputIcon(output)"
+								:title="t('views.musicApplet.chooseOutput')"
+								:aria-label="outputAnnouncement"
+								:aria-expanded="pickingOutput"
+								@click="pickingOutput = true"
+							/>
+							<!-- Sin icono, como el «VIA Firefox» de la referencia: el
+							     icono de la aplicación ya está en el disco cuando no hay
+							     carátula. Hasta la mitad del renglón, para que un nombre
+							     largo («Reproductor multimedia VLC») no deje la salida en
+							     tres letras, ni al revés. -->
+							<Chip
+								v-if="via"
+								class="max-w-1/2 shrink"
+								:caption="t('views.musicApplet.viaCaption')"
+								:label="via"
+								:title="`${t('views.musicApplet.viaCaption')} ${via}`"
+							/>
+						</div>
+					</template>
+				</NowPlayingCard>
 
-			<!-- El selector de salida, encima de la tarjeta: el applet mide lo
-			     que mide y una lista que empujara la tarjeta la sacaría de la
-			     ventana. Es `OptionGroup` de la librería, el mismo del applet de
-			     audio: un `radiogroup` con las flechas y un solo Tab. -->
-			<div
-				v-if="pickingOutput"
-				class="absolute inset-0 z-10 flex min-h-0 flex-col gap-2 rounded-corner-m bg-ui-surface p-2"
-			>
+				<!-- Con más de un reproductor, un punto por cada uno; con uno
+				     solo no se dibuja nada, ni el hueco. -->
+				<PageDots
+					class="mt-2"
+					:count="players.length"
+					:model-value="activePlayer"
+					:labels="dotLabels"
+					:label="t('views.musicApplet.players')"
+					@change="onPlayerChange"
+				/>
+			</template>
+
+			<!-- El selector de salida: `OptionGroup` de la librería, el mismo del
+			     applet de audio, un `radiogroup` con las flechas y un solo Tab. -->
+			<div v-else class="flex min-h-0 flex-1 flex-col gap-2" data-output-picker>
 				<div class="flex min-w-0 items-center gap-2">
 					<ActionButton
 						label=""
@@ -243,7 +300,7 @@ function onOutputChange(id: string): void {
 				<p v-if="devices.length === 0" class="px-2 text-label-xs text-tx-muted">
 					{{ t('views.musicApplet.noOutputs') }}
 				</p>
-				<div v-else class="min-h-0 overflow-y-auto">
+				<div v-else class="min-h-0 overflow-y-auto rounded-corner-m bg-ui-surface/70 p-2">
 					<OptionGroup
 						v-model="checkedOutput"
 						:options="outputOptions"

@@ -105,7 +105,8 @@ views:
     currentOutput: "Audio output: {0}"
     chooseOutput: Choose audio output
     noOutputs: No audio outputs.
-    via: "via {0}"
+    viaCaption: via
+    players: Open players
     back: Back
   applets:
     panelMenu:
@@ -257,10 +258,6 @@ components:
     progress: Track progress
     openPlayer: Open the player
     nothingPlaying: Nothing is playing
-    previous: Previous
-    play: Play
-    pause: Pause
-    next: Next
   VolumeControl:
     volume: Volume
     mute: Mute

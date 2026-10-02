@@ -125,6 +125,17 @@ describe('las superficies del escritorio dejan ver el desenfoque de Wayfire', ()
 		expect(filesWithBlur()).toEqual([BLUR_EXCEPTION]);
 	});
 
+	test('el reproductor desplegable es la superficie de AppletPopover, y nada adentro lo tapa', () => {
+		// Hasta 1.23 el selector de salida era una capa `bg-ui-surface` opaca
+		// encima de la tarjeta, del tamaño del applet entero: con el selector
+		// abierto, el applet dejaba de ser translúcido. Ahora reemplaza a la
+		// tarjeta y sus bloques van en `/70`.
+		const view = template('src/views/applets/MusicAppletView.vue');
+		expect(view.trimStart()).toMatch(/^<template>\s*<AppletPopover applet="music"/);
+		expect(backgroundsOf(view).filter((background) => !isTranslucent(background))).toEqual([]);
+		expect(view).not.toMatch(/backdrop-blur|absolute inset-0/);
+	});
+
 	test('el marco suelto del menú (el clima) también es translúcido', () => {
 		expect(template('src/components/widgets/WidgetSlot.vue')).toContain('<WidgetFrame surface="surface"');
 	});

@@ -1,0 +1,4 @@
+[test]
+# El DOM tiene que estar antes de que alguna prueba importe `vue`: ver
+# `tests/support/dom.ts`.
+preload = ["./tests/support/dom.ts"]
