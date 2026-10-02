@@ -100,7 +100,7 @@ onUnmounted(() => {
 	<Transition name="osd">
 		<div
 			v-if="visible"
-			class="w-screen h-screen flex flex-col items-center justify-center gap-3 bg-ui-bg/80 border border-ui-line rounded-corner-window overflow-hidden px-8 py-6"
+			class="w-screen h-screen flex flex-col items-center justify-center gap-3 bg-ui-shell border border-ui-line rounded-corner-window overflow-hidden px-8 py-6"
 		>
 			<div class="w-16 h-16 flex items-center justify-center">
 				<ThemeIcon :name="iconName" :size="56" :alt="displayLabel" />

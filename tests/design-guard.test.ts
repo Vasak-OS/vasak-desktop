@@ -190,7 +190,7 @@ describe('lo que se usa existe', () => {
 		// compara, pasa siempre.
 		const tokens = await declaredTokens();
 
-		for (const color of ['tx-main', 'tx-muted', 'ui-surface', 'status-error', 'primary', 'ui-line', 'ui-hover', 'ui-float', 'ui-focus', 'ui-selected-accent']) {
+		for (const color of ['tx-main', 'tx-muted', 'ui-surface', 'status-error', 'primary', 'ui-line', 'ui-hover', 'ui-float', 'ui-shell', 'ui-focus', 'ui-selected-accent']) {
 			expect(tokens.colors, `falta --color-${color}`).toContain(color);
 		}
 		for (const radius of ['corner-xs', 'corner-s', 'corner-m', 'corner-l', 'corner-xl', 'corner-full', 'corner-window']) {

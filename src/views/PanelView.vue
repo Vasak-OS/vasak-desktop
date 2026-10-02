@@ -258,7 +258,8 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 </script>
 
 <template>
-	<!-- El panel flota sobre el escritorio: la superficie opaca `ui-float`, el
+	<!-- El panel flota sobre el escritorio: la superficie translúcida
+	     `ui-shell`, para que se vea el desenfoque que pone Wayfire detrás, el
 	     canto fino y el radio `l`, que es el de un contenedor con `p-1`
 	     alrededor de botones `m` (el anidado de Once UI). Sus botones son los
 	     de la bandeja de la librería (`TrayIconButton`): el velo neutro al
@@ -266,7 +267,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 	     foco por dentro, que en una barra de 36 píxeles no se corta. -->
 	<nav
 		@contextmenu.prevent="openPanelContextMenu"
-		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner-l bg-ui-float border border-ui-line"
+		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner-l bg-ui-shell border border-ui-line"
 		:class="BAR_CLASSES[position]"
 	>
     <div class="flex items-center gap-1" :class="vertical ? 'flex-col' : ''">

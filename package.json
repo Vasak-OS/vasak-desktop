@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.23.0",
+	"version": "1.23.1",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -31,7 +31,7 @@
 		"@vasakgroup/plugin-vsk-contextual-menu": "^2.0.2",
 		"@vasakgroup/plugin-vsk-journal": "^2.0.0",
 		"@vasakgroup/tauri-plugin-i18n": "^2.3.0",
-		"@vasakgroup/vue-libvasak": "^2.2.0",
+		"@vasakgroup/vue-libvasak": "^2.3.0",
 		"pinia": "^3.0.4",
 		"vue": "^3.5.43",
 		"vue-router": "^5.3.1"
@@ -40,14 +40,14 @@
 		"@biomejs/biome": "^2.5.15",
 		"@tailwindcss/postcss": "^4.3.3",
 		"@tauri-apps/cli": "^2.12.1",
-		"@types/node": "^26.6.2",
+		"@types/node": "^26.6.4",
 		"@vitejs/plugin-vue": "^6.0.9",
 		"postcss": "^8.5.28",
 		"tailwindcss": "^4.3.3",
 		"terser": "^5.51.2",
 		"typescript": "~5.9.3",
 		"vite": "~7.3.6",
-		"vue-tsc": "^3.3.11"
+		"vue-tsc": "^3.3.12"
 	},
 	"vasak": {
 		"bibliotecasAtrasadas": {

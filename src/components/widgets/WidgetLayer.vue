@@ -389,14 +389,15 @@ defineExpose({ openEditing });
 
 		<!-- Panel de widgets disponibles, sólo mientras se edita.
 
-		     Flota sobre el escritorio como un diálogo: la superficie opaca
-		     `ui-float`, el canto fino, el radio `xl` y la sombra `surface-xl`.
+		     Flota sobre el escritorio como un diálogo: la superficie translúcida
+		     del escritorio `ui-shell`, el canto fino, el radio `xl` y la sombra
+		     `surface-xl`.
 		     Es un contenedor: las columnas de la lista salen de su ancho y no
 		     del de la pantalla. -->
 		<aside
 			v-if="editing && panelOpen"
 			data-widget-panel
-			class="@container pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner-xl border border-ui-line bg-ui-float p-4 shadow-surface-xl"
+			class="@container pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner-xl border border-ui-line bg-ui-shell p-4 shadow-surface-xl"
 		>
 			<div class="mb-3 flex items-center justify-between">
 				<h2 class="text-label-m font-semibold uppercase tracking-wide text-tx-muted">
