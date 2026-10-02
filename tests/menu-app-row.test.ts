@@ -32,8 +32,13 @@ let workdir = '';
 async function render(source: string, name: string): Promise<string> {
 	const { descriptor } = parse(source, { filename: SOURCE });
 	const compiled = compileScript(descriptor, { id: name, inlineTemplate: true });
+	// Los servicios del escritorio se cambian por dobles: si se importara el
+	// logger de verdad, quedaría en la caché de módulos armado con el
+	// `core.service` real, y la prueba del logger, que lo simula con
+	// `mock.module`, recibiría ése según el orden en que corran los archivos.
+	const code = compiled.content.replace(/from\s+(['"])@\/[^'"]+\1/g, "from './doubles'");
 	const file = join(workdir, `${name}.ts`);
-	writeFileSync(file, compiled.content);
+	writeFileSync(file, code);
 	const component = (await import(file)).default;
 	return renderToString(createSSRApp({ render: () => h(component, { app: APP }) }));
 }
@@ -69,20 +74,16 @@ let current = '';
 let old = '';
 
 beforeAll(async () => {
-	// El logger se arma al importarse y engancha sus oyentes en `window`.
-	const hadWindow = 'window' in globalThis;
-	const savedWindow = (globalThis as { window?: unknown }).window;
-	(globalThis as { window?: unknown }).window = { addEventListener: () => {} };
-	// Al lado de las fuentes para que `@/` se resuelva con el `tsconfig`.
+	// Dentro del repositorio, para que `vue` y la librería se resuelvan desde
+	// su `node_modules`.
 	workdir = mkdtempSync(join(import.meta.dir, '..', 'src', '.menu-row-'));
-	try {
-		const source = readFileSync(SOURCE, 'utf8');
-		current = await render(source, 'current');
-		old = await render(source.replace(/<template>[\s\S]*<\/template>/, TEMPLATE_123), 'release-123');
-	} finally {
-		if (hadWindow) (globalThis as { window?: unknown }).window = savedWindow;
-		else delete (globalThis as { window?: unknown }).window;
-	}
+	writeFileSync(
+		join(workdir, 'doubles.ts'),
+		'export const openApp = async () => {};\nexport const dismissMenu = async () => {};\nexport const logError = () => {};\n'
+	);
+	const source = readFileSync(SOURCE, 'utf8');
+	current = await render(source, 'current');
+	old = await render(source.replace(/<template>[\s\S]*<\/template>/, TEMPLATE_123), 'release-123');
 });
 
 afterAll(() => {
