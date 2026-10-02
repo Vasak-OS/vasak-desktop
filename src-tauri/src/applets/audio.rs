@@ -1,12 +1,12 @@
 use super::Applet;
-use async_trait::async_trait;
-use tauri::{AppHandle, Emitter};
-use std::error::Error;
-use tokio::time::Duration;
 use crate::audio_native::AudioMonitor;
 use crate::commands::osd::show_osd_internal;
-use crate::logger::{log_info, log_error, log_debug};
+use crate::logger::{log_debug, log_error, log_info};
 use crate::structs::VolumeInfo;
+use async_trait::async_trait;
+use std::error::Error;
+use tauri::{AppHandle, Emitter};
+use tokio::time::Duration;
 
 pub struct AudioApplet;
 
@@ -47,7 +47,10 @@ async fn forward_bluetooth_profiles(app: AppHandle) {
         match profiles.recv().await {
             Ok(profile) => {
                 if let Err(e) = app.emit("bluetooth-audio-profile-changed", &profile) {
-                    log_error(&format!("AudioApplet: failed to emit bluetooth-audio-profile-changed: {}", e));
+                    log_error(&format!(
+                        "AudioApplet: failed to emit bluetooth-audio-profile-changed: {}",
+                        e
+                    ));
                 }
             }
             Err(RecvError::Lagged(_)) => continue,
@@ -65,7 +68,10 @@ async fn run_audio_monitor_loop(app: AppHandle, mut monitor: AudioMonitor) {
         let is_event_driven = monitor.is_event_driven();
         let mut state_rx = monitor.state_rx();
 
-        log_info(&format!("AudioApplet: active backend = {}", monitor.backend_name()));
+        log_info(&format!(
+            "AudioApplet: active backend = {}",
+            monitor.backend_name()
+        ));
 
         // Track last emitted state to avoid redundant JS events
         let mut last_volume: Option<VolumeInfo> = None;
@@ -112,7 +118,10 @@ async fn run_audio_monitor_loop(app: AppHandle, mut monitor: AudioMonitor) {
                     ));
 
                     if let Err(e) = app.emit("volume-changed", &volume_info) {
-                        log_error(&format!("AudioApplet: failed to emit volume-changed: {}", e));
+                        log_error(&format!(
+                            "AudioApplet: failed to emit volume-changed: {}",
+                            e
+                        ));
                     }
 
                     show_volume_osd(&app, &volume_info).await;
@@ -160,5 +169,12 @@ async fn show_volume_osd(app: &AppHandle, volume_info: &VolumeInfo) {
     } else {
         "osd.volume"
     };
-    let _ = show_osd_internal(icon, volume_info.current as f64, volume_info.max as f64, label, app).await;
+    let _ = show_osd_internal(
+        icon,
+        volume_info.current as f64,
+        volume_info.max as f64,
+        label,
+        app,
+    )
+    .await;
 }
