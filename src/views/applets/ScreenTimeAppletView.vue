@@ -360,18 +360,22 @@ const clearAll = async () => {
 
       <!-- Privacidad: apagar y borrar, sin salir del tablero. -->
       <footer class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-ui-line-weak pt-3">
-        <label class="flex min-w-0 items-center gap-2 text-label-s text-tx-main">
+        <div class="flex min-w-0 items-center gap-2 text-label-s text-tx-main">
           <SwitchToggle
             :model-value="enabled"
             :label="t('views.screenTimeApplet.record')"
             :disabled="busy"
             @update:model-value="toggle" />
-          <span class="min-w-0 break-words">{{ t('views.screenTimeApplet.privacy') }}</span>
-        </label>
-        <div v-if="confirming" class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('views.screenTimeApplet.clearQuestion')">
+          <span class="flex min-w-0 flex-col">
+            <span class="break-words">{{ t('views.screenTimeApplet.record') }}</span>
+            <span class="break-words text-body-xs text-tx-muted">{{ t('views.screenTimeApplet.privacy') }}</span>
+          </span>
+        </div>
+        <fieldset v-if="confirming" class="m-0 flex min-w-0 flex-wrap items-center gap-2 border-0 p-0">
+          <legend class="sr-only">{{ t('views.screenTimeApplet.clearQuestion') }}</legend>
           <ActionButton :label="t('views.screenTimeApplet.cancel')" variant="ghost" size="sm" @click="confirming = false" />
           <ActionButton :label="t('views.screenTimeApplet.confirmClear')" variant="danger" size="sm" :loading="busy" @click="clearAll" />
-        </div>
+        </fieldset>
         <ActionButton
           v-else
           :label="t('views.screenTimeApplet.clear')"

@@ -87,12 +87,10 @@ export function monthOf(day: string): { first: string; last: string; year: numbe
 export function rangeFor(day: string): { from: string; to: string } {
 	const week = weekOf(day);
 	const month = monthOf(day);
-	const candidates = [week[0] as string, month.first, addDays(day, -1)];
-	const ends = [week[6] as string, month.last];
-	return {
-		from: candidates.reduce((a, b) => (a < b ? a : b)),
-		to: ends.reduce((a, b) => (a > b ? a : b)),
-	};
+	const starts = [month.first, addDays(day, -1)];
+	const from = starts.reduce((a, b) => (a < b ? a : b), week[0] as string);
+	const to = month.last > (week[6] as string) ? month.last : (week[6] as string);
+	return { from, to };
 }
 
 /** El total de un día, en milisegundos. */
