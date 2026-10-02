@@ -45,6 +45,6 @@ const openApp = async () => {
     <template #prefix>
       <ThemeIcon :name="app.icon" :size="32" alt="" />
     </template>
-    <span class="text-left" data-app-name>{{ app.name }}</span>
+    <span class="break-words text-left" data-app-name>{{ app.name }}</span>
   </DropdownMenuItem>
 </template>
