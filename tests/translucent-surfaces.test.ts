@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { Glob } from 'bun';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -10,8 +11,15 @@ import { join } from 'node:path';
  * superficie de capa (corrección del usuario del 02/10/2026). Cada raíz de
  * superficie lleva `bg-ui-shell` —el fondo de la ventana translúcido, de
  * vue-libvasak 2.3.0— o un fondo con opacidad explícita (`bg-x/NN`), y nunca
- * uno opaco. El `backdrop-blur` sigue prohibido en todo `src/` por la guardia
- * del diseño; acá se mira además en cada raíz.
+ * uno opaco.
+ *
+ * El `backdrop-blur` va prohibido en todas las raíces —el desenfoque lo pone
+ * Wayfire detrás de cada superficie de capa— con **una sola excepción
+ * nombrada: el marco de los widgets del escritorio** (la variante `shell` de
+ * `WidgetFrame`). Los widgets se dibujan en la misma página que el fondo de
+ * pantalla, así que detrás de ellos Wayfire no tiene nada que desenfocar: el
+ * desenfoque lo tiene que hacer el WebView (decisión del usuario, 02/10/2026).
+ * Acá se exige que el marco lo tenga y que ninguna otra superficie lo gane.
  */
 const ROOT = join(import.meta.dir, '..');
 const read = (file: string) => readFileSync(join(ROOT, file), 'utf8');
@@ -48,23 +56,33 @@ function isTranslucent(background: string): boolean {
 	return alpha !== undefined && Number(alpha) < 100;
 }
 
+/** Si la superficie desenfoca por su cuenta (`blur`) o lo deja a Wayfire (`none`). */
+type Blur = 'blur' | 'none';
+
 /**
- * La raíz de cada superficie: el archivo y la marca que la identifica dentro de
- * él. Lo que se lee es el atributo de clases del elemento que la lleva.
+ * La raíz de cada superficie: el archivo, la marca que la identifica dentro de
+ * él y si desenfoca. Lo que se lee es el atributo de clases del elemento que la
+ * lleva. La bandeja es un applet más: su raíz es la de `AppletPopover`.
  */
-const SURFACES: Array<[string, string, RegExp]> = [
-	['el panel', 'src/views/PanelView.vue', /<nav\b[\s\S]*?class="([^"]*)"/],
-	['el menú y los applets', 'src/components/layouts/AppletPopover.vue', /'(applet-popover [^']*)'/],
-	['el centro de control', 'src/views/ControlCenterView.vue', /'([^']*h-screen w-screen[^']*)'/],
-	['el menú de Connect', 'src/views/ConnectMenuView.vue', /'(flex h-screen[^']*)'/],
-	['el OSD', 'src/views/apps/OsdPopupView.vue', /class="(w-screen h-screen[^"]*)"/],
-	['la ventana de sesión', 'src/views/apps/SessionPopupView.vue', /'(h-screen w-screen[^']*)'/],
-	['el marco de los widgets', 'src/components/widgets/WidgetFrame.vue', /surface === 'shell' \? '([^']*)' : '([^']*)'/],
-	['la paleta de widgets', 'src/components/widgets/WidgetLayer.vue', /<aside\b[\s\S]*?class="([^"]*)"/],
+const SURFACES: Array<[string, string, RegExp, Blur]> = [
+	['el panel', 'src/views/PanelView.vue', /<nav\b[\s\S]*?class="([^"]*)"/, 'none'],
+	['el menú, los applets y la bandeja', 'src/components/layouts/AppletPopover.vue', /'(applet-popover [^']*)'/, 'none'],
+	['el centro de control', 'src/views/ControlCenterView.vue', /'([^']*h-screen w-screen[^']*)'/, 'none'],
+	['el menú de Connect', 'src/views/ConnectMenuView.vue', /'(flex h-screen[^']*)'/, 'none'],
+	['el OSD', 'src/views/apps/OsdPopupView.vue', /class="(w-screen h-screen[^"]*)"/, 'none'],
+	['la ventana de sesión', 'src/views/apps/SessionPopupView.vue', /'(h-screen w-screen[^']*)'/, 'none'],
+	// La excepción: el marco que flota sobre el fondo de pantalla.
+	['el marco de los widgets', 'src/components/widgets/WidgetFrame.vue', /surface === 'shell' \? '([^']*)'/, 'blur'],
+	// El marco suelto del menú (el clima) va dentro del menú, que ya desenfoca Wayfire.
+	['el marco suelto del menú', 'src/components/widgets/WidgetFrame.vue', /surface === 'shell' \? '[^']*' : '([^']*)'/, 'none'],
+	['la paleta de widgets', 'src/components/widgets/WidgetLayer.vue', /<aside\b[\s\S]*?class="([^"]*)"/, 'none'],
 ];
 
+/** El único archivo de `src/` que puede nombrar `backdrop-blur`. */
+const BLUR_EXCEPTION = 'components/widgets/WidgetFrame.vue';
+
 /** Lo que mira la prueba, para poder probar la prueba. */
-function surfaceProblems(classes: string[]): string[] {
+function surfaceProblems(classes: string[], blur: Blur = 'none'): string[] {
 	const problems: string[] = [];
 	for (const group of classes) {
 		const backgrounds = backgroundsOf(group);
@@ -72,17 +90,39 @@ function surfaceProblems(classes: string[]): string[] {
 		for (const background of backgrounds) {
 			if (!isTranslucent(background)) problems.push(`opaco: bg-${background}`);
 		}
-		if (/backdrop-blur/.test(group)) problems.push('con backdrop-blur');
+		const blurred = /(?<![\w-])backdrop-blur-md(?![\w-])/.test(group);
+		if (blur === 'none' && /backdrop-blur/.test(group)) problems.push('con backdrop-blur');
+		if (blur === 'blur' && !blurred) problems.push('sin backdrop-blur-md');
 	}
 	return problems;
 }
 
+/**
+ * Los archivos de `src/` que nombran `backdrop-blur` fuera de un comentario. Sin
+ * las pruebas, que lo nombran a propósito.
+ */
+function filesWithBlur(): string[] {
+	return [...new Glob('**/*.{vue,ts,css}').scanSync(join(ROOT, 'src'))]
+		.filter((file) => !file.endsWith('.test.ts'))
+		.filter((file) => {
+			const text = read(`src/${file}`);
+			const code = file.endsWith('.vue') ? stripHtmlComments(text) : text;
+			return /backdrop-blur/.test(code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''));
+		})
+		.sort();
+}
+
 describe('las superficies del escritorio dejan ver el desenfoque de Wayfire', () => {
-	test.each(SURFACES)('%s', (_name, file, marker) => {
+	test.each(SURFACES)('%s', (_name, file, marker, blur) => {
 		const match = template(file).match(marker);
 		expect(match, `no se encontró la raíz en ${file}`).not.toBeNull();
 		const classes = (match as RegExpMatchArray).slice(1).filter(Boolean);
-		expect(surfaceProblems(classes)).toEqual([]);
+		expect(classes).toHaveLength(1);
+		expect(surfaceProblems(classes, blur)).toEqual([]);
+	});
+
+	test('sólo el marco de los widgets desenfoca: ninguna otra pieza de src/ nombra backdrop-blur', () => {
+		expect(filesWithBlur()).toEqual([BLUR_EXCEPTION]);
 	});
 
 	test('el marco suelto del menú (el clima) también es translúcido', () => {
@@ -104,6 +144,17 @@ describe('la guardia de translucidez ve lo opaco cuando lo hay', () => {
 		expect(surfaceProblems(['bg-ui-surface p-2'])).toEqual(['opaco: bg-ui-surface']);
 		expect(surfaceProblems(['bg-ui-bg/80 backdrop-blur-md'])).toEqual(['con backdrop-blur']);
 		expect(surfaceProblems(['h-screen border'])).toHaveLength(1);
+	});
+
+	test('rechaza que el marco de los widgets pierda el desenfoque', () => {
+		expect(surfaceProblems(['bg-ui-shell shadow-surface-m'], 'blur')).toEqual(['sin backdrop-blur-md']);
+		expect(surfaceProblems(['bg-ui-shell shadow-surface-m backdrop-blur-md'], 'blur')).toEqual([]);
+	});
+
+	test('y que otra superficie lo gane, con cualquier intensidad', () => {
+		expect(surfaceProblems(['bg-ui-shell backdrop-blur-md'])).toEqual(['con backdrop-blur']);
+		expect(surfaceProblems(['bg-ui-shell backdrop-blur'])).toEqual(['con backdrop-blur']);
+		expect(surfaceProblems(['bg-ui-shell backdrop-blur-xl'])).toEqual(['con backdrop-blur']);
 	});
 
 	test('y deja pasar los translúcidos', () => {
