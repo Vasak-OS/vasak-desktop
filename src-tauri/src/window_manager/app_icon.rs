@@ -106,7 +106,9 @@ fn lookup_icon(app_id: &str) -> Option<String> {
 /// Lo mismo, sobre una lista de directorios dada. Separado para poder probarlo
 /// sin tocar el entorno del proceso.
 fn lookup_icon_in(app_id: &str, dirs: &[std::path::PathBuf]) -> Option<String> {
-    lookup_in(app_id, dirs, |section| non_empty(first_attr(section, "Icon")))
+    lookup_in(app_id, dirs, |section| {
+        non_empty(first_attr(section, "Icon"))
+    })
 }
 
 /// El nombre que muestra la aplicación, en el idioma de la sesión: la clave

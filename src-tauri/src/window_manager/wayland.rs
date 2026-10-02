@@ -330,11 +330,21 @@ mod tests {
         assert_eq!(focused_app_id(&[firefox.clone(), kitty.clone()]), None);
 
         firefox.activated = true;
-        assert_eq!(focused_app_id(&[kitty.clone(), firefox.clone()]).as_deref(), Some("firefox"));
+        assert_eq!(
+            focused_app_id(&[kitty.clone(), firefox.clone()]).as_deref(),
+            Some("firefox")
+        );
 
         // Con el foco en el menú (una superficie de capa del escritorio), no hay
         // aplicación enfocada aunque el menú diga «activado».
-        let mut menu = vista(3, "vasak-desktop", "menú", "desktop-environment", "overlay", "overlay");
+        let mut menu = vista(
+            3,
+            "vasak-desktop",
+            "menú",
+            "desktop-environment",
+            "overlay",
+            "overlay",
+        );
         menu.activated = true;
         firefox.activated = false;
         assert_eq!(focused_app_id(&[firefox, kitty, menu]), None);
