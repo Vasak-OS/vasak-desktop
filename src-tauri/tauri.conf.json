@@ -54,7 +54,8 @@
           "gstreamer1.0-plugins-good",
           "gstreamer1.0-libav",
           "network-manager",
-          "upower"
+          "upower",
+          "pipewire-bin"
         ],
         "files": {}
       }

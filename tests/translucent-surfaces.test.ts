@@ -159,6 +159,20 @@ describe('las superficies del escritorio dejan ver el desenfoque de Wayfire', ()
 	});
 });
 
+describe('la vista radial del Bluetooth y de la red (#132)', () => {
+	test('va en la superficie del applet y su raíz no pinta un fondo encima', () => {
+		for (const view of ['BluetoothAppletView', 'NetworkAppletView']) {
+			expect(template(`src/views/applets/${view}.vue`)).toMatch(/<AppletPopover applet="[a-z]+">\s*<ConnectionsArea/);
+		}
+		const root = template('src/components/areas/connections/ConnectionsArea.vue').match(
+			/<div class="(@container[^"]*)"/
+		)?.[1];
+		expect(root).toBeDefined();
+		expect(backgroundsOf(root as string)).toEqual([]);
+		expect(root).not.toMatch(/backdrop-blur/);
+	});
+});
+
 describe('la guardia de translucidez ve lo opaco cuando lo hay', () => {
 	test('rechaza los fondos con los que quedó 1.23.0', () => {
 		expect(surfaceProblems(['rounded-corner-l bg-ui-float border border-ui-line'])).toEqual(['opaco: bg-ui-float']);

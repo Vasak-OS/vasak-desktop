@@ -179,6 +179,37 @@ components:
     disconnect: Disconnect
   BrightnessControl:
     brightness: "Brightness: {0}%"
+  ConnectionsArea:
+    connected: Connected
+    scan: Scan devices
+    scanning: Scanning...
+    switchView: Show the list
+    battery: Battery
+    audioProfile: Audio profile
+    macAddress: MAC address
+    profileA2dp: A2DP
+    profileHeadset: Hands-free
+    profileLeAudio: LE Audio
+    securityOpen: Open
+    securityWpaPersonal: WPA Personal
+    securityWpaEnterprise: WPA Enterprise
+    securityWpa2Personal: WPA2 Personal
+    securityWpa3Personal: WPA3 Personal
+    showNetworks: Show networks
+    signal: Signal
+    security: Security
+    ipAddress: IP address
+    wifi: Wi-Fi
+    bluetooth: Bluetooth
+    tabs: Connection type
+    noDevice: No device connected
+    bluetoothOff: Bluetooth is off
+    wifiUnavailable: Wi-Fi not available
+    noNetwork: No network connected
+    wifiOff: Wi-Fi is off
+    bluetoothRadio: Bluetooth
+    wifiRadio: Wi-Fi
+    back: Back
   DeviceCard:
     connecting: Connecting...
     connect: Connect

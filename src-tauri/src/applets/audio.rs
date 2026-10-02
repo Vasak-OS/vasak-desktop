@@ -21,11 +21,38 @@ impl Applet for AudioApplet {
 
         let monitor = AudioMonitor::new().await;
 
+        let profiles_app = app.clone();
+        tokio::spawn(async move {
+            forward_bluetooth_profiles(profiles_app).await;
+        });
+
         tokio::spawn(async move {
             run_audio_monitor_loop(app, monitor).await;
         });
 
         Ok(())
+    }
+}
+
+/// Reenvía a la interfaz los cambios de perfil de los dispositivos Bluetooth
+/// que lee `pw-dump` (`bluetooth_audio_profile`), como
+/// `bluetooth-audio-profile-changed` con `{ address, profile, description,
+/// codec }`. Si se atrasa y pierde avisos, sigue: el applet vuelve a pedir el
+/// perfil al abrirse.
+async fn forward_bluetooth_profiles(app: AppHandle) {
+    use tokio::sync::broadcast::error::RecvError;
+
+    let mut profiles = crate::bluetooth_audio_profile::subscribe();
+    loop {
+        match profiles.recv().await {
+            Ok(profile) => {
+                if let Err(e) = app.emit("bluetooth-audio-profile-changed", &profile) {
+                    log_error(&format!("AudioApplet: failed to emit bluetooth-audio-profile-changed: {}", e));
+                }
+            }
+            Err(RecvError::Lagged(_)) => continue,
+            Err(RecvError::Closed) => break,
+        }
     }
 }
 

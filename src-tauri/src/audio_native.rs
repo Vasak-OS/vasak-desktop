@@ -409,8 +409,14 @@ impl PwDumpMonitor {
 
                 // When brackets are balanced, we have a complete JSON chunk
                 if bracket_depth == 0 && !json_buffer.trim().is_empty() {
-                    if let Some(volume_info) = Self::parse_volume_from_json(&json_buffer) {
-                        let _ = state_tx.send(volume_info);
+                    // Se lee una sola vez y lo usan el volumen y el perfil de
+                    // los dispositivos Bluetooth (`bluetooth_audio_profile`),
+                    // que sale del mismo flujo sin sumar procesos.
+                    if let Ok(batch) = serde_json::from_str::<serde_json::Value>(&json_buffer) {
+                        crate::bluetooth_audio_profile::ingest(&batch);
+                        if let Some(volume_info) = Self::parse_volume_from_value(&batch) {
+                            let _ = state_tx.send(volume_info);
+                        }
                     }
                     json_buffer.clear();
                 }
@@ -428,10 +434,7 @@ impl PwDumpMonitor {
     /// pw-dump outputs arrays of PipeWire objects. We look for objects with
     /// type "PipeWire:Interface:Node" and media.class "Audio/Sink" that have
     /// volume parameters.
-    fn parse_volume_from_json(json_str: &str) -> Option<VolumeInfo> {
-        // Parse as a JSON value
-        let value: serde_json::Value = serde_json::from_str(json_str).ok()?;
-
+    fn parse_volume_from_value(value: &serde_json::Value) -> Option<VolumeInfo> {
         // pw-dump outputs an array of objects
         let objects = value.as_array()?;
 

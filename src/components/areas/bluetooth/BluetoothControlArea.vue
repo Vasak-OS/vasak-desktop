@@ -22,6 +22,14 @@ import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
 
+const props = defineProps<{
+	/**
+	 * Buscar apenas se abre: la vista radial pasa a la lista con «Buscar
+	 * dispositivos» (`ConnectionsArea`).
+	 */
+	scanOnMount?: boolean;
+}>();
+
 const connectedDevices = ref<any[]>([]);
 const availableDevices = ref<any[]>([]);
 const isTogglingBluetooth = ref(false);
@@ -88,6 +96,7 @@ const bluetoothIcon = computed(() => {
 onMounted(async () => {
 	defaultAdapter.value = await getDefaultAdapter();
 	await refreshDevices();
+	if (props.scanOnMount && defaultAdapter.value?.powered) await scanDevices();
 });
 
 useSharedEvent('bluetooth-change', handleBluetoothChange);

@@ -12,6 +12,7 @@ mod applets;
 mod artwork;
 mod audio;
 mod audio_native;
+mod bluetooth_audio_profile;
 mod brightness;
 mod commands;
 mod connect;
@@ -179,6 +180,7 @@ pub fn run() {
             set_menu_button,
             show_panel,
             get_audio_volume,
+            bluetooth_audio_profile::get_bluetooth_audio_profile,
             set_audio_volume,
             toggle_audio_mute,
             get_audio_devices,
