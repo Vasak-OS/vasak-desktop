@@ -119,12 +119,15 @@ describe('el marco de los widgets', () => {
 		expect(template('components/widgets/WidgetFrame.vue')).toContain('container-type: size');
 	});
 
-	test('las dos superficies salen del esquema, translúcidas y sin desenfoque', () => {
+	test('las dos superficies salen del esquema y son translúcidas; sólo la del escritorio desenfoca', () => {
 		const frame = template('components/widgets/WidgetFrame.vue');
-		expect(frame).toContain("'bg-ui-shell shadow-surface-m'");
-		expect(frame).not.toContain("'bg-ui-float shadow-surface-m'");
-		expect(frame).toContain("'bg-ui-surface/70'");
-		expect(frame).not.toMatch(/backdrop-blur/);
+		// Sobre el fondo de pantalla, Wayfire no tiene nada detrás que
+		// desenfocar: el desenfoque lo pone el marco (decisión del 02/10/2026).
+		expect(frame).toContain("'bg-ui-shell shadow-surface-m backdrop-blur-md'");
+		expect(frame).not.toContain("'bg-ui-float shadow-surface-m");
+		// El suelto del menú va dentro de una ventana que ya desenfoca Wayfire.
+		expect(frame).toContain(": 'bg-ui-surface/70'");
+		expect(frame.match(/backdrop-blur/g)).toHaveLength(1);
 	});
 
 	test('en edición, el contenido no recibe clics y el tirador avisa', () => {

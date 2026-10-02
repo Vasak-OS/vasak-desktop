@@ -22,8 +22,14 @@ import { ActionButton } from '@vasakgroup/vue-libvasak';
  *   (`ui-shell` translúcida, sombra `surface-m`, como el resto del
  *   escritorio); `surface` es lo que se apoya dentro de otra ventana, como el
  *   clima del menú (`ui-surface/70`, sin sombra). Las dos translúcidas, con el
- *   canto fino y el radio `l`. Sin desenfoque propio: cuesta en WebKitGTK y el
- *   desenfoque del escritorio es de Wayfire.
+ *   canto fino y el radio `l`.
+ * - **El desenfoque, sólo en `shell`** (`backdrop-blur-md`, el que tenían antes
+ *   de la migración). Es la única superficie del escritorio que lo lleva: el
+ *   resto flota en su propia superficie de capa y el desenfoque se lo pone
+ *   Wayfire, pero los widgets se dibujan en la misma página que el fondo de
+ *   pantalla, así que Wayfire no tiene nada detrás que desenfocar y el
+ *   desenfoque lo tiene que hacer el WebView (decisión del usuario, 02/10/2026).
+ *   La variante `surface` va dentro del menú, que ya desenfoca Wayfire.
  * - **La edición**: el canto discontinuo, el botón de quitar y el tirador de
  *   abajo a la derecha. Mientras se edita, lo de adentro no recibe clics: si
  *   los recibiera, arrastrar el reproductor cambiaría de canción.
@@ -54,7 +60,7 @@ const { t } = useI18n();
       style="container-type: size"
       class="h-full w-full overflow-hidden rounded-corner-l border border-ui-line"
       :class="[
-        surface === 'shell' ? 'bg-ui-shell shadow-surface-m' : 'bg-ui-surface/70',
+        surface === 'shell' ? 'bg-ui-shell shadow-surface-m backdrop-blur-md' : 'bg-ui-surface/70',
         editing ? 'pointer-events-none select-none' : '',
       ]"
     >

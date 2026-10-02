@@ -31,7 +31,8 @@
  *   cambia con el ancho va con consultas de contenedor o `ResizeObserver`.
  * - **La forma de Once UI**: ni las sombras de Tailwind (que además traen su
  *   negro fijo), ni desenfoque detrás (una superficie de capa no ve el
- *   escritorio: el `backdrop-blur` cuesta y no muestra nada), ni escalas, giros
+ *   escritorio: el `backdrop-blur` cuesta y no muestra nada; la excepción es
+ *   el marco de los widgets, ver `WIDGET_FRAME_BLUR`), ni escalas, giros
  *   o desplazamientos al pasar o al apretar, ni duraciones fuera de 100, 150,
  *   200 y 300 ms.
  *
@@ -57,6 +58,15 @@ const LIBRARY_TOKENS = `${ROOT}node_modules/@vasakgroup/vue-libvasak/dist/tokens
  * excepción de la §5 del inventario de vue-libvasak#74, y la única.
  */
 const THIRD_PARTY_PIXMAP = ['components/buttons/TrayPixmap.vue'];
+
+/**
+ * El marco de los widgets del escritorio sí desenfoca (`backdrop-blur-md`, en
+ * la variante `shell`). Los widgets se dibujan en la misma página que el fondo
+ * de pantalla, así que Wayfire no tiene nada detrás que desenfocar: lo hace el
+ * WebView (decisión del usuario, 02/10/2026). Es la única excepción, y vale
+ * sólo para esa clase en ese archivo.
+ */
+const WIDGET_FRAME_BLUR = 'components/widgets/WidgetFrame.vue: backdrop-blur';
 
 /**
  * Sin comentarios: lo que se explica no es lo que se dibuja.
@@ -404,9 +414,20 @@ describe('lo que la forma de Once UI deja afuera', () => {
 	for (const [what, regex] of FORBIDDEN_SHAPE) {
 		test(`sin ${what}`, async () => {
 			// También en las hojas: un `@apply shadow-lg` es la misma sombra.
-			expect(await findAll(sources('**/*.{vue,ts,css}'), regex)).toEqual([]);
+			const found = await findAll(sources('**/*.{vue,ts,css}'), regex);
+			const allowed = what === 'desenfoque detrás' ? [WIDGET_FRAME_BLUR] : [];
+			expect(found.filter((hit) => !allowed.includes(hit))).toEqual([]);
 		});
 	}
+
+	test('el marco de los widgets desenfoca una sola vez, en su variante shell', async () => {
+		// Si la excepción quedara sin uso, otro archivo podría ganar el
+		// desenfoque y pasar por ella: se exige que esté y que sea ésa.
+		const found = await findAll(sources('**/*.{vue,ts,css}'), /backdrop-blur/g);
+		expect(found).toEqual([WIDGET_FRAME_BLUR]);
+		const frame = await read(`${SOURCE}components/widgets/WidgetFrame.vue`);
+		expect(frame).toContain("surface === 'shell' ? 'bg-ui-shell shadow-surface-m backdrop-blur-md' : 'bg-ui-surface/70'");
+	});
 
 	test('las duraciones son 100, 150, 200 o 300', async () => {
 		const found = await findAll(
