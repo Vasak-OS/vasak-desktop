@@ -74,8 +74,10 @@ views:
     webcamNoCameras: El teléfono no informó ninguna cámara.
   panel:
     menuAlt: Menú
+    settingsAlt: Configuración
+    filesAlt: Archivos
+    pinnedAlt: Accesos fijos
     notificationsAlt: Notificaciones
-    searchAlt: Buscar aplicaciones
     workspaces: Espacios de trabajo
     workspace: "Espacio de trabajo {0}"
     keyboardLayout: "Distribución de teclado: {0}"

@@ -74,8 +74,10 @@ views:
     webcamNoCameras: The phone reported no cameras.
   panel:
     menuAlt: Menu
+    settingsAlt: Settings
+    filesAlt: Files
+    pinnedAlt: Pinned apps
     notificationsAlt: Notifications
-    searchAlt: Search applications
     workspaces: Workspaces
     workspace: "Workspace {0}"
     keyboardLayout: "Keyboard layout: {0}"
