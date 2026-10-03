@@ -179,6 +179,37 @@ components:
     disconnect: Desconectar
   BrightnessControl:
     brightness: "Brillo: {0}%"
+  ConnectionsArea:
+    connected: Conectado
+    scan: Buscar dispositivos
+    scanning: Buscando...
+    switchView: Ver la lista
+    battery: Batería
+    audioProfile: Perfil de audio
+    macAddress: Dirección MAC
+    profileA2dp: A2DP
+    profileHeadset: Manos libres
+    profileLeAudio: LE Audio
+    securityOpen: Abierta
+    securityWpaPersonal: WPA personal
+    securityWpaEnterprise: WPA empresarial
+    securityWpa2Personal: WPA2 personal
+    securityWpa3Personal: WPA3 personal
+    showNetworks: Ver redes
+    signal: Señal
+    security: Seguridad
+    ipAddress: Dirección IP
+    wifi: Wi-Fi
+    bluetooth: Bluetooth
+    tabs: Tipo de conexión
+    noDevice: Ningún dispositivo conectado
+    bluetoothOff: Bluetooth apagado
+    wifiUnavailable: Wi-Fi no disponible
+    noNetwork: Sin red conectada
+    wifiOff: Wi-Fi apagado
+    bluetoothRadio: Bluetooth
+    wifiRadio: Wi-Fi
+    back: Volver
   DeviceCard:
     connecting: Conectando...
     connect: Conectar
