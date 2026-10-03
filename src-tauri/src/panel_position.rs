@@ -132,7 +132,10 @@ pub fn from_json(content: &str) -> PanelPosition {
 }
 
 /// Dónde vive la configuración. Igual que en el gestor de configuración.
-fn config_path() -> Option<std::path::PathBuf> {
+///
+/// La usa también el registro de tiempo de pantalla para leer si está
+/// prendido (`screen_time.enabled`).
+pub(crate) fn config_path() -> Option<std::path::PathBuf> {
     if let Some(set) = std::env::var_os("VASAK_CONFIG_PATH") {
         if !set.is_empty() {
             return Some(std::path::PathBuf::from(set));

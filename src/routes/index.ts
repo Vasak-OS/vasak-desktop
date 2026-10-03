@@ -49,6 +49,10 @@ const routes = [
 				path: 'music',
 				component: () => import('@/views/applets/MusicAppletView.vue'),
 			},
+			{
+				path: 'screen-time',
+				component: () => import('@/views/applets/ScreenTimeAppletView.vue'),
+			},
 			// El menú de aplicaciones es un applet más: ver `windows_apps/menu.rs`.
 			{ path: 'menu', component: () => import('@/views/MenuView.vue') },
 		],

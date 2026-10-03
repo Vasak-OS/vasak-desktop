@@ -108,6 +108,39 @@ views:
     viaCaption: vía
     players: Reproductores abiertos
     back: Volver
+  screenTimeApplet:
+    title: Tiempo de pantalla
+    previousDay: Día anterior
+    nextDay: Día siguiente
+    today: Hoy
+    yesterday: Ayer
+    dailyAverage: Promedio diario
+    total: Total del día
+    noAverage: Sin datos
+    vsYesterday: "{0} frente a ayer"
+    sameAsYesterday: Igual que ayer
+    noYesterday: Sin datos de ayer
+    more: "más {0}"
+    less: "menos {0}"
+    week: Esta semana
+    weekOf: "Semana del {0}"
+    apps: Aplicaciones
+    empty: Todavía no hay tiempo registrado este día.
+    emptyNote: Se cuenta el tiempo con una aplicación enfocada, sin bloqueo ni inactividad.
+    disabled: El registro está apagado.
+    disabledNote: Prendelo para empezar a contar. Lo que ya había se conserva.
+    record: Registrar el tiempo de pantalla
+    clear: Borrar historial
+    confirmClear: Borrar todo
+    cancel: Cancelar
+    clearQuestion: Se borra todo el historial de esta computadora.
+    privacy: Se guarda sólo en esta computadora.
+    loadError: No se pudo leer el historial.
+    duration:
+      hoursMinutes: "{0} h {1} min"
+      hours: "{0} h"
+      minutes: "{0} min"
+      underMinute: menos de 1 min
   applets:
     panelMenu:
       title: Opciones del panel
@@ -217,6 +250,8 @@ components:
   SearchButtonControl:
     openSearch: Abrir el lanzador
     searchAlt: Buscar
+  ScreenTimeControl:
+    open: Tiempo de pantalla
   SearchMenuComponent:
     placeholder: Buscar
   SystemAudioArea:

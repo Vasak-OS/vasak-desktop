@@ -150,6 +150,20 @@ impl WaylandManager {
     }
 }
 
+/// El `app-id` de la ventana de aplicación enfocada, si hay una.
+///
+/// Con los mismos filtros que la lista del panel: una superficie del propio
+/// escritorio (el menú, un applet, el centro de control) no es una aplicación,
+/// así que con el foco ahí no hay ninguna enfocada. Lo usa el registro de
+/// tiempo de pantalla.
+pub fn focused_app_id(views: &[View]) -> Option<String> {
+    views
+        .iter()
+        .filter(|view| view.activated)
+        .filter_map(WaylandManager::view_to_window_info)
+        .find_map(|info| info.app_id)
+}
+
 impl WindowManagerBackend for WaylandManager {
     fn get_window_list(&self) -> Result<Vec<WindowInfo>, Box<dyn std::error::Error>> {
         let windows = Self::block_on_async(async {
@@ -307,6 +321,33 @@ mod tests {
 
     fn aplicacion(id: i64, app_id: &str, title: &str) -> View {
         vista(id, app_id, title, "toplevel", "toplevel", "workspace")
+    }
+
+    #[test]
+    fn la_aplicación_enfocada_es_la_ventana_activada_y_no_una_del_escritorio() {
+        let mut firefox = aplicacion(1, "firefox", "Inicio");
+        let kitty = aplicacion(2, "kitty", "~");
+        assert_eq!(focused_app_id(&[firefox.clone(), kitty.clone()]), None);
+
+        firefox.activated = true;
+        assert_eq!(
+            focused_app_id(&[kitty.clone(), firefox.clone()]).as_deref(),
+            Some("firefox")
+        );
+
+        // Con el foco en el menú (una superficie de capa del escritorio), no hay
+        // aplicación enfocada aunque el menú diga «activado».
+        let mut menu = vista(
+            3,
+            "vasak-desktop",
+            "menú",
+            "desktop-environment",
+            "overlay",
+            "overlay",
+        );
+        menu.activated = true;
+        firefox.activated = false;
+        assert_eq!(focused_app_id(&[firefox, kitty, menu]), None);
     }
 
     #[test]

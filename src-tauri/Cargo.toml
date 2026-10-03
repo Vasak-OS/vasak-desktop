@@ -1,6 +1,6 @@
 [package]
 name = "vasak-desktop"
-version = "1.24.0"
+version = "1.25.0"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -63,7 +63,8 @@ async-trait = "0.1.89"
 dirs = "7"
 uuid = { version = "1.0", features = ["v4", "serde"] }
 thiserror = "2.0"
-chrono = "0.4"
+# `serde`: el tiempo de pantalla guarda y manda las fechas como `AAAA-MM-DD`.
+chrono = { version = "0.4", features = ["serde"] }
 shlex = "2"
 # Se queda en 0.8 a propósito. La feature `pipewire-native` —apagada por
 # omisión— ya no compila: libspa 0.8 falla contra las cabeceras de PipeWire

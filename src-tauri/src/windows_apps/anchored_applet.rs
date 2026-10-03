@@ -133,6 +133,11 @@ pub const APPLETS: &[AppletSpec] = &[
     // contenedor; con un solo reproductor lo que sobra se reparte arriba y
     // abajo). Cuando llegue el ecualizador, este es el número que crece.
     AppletSpec { id: "music", route: "music", size: (400.0, 272.0) },
+    // El tablero de tiempo de pantalla (vasak-desktop#150), que abre un botón
+    // del centro de control. Sin botón del panel del que colgar, va centrado
+    // en el eje del panel. El tamaño es el de la referencia a 1280 de
+    // pantalla: 580 × 590.
+    AppletSpec { id: "screen-time", route: "screen-time", size: (580.0, 590.0) },
     // El menú de aplicaciones (`menu.rs`). Es el único que se abre también sin
     // botón —la tecla Super—, pero por lo demás es uno más: se esconde y no se
     // destruye, uno por vez, y el panel realza su botón. El tamaño es el de
