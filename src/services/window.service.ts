@@ -11,6 +11,7 @@ export type AppletId =
 	| 'privacy'
 	| 'twingate'
 	| 'music'
+	| 'date'
 	| 'menu'
 	| 'screen-time';
 

@@ -138,6 +138,14 @@ pub const APPLETS: &[AppletSpec] = &[
     // en el eje del panel. El tamaño es el de la referencia a 1280 de
     // pantalla: 580 × 590.
     AppletSpec { id: "screen-time", route: "screen-time", size: (580.0, 590.0) },
+    // El tablero de fecha, colgado del reloj: el mes, el reloj grande con el
+    // clima por hora en arco, el clima del día con sus cuatro anillos y, en el
+    // piso de abajo, los eventos del día. Novecientos sesenta de ancho: es lo
+    // que deja al arco del centro sus 20 rem y a los cuatro anillos su nombre
+    // entero («Sensación» no entraba con 900). El alto es el de los dos pisos
+    // con tres tarjetas de evento de cuatro renglones. Un monitor más chico lo
+    // achica, y la página pasa a una columna (`DateBoardAppletView.vue`).
+    AppletSpec { id: "date", route: "date", size: (960.0, 540.0) },
     // El menú de aplicaciones (`menu.rs`). Es el único que se abre también sin
     // botón —la tecla Super—, pero por lo demás es uno más: se esconde y no se
     // destruye, uno por vez, y el panel realza su botón. El tamaño es el de

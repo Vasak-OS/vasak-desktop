@@ -3,6 +3,7 @@ mod audio;
 mod batch;
 mod battery;
 mod brightness;
+mod calendar;
 mod connect;
 mod control_center;
 mod logger;
@@ -28,6 +29,7 @@ pub use audio::{
 pub use batch::batch_invoke;
 pub use battery::{battery_exists, battery_fetch_info, get_battery_info};
 pub use brightness::{get_brightness_info, set_brightness_info};
+pub use calendar::{calendar_locations, calendar_occurrences};
 pub use connect::toggle_connect_menu;
 pub use control_center::{hide_control_center, toggle_control_center};
 pub use logger::{get_last_log_lines, get_log_file_path, log_from_frontend, read_log_file};
@@ -44,7 +46,7 @@ pub use notifications::{
 pub use osd::show_osd;
 pub use panel::show_panel;
 pub use privacy::{privacy_in_use, privacy_stop_screen};
-pub use runner::{open_app, open_settings, open_settings_section};
+pub use runner::{open_app, open_calendar, open_settings, open_settings_section};
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};
 pub use session_popup::toggle_session_popup;
 pub use tray::{

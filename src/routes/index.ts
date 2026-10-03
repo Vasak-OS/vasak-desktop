@@ -53,6 +53,11 @@ const routes = [
 				path: 'screen-time',
 				component: () => import('@/views/applets/ScreenTimeAppletView.vue'),
 			},
+			// El tablero de fecha, colgado del reloj del panel.
+			{
+				path: 'date',
+				component: () => import('@/views/applets/DateBoardAppletView.vue'),
+			},
 			// El menú de aplicaciones es un applet más: ver `windows_apps/menu.rs`.
 			{ path: 'menu', component: () => import('@/views/MenuView.vue') },
 		],
