@@ -8,7 +8,9 @@
 //! comprueba contra el último leído, y si todavía no hay ninguno, decide el
 //! servicio (`InvalidArgs`).
 
-use crate::applets::equalizer::{check_gain, last_state, proxy, read_state, shared_session, EqualizerState};
+use crate::applets::equalizer::{
+    check_gain, last_state, proxy, read_state, shared_session, EqualizerState,
+};
 use crate::logger::log_error;
 use tauri::AppHandle;
 use zbus::Connection;
@@ -33,28 +35,20 @@ pub async fn equalizer_set_gain(app: AppHandle, band: u32, gain: f64) -> Result<
         return Err(format!("la ganancia {gain} no es un número"));
     }
     let conn = session(&app).await?;
-    proxy(&conn)
-        .await?
-        .set_gain(band, gain)
-        .await
-        .map_err(|e| {
-            log_error(&format!("[equalizer] SetGain({band}, {gain}): {e}"));
-            e.to_string()
-        })
+    proxy(&conn).await?.set_gain(band, gain).await.map_err(|e| {
+        log_error(&format!("[equalizer] SetGain({band}, {gain}): {e}"));
+        e.to_string()
+    })
 }
 
 /// Elige un perfil de fábrica, o `custom` para volver a los valores propios.
 #[tauri::command]
 pub async fn equalizer_set_preset(app: AppHandle, preset: String) -> Result<(), String> {
     let conn = session(&app).await?;
-    proxy(&conn)
-        .await?
-        .set_preset(&preset)
-        .await
-        .map_err(|e| {
-            log_error(&format!("[equalizer] SetPreset({preset}): {e}"));
-            e.to_string()
-        })
+    proxy(&conn).await?.set_preset(&preset).await.map_err(|e| {
+        log_error(&format!("[equalizer] SetPreset({preset}): {e}"));
+        e.to_string()
+    })
 }
 
 /// Prende o apaga el filtro.
