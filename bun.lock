@@ -11,7 +11,7 @@
         "@tauri-apps/plugin-opener": "^2.7.0",
         "@tauri-apps/plugin-shell": "^2.4.0",
         "@vasakgroup/plugin-bluetooth-manager": "^2.2.1",
-        "@vasakgroup/plugin-config-manager": "^2.9.0",
+        "@vasakgroup/plugin-config-manager": "^2.10.0",
         "@vasakgroup/plugin-network-manager": "^2.2.0",
         "@vasakgroup/plugin-user-data": "^2.1.0",
         "@vasakgroup/plugin-vicons": "^2.2.1",
@@ -266,7 +266,7 @@
 
     "@vasakgroup/plugin-bluetooth-manager": ["@vasakgroup/plugin-bluetooth-manager@2.2.1", "", { "dependencies": { "@tauri-apps/api": "^2.12.0" } }, "sha512-GKO0hspdj6vVH7nXsl5bDwqKuBJN60TfSDlF0OYmd4XPeU4My/qbXe4Cr3HewA6KU/PMWa5hp/K5CFS29bAe1g=="],
 
-    "@vasakgroup/plugin-config-manager": ["@vasakgroup/plugin-config-manager@2.9.0", "", { "peerDependencies": { "@tauri-apps/api": "^2.11.0", "pinia": "^3.0.4 || ^4.0.0", "vue": "^3.5.35" } }, "sha512-uLIsoKcrbFYD94iAPnH6Le1rjkbeU7/7i+GD2uXBAA8qGAGGjvuVxPMD9Chid2t7oLcT4IBO51DpnSH5d68peg=="],
+    "@vasakgroup/plugin-config-manager": ["@vasakgroup/plugin-config-manager@2.10.0", "", { "peerDependencies": { "@tauri-apps/api": "^2.11.0", "pinia": "^3.0.4 || ^4.0.0", "vue": "^3.5.35" } }, "sha512-yjNANf85PEJB45wn9lq6GPFXoQr7F0SFrWyky2WEyGL4b2G6q+ixnqDUDH8TRfKk/j8sIsClVjjWIU/72NXlVQ=="],
 
     "@vasakgroup/plugin-network-manager": ["@vasakgroup/plugin-network-manager@2.2.1", "", { "dependencies": { "@tauri-apps/api": "^2.11.1" } }, "sha512-NCAS623QRh+ijnjtIgpS4MSqxo8JPaXMfR3TiafZughOTfXkcliD5nyccL2D0EuSglkp8IkYJwdZuRiy5DT8Eg=="],
 

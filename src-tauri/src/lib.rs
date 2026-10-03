@@ -171,6 +171,7 @@ pub fn run() {
             calendar_locations,
             twingate_info,
             twingate_authorize,
+            wallpaper_pixels,
             show_osd,
             toggle_session_popup,
             logout,

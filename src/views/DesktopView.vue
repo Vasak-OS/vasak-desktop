@@ -10,8 +10,9 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import WidgetLayer from '@/components/widgets/WidgetLayer.vue';
 import { getBatteryInfo } from '@/services/core.service';
+import { createWallpaperFollower } from '@/services/wallpaper-colors.service';
 import { useSharedEvent } from '@/tools/event.bus';
-import { logError } from '@/utils/logger';
+import { logError, logInfo, logWarning } from '@/utils/logger';
 import { fetchVideoBlob, VideoTooLargeError } from '@/utils/video-blob';
 
 const route = useRoute();
@@ -325,12 +326,31 @@ watch(showHiddenFiles, () => {
 	}
 });
 
+/**
+ * «Seguir al fondo»: sólo desde el fondo del monitor principal, para que haya
+ * un solo seguidor en todo el escritorio. Ver `wallpaper-colors.service.ts`.
+ */
+const wallpaperFollower = createWallpaperFollower(undefined, (outcome) => {
+	if (outcome === 'applied') logInfo('[wallpaper-colors] colores sacados del fondo nuevo');
+	else if (outcome === 'unreadable' || outcome === 'save-failed')
+		logWarning(`[wallpaper-colors] no se cambiaron los colores: ${outcome}`);
+});
+const followWallpaper = () => {
+	if (isSecondaryMonitor.value) return;
+	wallpaperFollower.sync().catch((error) => {
+		logError('[wallpaper-colors] error al seguir el fondo', { error: String(error) });
+	});
+};
+
 let isMounted = false;
 
 onMounted(async () => {
 	isMounted = true;
 	await (configStore as any).loadConfig();
 	if (!isMounted) return;
+	// El fondo pudo cambiar mientras el escritorio no estaba (otra sesión, un
+	// arranque): se pone al día al abrir.
+	followWallpaper();
 
 	// El escritorio secundario sólo necesita el fondo: ni widgets ni escuchas.
 	//
@@ -345,6 +365,7 @@ onUnmounted(() => {
 
 useSharedEvent('config-changed', async () => {
 	await (configStore as any).loadConfig();
+	followWallpaper();
 });
 </script>
 
