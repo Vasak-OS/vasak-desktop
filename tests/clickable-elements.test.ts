@@ -39,7 +39,11 @@ const DEAF_TAGS = /<(div|span|img|li|p|a)\b((?:[^<>"']|"[^"]*"|'[^']*')*?)>/g;
 function deafTagsListeningToClick(text: string): number {
 	let count = 0;
 	for (const [, , attributes] of text.matchAll(DEAF_TAGS)) {
-		if (!/(@click|v-on:click)\b/.test(attributes)) continue;
+		// Con manejador. Un `@click.stop` a secas no hace nada: sólo corta la
+		// propagación (la fila de acciones de una notificación, para que tocar un
+		// botón no dispare la acción de la tarjeta entera). La expresión vieja
+		// no lo veía porque se cortaba en el `>` de un `v-if="… > 0"`.
+		if (!/(@click|v-on:click)(\.[\w.]+)?\s*=/.test(attributes)) continue;
 		// El papel puesto a mano y el atado a una condición valen los dos. Varias
 		// de estas filas **sólo a veces** hacen algo —`clickable`, o que la
 		// notificación traiga acción por omisión—, y ahí el papel tiene que
@@ -53,6 +57,13 @@ function deafTagsListeningToClick(text: string): number {
 }
 
 describe('nada que se pueda clickear queda fuera del teclado', () => {
+	test('el detector ve un div con manejador aunque un v-if tenga «>», y no cuenta un @click.stop a secas', () => {
+		expect(deafTagsListeningToClick('<div v-if="items.length > 0" @click="open">x</div>')).toBe(1);
+		expect(deafTagsListeningToClick('<div v-if="items.length > 0" @click.stop>x</div>')).toBe(0);
+		expect(deafTagsListeningToClick('<div role="button" @click="open">x</div>')).toBe(0);
+		expect(deafTagsListeningToClick(`<span :title="'a' + b" @click.prevent="go">x</span>`)).toBe(1);
+	});
+
 	test('ningún elemento sordo escucha el clic — ya sin excepciones', () => {
 		// Hubo cinco: las filas enteras de las tarjetas y el selector de audio.
 		// Eran otra discusión porque varias tienen **sus propios botones
