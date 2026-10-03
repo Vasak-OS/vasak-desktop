@@ -105,6 +105,14 @@ export function useOpenApplet(_applet: string) {
 	return { isOpen: computed(() => false), openClasses: computed(() => ({ 'bg-ui-selected-accent': false })) };
 }
 
+export { showsNames, showsNumbers } from '../../src/tools/panel-density';
+
+/** La densidad del panel: llena salvo que la prueba diga otra cosa. */
+export const density = ref<'full' | 'compact' | 'tight'>('full');
+export function usePanelDensity() {
+	return density;
+}
+
 export function usePanelConfig() {
 	return { vertical: music.vertical };
 }

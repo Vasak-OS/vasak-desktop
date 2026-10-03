@@ -32,11 +32,10 @@ describe('el reproductor desplegable', () => {
 	test('lo abre el control del panel, colgado de él', () => {
 		expect(CONTROL).toContain("toggleApplet('music', opener.value)");
 		expect(CONTROL).toContain('ref="opener"');
-		// Y el control se realza mientras está abierto, como los demás: las
-		// clases del abierto van al botón de la píldora.
+		// Y el control se realza mientras está abierto, como los demás: la
+		// píldora lo dice con `expanded` (vasak-desktop#151).
 		expect(CONTROL).toContain("useOpenApplet('music')");
-		expect(CONTROL).toContain('...openClasses.value');
-		expect(CONTROL).toContain(':custom-class="buttonClasses"');
+		expect(CONTROL).toContain(':expanded="isOpen"');
 	});
 
 	test('es un applet anclado, con su ventana en la capability', () => {
@@ -119,10 +118,11 @@ describe('la portada del panel', () => {
 
 	test('el aro de progreso y el botón son los de la librería', () => {
 		// Ni el `conic-gradient` con su máscara a mano ni un `<button>` propio:
-		// el botón es la píldora entera, `TrayIconButton`, y el disco adentro
-		// no es otro botón (un botón dentro de otro no se puede apuntar).
+		// el botón es la píldora entera, `PanelPill` desde el panel en píldoras
+		// (vasak-desktop#151), y el disco adentro no es otro botón (un botón
+		// dentro de otro no se puede apuntar).
 		expect(CONTROL).toContain(':progress="musicInfo.length > 0 ? progress * 100 : null"');
-		expect(CONTROL).toContain('<TrayIconButton');
+		expect(CONTROL).toContain('<PanelPill');
 		expect(CONTROL).not.toMatch(/<SpinningCover[^>]*\binteractive\b/);
 		expect(CONTROL).not.toContain('conic-gradient');
 		expect(CONTROL).not.toMatch(/<button\b/);

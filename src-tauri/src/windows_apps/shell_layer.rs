@@ -330,6 +330,44 @@ pub fn set_layer_input_region(label: &str, rect: Option<(i32, i32, i32, i32)>) -
         .unwrap_or(false)
 }
 
+/// Como [`set_layer_input_region`], pero con varios rectángulos.
+///
+/// Es la del panel en píldoras (vasak-desktop#151): la superficie sigue siendo
+/// la franja entera —es la que reserva el lugar—, pero lo que recibe el puntero
+/// son sólo las píldoras. Entre una y otra los clics caen en el escritorio,
+/// que se ve por ahí. Sin rectángulos la superficie queda entera, que es lo
+/// seguro: una lista vacía por un error de medición no puede dejar al panel
+/// sin poder tocarse.
+pub fn set_layer_input_rects(label: &str, rects: &[(i32, i32, i32, i32)]) -> bool {
+    LAYER_WINDOWS
+        .try_with(|windows| {
+            let windows = windows.borrow();
+            let Some(window) = windows.get(label) else {
+                return false;
+            };
+            match input_rects(rects) {
+                Some(rects) => {
+                    let region = gtk::cairo::Region::create_rectangles(&rects);
+                    window.input_shape_combine_region(Some(&region));
+                }
+                None => window.input_shape_combine_region(None),
+            }
+            true
+        })
+        .unwrap_or(false)
+}
+
+/// Los rectángulos que valen: sin los de ancho o alto cero, que no suman nada.
+/// `None` si no queda ninguno, y entonces la superficie va entera.
+fn input_rects(rects: &[(i32, i32, i32, i32)]) -> Option<Vec<gtk::cairo::RectangleInt>> {
+    let valid: Vec<_> = rects
+        .iter()
+        .filter(|(_, _, width, height)| *width > 0 && *height > 0)
+        .map(|&(x, y, width, height)| gtk::cairo::RectangleInt::new(x, y, width, height))
+        .collect();
+    (!valid.is_empty()).then_some(valid)
+}
+
 fn apply_input_region(window: &gtk::Window, rect: Option<(i32, i32, i32, i32)>) {
     match rect {
         Some((x, y, width, height)) => {
@@ -439,4 +477,29 @@ pub fn layer_window_exists(label: &str) -> bool {
     LAYER_WINDOWS
         .try_with(|windows| windows.borrow().contains_key(label))
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod input_rects_tests {
+    use super::input_rects;
+
+    #[test]
+    fn cada_pildora_es_un_rectangulo_de_la_region() {
+        let rects = input_rects(&[(4, 2, 32, 32), (40, 2, 120, 32)]).expect("dos píldoras");
+        assert_eq!(rects.len(), 2);
+        assert_eq!((rects[1].x(), rects[1].width()), (40, 120));
+    }
+
+    #[test]
+    fn los_rectangulos_vacios_no_suman() {
+        let rects = input_rects(&[(0, 0, 0, 32), (10, 0, 20, 0), (50, 2, 32, 32)]).unwrap();
+        assert_eq!(rects.len(), 1);
+    }
+
+    #[test]
+    fn sin_ninguno_la_superficie_queda_entera() {
+        // Una medición que falla no puede dejar al panel sin poder tocarse.
+        assert!(input_rects(&[]).is_none());
+        assert!(input_rects(&[(0, 0, 0, 0)]).is_none());
+    }
 }

@@ -214,7 +214,10 @@ impl WayfireClient {
         let mut last_error: Option<Box<dyn Error + Send + Sync>> = None;
 
         loop {
-            for socket_path in socket_candidates().into_iter().filter(|c| is_usable_socket(c)) {
+            for socket_path in socket_candidates()
+                .into_iter()
+                .filter(|c| is_usable_socket(c))
+            {
                 match UnixStream::connect(&socket_path).await {
                     Ok(stream) => {
                         let (reader, writer) = stream.into_split();
@@ -226,7 +229,13 @@ impl WayfireClient {
                         let (event_tx, _) = broadcast::channel(128);
                         let closed = Arc::new(AtomicBool::new(false));
 
-                        Self::spawn_reader(reader, pending.clone(), notify.clone(), event_tx.clone(), closed.clone());
+                        Self::spawn_reader(
+                            reader,
+                            pending.clone(),
+                            notify.clone(),
+                            event_tx.clone(),
+                            closed.clone(),
+                        );
 
                         return Ok(Self {
                             writer,
@@ -302,7 +311,26 @@ impl WayfireClient {
         self.closed.load(Ordering::SeqCst)
     }
 
-    pub async fn send_and_wait(&self, method: &str, data: Value) -> Result<Value, Box<dyn Error + Send + Sync>> {
+    /// Waits until the reader marks the socket as closed.
+    ///
+    /// The `Notified` future is created before checking `closed` so a close
+    /// racing with the check cannot be missed; spurious wakeups (responses
+    /// also use `notify`) just loop and re-check.
+    pub async fn wait_closed(&self) {
+        loop {
+            let notified = self.notify.notified();
+            if self.is_closed() {
+                return;
+            }
+            notified.await;
+        }
+    }
+
+    pub async fn send_and_wait(
+        &self,
+        method: &str,
+        data: Value,
+    ) -> Result<Value, Box<dyn Error + Send + Sync>> {
         if self.closed.load(Ordering::SeqCst) {
             return Err("Wayfire IPC connection closed".into());
         }
@@ -345,22 +373,35 @@ impl WayfireClient {
     }
 
     pub async fn list_views_typed(&self) -> Result<Vec<View>, Box<dyn Error + Send + Sync>> {
-        let response = self.send_and_wait("window-rules/list-views", Value::Null).await?;
+        let response = self
+            .send_and_wait("window-rules/list-views", Value::Null)
+            .await?;
         Ok(serde_json::from_value(response)?)
     }
 
     #[allow(dead_code)]
     pub async fn list_outputs_typed(&self) -> Result<Vec<Output>, Box<dyn Error + Send + Sync>> {
-        let response = self.send_and_wait("window-rules/list-outputs", Value::Null).await?;
+        let response = self
+            .send_and_wait("window-rules/list-outputs", Value::Null)
+            .await?;
         Ok(serde_json::from_value(response)?)
     }
 
     pub async fn set_focus(&self, view_id: u64) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("window-rules/focus-view", json!({ "id": view_id })).await
+        self.send_and_wait("window-rules/focus-view", json!({ "id": view_id }))
+            .await
     }
 
-    pub async fn set_minimized(&self, view_id: u64, state: bool) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wm-actions/set-minimized", json!({ "view_id": view_id, "state": state })).await
+    pub async fn set_minimized(
+        &self,
+        view_id: u64,
+        state: bool,
+    ) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        self.send_and_wait(
+            "wm-actions/set-minimized",
+            json!({ "view_id": view_id, "state": state }),
+        )
+        .await
     }
 
     #[allow(dead_code)]
@@ -382,22 +423,40 @@ impl WayfireClient {
             data["output_id"] = json!(output_id);
         }
 
-        self.send_and_wait("window-rules/configure-view", data).await
+        self.send_and_wait("window-rules/configure-view", data)
+            .await
     }
 
     #[allow(dead_code)]
-    pub async fn set_sticky(&self, view_id: u64, state: bool) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wm-actions/set-sticky", json!({ "view_id": view_id, "state": state })).await
+    pub async fn set_sticky(
+        &self,
+        view_id: u64,
+        state: bool,
+    ) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        self.send_and_wait(
+            "wm-actions/set-sticky",
+            json!({ "view_id": view_id, "state": state }),
+        )
+        .await
     }
 
     #[allow(dead_code)]
-    pub async fn set_always_on_top(&self, view_id: u64, state: bool) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wm-actions/set-always-on-top", json!({ "view_id": view_id, "state": state })).await
+    pub async fn set_always_on_top(
+        &self,
+        view_id: u64,
+        state: bool,
+    ) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        self.send_and_wait(
+            "wm-actions/set-always-on-top",
+            json!({ "view_id": view_id, "state": state }),
+        )
+        .await
     }
 
     #[allow(dead_code)]
     pub async fn send_to_back(&self, view_id: u64) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wm-actions/send-to-back", json!({ "view_id": view_id })).await
+        self.send_and_wait("wm-actions/send-to-back", json!({ "view_id": view_id }))
+            .await
     }
 
     #[allow(dead_code)]
@@ -407,31 +466,46 @@ impl WayfireClient {
         property: &str,
         value: Value,
     ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("window-rules/set-view-property", json!({
-            "id": view_id,
-            "property": property,
-            "value": value,
-        })).await
+        self.send_and_wait(
+            "window-rules/set-view-property",
+            json!({
+                "id": view_id,
+                "property": property,
+                "value": value,
+            }),
+        )
+        .await
     }
 
     #[allow(dead_code)]
     pub async fn list_methods(&self) -> Result<Vec<String>, Box<dyn Error + Send + Sync>> {
         let response = self.send_and_wait("list-methods", Value::Null).await?;
         if let Some(methods) = response.get("methods").and_then(|m| m.as_array()) {
-            Ok(methods.iter().filter_map(|m| m.as_str().map(String::from)).collect())
+            Ok(methods
+                .iter()
+                .filter_map(|m| m.as_str().map(String::from))
+                .collect())
         } else {
             Err("unexpected response format".into())
         }
     }
 
     #[allow(dead_code)]
-    pub async fn get_config_option(&self, option: &str) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wayfire/get-config-option", json!({ "option": option })).await
+    pub async fn get_config_option(
+        &self,
+        option: &str,
+    ) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        self.send_and_wait("wayfire/get-config-option", json!({ "option": option }))
+            .await
     }
 
     #[allow(dead_code)]
-    pub async fn set_config_options(&self, options: Value) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wayfire/set-config-options", json!({ "config": options })).await
+    pub async fn set_config_options(
+        &self,
+        options: Value,
+    ) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        self.send_and_wait("wayfire/set-config-options", json!({ "config": options }))
+            .await
     }
 }
 
@@ -449,10 +523,7 @@ static GLOBAL_WAYFIRE_CLIENT_INIT: OnceLock<AsyncMutex<()>> = OnceLock::new();
 /// The cached client, unless it has already closed.
 fn live_client() -> Option<Arc<WayfireClient>> {
     let guard = GLOBAL_WAYFIRE_CLIENT.read().ok()?;
-    guard
-        .as_ref()
-        .filter(|client| !client.is_closed())
-        .cloned()
+    guard.as_ref().filter(|client| !client.is_closed()).cloned()
 }
 
 pub async fn get_wayfire_client() -> Option<Arc<WayfireClient>> {
@@ -520,7 +591,10 @@ mod geometry_tests {
         let geometry: Geometry =
             serde_json::from_str(r#"{"x":10.6,"y":-0.4,"width":100.5,"height":50.49}"#)
                 .expect("fractions");
-        assert_eq!((geometry.x, geometry.y, geometry.width, geometry.height), (11, 0, 101, 50));
+        assert_eq!(
+            (geometry.x, geometry.y, geometry.width, geometry.height),
+            (11, 0, 101, 50)
+        );
     }
 
     #[test]

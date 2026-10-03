@@ -47,7 +47,7 @@ describe('cada superficie pide sus piezas a la librería', () => {
 		['views/applets/TwingateAppletView.vue', ['<ListRow', '<StatusDot', '<Badge', '<ActionButton']],
 		['components/controls/AudioDeviceSelector.vue', ['<OptionGroup', '<LoadingState']],
 		['views/applets/MusicAppletView.vue', ['<OptionGroup', '<Chip', '<PageDots', '<ActionButton']],
-		['components/controls/TrayMusicControl.vue', ['<SpinningCover', '<TrayIconButton']],
+		['components/controls/TrayMusicControl.vue', ['<SpinningCover', '<PanelPill']],
 	])('%s', (file, pieces) => {
 		const view = template(file);
 		for (const piece of pieces) expect(view).toContain(piece);

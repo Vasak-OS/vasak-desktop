@@ -10,11 +10,20 @@
  *
  * Se declara el patrón `aria-*` y no cada nombre, como los `data-*` de
  * `tipos-de-plantilla.d.ts`: lo que se quiere permitir es la forma.
+ *
+ * Los `data-*` también, sobre un componente (vasak-desktop#151): marcan su
+ * raíz para encontrarla después —las píldoras del panel con `data-tray-entry`,
+ * que la bandeja usa para saber si tiene algo adentro—, y Vue los deja caer en
+ * la raíz igual que `title`.
  */
 declare module 'vue' {
 	interface AllowedComponentProps {
 		title?: string;
 		[attribute: `aria-${string}`]: unknown;
+		[attribute: `data-${string}`]: unknown;
+		// `vue-tsc` comprueba los atributos de un componente ya pasados a
+		// camelCase: `data-tray-entry` llega como `dataTrayEntry`.
+		[attribute: `data${Capitalize<string>}`]: unknown;
 	}
 }
 
