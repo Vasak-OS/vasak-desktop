@@ -28,6 +28,7 @@ import { getAllNotifications } from '@/services/notification.service';
 import { reportMenuButton, toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { watchPanelDensity } from '@/tools/composables/usePanelDensity';
 import { usePanelInputRegion } from '@/tools/composables/usePanelInputRegion';
 import { useSharedEvent } from '@/tools/event.bus';
 import { containsNewNotifications } from '@/tools/notifications';
@@ -54,6 +55,12 @@ const { position, vertical, showWeather, showMusic } = usePanelConfig();
  */
 const bar = ref<HTMLElement | null>(null);
 usePanelInputRegion(bar);
+
+/**
+ * Cuánto texto entra: en un panel angosto los nombres largos se pliegan al
+ * icono (`panel-density.ts`), medido sobre la propia barra.
+ */
+watchPanelDensity(bar, vertical);
 
 /**
  * El clic derecho del panel: sólo cosas del panel.
@@ -269,7 +276,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 		:class="BAR_CLASSES[position]"
 		data-panel-bar
 	>
-    <div class="flex min-w-0 items-center gap-1.5" :class="GROUP_CLASSES[position].start" data-panel-start>
+    <div class="flex min-w-0 items-center gap-1.5 overflow-x-clip" :class="GROUP_CLASSES[position].start" data-panel-start>
       <PanelPill
         ref="menuButton"
         icon="system-search"
@@ -277,6 +284,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         :title="t('views.panel.searchAlt')"
         :expanded="menuIsOpen"
         :orientation="vertical ? 'vertical' : 'horizontal'"
+        class="shrink-0"
         data-search-pill
         @click="openMenu"
       />
@@ -285,6 +293,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         :accessible-label="t('views.panel.notificationsAlt')"
         :title="t('views.panel.notificationsAlt')"
         :orientation="vertical ? 'vertical' : 'horizontal'"
+        class="shrink-0"
         data-notifications-pill
         @click="openNotificationCenter"
       >
@@ -317,6 +326,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         :accessible-label="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
         :title="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
         :orientation="vertical ? 'vertical' : 'horizontal'"
+        class="shrink-0"
         data-phone-pill
         @click="openPhoneMenu"
       >
@@ -333,7 +343,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       <PanelClockWidget />
       <TrayWeatherControl v-if="showWeather" />
     </div>
-    <div class="flex min-w-0 items-center gap-1.5" :class="GROUP_CLASSES[position].end" data-panel-end>
+    <div class="flex min-w-0 items-center gap-1.5 overflow-x-clip" :class="GROUP_CLASSES[position].end" data-panel-end>
       <TrayBarArea />
       <KeyboardLayoutPill />
       <TrayIconNetwork />

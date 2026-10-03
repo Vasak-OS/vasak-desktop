@@ -5,7 +5,9 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { toggleApplet } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { clockParts } from '@/tools/panel-clock';
+import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 /**
@@ -19,6 +21,7 @@ import { logError } from '@/utils/logger';
  */
 const { t, locale } = useI18n();
 const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 const now = ref(new Date());
 const parts = computed(() => clockParts(now.value, locale.value));
@@ -67,12 +70,13 @@ async function openBoard(): Promise<void> {
   <PanelPill
     ref="opener"
     :label="vertical ? parts.hour : parts.time"
-    :caption="vertical ? parts.minute : parts.date"
+    :caption="vertical ? parts.minute : showsNames(density) ? parts.date : ''"
     :expanded="isOpen"
     :title="parts.longDate"
     :accessible-label="openLabel"
     :orientation="vertical ? 'vertical' : 'horizontal'"
     aria-haspopup="dialog"
+    class="shrink-0"
     data-clock-pill
     @click="openBoard"
   />

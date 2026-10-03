@@ -11,7 +11,9 @@ import type { WindowInfo } from '@/interfaces/window';
 import { getLauncherEntries } from '@/services/tray.service';
 import { getWindows } from '@/services/window.service';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { useSharedEvent } from '@/tools/event.bus';
+import { showsNumbers } from '@/tools/panel-density';
 import { launcherForApp } from '@/tools/tray-item';
 import { logError } from '@/utils/logger';
 
@@ -25,6 +27,7 @@ interface WindowDelta {
 // barra en vez de desbordarse fuera de la pantalla.
 const { vertical } = usePanelConfig();
 const { t } = useI18n();
+const density = usePanelDensity();
 
 const windows = ref<WindowInfo[]>([]);
 
@@ -91,10 +94,11 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
   <!-- Las ventanas abiertas, en su píldora del panel (vasak-desktop#151). El
        video de referencia no tiene barra de tareas, pero acá es la única
        manera de volver a una ventana minimizada sin abrir el menú: queda, en
-       una píldora más, y sin ventanas no se dibuja. Lo que no entra se
+       una píldora más, y sin ventanas no se dibuja. En un panel angosto se
+       pliega: las ventanas siguen en el menú. Lo que no entra se
        desplaza adentro de la píldora en vez de empujar a las demás. -->
   <PanelPill
-    v-if="windows.length > 0"
+    v-if="windows.length > 0 && showsNumbers(density)"
     :interactive="false"
     :orientation="vertical ? 'vertical' : 'horizontal'"
     flush

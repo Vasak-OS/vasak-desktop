@@ -14,11 +14,14 @@ import {
 import { toggleApplet } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { useSharedEvent } from '@/tools/event.bus';
+import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
 const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 const networkState = ref<NetworkInfo>({
 	name: 'Unknown',
@@ -58,7 +61,7 @@ const networkAlt = computed(() => {
  * icono ya lo dice, y la píldora queda redonda.
  */
 const networkLabel = computed(() => {
-	if (vertical.value || !networkState.value.is_connected) return '';
+	if (vertical.value || !showsNames(density.value) || !networkState.value.is_connected) return '';
 	const { ssid, name } = networkState.value;
 	const known = (value: string) => Boolean(value) && value !== 'Unknown';
 	return known(ssid) ? ssid : known(name) ? name : '';

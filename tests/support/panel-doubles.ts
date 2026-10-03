@@ -46,6 +46,7 @@ export const panel = {
 		this.volume.value = { current: 50, min: 0, max: 100, is_muted: false };
 		this.vertical.value = false;
 		this.failSwitch = false;
+		density.value = 'full';
 		this.handlers.clear();
 		this.calls.length = 0;
 	},
@@ -78,6 +79,14 @@ export const toggleApplet = async (applet: string, button?: unknown) => {
 
 export function useOpenApplet(_applet: string) {
 	return { isOpen: computed(() => false), openClasses: computed(() => ({})) };
+}
+
+export { showsNames, showsNumbers } from '../../src/tools/panel-density';
+
+/** La densidad del panel: llena salvo que la prueba diga otra cosa. */
+export const density = ref<'full' | 'compact' | 'tight'>('full');
+export function usePanelDensity() {
+	return density;
 }
 
 export function usePanelConfig() {

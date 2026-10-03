@@ -61,6 +61,7 @@ useSharedEvent<KeyboardLayout | null>('keyboard-layout-changed', (payload) => {
     :title="description"
     :accessible-label="accessibleLabel"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    class="shrink-0"
     data-keyboard-layout
     @click="next"
   />

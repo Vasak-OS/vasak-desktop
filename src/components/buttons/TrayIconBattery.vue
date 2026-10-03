@@ -7,11 +7,14 @@ import { computed, onMounted, ref } from 'vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { getBatteryInfo } from '@/services/core.service';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { useSharedEvent } from '@/tools/event.bus';
+import { showsNumbers } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
 const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 const batteryInfo = ref<BatteryInfo>({
 	has_battery: false,
@@ -30,7 +33,7 @@ const batteryAltText = computed(() => {
 
 /** El número de la píldora (vasak-desktop#151): «100», como en el video. */
 const label = computed(() =>
-	vertical.value || !batteryInfo.value.has_battery
+	vertical.value || !showsNumbers(density.value) || !batteryInfo.value.has_battery
 		? ''
 		: String(Math.round(batteryInfo.value.percentage))
 );
@@ -103,6 +106,7 @@ useSharedEvent<BatteryInfo>('battery-update', (payload) => {
     :interactive="false"
     :title="batteryAltText"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    class="shrink-0"
     data-battery-pill
   />
 </template>

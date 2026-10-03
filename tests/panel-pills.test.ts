@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import { loadComponent, useDom } from './support/mount-sfc';
-import { panel } from './support/panel-doubles';
+import { density, panel } from './support/panel-doubles';
 
 const DOUBLES = join(import.meta.dir, 'support', 'panel-doubles.ts');
 const dom = useDom();
@@ -166,6 +166,29 @@ describe('la red', () => {
 		const view = await render(Network);
 		expect(view.find('[data-pill-label]').exists()).toBe(false);
 		view.unmount();
+	});
+});
+
+describe('en un panel angosto', () => {
+	test('la red queda en el icono, con el nombre en el globo', async () => {
+		density.value = 'compact';
+		const view = await render(Network);
+		expect(view.find('[data-pill-label]').exists()).toBe(false);
+		expect(view.find('[data-panel-pill]').attributes('title')).toBeTruthy();
+		expect(view.find('[data-panel-pill]').attributes('data-active')).toBe('true');
+		view.unmount();
+	});
+
+	test('el número del volumen sigue mientras entra, y se pliega en el más angosto', async () => {
+		density.value = 'compact';
+		const compact = await render(Sound);
+		expect(compact.find('[data-pill-label]').text()).toBe('50');
+		compact.unmount();
+
+		density.value = 'tight';
+		const tight = await render(Sound);
+		expect(tight.find('[data-pill-label]').exists()).toBe(false);
+		tight.unmount();
 	});
 });
 

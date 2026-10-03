@@ -9,12 +9,15 @@ import { getAudioVolume } from '@/services/core.service';
 import { toggleApplet } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { useSharedEvent } from '@/tools/event.bus';
+import { showsNumbers } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
 
 const { t } = useI18n();
 const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 const volumeInfo = ref<VolumeInfo>({
 	current: 0,
@@ -49,7 +52,9 @@ const { isOpen } = useOpenApplet('audio');
  */
 const level = computed(() => Math.round(volumePercentage.value));
 const label = computed(() =>
-	vertical.value || volumeInfo.value.is_muted ? '' : String(level.value)
+	vertical.value || !showsNumbers(density.value) || volumeInfo.value.is_muted
+		? ''
+		: String(level.value)
 );
 const description = computed(() =>
 	volumeInfo.value.is_muted
@@ -90,6 +95,7 @@ useSharedEvent<VolumeInfo>(
     :title="description"
     :accessible-label="description"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    class="shrink-0"
     data-volume-pill
     @click="toggleAudioApplet"
   />

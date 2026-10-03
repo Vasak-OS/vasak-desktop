@@ -185,7 +185,7 @@ useSharedEvent('tray-update', refreshTrayItems);
     flush
     role="group"
     :accessible-label="t('views.panel.trayAlt')"
-    class="[&:not(:has([data-tray-entry]))]:hidden"
+    class="shrink-0 [&:not(:has([data-tray-entry]))]:hidden"
     :class="vertical ? 'py-1' : 'px-1'"
     data-tray-pill
   >

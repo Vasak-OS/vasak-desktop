@@ -7,6 +7,8 @@ import { toggleApplet } from '@/services/window.service';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
+import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 import { formatDuration, playbackStateOf } from '@/utils/playback';
 
@@ -30,6 +32,7 @@ import { formatDuration, playbackStateOf } from '@/utils/playback';
 
 const { t } = useI18n();
 const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 const { musicInfo, imgSrc, position, progress, onImgError, initIcons, initMusicInfo } =
 	useMusicPlayer();
@@ -61,7 +64,10 @@ const accessibleName = computed(() => {
 /** Si suena, está en pausa o no hay nada: el disco gira, se congela o se queda quieto. */
 const state = computed(() => playbackStateOf(musicInfo.value.status));
 
-const showTitle = computed(() => !vertical.value && Boolean(musicInfo.value.title));
+// En un panel angosto queda la portada sola: el título entero sigue en el globo.
+const showTitle = computed(
+	() => !vertical.value && showsNames(density.value) && Boolean(musicInfo.value.title)
+);
 
 /**
  * «01:42 / 04:19», con los minutos en dos cifras como en el video de

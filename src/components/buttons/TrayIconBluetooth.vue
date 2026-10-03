@@ -9,6 +9,8 @@ import { toggleApplet } from '@/services/window.service';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
+import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 /**
@@ -19,6 +21,7 @@ import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
 const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 const { isBluetoothOn, connectedDevicesCount, defaultAdapter } = useBluetoothState({
 	getIcon: async () => '',
@@ -59,7 +62,9 @@ const description = computed(() => {
 	return t('components.TrayIconBluetooth.statusOn');
 });
 
-const label = computed(() => (vertical.value || !connected.value ? '' : deviceName.value));
+const label = computed(() =>
+	vertical.value || !showsNames(density.value) || !connected.value ? '' : deviceName.value
+);
 
 const button = ref<unknown>(null);
 const { isOpen } = useOpenApplet('bluetooth');

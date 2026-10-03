@@ -4,10 +4,13 @@ import { PanelPill } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import WeatherIcon from '@/components/icon/WeatherIcon.vue';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { useWeather } from '@/tools/composables/useWeather';
+import { showsNumbers } from '@/tools/panel-density';
 
 const { t } = useI18n();
 const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 // El mismo pronóstico que el widget del escritorio: el pedido lo hace una sola
 // ventana y el cache de Rust se lo pasa a las demás. Ver useWeather.
@@ -38,10 +41,11 @@ const detail = computed(() => {
        es la píldora del clima, al lado del reloj: el icono y los degrees. -->
   <PanelPill
     v-if="current"
-    :label="vertical ? '' : degrees"
+    :label="vertical || !showsNumbers(density) ? '' : degrees"
     :interactive="false"
     :title="detail"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    class="shrink-0"
     data-weather-pill
   >
     <template #leading>
