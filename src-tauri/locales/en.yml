@@ -439,6 +439,7 @@ components:
   TrayNetworkRateControl:
     title: "Network transfer: download and upload"
   TrayWeatherControl:
+    open: Open the date board
     summary: "High {0}° and low {1}°"
   WeatherIcon:
     unknown: Unknown weather condition

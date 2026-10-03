@@ -439,6 +439,7 @@ components:
   TrayNetworkRateControl:
     title: "Transferencia de red: lo que baja y lo que sube"
   TrayWeatherControl:
+    open: Abrir el tablero de fecha
     summary: "Máxima {0}° y mínima {1}°"
   WeatherIcon:
     unknown: Condición meteorológica desconocida

@@ -191,6 +191,7 @@ describe('los botones del panel se anuncian con nombre', () => {
 			'components/buttons/TrayIconSound.vue',
 			'components/controls/TrayMusicControl.vue',
 			'components/widgets/PanelClockWidget.vue',
+			'components/controls/TrayWeatherControl.vue',
 			'components/panel/KeyboardLayoutPill.vue',
 		]) {
 			expect(read(path), path).toMatch(/:accessible-label="/);

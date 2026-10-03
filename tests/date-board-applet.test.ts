@@ -32,8 +32,10 @@ describe('el tablero de fecha', () => {
 		expect(CLOCK).toContain("toggleApplet('date', opener.value)");
 		expect(CLOCK).toContain('ref="opener"');
 		expect(CLOCK).toContain("useOpenApplet('date')");
-		expect(CLOCK).toMatch(/<button[\s\S]*?type="button"/);
-		expect(CLOCK).toContain(':aria-expanded="isOpen"');
+		// Desde el panel en píldoras (vasak-desktop#151) el reloj es una
+		// `PanelPill`: un botón de la librería que dice abierto con `expanded`.
+		expect(CLOCK).toContain('<PanelPill');
+		expect(CLOCK).toContain(':expanded="isOpen"');
 	});
 
 	test('es un applet anclado: fila en APPLETS, ruta y ventana en la capability', () => {
