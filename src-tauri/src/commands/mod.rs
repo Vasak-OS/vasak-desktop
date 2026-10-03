@@ -6,6 +6,7 @@ mod brightness;
 mod calendar;
 mod connect;
 mod control_center;
+mod equalizer;
 mod logger;
 mod menu;
 mod music;
@@ -33,6 +34,9 @@ pub use brightness::{get_brightness_info, set_brightness_info};
 pub use calendar::{calendar_locations, calendar_occurrences};
 pub use connect::toggle_connect_menu;
 pub use control_center::{hide_control_center, toggle_control_center};
+pub use equalizer::{
+    equalizer_set_enabled, equalizer_set_gain, equalizer_set_preset, equalizer_state,
+};
 pub use logger::{get_last_log_lines, get_log_file_path, log_from_frontend, read_log_file};
 pub use menu::{get_menu_items, set_menu_button, toggle_menu};
 pub use music::{

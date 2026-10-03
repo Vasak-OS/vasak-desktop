@@ -5,6 +5,7 @@
  * que la prueba controla desde `music`.
  */
 import { computed, defineComponent, h, ref } from 'vue';
+import { type EqualizerState, missingEqualizer } from '../../src/interfaces/equalizer';
 import type { MusicInfo, PlayerRef } from '../../src/interfaces/music';
 
 export { currentOutput, outputIcon, outputLabel } from '../../src/tools/audio-outputs';
@@ -44,6 +45,7 @@ export const music = {
 	devices: ref<unknown[]>([]),
 	cover: ref(''),
 	vertical: ref(false),
+	equalizer: ref<EqualizerState>(missingEqualizer()),
 	calls: [] as Array<{ name: string; args: unknown[] }>,
 	reset() {
 		this.info.value = blankInfo();
@@ -51,6 +53,7 @@ export const music = {
 		this.devices.value = [];
 		this.cover.value = '';
 		this.vertical.value = false;
+		this.equalizer.value = missingEqualizer();
 		this.calls.length = 0;
 	},
 };
@@ -82,6 +85,15 @@ export function useMusicPlayer() {
 		initMusicInfo: async () => {},
 		loadPlayers: async () => record('loadPlayers')(),
 		selectPlayer: async (player: string) => record('selectPlayer')(player),
+	};
+}
+
+export function useEqualizer() {
+	return {
+		state: music.equalizer,
+		load: async () => record('loadEqualizer')(),
+		setGain: (band: number, gain: number) => record('setGain')(band, gain),
+		setPreset: async (preset: string) => record('setPreset')(preset),
 	};
 }
 

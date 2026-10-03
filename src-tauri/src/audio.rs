@@ -1,7 +1,7 @@
 use crate::constants::CMD_PACTL;
 use crate::error::{Result, VasakError};
-use crate::logger::{log_info, log_error, log_debug};
-use crate::structs::{VolumeInfo, AudioDevice};
+use crate::logger::{log_debug, log_error, log_info};
+use crate::structs::{AudioDevice, VolumeInfo};
 use crate::utils::CommandExecutor;
 use std::sync::{Mutex, OnceLock};
 use std::time::Instant;
@@ -115,18 +115,19 @@ pub fn get_volume() -> Result<VolumeInfo> {
 
         // Volume: front-left: 49152 /  75% / -6.70 dB, front-right: ...
         if trimmed.starts_with("Volume:") || trimmed.starts_with("volume:") {
-            if let Some(pct) = trimmed.split_whitespace().find_map(|part| {
-                part.strip_suffix('%').and_then(|s| s.parse::<i64>().ok())
-            }) {
+            if let Some(pct) = trimmed
+                .split_whitespace()
+                .find_map(|part| part.strip_suffix('%').and_then(|s| s.parse::<i64>().ok()))
+            {
                 volume_pct = Some(pct);
             }
         }
     }
 
     // Si no encontramos datos del sink por defecto, intentar parse global
-    let current = volume_pct.or_else(|| {
-        parse_volume_percent(&list_output).ok()
-    }).unwrap_or(0);
+    let current = volume_pct
+        .or_else(|| parse_volume_percent(&list_output).ok())
+        .unwrap_or(0);
 
     Ok(VolumeInfo {
         current,
@@ -163,114 +164,110 @@ pub fn list_audio_devices() -> Result<Vec<AudioDevice>> {
     log_debug("Listando dispositivos de audio");
     let output = CommandExecutor::run(CMD_PACTL, &["list", "sinks"])?;
     let default_sink = get_default_sink_name().ok();
+    let devices = parse_sinks(&output, default_sink.as_deref());
+    log_debug(&format!(
+        "Encontrados {} dispositivos de audio",
+        devices.len()
+    ));
+    Ok(devices)
+}
 
+/// El nombre del sink del ecualizador de sistema (vasak-wireplumber-modules).
+const EQUALIZER_SINK: &str = "vasak-equalizer";
+
+/// Un sink a medio leer de la salida de `pactl list sinks`.
+#[derive(Default)]
+struct SinkDraft {
+    id: String,
+    name: String,
+    description: String,
+    volume: Option<f64>,
+    /// `filter.smart = "true"`: un filtro que WirePlumber pone delante de la
+    /// salida, como el ecualizador. No es una salida que se pueda elegir.
+    smart_filter: bool,
+}
+
+impl SinkDraft {
+    fn finish(self, default_sink: Option<&str>) -> Option<AudioDevice> {
+        if self.id.is_empty() || self.smart_filter || self.name == EQUALIZER_SINK {
+            return None;
+        }
+        let name = if self.description.is_empty() {
+            self.name.clone()
+        } else {
+            self.description
+        };
+        Some(AudioDevice {
+            id: self.id,
+            is_default: default_sink == Some(self.name.as_str()),
+            name,
+            description: self.name,
+            volume: self.volume.unwrap_or(0.5),
+        })
+    }
+}
+
+/// Las salidas que se pueden elegir, a partir de `pactl list sinks`.
+///
+/// Saca los filtros: el ecualizador aparece como «VasakOS Equalizer» y elegirlo
+/// como salida por omisión no tiene sentido —el sonido ya pasa por él—. Lo que
+/// identifica a cualquier filtro, éste o uno futuro, es `filter.smart`; el
+/// nombre va de respaldo, por si la propiedad no llega.
+fn parse_sinks(output: &str, default_sink: Option<&str>) -> Vec<AudioDevice> {
     let mut devices = Vec::new();
-    let mut current_id = String::new();
-    let mut current_name = String::new();
-    let mut current_description = String::new();
-    let mut current_volume = 0.5;
-    let mut in_sink = false;
+    let mut current: Option<SinkDraft> = None;
 
     for line in output.lines() {
         let trimmed = line.trim();
 
         if let Some(rest) = trimmed.strip_prefix("Sink #") {
-            // Guardar sink anterior
-            if in_sink && !current_id.is_empty() {
-                let desc = if current_description.is_empty() {
-                    current_name.clone()
-                } else {
-                    current_description.clone()
-                };
-                let is_default = default_sink.as_ref().map(|d| d == &current_name).unwrap_or(false);
-                devices.push(AudioDevice {
-                    id: current_id.clone(),
-                    name: desc,
-                    description: current_name.clone(),
-                    is_default,
-                    volume: current_volume,
-                });
+            if let Some(device) = current.take().and_then(|draft| draft.finish(default_sink)) {
+                devices.push(device);
             }
-
-            // Nuevo sink
-            current_id = rest.split_whitespace().next().unwrap_or("").to_string();
-            current_name.clear();
-            current_description.clear();
-            current_volume = 0.5;
-            in_sink = true;
+            current = Some(SinkDraft {
+                id: rest.split_whitespace().next().unwrap_or("").to_string(),
+                ..SinkDraft::default()
+            });
             continue;
         }
 
-        if !in_sink {
+        let Some(draft) = current.as_mut() else {
             continue;
-        }
+        };
 
         if let Some(rest) = trimmed.strip_prefix("Name:") {
-            current_name = rest.trim().to_string();
-            continue;
-        }
-
-        if let Some(rest) = trimmed.strip_prefix("Description:") {
-            current_description = rest.trim().to_string();
-            continue;
-        }
-
-        if trimmed.starts_with("Volume:") || trimmed.starts_with("volume:") {
-            if let Some(pct) = trimmed.split_whitespace().find_map(|part| {
-                part.strip_suffix('%').and_then(|s| s.parse::<f64>().ok())
-            }) {
-                current_volume = pct / 100.0;
+            draft.name = rest.trim().to_string();
+        } else if let Some(rest) = trimmed.strip_prefix("Description:") {
+            draft.description = rest.trim().to_string();
+        } else if trimmed.starts_with("Volume:") || trimmed.starts_with("volume:") {
+            if let Some(pct) = trimmed
+                .split_whitespace()
+                .find_map(|part| part.strip_suffix('%').and_then(|s| s.parse::<f64>().ok()))
+            {
+                draft.volume = Some(pct / 100.0);
             }
-            continue;
-        }
-
-        // Fin de este sink (siguiente sink o línea vacía separadora)
-        if trimmed.is_empty() && in_sink && !current_name.is_empty() {
-            let desc = if current_description.is_empty() {
-                current_name.clone()
-            } else {
-                current_description.clone()
-            };
-            let is_default = default_sink.as_ref().map(|d| d == &current_name).unwrap_or(false);
-            devices.push(AudioDevice {
-                id: current_id.clone(),
-                name: desc,
-                description: current_name.clone(),
-                is_default,
-                volume: current_volume,
-            });
-            current_id.clear();
-            current_name.clear();
-            current_description.clear();
-            current_volume = 0.5;
-            in_sink = false;
+        } else if let Some(value) = trimmed.strip_prefix("filter.smart") {
+            draft.smart_filter = value.trim_start().trim_start_matches('=').trim() == "\"true\"";
+        } else if trimmed.is_empty() && !draft.name.is_empty() {
+            // Fin de este sink: la línea vacía que separa uno del siguiente.
+            if let Some(device) = current.take().and_then(|draft| draft.finish(default_sink)) {
+                devices.push(device);
+            }
         }
     }
 
-    // Último sink
-    if in_sink && !current_id.is_empty() {
-        let desc = if current_description.is_empty() {
-            current_name.clone()
-        } else {
-            current_description.clone()
-        };
-        let is_default = default_sink.as_ref().map(|d| d == &current_name).unwrap_or(false);
-        devices.push(AudioDevice {
-            id: current_id.clone(),
-            name: desc,
-            description: current_name.clone(),
-            is_default,
-            volume: current_volume,
-        });
+    if let Some(device) = current.take().and_then(|draft| draft.finish(default_sink)) {
+        devices.push(device);
     }
-
-    log_debug(&format!("Encontrados {} dispositivos de audio", devices.len()));
-    Ok(devices)
+    devices
 }
 
 /// Establece el dispositivo de salida de audio por defecto
 pub fn set_default_audio_device(device_id: &str, app: AppHandle) -> Result<()> {
-    log_info(&format!("Estableciendo dispositivo de audio por defecto: {}", device_id));
+    log_info(&format!(
+        "Estableciendo dispositivo de audio por defecto: {}",
+        device_id
+    ));
     CommandExecutor::run(CMD_PACTL, &["set-default-sink", device_id])?;
 
     clear_sink_cache();
@@ -282,4 +279,76 @@ pub fn set_default_audio_device(device_id: &str, app: AppHandle) -> Result<()> {
 
     log_info("Dispositivo de audio por defecto establecido correctamente");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Lo que imprime `pactl list sinks` con la salida de la placa y el
+    /// ecualizador de sistema delante (recortado a lo que se lee).
+    const SINKS: &str = r#"Sink #52
+	State: RUNNING
+	Name: alsa_output.pci-0000_00_1f.3.analog-stereo
+	Description: Audio interno Estéreo analógico
+	Mute: no
+	Volume: front-left: 39321 /  60% / -13,31 dB,   front-right: 39321 /  60% / -13,31 dB
+	Properties:
+		device.class = "sound"
+		media.class = "Audio/Sink"
+
+Sink #77
+	State: RUNNING
+	Name: vasak-equalizer
+	Description: VasakOS Equalizer
+	Volume: front-left: 65536 / 100% / 0,00 dB,   front-right: 65536 / 100% / 0,00 dB
+	Properties:
+		node.name = "vasak-equalizer"
+		filter.smart = "true"
+
+Sink #80
+	State: SUSPENDED
+	Name: bluez_output.00_11_22.1
+	Description: Auriculares WH-1000XM4
+	Volume: front-left: 22938 /  35% / -27,36 dB,   front-right: 22938 /  35% / -27,36 dB
+	Properties:
+		filter.smart = "false"
+"#;
+
+    #[test]
+    fn el_ecualizador_no_es_una_salida_que_se_pueda_elegir() {
+        let devices = parse_sinks(SINKS, Some("alsa_output.pci-0000_00_1f.3.analog-stereo"));
+        let names: Vec<_> = devices.iter().map(|d| d.description.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "alsa_output.pci-0000_00_1f.3.analog-stereo",
+                "bluez_output.00_11_22.1"
+            ]
+        );
+    }
+
+    #[test]
+    fn las_salidas_siguen_con_su_nombre_volumen_y_la_elegida() {
+        let devices = parse_sinks(SINKS, Some("alsa_output.pci-0000_00_1f.3.analog-stereo"));
+        assert_eq!(devices[0].id, "52");
+        assert_eq!(devices[0].name, "Audio interno Estéreo analógico");
+        assert!(devices[0].is_default);
+        assert!((devices[0].volume - 0.6).abs() < 1e-9);
+        assert_eq!(devices[1].name, "Auriculares WH-1000XM4");
+        assert!(!devices[1].is_default);
+        assert!((devices[1].volume - 0.35).abs() < 1e-9);
+    }
+
+    #[test]
+    fn un_filtro_inteligente_se_saca_aunque_se_llame_de_otra_forma() {
+        let output = "Sink #1\n\tName: otro-filtro\n\tDescription: Filtro\n\tProperties:\n\t\tfilter.smart = \"true\"\n";
+        assert!(parse_sinks(output, None).is_empty());
+    }
+
+    #[test]
+    fn y_el_ecualizador_se_saca_aunque_no_llegue_la_propiedad() {
+        let output = "Sink #1\n\tName: vasak-equalizer\n\tDescription: VasakOS Equalizer\n";
+        assert!(parse_sinks(output, None).is_empty());
+    }
 }

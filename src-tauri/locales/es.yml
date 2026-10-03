@@ -107,6 +107,22 @@ views:
     noOutputs: No hay salidas de audio.
     viaCaption: vía
     players: Reproductores abiertos
+    equalizer:
+      title: Ecualizador
+      saved: Guardado
+      unsaved: Sin guardar
+      unavailable: El ecualizador no está disponible.
+      presets: Perfiles del ecualizador
+      presetNames:
+        flat: Plano
+        bass: Graves
+        treble: Agudos
+        vocal: Voz
+        pop: Pop
+        rock: Rock
+        jazz: Jazz
+        classic: Clásica
+        custom: Personalizado
     back: Volver
   screenTimeApplet:
     title: Tiempo de pantalla
