@@ -302,6 +302,21 @@ impl WayfireClient {
         self.closed.load(Ordering::SeqCst)
     }
 
+    /// Waits until the reader marks the socket as closed.
+    ///
+    /// The `Notified` future is created before checking `closed` so a close
+    /// racing with the check cannot be missed; spurious wakeups (responses
+    /// also use `notify`) just loop and re-check.
+    pub async fn wait_closed(&self) {
+        loop {
+            let notified = self.notify.notified();
+            if self.is_closed() {
+                return;
+            }
+            notified.await;
+        }
+    }
+
     pub async fn send_and_wait(&self, method: &str, data: Value) -> Result<Value, Box<dyn Error + Send + Sync>> {
         if self.closed.load(Ordering::SeqCst) {
             return Err("Wayfire IPC connection closed".into());

@@ -347,10 +347,18 @@ async fn follow(app: &AppHandle) -> (Result<(), Box<dyn Error + Send + Sync>>, b
     let _ = app.emit("keyboard-layout-changed", &layout);
 
     loop {
-        let event = match events.recv().await {
-            Ok(event) => event,
-            Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
-            Err(_) => return (Err("el socket de Wayfire se cerró".into()), true),
+        // `events.recv()` solo falla cuando se caen todos los `Sender`: el
+        // del cliente sigue vivo durante `follow`, así que sin esta rama el
+        // cierre del socket dejaba el loop colgado sin reintentar.
+        let event = tokio::select! {
+            recv = events.recv() => match recv {
+                Ok(event) => event,
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                Err(_) => return (Err("el socket de Wayfire se cerró".into()), true),
+            },
+            _ = client.wait_closed() => {
+                return (Err("el socket de Wayfire se cerró".into()), true);
+            }
         };
         let name = event
             .get("event")
