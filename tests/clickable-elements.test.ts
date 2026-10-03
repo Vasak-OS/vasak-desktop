@@ -19,34 +19,34 @@
 import { describe, expect, test } from 'bun:test';
 import { Glob } from 'bun';
 
-const raiz = new URL('../src/', import.meta.url).pathname;
+const root = new URL('../src/', import.meta.url).pathname;
 
-const fuentes = await Promise.all(
-	[...new Glob('**/*.vue').scanSync(raiz)].map(async (ruta) => ({
-		ruta,
-		texto: await Bun.file(raiz + ruta).text(),
+const sources = await Promise.all(
+	[...new Glob('**/*.vue').scanSync(root)].map(async (path) => ({
+		path,
+		text: await Bun.file(root + path).text(),
 	}))
 );
 
-const leer = (ruta: string) => fuentes.find((f) => f.ruta === ruta)?.texto ?? '';
+const read = (path: string) => sources.find((f) => f.path === path)?.text ?? '';
 
 /** Etiquetas nativas que no hacen nada por sí solas al recibir un clic. */
-const SORDAS = /<(div|span|img|li|p|a)\b((?:[^<>]|"[^"]*"|'[^']*')*?)>/g;
+const DEAF_TAGS = /<(div|span|img|li|p|a)\b((?:[^<>]|"[^"]*"|'[^']*')*?)>/g;
 
-function sordasQueEscuchanElClic(texto: string): number {
-	let cuantas = 0;
-	for (const [, , atributos] of texto.matchAll(SORDAS)) {
-		if (!/(@click|v-on:click)\b/.test(atributos)) continue;
+function deafTagsListeningToClick(text: string): number {
+	let count = 0;
+	for (const [, , attributes] of text.matchAll(DEAF_TAGS)) {
+		if (!/(@click|v-on:click)\b/.test(attributes)) continue;
 		// El papel puesto a mano y el atado a una condición valen los dos. Varias
 		// de estas filas **sólo a veces** hacen algo —`clickable`, o que la
 		// notificación traiga acción por omisión—, y ahí el papel tiene que
 		// aparecer y desaparecer con eso: anunciar un botón que no hace nada es
 		// el mismo problema al revés. Cuando no lo es, el manejador corta
 		// primero, así que el `@click` que queda no hace nada.
-		if (/(?:^|\s):?role="[^"]*button/.test(atributos)) continue;
-		cuantas += 1;
+		if (/(?:^|\s):?role="[^"]*button/.test(attributes)) continue;
+		count += 1;
 	}
-	return cuantas;
+	return count;
 }
 
 describe('nada que se pueda clickear queda fuera del teclado', () => {
@@ -56,11 +56,11 @@ describe('nada que se pueda clickear queda fuera del teclado', () => {
 		// adentro** y un botón dentro de otro no es HTML válido. Se resolvieron
 		// caso por caso y la lista quedó vacía, así que acá ya no hay salvedad
 		// que hacer.
-		const culpables = fuentes
-			.filter(({ texto }) => sordasQueEscuchanElClic(texto) > 0)
-			.map(({ ruta }) => ruta);
+		const offenders = sources
+			.filter(({ text }) => deafTagsListeningToClick(text) > 0)
+			.map(({ path }) => path);
 
-		expect(culpables).toEqual([]);
+		expect(offenders).toEqual([]);
 	});
 });
 
@@ -74,21 +74,21 @@ describe('las filas que se abren enteras', () => {
 	// `ListCard` y `DeviceCard` ya no están acá: se fueron a la librería, con su
 	// teclado puesto. Ver Vasak-OS/vue-libvasak#22, que es el barrido de las
 	// copias.
-	const CON_BOTONES_ADENTRO = ['components/cards/NotificationCard.vue'];
+	const WITH_INNER_BUTTONS = ['components/cards/NotificationCard.vue'];
 
-	test.each(CON_BOTONES_ADENTRO)('%s se enfoca y se activa con el teclado', (ruta) => {
-		const texto = leer(ruta);
+	test.each(WITH_INNER_BUTTONS)('%s se enfoca y se activa con el teclado', (path) => {
+		const text = read(path);
 
-		expect(texto).toMatch(/(?::role="|\srole=")/);
-		expect(texto).toMatch(/(?::tabindex="|\stabindex=")/);
+		expect(text).toMatch(/(?::role="|\srole=")/);
+		expect(text).toMatch(/(?::tabindex="|\stabindex=")/);
 		// `.self` antes de `.prevent`, y las dos cosas importan. Sin `.self`, la
 		// tecla apretada sobre un botón de adentro **burbujea** hasta acá: se
 		// dispara además la acción de la fila entera y el `.prevent` le cancela
 		// al botón su propia activación. Sin `.prevent`, la barra desplaza la
 		// página además de activar. Lo del burbujeo lo encontró CodeRabbit en
 		// vue-libvasak#62, sobre el mismo patrón.
-		expect(texto).toContain('@keydown.enter.self.prevent');
-		expect(texto).toContain('@keydown.space.self.prevent');
+		expect(text).toContain('@keydown.enter.self.prevent');
+		expect(text).toContain('@keydown.space.self.prevent');
 	});
 
 	test('el grupo de notificaciones dice si está desplegado', () => {
@@ -96,9 +96,9 @@ describe('las filas que se abren enteras', () => {
 		// cualquiera y no se sabe que hay algo plegado detrás. Desde la 2.2.0
 		// la cabecera es `Disclosure` de la librería, un `<button>` con
 		// `aria-expanded` y `aria-controls`; el de descartar va afuera de él.
-		const texto = leer('components/cards/NotificationGroupCard.vue');
-		expect(texto).toContain('<Disclosure v-model:open="isExpanded"');
-		expect(texto).not.toContain('role="button"');
+		const text = read('components/cards/NotificationGroupCard.vue');
+		expect(text).toContain('<Disclosure v-model:open="isExpanded"');
+		expect(text).not.toContain('role="button"');
 	});
 
 	test('el selector de audio es un grupo de opciones, no cinco botones iguales', () => {
@@ -110,10 +110,10 @@ describe('las filas que se abren enteras', () => {
 		// `role="radiogroup"` con un `<button role="radio">` por opción, las
 		// flechas y un solo Tab (lo prueba la librería montado). Acá queda que
 		// las dos copias del escritorio lo pidan a ella.
-		for (const ruta of ['components/controls/AudioDeviceSelector.vue', 'views/applets/MusicAppletView.vue']) {
-			const texto = leer(ruta);
-			expect(texto).toMatch(/<OptionGroup\b/);
-			expect(texto).not.toMatch(/role="radio(group)?"|type="radio"/);
+		for (const path of ['components/controls/AudioDeviceSelector.vue', 'views/applets/MusicAppletView.vue']) {
+			const text = read(path);
+			expect(text).toMatch(/<OptionGroup\b/);
+			expect(text).not.toMatch(/role="radio(group)?"|type="radio"/);
 		}
 	});
 });
@@ -122,46 +122,78 @@ describe('los botones del panel se anuncian con nombre', () => {
 	/**
 	 * El icono de la bandeja se fue a la librería con todo esto puesto.
 	 *
-	 * Lo que estas dos pruebas miraban —que el nombre accesible salga del `alt`
+	 * Lo que estas pruebas miraban —que el nombre accesible salga del `alt`
 	 * o del tooltip, y que el que sólo informa se dibuje como `div`— ahora se
 	 * comprueba **montado** en `vue-libvasak`, que es donde vive la conducta.
 	 * Acá queda lo que a esta aplicación le toca: que no vuelva a haber copia y
-	 * que los once lo pidan a la librería: los siete de la bandeja, el de
-	 * privacidad, el botón de cada ventana, los del propio panel (menú,
-	 * configuración, archivos, teléfono y notificaciones), que pasaron a ser
-	 * éste con vue-libvasak 2.0.0, y desde 1.24.0 la píldora de música.
+	 * que lo pidan a la librería.
+	 *
+	 * Con el panel en píldoras (vasak-desktop#151) los botones del propio
+	 * panel —la búsqueda, las notificaciones, el teléfono, la red, el
+	 * Bluetooth, el volumen, la música, el reloj— pasaron a ser `PanelPill`, y
+	 * los espacios de trabajo `WorkspaceSwitcher`. `TrayIconButton` queda para
+	 * los cinco iconos chicos que viven adentro de la píldora de la bandeja y
+	 * de la de las ventanas: privacidad, Bloq Mayús, micrófono, Twingate y el
+	 * botón de cada ventana.
 	 */
 	test('el de la bandeja ya no tiene copia acá', () => {
-		expect(fuentes.filter(({ ruta }) => ruta.endsWith('buttons/TrayIconButton.vue'))).toEqual([]);
+		expect(sources.filter(({ path }) => path.endsWith('buttons/TrayIconButton.vue'))).toEqual([]);
 	});
 
-	test('y los once lo piden a la librería', () => {
+	test.each(['TrayIconButton', 'PanelPill', 'WorkspaceSwitcher'])('%s se pide a la librería', (name) => {
 		// Si alguno lo usa sin importarlo, Vue dibuja un elemento desconocido y
 		// no falla: el icono no está y el panel queda con un hueco.
-		const culpables = fuentes
-			.filter(({ texto }) => /<TrayIconButton\b/.test(texto))
+		const offenders = sources
+			.filter(({ text }) => new RegExp(`<${name}\\b`).test(text))
 			.filter(
-				({ texto }) =>
-					!/import \{[^}]*\bTrayIconButton\b[^}]*\} from '@vasakgroup\/vue-libvasak'/.test(texto)
+				({ text }) =>
+					!new RegExp(`import \\{[^}]*\\b${name}\\b[^}]*\\} from '@vasakgroup\\/vue-libvasak'`).test(text)
 			)
-			.map(({ ruta }) => ruta);
+			.map(({ path }) => path);
 
-		expect(culpables).toEqual([]);
+		expect(offenders).toEqual([]);
 	});
 
-	test('y son once, no menos', () => {
+	test('son cinco los iconos de la bandeja y doce las píldoras, no menos', () => {
 		// Sin esto, la de arriba pasa sobre una lista vacía el día que alguien
 		// renombre los archivos y el patrón deje de encontrarlos.
-		const losQueLoUsan = fuentes.filter(({ texto }) => /<TrayIconButton\b/.test(texto));
+		const users = (name: string) =>
+			sources.filter(({ text }) => new RegExp(`<${name}\\b`).test(text)).map(({ path }) => path).sort();
 
-		expect(losQueLoUsan).toHaveLength(11);
+		expect(users('TrayIconButton')).toHaveLength(5);
+		expect(users('PanelPill')).toEqual([
+			'components/areas/panel/TrayBarArea.vue',
+			'components/areas/panel/WindowsArea.vue',
+			'components/buttons/TrayIconBattery.vue',
+			'components/buttons/TrayIconBluetooth.vue',
+			'components/buttons/TrayIconNetwork.vue',
+			'components/buttons/TrayIconSound.vue',
+			'components/controls/TrayMusicControl.vue',
+			'components/controls/TrayWeatherControl.vue',
+			'components/panel/KeyboardLayoutPill.vue',
+			'components/widgets/PanelClockWidget.vue',
+			'views/PanelView.vue',
+		]);
+		expect(users('WorkspaceSwitcher')).toEqual(['components/panel/WorkspacesPill.vue']);
 	});
 
 	test('los del panel llevan su nombre puesto', () => {
-		// Los tres le pasan el nombre al de la librería por `alt`, que es de
-		// donde lo saca.
-		expect(leer('components/buttons/TrayIconPrivacy.vue')).toContain(':alt="detail"');
-		expect(leer('components/buttons/WindowPanelButton.vue')).toContain(':alt="title"');
-		expect(leer('views/PanelView.vue')).toContain(':alt="t(\'views.panel.notificationsAlt\')"');
+		// Los iconos chicos le pasan el nombre al de la librería por `alt`; las
+		// píldoras que son botón, por `accessible-label`.
+		expect(read('components/buttons/TrayIconPrivacy.vue')).toContain(':alt="detail"');
+		expect(read('components/buttons/WindowPanelButton.vue')).toContain(':alt="title"');
+		const panel = read('views/PanelView.vue');
+		expect(panel).toContain(':accessible-label="t(\'views.panel.searchAlt\')"');
+		expect(panel).toContain(':accessible-label="t(\'views.panel.notificationsAlt\')"');
+		for (const path of [
+			'components/buttons/TrayIconNetwork.vue',
+			'components/buttons/TrayIconBluetooth.vue',
+			'components/buttons/TrayIconSound.vue',
+			'components/controls/TrayMusicControl.vue',
+			'components/widgets/PanelClockWidget.vue',
+			'components/panel/KeyboardLayoutPill.vue',
+		]) {
+			expect(read(path), path).toMatch(/:accessible-label="/);
+		}
 	});
 });

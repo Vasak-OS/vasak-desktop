@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { BAR_CLASSES, isVertical, PANEL_POSITIONS, panelPosition } from './panel-position';
+import {
+	BAR_CLASSES,
+	GROUP_CLASSES,
+	isVertical,
+	PANEL_POSITIONS,
+	panelPosition,
+} from './panel-position';
 
 describe('panelPosition', () => {
 	test('sin nada puesto, el panel va arriba', () => {
@@ -87,6 +93,28 @@ describe('la interfaz y el backend leen la misma clave', () => {
 	test('y los cuatro valores también', () => {
 		for (const side of PANEL_POSITIONS) {
 			expect(rust).toContain(`"${side}" =>`);
+		}
+	});
+});
+
+describe('la barra en píldoras (vasak-desktop#151)', () => {
+	test('es una grilla de tres: el centro va al medio y los lados se encogen', () => {
+		for (const side of PANEL_POSITIONS) {
+			const track = isVertical(side) ? 'grid-rows' : 'grid-cols';
+			expect(BAR_CLASSES[side]).toContain(`${track}-[minmax(0,1fr)_auto_minmax(0,1fr)]`);
+		}
+	});
+
+	test('de costado los grupos se apilan; arriba y abajo van en fila', () => {
+		for (const side of PANEL_POSITIONS) {
+			const groups = GROUP_CLASSES[side];
+			const column = isVertical(side);
+			for (const group of [groups.start, groups.center, groups.end]) {
+				expect(group.split(' ').includes('flex-col')).toBe(column);
+			}
+			expect(groups.start).toContain('justify-start');
+			expect(groups.center).toContain('justify-center');
+			expect(groups.end).toContain('justify-end');
 		}
 	});
 });

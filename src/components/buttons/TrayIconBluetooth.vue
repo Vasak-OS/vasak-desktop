@@ -1,19 +1,26 @@
-
 <script lang="ts" setup>
-/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
+import { getConnectedDevices } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { TrayIconButton } from '@vasakgroup/vue-libvasak';
-import { computed, ref } from 'vue';
+import { PanelPill } from '@vasakgroup/vue-libvasak';
+import { computed, ref, watch } from 'vue';
 import { toggleApplet } from '@/services/window.service';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
+import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { logError } from '@/utils/logger';
 
-const { t } = useI18n();
+/**
+ * La píldora del Bluetooth (vasak-desktop#151): rellena en el primario con el
+ * nombre del dispositivo mientras hay uno conectado —«JBL Tune 720BT»—, y
+ * translúcida y redonda si no. Abre la vista del Bluetooth colgada de acá.
+ */
 
-const { isBluetoothOn, connectedDevicesCount } = useBluetoothState({
+const { t } = useI18n();
+const { vertical } = usePanelConfig();
+
+const { isBluetoothOn, connectedDevicesCount, defaultAdapter } = useBluetoothState({
 	getIcon: async () => '',
 });
 
@@ -22,8 +29,40 @@ const bluetoothIcon = computed(() => {
 	return connectedDevicesCount.value > 0 ? 'bluetooth-active-symbolic' : 'bluetooth-symbolic';
 });
 
+/** El nombre del primer dispositivo conectado, o nada. */
+const deviceName = ref('');
+
+async function refreshDeviceName(): Promise<void> {
+	const path = defaultAdapter.value?.path;
+	if (!isBluetoothOn.value || connectedDevicesCount.value === 0 || !path) {
+		deviceName.value = '';
+		return;
+	}
+	try {
+		const [device] = await getConnectedDevices(path);
+		deviceName.value = device?.alias || device?.name || '';
+	} catch (error) {
+		deviceName.value = '';
+		logError('[panel] no se pudo leer el dispositivo Bluetooth conectado:', error);
+	}
+}
+
+watch([connectedDevicesCount, isBluetoothOn, () => defaultAdapter.value?.path], refreshDeviceName);
+
+const connected = computed(() => Boolean(isBluetoothOn.value) && connectedDevicesCount.value > 0);
+
+const description = computed(() => {
+	if (!isBluetoothOn.value) return t('components.TrayIconBluetooth.statusOff');
+	if (connected.value && deviceName.value) {
+		return t('components.TrayIconBluetooth.connectedTo').replace('{0}', deviceName.value);
+	}
+	return t('components.TrayIconBluetooth.statusOn');
+});
+
+const label = computed(() => (vertical.value || !connected.value ? '' : deviceName.value));
+
 const button = ref<unknown>(null);
-const { openClasses } = useOpenApplet('bluetooth');
+const { isOpen } = useOpenApplet('bluetooth');
 
 const toggleBluetooth = async (): Promise<void> => {
 	try {
@@ -35,16 +74,18 @@ const toggleBluetooth = async (): Promise<void> => {
 </script>
 
 <template>
-  <TrayIconButton
+  <PanelPill
     ref="button"
-    :name="bluetoothIcon"
-    :tooltip="isBluetoothOn
-      ? t('components.TrayIconBluetooth.statusOn')
-      : t('components.TrayIconBluetooth.statusOff')"
-    :alt="t('components.TrayIconBluetooth.iconAlt')"
-    :badge="isBluetoothOn && connectedDevicesCount > 0 ? connectedDevicesCount : null"
-    :icon-class="{ 'filter brightness-75': !isBluetoothOn }"
-    :custom-class="openClasses"
+    :icon="bluetoothIcon"
+    icon-type="icon"
+    :label="label"
+    :active="connected"
+    :expanded="isOpen"
+    :title="description"
+    :accessible-label="description"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
+    class="max-w-48"
+    data-bluetooth-pill
     @click="toggleBluetooth"
   />
 </template>

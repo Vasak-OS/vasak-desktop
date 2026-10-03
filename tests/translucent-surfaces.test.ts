@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 import { Glob } from 'bun';
+import { mount } from '@vue/test-utils';
+import { PanelPill, WorkspaceSwitcher } from '@vasakgroup/vue-libvasak';
+import { PILL_SELECTOR } from '../src/tools/panel-input-region';
+import { useDom } from './support/mount-sfc';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -203,3 +207,88 @@ describe('la guardia de translucidez ve lo opaco cuando lo hay', () => {
 		expect(surfaceProblems(['bg-ui-shell shadow-surface-l', 'bg-ui-surface/70', 'bg-ui-bg/80 hover:bg-ui-hover'])).toEqual([]);
 	});
 });
+
+/**
+ * El panel en píldoras flotantes (vasak-desktop#151).
+ *
+ * La barra dejó de ser una franja: la `<nav>` es transparente (lo mide la
+ * tabla de arriba, «el panel») y cada pieza es una `PanelPill` de la
+ * librería, que tiene que ser `ui-shell` y no ganar nunca `backdrop-blur`:
+ * entre una píldora y otra se ve el escritorio, y detrás de cada una lo
+ * desenfoca Wayfire. La única superficie llena es la de lo activo —la red o el
+ * Bluetooth conectados, el espacio actual—, en `bg-primary`, que es lo que
+ * pide el issue.
+ */
+describe('las píldoras del panel dejan ver el escritorio entre ellas', () => {
+	// Los iconos del tema piden a Tauri: el doble lo pone y lo saca.
+	useDom();
+
+	/** Los archivos que dibujan píldoras del panel. */
+	const PILL_FILES = [
+		'src/views/PanelView.vue',
+		'src/components/areas/panel/TrayBarArea.vue',
+		'src/components/areas/panel/WindowsArea.vue',
+		'src/components/buttons/TrayIconBattery.vue',
+		'src/components/buttons/TrayIconBluetooth.vue',
+		'src/components/buttons/TrayIconNetwork.vue',
+		'src/components/buttons/TrayIconSound.vue',
+		'src/components/controls/TrayMusicControl.vue',
+		'src/components/controls/TrayWeatherControl.vue',
+		'src/components/panel/KeyboardLayoutPill.vue',
+		'src/components/widgets/PanelClockWidget.vue',
+	];
+
+	test('la píldora de la librería es ui-shell, con canto fino y sin backdrop-blur', () => {
+		const view = mount(PanelPill, { props: { label: '50', icon: 'audio-volume-medium-symbolic' } });
+		const root = view.find(PILL_SELECTOR);
+		expect(root.exists()).toBe(true);
+		expect(surfaceProblems([root.classes().join(' ')])).toEqual([]);
+		expect(root.classes()).toContain('bg-ui-shell');
+		view.unmount();
+	});
+
+	test('pasar el puntero o abrir su applet no la vuelve opaca', () => {
+		const view = mount(PanelPill, { props: { label: '10:41', expanded: true } });
+		const classes = view.find(PILL_SELECTOR).classes();
+		// Los velos van en el `::before`, encima de la superficie y sin taparla.
+		expect(classes.filter((name) => /^(hover|active):bg-/.test(name))).toEqual([]);
+		expect(classes).toContain('before:bg-ui-selected-accent');
+		view.unmount();
+	});
+
+	test('lo activo es el único relleno: el primario, sin backdrop-blur', () => {
+		const view = mount(PanelPill, { props: { label: 'Fibernet', active: true } });
+		const classes = view.find(PILL_SELECTOR).classes().join(' ');
+		expect(backgroundsOf(classes)).toEqual(['primary']);
+		expect(classes).not.toMatch(/backdrop-blur/);
+		view.unmount();
+	});
+
+	test('los espacios de trabajo van en una píldora ui-shell', () => {
+		const view = mount(WorkspaceSwitcher, { props: { count: 6, modelValue: 2 } });
+		const root = view.find(PILL_SELECTOR);
+		expect(surfaceProblems([root.classes().join(' ')])).toEqual([]);
+		view.unmount();
+	});
+
+	test.each(PILL_FILES)('%s no le pone a sus píldoras un fondo opaco ni backdrop-blur', (file) => {
+		const view = template(file);
+		const pills = [...view.matchAll(/<(PanelPill|WorkspaceSwitcher)\b((?:[^<>]|"[^"]*")*)>/g)];
+		expect(pills.length, `sin píldoras en ${file}`).toBeGreaterThan(0);
+		for (const [, , attributes] of pills) {
+			const classes = [...(attributes ?? '').matchAll(/(?:^|\s):?class="([^"]*)"/g)].map((match) => match[1]).join(' ');
+			expect(backgroundsOf(classes), file).toEqual([]);
+			expect(classes, file).not.toMatch(/backdrop-blur/);
+		}
+	});
+
+	test('la barra es transparente y recorta lo que recibe el puntero a las píldoras', () => {
+		const panel = read('src/views/PanelView.vue');
+		const nav = template('src/views/PanelView.vue').match(/<nav\b[\s\S]*?class="([^"]*)"/)?.[1] ?? '';
+		expect(backgroundsOf(nav)).toEqual(['transparent']);
+		expect(nav).not.toMatch(/border|shadow/);
+		expect(panel).toMatch(/<nav\b[^>]*\sref="bar"/);
+		expect(panel).toContain('usePanelInputRegion(bar)');
+	});
+});
+

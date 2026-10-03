@@ -3,13 +3,20 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
-import { Command } from '@tauri-apps/plugin-shell';
 import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { Badge, PanelPill, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
+import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
+import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
+import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
+import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
+import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
+import TrayWeatherControl from '@/components/controls/TrayWeatherControl.vue';
+import KeyboardLayoutPill from '@/components/panel/KeyboardLayoutPill.vue';
+import WorkspacesPill from '@/components/panel/WorkspacesPill.vue';
 import PanelClockWidget from '@/components/widgets/PanelClockWidget.vue';
 import type { ConnectDevice } from '@/interfaces/connect';
 import type {
@@ -21,9 +28,10 @@ import { getAllNotifications } from '@/services/notification.service';
 import { reportMenuButton, toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelInputRegion } from '@/tools/composables/usePanelInputRegion';
 import { useSharedEvent } from '@/tools/event.bus';
 import { containsNewNotifications } from '@/tools/notifications';
-import { BAR_CLASSES } from '@/tools/panel-position';
+import { BAR_CLASSES, GROUP_CLASSES } from '@/tools/panel-position';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -38,7 +46,14 @@ const { t } = useI18n();
  * Es reactivo, así que mover el panel en Configuración lo acomoda en el acto,
  * al mismo tiempo que la superficie se reancla.
  */
-const { position, vertical } = usePanelConfig();
+const { position, vertical, showWeather, showMusic } = usePanelConfig();
+
+/**
+ * Lo que recibe el puntero: sólo las píldoras (vasak-desktop#151). Entre una
+ * y otra se ve el escritorio, y un clic ahí tiene que caer en él.
+ */
+const bar = ref<HTMLElement | null>(null);
+usePanelInputRegion(bar);
 
 /**
  * El clic derecho del panel: sólo cosas del panel.
@@ -130,15 +145,13 @@ const openPhoneMenu = async () => {
 };
 
 /**
- * El botón del menú: de él cuelga el menú, lo abra un clic o la tecla Super.
- */
-/**
- * El botón del menú. Es un componente de la librería, así que el `ref` es la
- * instancia: `anchorOf` sabe leerle el `$el`, y el observador necesita el
- * elemento.
+ * La lupa, que abre el menú con la búsqueda enfocada: de ella cuelga el menú,
+ * lo abra un clic o la tecla Super. Es una píldora de la librería, así que el
+ * `ref` es la instancia: `anchorOf` sabe leerle el `$el`, y el observador
+ * necesita el elemento.
  */
 const menuButton = ref<{ $el?: Element } | null>(null);
-const { isOpen: menuIsOpen, openClasses: menuOpenClasses } = useOpenApplet('menu');
+const { isOpen: menuIsOpen } = useOpenApplet('menu');
 
 const openMenu = async () => {
 	try {
@@ -181,24 +194,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => menuButtonObserver?.disconnect());
-
-const openConfig = async () => {
-	try {
-		const cmd = Command.create('vasak-settings', []);
-		await cmd.spawn();
-	} catch (error) {
-		logError('Error al abrir config:', error);
-	}
-};
-
-const openFileManager = async () => {
-	try {
-		const cmd = Command.create('vasak-file-manager', []);
-		await cmd.spawn();
-	} catch (error) {
-		logError('Error al abrir file manager:', error);
-	}
-};
 
 const openNotificationCenter = async () => {
 	try {
@@ -258,74 +253,93 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 </script>
 
 <template>
-	<!-- El panel flota sobre el escritorio: la superficie translúcida
-	     `ui-shell`, para que se vea el desenfoque que pone Wayfire detrás, el
-	     canto fino y el radio `l`, que es el de un contenedor con `p-1`
-	     alrededor de botones `m` (el anidado de Once UI). Sus botones son los
-	     de la bandeja de la librería (`TrayIconButton`): el velo neutro al
-	     pasar en lugar del relleno del primario, sin escala, y el anillo de
-	     foco por dentro, que en una barra de 36 píxeles no se corta. -->
+	<!-- El panel en píldoras flotantes (vasak-desktop#151), como el video de
+	     referencia: la barra ya no es una franja continua sino píldoras sueltas
+	     sobre el escritorio. La `<nav>` es transparente y sólo reparte: a la
+	     izquierda la búsqueda, las notificaciones, los espacios de trabajo, la
+	     música y las ventanas; al centro el reloj y el clima; a la derecha la
+	     bandeja, el teclado, la red, el Bluetooth, el volumen y la batería.
+	     Cada píldora es una `PanelPill` de la librería en `ui-shell`, sin
+	     `backdrop-blur`: el desenfoque lo pone Wayfire detrás de cada una. La
+	     región de entrada se recorta a las píldoras (`usePanelInputRegion`). -->
 	<nav
+		ref="bar"
 		@contextmenu.prevent="openPanelContextMenu"
-		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner-l bg-ui-shell border border-ui-line"
+		class="panel-bar relative z-20 grid items-center gap-2 bg-transparent"
 		:class="BAR_CLASSES[position]"
+		data-panel-bar
 	>
-    <div class="flex items-center gap-1" :class="vertical ? 'flex-col' : ''">
-      <TrayIconButton
+    <div class="flex min-w-0 items-center gap-1.5" :class="GROUP_CLASSES[position].start" data-panel-start>
+      <PanelPill
         ref="menuButton"
-        name="start-here"
-        :alt="t('views.panel.menuAlt')"
-        :tooltip="t('views.panel.menuAlt')"
-        :custom-class="menuOpenClasses"
-        :aria-expanded="menuIsOpen"
+        icon="system-search"
+        :accessible-label="t('views.panel.searchAlt')"
+        :title="t('views.panel.searchAlt')"
+        :expanded="menuIsOpen"
+        :orientation="vertical ? 'vertical' : 'horizontal'"
+        data-search-pill
         @click="openMenu"
       />
-			<!-- El separador gira con la barra: de costado, una raya vertical de
-			     un píxel de ancho entre dos iconos apilados no separa nada. -->
-			<div class="bg-ui-line" :class="vertical ? 'h-px w-7' : 'w-px h-7'"></div>
-      <TrayIconButton
-        name="preferences-system"
-        :alt="t('views.panel.settingsAlt')"
-        :tooltip="t('views.panel.settingsAlt')"
-        @click="openConfig"
-      />
-      <TrayIconButton
-        name="system-file-manager"
-        :alt="t('views.panel.filesAlt')"
-        :tooltip="t('views.panel.filesAlt')"
-        @click="openFileManager"
-      />
+      <!-- El número no pasa de 99 para que entre en la píldora. -->
+      <PanelPill
+        :accessible-label="t('views.panel.notificationsAlt')"
+        :title="t('views.panel.notificationsAlt')"
+        :orientation="vertical ? 'vertical' : 'horizontal'"
+        data-notifications-pill
+        @click="openNotificationCenter"
+      >
+        <template #leading>
+          <ThemeIcon
+            name="preferences-desktop-notification"
+            type="symbol"
+            :size="18"
+            alt=""
+            class="shrink-0"
+            :class="{ 'animate-bell-shake': hasNewNotifications }"
+          />
+        </template>
+        <Badge
+          v-if="notifications.length > 0 && !vertical"
+          tone="accent"
+          variant="solid"
+          counter
+          :label="notifications.length"
+          :max="99"
+        />
+      </PanelPill>
       <!-- Only while a phone is connected: a permanent button for hardware
            most people never plug in is clutter in the one strip of screen that
            is always on top of everything else. -->
-      <TrayIconButton
+      <PanelPill
         v-if="hasPhone"
-        name="smartphone"
-        :alt="t('views.connect.menuAlt')"
-        :tooltip="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
+        icon="smartphone"
+        icon-type="icon"
+        :accessible-label="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
+        :title="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
+        :orientation="vertical ? 'vertical' : 'horizontal'"
+        data-phone-pill
         @click="openPhoneMenu"
       >
-        <div
+        <span
           v-if="phoneNeedsAuth"
-          class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-corner-full bg-status-warning"
-        ></div>
-      </TrayIconButton>
+          class="absolute top-0.5 right-0.5 size-2 rounded-corner-full bg-status-warning"
+        ></span>
+      </PanelPill>
+      <WorkspacesPill />
+      <TrayMusicControl v-if="showMusic" />
+      <WindowsArea />
     </div>
-    <WindowsArea />
-    <div class="flex content-center items-center" :class="vertical ? 'flex-col' : ''">
-      <TrayBarArea />
+    <div class="flex items-center gap-1.5" :class="GROUP_CLASSES[position].center" data-panel-center>
       <PanelClockWidget />
-      <!-- La insignia la dibuja el botón de la librería; el número no pasa de
-           99 para que entre en la píldora. -->
-      <TrayIconButton
-        name="preferences-desktop-notification"
-        :alt="t('views.panel.notificationsAlt')"
-        :tooltip="t('views.panel.notificationsAlt')"
-        :badge="notifications.length > 0 ? Math.min(notifications.length, 99) : null"
-        :icon-class="{ 'animate-bell-shake': hasNewNotifications }"
-        @click="openNotificationCenter"
-      />
+      <TrayWeatherControl v-if="showWeather" />
+    </div>
+    <div class="flex min-w-0 items-center gap-1.5" :class="GROUP_CLASSES[position].end" data-panel-end>
+      <TrayBarArea />
+      <KeyboardLayoutPill />
+      <TrayIconNetwork />
+      <TrayIconBluetooth />
+      <TrayIconSound />
+      <TrayIconBattery />
     </div>
   </nav>
 </template>
-

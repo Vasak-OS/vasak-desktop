@@ -74,9 +74,14 @@ views:
     webcamNoCameras: El teléfono no informó ninguna cámara.
   panel:
     menuAlt: Menú
-    settingsAlt: Configuración
-    filesAlt: Archivos
     notificationsAlt: Notificaciones
+    searchAlt: Buscar aplicaciones
+    workspaces: Espacios de trabajo
+    workspace: "Espacio de trabajo {0}"
+    keyboardLayout: "Distribución de teclado: {0}"
+    keyboardLayoutNext: "{0}. Tocar para pasar a la siguiente"
+    windowsAlt: Ventanas abiertas
+    trayAlt: Bandeja del sistema
   desktop:
     backgroundAlt: Fondo de pantalla
     videoWallpaperPowerTitle: El fondo en movimiento consume más
@@ -387,6 +392,7 @@ components:
   TrayIconBluetooth:
     statusOn: Bluetooth activado
     statusOff: Bluetooth desactivado
+    connectedTo: "Bluetooth conectado a {0}"
     iconAlt: Icono de Bluetooth
   TrayIconCapsLock:
     capsLock: Bloq Mayús
@@ -403,8 +409,8 @@ components:
     screen: Pantalla compartida
     usedBy: "{0} — {1}"
   TrayIconSound:
-    mute: Silenciar
-    unmute: Activar sonido
+    level: "Volumen: {0} %"
+    muted: Sonido silenciado
   TrayIconTwingate:
     connected: "Twingate: {0} recursos"
     disconnected: "Twingate: sin conexión"

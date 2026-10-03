@@ -1,25 +1,17 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ProgressBar } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, type Ref, ref } from 'vue';
-import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
-import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
+import { PanelPill, ProgressBar } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref } from 'vue';
 import TrayIconCapsLock from '@/components/buttons/TrayIconCapsLock.vue';
 import TrayIconMicrophone from '@/components/buttons/TrayIconMicrophone.vue';
-import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
 import TrayIconPrivacy from '@/components/buttons/TrayIconPrivacy.vue';
-import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import TrayIconTwingate from '@/components/buttons/TrayIconTwingate.vue';
 import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
-import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import TrayNetworkRateControl from '@/components/controls/TrayNetworkRateControl.vue';
-import TrayWeatherControl from '@/components/controls/TrayWeatherControl.vue';
 import TrayCountBadge from '@/components/indicators/TrayCountBadge.vue';
 import type { TrayItem } from '@/interfaces/tray';
-import { batteryExists } from '@/services/core.service';
 import {
 	getTrayItems,
 	initSniWatcher,
@@ -42,14 +34,28 @@ import {
 } from '@/tools/tray-item';
 import { logError, logWarning } from '@/utils/logger';
 
+/**
+ * La píldora de la bandeja (vasak-desktop#151): los iconos de las
+ * aplicaciones (StatusNotifierItem) y los indicadores chicos que sólo aparecen
+ * cuando hay algo que decir —la tasa de la red, la cámara o el micrófono en
+ * uso, Bloq Mayús, el micrófono silenciado, Twingate—, juntos en una sola
+ * píldora como en el video de referencia.
+ *
+ * La red, el Bluetooth, el volumen y la batería tienen cada uno su píldora
+ * (`PanelView`); el clima y la música también, en otro lugar del panel.
+ *
+ * Sin nada adentro la píldora no se dibuja: cada entrada lleva
+ * `data-tray-entry`, y la píldora se esconde si no tiene ninguna. Así no hace
+ * falta que la bandeja sepa cuándo se muestra cada indicador, que lo decide
+ * cada uno.
+ */
+
 // Qué partes del panel están encendidas, y de qué lado va la barra: a los
 // costados los iconos se apilan en lugar de alinearse.
-const { showWeather, showMusic, showTransfer, showTray, showPrivacy, vertical } = usePanelConfig();
+const { showTransfer, showTray, showPrivacy, vertical } = usePanelConfig();
 
 const { t } = useI18n();
 
-const bluetoothInitialized: Ref<boolean> = ref(false);
-const existBattery: Ref<boolean> = ref(false);
 const trayItems = ref<TrayItem[]>([]);
 
 /**
@@ -162,13 +168,6 @@ const getItemStatusClass = (item: TrayItem) => {
 
 onMounted(async () => {
 	await refreshTrayItems();
-	bluetoothInitialized.value = await isBluetoothPluginInitialized();
-	try {
-		existBattery.value = await batteryExists();
-	} catch (e) {
-		logWarning('[TrayPanel] batteryExists failed:', e);
-		existBattery.value = false;
-	}
 	try {
 		await initSniWatcher();
 	} catch (error) {
@@ -177,18 +176,18 @@ onMounted(async () => {
 });
 
 useSharedEvent('tray-update', refreshTrayItems);
-
-useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
-	if (typeof payload?.has_battery === 'boolean') {
-		existBattery.value = payload.has_battery;
-	}
-});
 </script>
 
 <template>
-  <div
-    class="flex items-center gap-1"
-    :class="vertical ? 'flex-col py-2 w-full' : 'px-2 h-full'"
+  <PanelPill
+    :interactive="false"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
+    flush
+    role="group"
+    :accessible-label="t('views.panel.trayAlt')"
+    class="[&:not(:has([data-tray-entry]))]:hidden"
+    :class="vertical ? 'py-1' : 'px-1'"
+    data-tray-pill
   >
     <TransitionGroup
       :move-class="shouldAnimate ? 'transition-transform duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
@@ -197,17 +196,15 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
       :enter-from-class="shouldAnimate ? 'opacity-0 -translate-x-5 scale-80 -rotate-12' : ''"
       :leave-to-class="shouldAnimate ? 'opacity-0 translate-x-5 scale-80 rotate-12' : ''"
       tag="div"
-      class="flex items-center gap-1"
-      :class="vertical ? 'flex-col' : ''"
+      class="flex items-center gap-0.5"
+      :class="vertical ? 'flex-col' : 'h-full'"
     >
-      <TrayNetworkRateControl v-if="showTransfer" key="network-rate" />
-      <TrayWeatherControl v-if="showWeather" key="weather" />
-      <TrayMusicControl v-if="showMusic" key="music-control" />
+      <TrayNetworkRateControl v-if="showTransfer" key="network-rate" data-tray-entry />
       <div
         v-for="item in (showTray ? trayItems : [])"
         :key="item.service_name"
         :class="[
-          'relative flex items-center justify-center w-7 h-7 rounded-corner-m cursor-pointer transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed group',
+          'relative flex items-center justify-center size-7 rounded-corner-full cursor-pointer transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed group',
           getItemStatusClass(item),
           getItemPulseClass(item),
           { [OPEN_APPLET_CLASSES]: isTrayPopupOwner(item) },
@@ -219,6 +216,7 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
         @transitionstart="onTransitionStart"
         @transitionend="onTransitionEnd"
         :title="tooltipText(item)"
+        data-tray-entry
       >
         <!-- Icono: el mapa de bits propio, el tema o la inicial; y la insignia
              superpuesta si la manda -->
@@ -251,15 +249,11 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
           />
         </div>
       </div>
-      <TrayIconPrivacy v-if="showPrivacy" key="icon-privacy" />
-      <TrayIconSound key="icon-sound" />
-      <TrayIconBattery v-if="existBattery" key="icon-battery" />
-      <TrayIconCapsLock key="icon-capslock" />
-      <TrayIconMicrophone key="icon-micmute" />
-      <TrayIconBluetooth key="icon-bluetooth" />
-      <TrayIconTwingate key="icon-twingate" />
-      <TrayIconNetwork key="icon-network" />
+      <TrayIconPrivacy v-if="showPrivacy" key="icon-privacy" data-tray-entry />
+      <TrayIconCapsLock key="icon-capslock" data-tray-entry />
+      <TrayIconMicrophone key="icon-micmute" data-tray-entry />
+      <TrayIconTwingate key="icon-twingate" data-tray-entry />
     </TransitionGroup>
-  </div>
+  </PanelPill>
 </template>
 

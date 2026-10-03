@@ -56,13 +56,48 @@ export function isVertical(position: PanelPosition): boolean {
  * contra el borde de la pantalla, que son los 38 que la superficie reserva—; lo
  * que cambia es sobre qué eje se estira y contra qué borde se apoya.
  *
+ * La barra es una grilla de tres (vasak-desktop#151): el principio y el final
+ * se reparten lo que sobra y el centro va siempre al medio, aunque un lado
+ * tenga más píldoras que el otro. Los lados se encogen (`minmax(0, 1fr)`) para
+ * que un nombre de red largo se corte adentro de su píldora en vez de empujar
+ * al reloj.
+ *
  * El largo se mide en `vh` y no en `%`: ni `html`, ni `body`, ni `#app` tienen
  * alto declarado, así que un porcentaje de alto no resuelve contra nada y la
  * columna se encoge hasta el tamaño de los iconos.
  */
 export const BAR_CLASSES: Record<PanelPosition, string> = {
-	top: 'w-[calc(100%-8px)] h-9 mx-1 mt-0.5 px-3 flex-row',
-	bottom: 'w-[calc(100%-8px)] h-9 mx-1 mb-0.5 px-3 flex-row',
-	left: 'h-[calc(100vh-8px)] w-9 my-1 ml-0.5 py-3 flex-col',
-	right: 'h-[calc(100vh-8px)] w-9 my-1 mr-0.5 py-3 flex-col',
+	top: 'w-[calc(100%-8px)] h-9 mx-1 mt-0.5 px-1 flex-row grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+	bottom:
+		'w-[calc(100%-8px)] h-9 mx-1 mb-0.5 px-1 flex-row grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+	left: 'h-[calc(100vh-8px)] w-9 my-1 ml-0.5 py-1 flex-col grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] justify-items-center',
+	right:
+		'h-[calc(100vh-8px)] w-9 my-1 mr-0.5 py-1 flex-col grid-rows-[minmax(0,1fr)_auto_minmax(0,1fr)] justify-items-center',
+};
+
+/** Cómo se acomoda cada uno de los tres grupos de píldoras. */
+export interface GroupClasses {
+	start: string;
+	center: string;
+	end: string;
+}
+
+const ROW: GroupClasses = {
+	start: 'justify-start',
+	center: 'justify-center',
+	end: 'justify-end',
+};
+
+const COLUMN: GroupClasses = {
+	start: 'flex-col justify-start min-h-0',
+	center: 'flex-col justify-center',
+	end: 'flex-col justify-end min-h-0',
+};
+
+/** De costado los grupos son columnas; arriba y abajo, filas. */
+export const GROUP_CLASSES: Record<PanelPosition, GroupClasses> = {
+	top: ROW,
+	bottom: ROW,
+	left: COLUMN,
+	right: COLUMN,
 };
