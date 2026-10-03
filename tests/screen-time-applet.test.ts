@@ -97,6 +97,12 @@ describe('el tablero de tiempo de pantalla', () => {
 		expect(template).toContain('@click="clearAll"');
 	});
 
+	test('una respuesta vieja no pisa el día que se está mirando', () => {
+		expect(VIEW).toContain('const ticket = latest;');
+		expect(VIEW.match(/if \(ticket !== latest\) return;/g)).toHaveLength(2);
+		expect(VIEW.indexOf('if (ticket !== latest) return;')).toBeLessThan(VIEW.indexOf('range.value = response;'));
+	});
+
 	test('una columna por vez en angosto, por contenedor y no por la pantalla', () => {
 		expect(template).toContain('@container');
 		expect(template).toContain('@[30rem]:grid-cols-3');

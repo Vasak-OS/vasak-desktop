@@ -85,7 +85,16 @@ const days = computed(() => range.value?.days ?? {});
 const firstDay = computed(() => range.value?.first_day ?? null);
 const enabled = computed(() => range.value?.enabled ?? true);
 
+/**
+ * Cada pedido lleva un número; sólo el último escribe. El refresco de cada 30 s,
+ * las flechas, volver a abrir y borrar pueden cruzarse, y una respuesta lenta
+ * de un pedido viejo no puede pisar el día que se está mirando.
+ */
+let latest = 0;
+
 const load = async (target?: string | null) => {
+	latest += 1;
+	const ticket = latest;
 	const wanted = target ?? day.value ?? new Date().toISOString().slice(0, 10);
 	const { from, to } = rangeFor(isDay(wanted) ? wanted : new Date().toISOString().slice(0, 10));
 	try {
@@ -96,10 +105,12 @@ const load = async (target?: string | null) => {
 			const real = rangeFor(response.today);
 			if (real.from !== from || real.to !== to) response = await getScreenTime(real.from, real.to);
 		}
+		if (ticket !== latest) return;
 		range.value = response;
 		failed.value = false;
 		if (target) selected.value = target;
 	} catch (error) {
+		if (ticket !== latest) return;
 		failed.value = true;
 		logError('[ScreenTime] no se pudo leer el historial:', error);
 	}

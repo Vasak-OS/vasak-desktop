@@ -69,6 +69,11 @@ struct Recorder {
     /// falló, se reintenta en la próxima vuelta).
     unsaved: Mutex<Usage>,
     enabled: AtomicBool,
+    /// Lo toman de punta a punta guardar y borrar: entre que el tracker
+    /// entrega lo contado y eso llega al disco, un «Borrar historial» no puede
+    /// meterse en el medio (borraría el disco y después se escribiría lo que
+    /// se acababa de entregar).
+    io: Mutex<()>,
 }
 
 static RECORDER: OnceLock<Arc<Recorder>> = OnceLock::new();
@@ -108,6 +113,7 @@ pub fn start(app: &AppHandle) {
         store,
         unsaved: Mutex::new(Usage::new()),
         enabled: AtomicBool::new(read_enabled()),
+        io: Mutex::new(()),
     });
     if RECORDER.set(recorder.clone()).is_err() {
         return;
@@ -142,6 +148,7 @@ pub fn start(app: &AppHandle) {
 fn run(recorder: Arc<Recorder>, idle: Receiver<IdleEvent>) {
     let mut last_save = Instant::now();
     let mut next_tick = Instant::now();
+    let mut idle_monitor = true;
     loop {
         let wait = next_tick.saturating_duration_since(Instant::now());
         match idle.recv_timeout(wait) {
@@ -150,9 +157,17 @@ fn run(recorder: Arc<Recorder>, idle: Receiver<IdleEvent>) {
                 continue;
             }
             Err(RecvTimeoutError::Timeout) => {}
-            // Sin hilo de inactividad (el compositor no ofrece el protocolo):
-            // el registro sigue, a vueltas fijas.
-            Err(RecvTimeoutError::Disconnected) => std::thread::sleep(wait),
+            // Sin hilo de inactividad (el compositor no ofrece el protocolo, o
+            // la conexión de Wayland se cayó): no hay forma de saber si queda
+            // alguien, así que se deja de contar. Seguir contando sumaría como
+            // uso las horas con la ventana enfocada y nadie adelante.
+            Err(RecvTimeoutError::Disconnected) => {
+                if idle_monitor {
+                    idle_monitor = false;
+                    recorder.on_idle_monitor_lost();
+                }
+                std::thread::sleep(wait);
+            }
         }
         next_tick = Instant::now() + TICK;
 
@@ -196,30 +211,35 @@ impl Recorder {
         }
     }
 
+    /// Se perdió la detección de inactividad: se cierra lo abierto y el
+    /// tracker queda inactivo para siempre (ver `run`).
+    fn on_idle_monitor_lost(&self) {
+        log_error(
+            "[tiempo de pantalla] sin detección de inactividad: se deja de contar \
+             para no sumar tiempo sin nadie adelante",
+        );
+        let now = Utc::now();
+        self.tracker.lock().idle_started(now, now);
+    }
+
     fn save_finalized(&self) {
+        let _io = self.io.lock();
         let done = self.tracker.lock().finalize(Utc::now());
         self.save(done);
     }
 
     fn save_everything(&self) {
+        let _io = self.io.lock();
         let done = self.tracker.lock().finalize_all(Utc::now());
         self.save(done);
     }
 
+    /// Con `io` tomado.
     fn save(&self, done: Usage) {
         let mut unsaved = self.unsaved.lock();
         merge(&mut unsaved, &done);
-        if unsaved.is_empty() {
-            return;
-        }
-        let Some(store) = &self.store else {
-            return;
-        };
-        match store.add(&unsaved) {
-            Ok(()) => unsaved.clear(),
-            Err(error) => log_error(&format!(
-                "[tiempo de pantalla] no se pudo guardar (se reintenta): {error}"
-            )),
+        if let Some(store) = &self.store {
+            save_pending(store, &mut unsaved);
         }
     }
 
@@ -237,11 +257,36 @@ impl Recorder {
     }
 
     fn clear(&self) -> Result<(), String> {
+        let _io = self.io.lock();
         self.tracker.lock().discard();
         self.unsaved.lock().clear();
         match &self.store {
             Some(store) => store.clear().map_err(|error| error.to_string()),
             None => Ok(()),
+        }
+    }
+}
+
+/// Guarda lo pendiente **un día por vez**, y saca de `unsaved` cada día recién
+/// cuando llegó al disco. Si un día falla se corta ahí: los anteriores ya no
+/// están en `unsaved`, así que el reintento no los vuelve a sumar.
+fn save_pending(store: &Store, unsaved: &mut Usage) {
+    for day in unsaved.keys().copied().collect::<Vec<_>>() {
+        let Some(apps) = unsaved.get(&day).cloned() else {
+            continue;
+        };
+        let mut one = Usage::new();
+        one.insert(day, apps);
+        match store.add(&one) {
+            Ok(()) => {
+                unsaved.remove(&day);
+            }
+            Err(error) => {
+                log_error(&format!(
+                    "[tiempo de pantalla] no se pudo guardar {day} (se reintenta): {error}"
+                ));
+                break;
+            }
         }
     }
 }
@@ -396,6 +441,57 @@ mod tests {
         assert!(json["first_day"].is_null());
     }
 
+    #[test]
+    fn si_falla_un_día_los_que_ya_se_guardaron_no_se_vuelven_a_sumar() {
+        let temp = store::tests::TempDir::new("por-dia");
+        let store = Store::new(temp.0.clone());
+        let day = |n| NaiveDate::from_ymd_opt(2026, 3, n).expect("fecha");
+        // El 17 no se puede escribir: en su lugar hay un directorio.
+        std::fs::create_dir_all(temp.0.join("2026-03-17.json")).expect("se crea");
+        let mut unsaved = Usage::new();
+        unsaved.insert(day(16), BTreeMap::from([("a".to_string(), 10_u64)]));
+        unsaved.insert(day(17), BTreeMap::from([("a".to_string(), 20_u64)]));
+
+        save_pending(&store, &mut unsaved);
+        assert_eq!(unsaved.keys().copied().collect::<Vec<_>>(), vec![day(17)]);
+        save_pending(&store, &mut unsaved);
+        // El 16 quedó en 10 y no en 20.
+        assert_eq!(store.load(day(16))["a"], 10);
+
+        std::fs::remove_dir_all(temp.0.join("2026-03-17.json")).expect("se borra");
+        save_pending(&store, &mut unsaved);
+        assert!(unsaved.is_empty());
+        assert_eq!(store.load(day(17))["a"], 20);
+    }
+
+    #[test]
+    fn sin_detección_de_inactividad_se_deja_de_contar() {
+        let temp = store::tests::TempDir::new("sin-inactividad");
+        let recorder = Recorder {
+            tracker: Mutex::new(Tracker::new(
+                Local,
+                ChronoDuration::minutes(3),
+                ChronoDuration::seconds(30),
+            )),
+            store: Some(Store::new(temp.0.clone())),
+            unsaved: Mutex::new(Usage::new()),
+            enabled: AtomicBool::new(true),
+            io: Mutex::new(()),
+        };
+        // Lo de antes de perderla vale; lo de después, no.
+        let start = Utc::now() - ChronoDuration::minutes(2);
+        recorder.on_idle_monitor_lost();
+        let mut now = start;
+        while now <= Utc::now() {
+            recorder.tracker.lock().tick(now, Some("firefox"), false);
+            now += ChronoDuration::seconds(2);
+        }
+        let today = Local::now().date_naive();
+        assert!(recorder
+            .usage(today.pred_opt().expect("ayer"), today)
+            .is_empty());
+    }
+
     /// El recorrido entero, con un directorio temporal: lo que entrega el
     /// tracker llega al disco y vuelve en el rango, sin contarse dos veces.
     #[test]
@@ -410,6 +506,7 @@ mod tests {
             store: Some(Store::new(temp.0.clone())),
             unsaved: Mutex::new(Usage::new()),
             enabled: AtomicBool::new(true),
+            io: Mutex::new(()),
         };
         let start = Utc::now() - ChronoDuration::minutes(10);
         let mut now = start;
