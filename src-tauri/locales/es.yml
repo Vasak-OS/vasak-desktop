@@ -105,7 +105,8 @@ views:
     currentOutput: "Salida de audio: {0}"
     chooseOutput: Elegir la salida de audio
     noOutputs: No hay salidas de audio.
-    via: "vía {0}"
+    viaCaption: vía
+    players: Reproductores abiertos
     back: Volver
   applets:
     panelMenu:
@@ -257,10 +258,6 @@ components:
     progress: Avance de la pista
     openPlayer: Abrir el reproductor
     nothingPlaying: No hay nada sonando
-    previous: Anterior
-    play: Reproducir
-    pause: Pausa
-    next: Siguiente
   VolumeControl:
     volume: Volumen
     mute: Silenciar

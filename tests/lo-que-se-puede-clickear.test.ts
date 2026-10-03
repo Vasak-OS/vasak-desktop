@@ -126,16 +126,16 @@ describe('los botones del panel se anuncian con nombre', () => {
 	 * o del tooltip, y que el que sólo informa se dibuje como `div`— ahora se
 	 * comprueba **montado** en `vue-libvasak`, que es donde vive la conducta.
 	 * Acá queda lo que a esta aplicación le toca: que no vuelva a haber copia y
-	 * que los diez lo pidan a la librería: los siete de la bandeja, el de
-	 * privacidad, el botón de cada ventana y los del propio panel (menú,
+	 * que los once lo pidan a la librería: los siete de la bandeja, el de
+	 * privacidad, el botón de cada ventana, los del propio panel (menú,
 	 * configuración, archivos, teléfono y notificaciones), que pasaron a ser
-	 * éste con vue-libvasak 2.0.0.
+	 * éste con vue-libvasak 2.0.0, y desde 1.24.0 la píldora de música.
 	 */
 	test('el de la bandeja ya no tiene copia acá', () => {
 		expect(fuentes.filter(({ ruta }) => ruta.endsWith('buttons/TrayIconButton.vue'))).toEqual([]);
 	});
 
-	test('y los diez lo piden a la librería', () => {
+	test('y los once lo piden a la librería', () => {
 		// Si alguno lo usa sin importarlo, Vue dibuja un elemento desconocido y
 		// no falla: el icono no está y el panel queda con un hueco.
 		const culpables = fuentes
@@ -149,12 +149,12 @@ describe('los botones del panel se anuncian con nombre', () => {
 		expect(culpables).toEqual([]);
 	});
 
-	test('y son diez, no menos', () => {
+	test('y son once, no menos', () => {
 		// Sin esto, la de arriba pasa sobre una lista vacía el día que alguien
 		// renombre los archivos y el patrón deje de encontrarlos.
 		const losQueLoUsan = fuentes.filter(({ texto }) => /<TrayIconButton\b/.test(texto));
 
-		expect(losQueLoUsan).toHaveLength(10);
+		expect(losQueLoUsan).toHaveLength(11);
 	});
 
 	test('los del panel llevan su nombre puesto', () => {

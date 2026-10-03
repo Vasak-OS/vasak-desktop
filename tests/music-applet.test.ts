@@ -32,9 +32,11 @@ describe('el reproductor desplegable', () => {
 	test('lo abre el control del panel, colgado de él', () => {
 		expect(CONTROL).toContain("toggleApplet('music', opener.value)");
 		expect(CONTROL).toContain('ref="opener"');
-		// Y el control se realza mientras está abierto, como los demás.
+		// Y el control se realza mientras está abierto, como los demás: las
+		// clases del abierto van al botón de la píldora.
 		expect(CONTROL).toContain("useOpenApplet('music')");
-		expect(CONTROL).toContain(':class="openClasses"');
+		expect(CONTROL).toContain('...openClasses.value');
+		expect(CONTROL).toContain(':custom-class="buttonClasses"');
 	});
 
 	test('es un applet anclado, con su ventana en la capability', () => {
@@ -114,9 +116,12 @@ describe('la portada del panel', () => {
 	});
 
 	test('el aro de progreso y el botón son los de la librería', () => {
-		// Ni el `conic-gradient` con su máscara a mano ni un `<button>` propio.
+		// Ni el `conic-gradient` con su máscara a mano ni un `<button>` propio:
+		// el botón es la píldora entera, `TrayIconButton`, y el disco adentro
+		// no es otro botón (un botón dentro de otro no se puede apuntar).
 		expect(CONTROL).toContain(':progress="musicInfo.length > 0 ? progress * 100 : null"');
-		expect(CONTROL).toMatch(/<SpinningCover[^/]*\n\s*interactive\n/);
+		expect(CONTROL).toContain('<TrayIconButton');
+		expect(CONTROL).not.toMatch(/<SpinningCover[^>]*\binteractive\b/);
 		expect(CONTROL).not.toContain('conic-gradient');
 		expect(CONTROL).not.toMatch(/<button\b/);
 		for (const catalog of [ES, EN]) {
@@ -143,7 +148,8 @@ describe('los textos', () => {
 		'currentOutput',
 		'chooseOutput',
 		'noOutputs',
-		'via',
+		'viaCaption',
+		'players',
 		'back',
 	];
 
@@ -158,7 +164,7 @@ describe('los textos', () => {
 	});
 
 	test('los que llevan un nombre adentro tienen dónde ponerlo', () => {
-		for (const key of ['byArtist', 'currentOutput', 'via']) {
+		for (const key of ['byArtist', 'currentOutput']) {
 			expect(ES.views.musicApplet[key]).toContain('{0}');
 			expect(EN.views.musicApplet[key]).toContain('{0}');
 		}

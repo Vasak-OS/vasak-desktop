@@ -127,10 +127,11 @@ pub const APPLETS: &[AppletSpec] = &[
     // El reproductor que se despliega desde el control de música: el disco,
     // los datos de la pista, la barra y el transporte. Cuatrocientos de ancho
     // como en la referencia; el alto es el de la tarjeta sin ecualizador —que
-    // todavía no existe— con el título en dos líneas y los dos chips en dos
-    // renglones, que es el caso más alto que se dibuja hoy (238 de tarjeta más
-    // el relleno del contenedor). Cuando llegue el ecualizador, este es el
-    // número que crece.
+    // todavía no existe— con el título en dos líneas, las dos pastillas en un
+    // renglón y los puntos de varios reproductores abiertos, que es el caso
+    // más alto que se dibuja hoy (238 de contenido más el relleno del
+    // contenedor; con un solo reproductor lo que sobra se reparte arriba y
+    // abajo). Cuando llegue el ecualizador, este es el número que crece.
     AppletSpec { id: "music", route: "music", size: (400.0, 272.0) },
     // El menú de aplicaciones (`menu.rs`). Es el único que se abre también sin
     // botón —la tecla Super—, pero por lo demás es uno más: se esconde y no se
