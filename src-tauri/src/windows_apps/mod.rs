@@ -6,6 +6,7 @@ pub mod desktop;
 pub mod menu;
 pub mod panel;
 pub mod shell_layer;
+pub mod wallpaper_picker;
 
 pub use applications::{create_osd_window, create_session_popup_window};
 pub use connect::create_connect_window;

@@ -10,6 +10,7 @@ import FilesWidget from '@/components/widgets/FilesWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import WidgetHost from '@/components/widgets/WidgetHost.vue';
+import { toggleWallpaperPicker } from '@/services/wallpaper.service';
 import {
 	CELL_GAP,
 	CELL_SIZE,
@@ -293,13 +294,13 @@ async function openEditing(event: MouseEvent) {
 				icon: 'preferences-desktop',
 			},
 			{
-				id: 'fondo',
+				id: 'wallpaper',
 				label: t('widgets.menu.wallpaper'),
 				icon: 'preferences-desktop-wallpaper',
 			},
 			{ type: 'separator' },
 			{
-				id: 'sistema',
+				id: 'settings',
 				label: t('widgets.menu.settings'),
 				icon: 'preferences-system',
 			},
@@ -312,10 +313,13 @@ async function openEditing(event: MouseEvent) {
 			editing.value = true;
 			panelOpen.value = true;
 			break;
-		case 'fondo':
-			await invoke('open_settings_section', { section: 'appearance-wallpaper' });
+		case 'wallpaper':
+			// El selector rápido, sobre el escritorio (vasak-desktop#133). Su
+			// última tarjeta lleva a Configuración → Fondo, que era lo que hacía
+			// esto antes.
+			await toggleWallpaperPicker();
 			break;
-		case 'sistema':
+		case 'settings':
 			await invoke('open_settings');
 			break;
 	}

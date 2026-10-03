@@ -141,6 +141,14 @@ views:
       hours: "{0} h"
       minutes: "{0} min"
       underMinute: menos de 1 min
+  wallpaperPicker:
+    title: Fondos de pantalla
+    more: Más fondos…
+    empty: No hay fondos disponibles
+    video: Fondo en movimiento
+    current: Fondo actual
+    hint: "Flechas o rueda para moverse · Enter para aplicar · Esc para cerrar"
+    applyError: "No se pudo aplicar el fondo: {0}"
   applets:
     panelMenu:
       title: Opciones del panel

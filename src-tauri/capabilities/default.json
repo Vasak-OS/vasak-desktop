@@ -18,7 +18,8 @@
     "applet_screen-time",
     "app_terminal",
     "session_popup",
-    "osd_popup"
+    "osd_popup",
+    "wallpaper_picker"
   ],
   "permissions": [
     "core:default",
