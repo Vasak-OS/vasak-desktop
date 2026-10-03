@@ -19,12 +19,18 @@
 //! Llegan por `PropertiesChanged`, sólo con lo que cambió. En lugar de juntar
 //! las piezas, cada aviso vuelve a leer las propiedades: son diez valores
 //! chicos, y así el estado que llega a la interfaz es siempre uno entero y
-//! coherente.
+//! coherente. Mientras alguien arrastra una banda llegan hasta unas 30 señales
+//! por segundo: se juntan las que caen dentro de [`COALESCE`] y se lee una vez.
+//!
+//! El último estado leído queda en [`last_state`], para que mover una banda
+//! compruebe la banda y el rango sin volver a preguntar todo por el bus.
 
 use super::Applet;
 use async_trait::async_trait;
-use futures_util::StreamExt;
+use futures_util::{FutureExt, StreamExt};
 use serde::Serialize;
+use std::sync::{LazyLock, Mutex};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use zbus::{proxy, Connection, MatchRule, MessageStream};
 
@@ -35,6 +41,22 @@ pub const INTERFACE: &str = "org.vasak.Equalizer1";
 
 /// El evento que recibe la interfaz con el estado entero.
 pub const CHANGED_EVENT: &str = "equalizer-changed";
+
+/// Cuánto se esperan más señales antes de leer el estado una sola vez.
+const COALESCE: Duration = Duration::from_millis(50);
+
+static LAST_STATE: LazyLock<Mutex<Option<EqualizerState>>> = LazyLock::new(|| Mutex::new(None));
+
+/// El último estado que se leyó del servicio, si alguno.
+pub fn last_state() -> Option<EqualizerState> {
+    LAST_STATE.lock().ok().and_then(|state| state.clone())
+}
+
+fn remember(state: &EqualizerState) {
+    if let Ok(mut last) = LAST_STATE.lock() {
+        *last = Some(state.clone());
+    }
+}
 
 /// El contrato, copiado del README de vasak-wireplumber-modules.
 #[proxy(
@@ -130,6 +152,12 @@ async fn service_present(conn: &Connection) -> bool {
 
 /// El estado entero, o el de «no está».
 pub async fn read_state(conn: &Connection) -> EqualizerState {
+    let state = fetch_state(conn).await;
+    remember(&state);
+    state
+}
+
+async fn fetch_state(conn: &Connection) -> EqualizerState {
     if !service_present(conn).await {
         return EqualizerState::missing();
     }
@@ -172,9 +200,20 @@ impl Applet for EqualizerApplet {
     }
 
     async fn start(&self, app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-        let conn = Connection::session().await?;
+        let conn = shared_session(&app).await?;
         watch(&app, &conn).await
     }
+}
+
+/// La conexión de sesión compartida (`DbusPool`), o una propia si no está.
+pub async fn shared_session(app: &AppHandle) -> zbus::Result<Connection> {
+    use tauri::Manager;
+    if let Some(pool) = app.try_state::<crate::dbus_pool::DbusPool>() {
+        if let Some(conn) = pool.session().await {
+            return Ok(conn);
+        }
+    }
+    Connection::session().await
 }
 
 /// Avisa a la interfaz cada vez que el servicio cambia, aparece o se va.
@@ -203,6 +242,10 @@ pub async fn watch(app: &AppHandle, conn: &Connection) -> Result<(), Box<dyn std
             message = changes.next() => if message.is_none() { break },
             message = owners.next() => if message.is_none() { break },
         }
+        // Las señales que llegan enseguida (un arrastre) se juntan en una lectura.
+        tokio::time::sleep(COALESCE).await;
+        while let Some(Some(_)) = changes.next().now_or_never() {}
+        while let Some(Some(_)) = owners.next().now_or_never() {}
         let _ = app.emit(CHANGED_EVENT, read_state(conn).await);
     }
     Ok(())
@@ -239,6 +282,16 @@ mod tests {
         let state = read_state(&conn).await;
         assert_eq!(state.preset, "custom");
         assert_eq!(state.gains[2], 4.5);
+        // Lo leído queda para comprobar la próxima banda sin volver al bus.
+        assert_eq!(last_state(), Some(state));
+    }
+
+    #[test]
+    fn lo_ultimo_leido_queda_guardado() {
+        let mut state = EqualizerState::missing();
+        state.frequencies = vec![31.0, 63.0];
+        remember(&state);
+        assert_eq!(last_state(), Some(state));
     }
 
     #[test]
