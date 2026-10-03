@@ -110,10 +110,15 @@ pub fn build_entries(
 
 /// Corre `vasak-settings --wallpaper …` y lee el JSON que deja en la salida.
 ///
+/// Lo usan el selector y «Seguir al fondo» (`wallpaper_colors.rs`): una sola
+/// forma de pedirle algo a Configuración.
+///
 /// Desde el hogar, como toda aplicación que abre el escritorio (ver
 /// `runner.rs`): con otro directorio de trabajo Configuración podría leer
 /// catálogos de textos ajenos.
-async fn ask_settings<T: serde::de::DeserializeOwned>(args: &[&str]) -> Result<T, String> {
+pub(super) async fn ask_settings<T: serde::de::DeserializeOwned>(
+    args: &[&str],
+) -> Result<T, String> {
     let output = Command::new(SETTINGS_PROGRAM)
         .arg("--wallpaper")
         .args(args)
