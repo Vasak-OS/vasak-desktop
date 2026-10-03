@@ -10,42 +10,42 @@
  * Recibe el `document` en lugar de tomarlo del entorno para poder probarlo, y
  * porque en el arranque de una ventana de Tauri no siempre hay uno.
  */
-export interface DocumentoObservable {
+export interface ObservableDocument {
 	hidden: boolean;
-	addEventListener(tipo: string, manejador: () => void): void;
-	removeEventListener(tipo: string, manejador: () => void): void;
+	addEventListener(type: string, listener: () => void): void;
+	removeEventListener(type: string, listener: () => void): void;
 }
 
-export interface EscuchaDeVisibilidad {
+export interface VisibilityListener {
 	/** Engancha, si no estaba enganchado. Llamarlo dos veces no duplica nada. */
-	enganchar(): void;
+	attach(): void;
 	/** Suelta. Llamarlo sin haber enganchado no hace nada. */
-	soltar(): void;
+	detach(): void;
 	/** Si está enganchado ahora mismo. */
-	enganchado(): boolean;
+	attached(): boolean;
 }
 
-export function crearEscuchaDeVisibilidad(
-	documento: DocumentoObservable | undefined,
-	alVolverALaVista: () => void
-): EscuchaDeVisibilidad {
-	let manejador: (() => void) | null = null;
+export function createVisibilityListener(
+	doc: ObservableDocument | undefined,
+	onVisible: () => void
+): VisibilityListener {
+	let listener: (() => void) | null = null;
 
 	return {
-		enganchar() {
-			if (manejador || !documento) return;
-			manejador = () => {
-				if (!documento.hidden) alVolverALaVista();
+		attach() {
+			if (listener || !doc) return;
+			listener = () => {
+				if (!doc.hidden) onVisible();
 			};
-			documento.addEventListener('visibilitychange', manejador);
+			doc.addEventListener('visibilitychange', listener);
 		},
-		soltar() {
-			if (!manejador || !documento) return;
-			documento.removeEventListener('visibilitychange', manejador);
-			manejador = null;
+		detach() {
+			if (!listener || !doc) return;
+			doc.removeEventListener('visibilitychange', listener);
+			listener = null;
 		},
-		enganchado() {
-			return manejador !== null;
+		attached() {
+			return listener !== null;
 		},
 	};
 }

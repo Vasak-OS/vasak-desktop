@@ -149,6 +149,69 @@ views:
     current: Fondo actual
     hint: "Flechas o rueda para moverse · Enter para aplicar · Esc para cerrar"
     applyError: "No se pudo aplicar el fondo: {0}"
+  dateBoard:
+    title: Tablero de fecha
+    calendar: Calendario del mes
+    now: Ahora
+    weather: Clima del día
+    events: Eventos del día
+    previousMonth: Mes anterior
+    nextMonth: Mes siguiente
+    hasEvents: con eventos
+    today: hoy
+    newEvent: Nuevo evento en Calendario
+    previousDay: Día anterior
+    nextDay: Día siguiente
+    hourly: Pronóstico de las próximas horas
+    max: "Máx. {0}"
+    min: "Mín. {0}"
+    wind: Viento
+    humidity: Humedad
+    rain: Lluvia
+    feelsLike: Sensación
+    noForecast: Sin pronóstico para esta fecha
+    weatherLoading: Cargando el clima…
+    weatherFailed: No se pudo obtener el clima
+    openCalendar: Abrir en Calendario
+    loadingEvents: Leyendo el calendario…
+    noEvents: Nada agendado para este día
+    allDay: Todo el día
+    ongoing: En curso
+    unavailable: El calendario no está disponible
+    unavailableNote: Hace falta el servicio de cuentas de VasakOS, que guarda la copia local de los calendarios.
+    denied: Sin permiso para leer el calendario
+    deniedNote: Se puede dar desde Configuración, en los permisos de las aplicaciones.
+    failed: No se pudieron leer los eventos
+    truncated: Hay más eventos de los que se muestran.
+    conditions:
+      "0": Despejado
+      "1": Mayormente despejado
+      "2": Parcialmente nublado
+      "3": Nublado
+      "45": Niebla
+      "48": Niebla con escarcha
+      "51": Llovizna leve
+      "53": Llovizna
+      "55": Llovizna intensa
+      "56": Llovizna helada leve
+      "57": Llovizna helada intensa
+      "61": Lluvia leve
+      "63": Lluvia
+      "65": Lluvia intensa
+      "66": Lluvia helada leve
+      "67": Lluvia helada intensa
+      "71": Nevada leve
+      "73": Nevada
+      "75": Nevada intensa
+      "77": Granos de nieve
+      "80": Chaparrones leves
+      "81": Chaparrones
+      "82": Chaparrones violentos
+      "85": Chaparrones de nieve leves
+      "86": Chaparrones de nieve intensos
+      "95": Tormenta
+      "96": Tormenta con granizo leve
+      "99": Tormenta con granizo intenso
   applets:
     panelMenu:
       title: Opciones del panel
@@ -165,6 +228,8 @@ views:
         alert: Alerta
 
 components:
+  PanelClock:
+    open: "Abrir el tablero de fecha: {0}"
   tray:
     progress: "Progreso de {0}"
   AudioDeviceSelector:

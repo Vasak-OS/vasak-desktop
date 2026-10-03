@@ -1,8 +1,8 @@
+use crate::logger::{log_error, log_info};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::Command;
-use crate::logger::{log_info, log_error};
 
 /// El directorio desde el que arranca una aplicación que abre el escritorio.
 ///
@@ -29,7 +29,9 @@ fn directorio_de_arranque() -> PathBuf {
 /// desde un directorio elegido»— se pueda comprobar sin ejecutar nada.
 fn comando_de_aplicacion(programa: &str, argumentos: &[String]) -> Command {
     let mut comando = Command::new(programa);
-    comando.args(argumentos).current_dir(directorio_de_arranque());
+    comando
+        .args(argumentos)
+        .current_dir(directorio_de_arranque());
     comando
 }
 
@@ -71,7 +73,10 @@ pub async fn open_app(path: &str) -> Result<(), String> {
 
             log_info(&format!("Ejecutando comando: {} {:?}", cmd, args));
             comando_de_aplicacion(&cmd, &args).spawn().map_err(|e| {
-                log_error(&format!("Error al ejecutar comando {} {:?}: {}", cmd, args, e));
+                log_error(&format!(
+                    "Error al ejecutar comando {} {:?}: {}",
+                    cmd, args, e
+                ));
                 e.to_string()
             })?;
 
@@ -81,6 +86,30 @@ pub async fn open_app(path: &str) -> Result<(), String> {
 
     log_error(&format!("No se encontró comando ejecutable en: {}", path));
     Err("No se encontró el comando ejecutable".to_string())
+}
+
+/// El binario de `vasak-calendar`.
+const CALENDAR_BINARY: &str = "vasak-calendar";
+
+/// Abre el calendario: lo piden el «+» y «Abrir en Calendario» del tablero de
+/// fecha.
+///
+/// Sin fecha: `vasak-calendar` todavía no recibe un día al arrancar ni salta a
+/// él si ya está abierto, así que pasarle uno sería un argumento que nadie lee.
+/// Cuando lo acepte, el día viaja por acá.
+#[tauri::command]
+pub async fn open_calendar() -> Result<(), String> {
+    log_info("Abriendo el calendario");
+    comando_de_aplicacion(CALENDAR_BINARY, &[])
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| {
+            let message = format!(
+                "No se pudo abrir {CALENDAR_BINARY}: {error}. ¿Está instalado el paquete vasak-calendar?"
+            );
+            log_error(&message);
+            message
+        })
 }
 
 /// Binary shipped by the vasak-settings package.
@@ -200,7 +229,10 @@ mod tests_seccion {
         assert!(!es_nombre_de_seccion("/etc/passwd"));
         assert!(!es_nombre_de_seccion("Appearance-Panel"));
         assert!(!es_nombre_de_seccion("dos palabras"));
-        assert!(!es_nombre_de_seccion("--help"), "una opción, no una sección");
+        assert!(
+            !es_nombre_de_seccion("--help"),
+            "una opción, no una sección"
+        );
         assert!(!es_nombre_de_seccion(&"a".repeat(41)));
     }
 }

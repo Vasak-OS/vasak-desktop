@@ -78,6 +78,10 @@ const SURFACES: Array<[string, string, RegExp, Blur]> = [
 	// El marco suelto del menú (el clima) va dentro del menú, que ya desenfoca Wayfire.
 	['el marco suelto del menú', 'src/components/widgets/WidgetFrame.vue', /surface === 'shell' \? '[^']*' : '([^']*)'/, 'none'],
 	['la paleta de widgets', 'src/components/widgets/WidgetLayer.vue', /<aside\b[\s\S]*?class="([^"]*)"/, 'none'],
+	// El tablero de fecha va dentro de `AppletPopover` (la raíz de arriba); sus
+	// bloques son los de adentro de una superficie: translúcidos, sin desenfoque.
+	['el mes del tablero de fecha', 'src/views/applets/DateBoardAppletView.vue', /<section\s+class="([^"]*)"\s+data-date-board-calendar/, 'none'],
+	['el clima del tablero de fecha', 'src/views/applets/DateBoardAppletView.vue', /<section\s+class="([^"]*bg-ui-surface[^"]*)"\s+:aria-label="t\('views\.dateBoard\.weather'\)"/, 'none'],
 ];
 
 /** El único archivo de `src/` que puede nombrar `backdrop-blur`. */

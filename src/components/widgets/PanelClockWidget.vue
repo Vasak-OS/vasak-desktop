@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { toggleApplet } from '@/services/window.service';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { logError } from '@/utils/logger';
+
+const { t } = useI18n();
 
 interface TimeData {
 	day: string;
@@ -66,27 +72,51 @@ onMounted(() => {
 onUnmounted(() => {
 	if (tickTimer !== undefined) clearTimeout(tickTimer);
 });
+
+/**
+ * El tablero de fecha, colgado del reloj (vasak-desktop#130).
+ *
+ * El reloj es el lugar donde se busca «qué día es y qué tengo hoy», y hasta
+ * acá no abría nada. Ahora es un botón: abre el tablero debajo de él y se
+ * realza mientras está abierto, como los demás del panel.
+ */
+const opener = ref<HTMLElement | null>(null);
+const { isOpen, openClasses } = useOpenApplet('date');
+const fullDate = computed(
+	() => `${timeData.value.day}/${timeData.value.month}/${timeData.value.year}`
+);
+const openLabel = computed(() =>
+	t('components.PanelClock.open').replace('{0}', () => fullDate.value)
+);
+
+async function openBoard(): Promise<void> {
+	try {
+		await toggleApplet('date', opener.value);
+	} catch (error) {
+		logError('[PanelClock] no se pudo abrir el tablero de fecha:', error);
+	}
+}
 </script>
 
 <template>
-  <div
-    class="flex items-center justify-center p-1 font-mono"
-    :class="vertical ? 'flex-col text-label-xs leading-tight' : 'text-label-m'"
+  <button
+    ref="opener"
+    type="button"
+    class="flex items-center justify-center rounded-corner-m p-1 font-mono transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-focus"
+    :class="[vertical ? 'flex-col text-label-xs leading-tight' : 'text-label-m', openClasses]"
+    :title="fullDate"
+    :aria-label="openLabel"
+    :aria-expanded="isOpen"
+    aria-haspopup="dialog"
+    @click="openBoard"
   >
-    <span
-      :title="`${timeData.day}/${timeData.month}/${timeData.year}`"
-      class="cursor-default"
-    >
+    <span aria-hidden="true">
       <template v-if="vertical">{{ timeData.hour }}</template>
       <template v-else>{{ timeData.hour }}:{{ timeData.minute }}</template>
     </span>
-    <span
-      v-if="vertical"
-      :title="`${timeData.day}/${timeData.month}/${timeData.year}`"
-      class="cursor-default"
-    >
+    <span v-if="vertical" aria-hidden="true">
       {{ timeData.minute }}
     </span>
-  </div>
+  </button>
 </template>
 

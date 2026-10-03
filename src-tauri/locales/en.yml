@@ -149,6 +149,69 @@ views:
     current: Current wallpaper
     hint: "Arrows or wheel to move · Enter to apply · Esc to close"
     applyError: "The wallpaper could not be applied: {0}"
+  dateBoard:
+    title: Date board
+    calendar: Month calendar
+    now: Now
+    weather: Weather for the day
+    events: Events of the day
+    previousMonth: Previous month
+    nextMonth: Next month
+    hasEvents: has events
+    today: today
+    newEvent: New event in Calendar
+    previousDay: Previous day
+    nextDay: Next day
+    hourly: Forecast for the next hours
+    max: "High {0}"
+    min: "Low {0}"
+    wind: Wind
+    humidity: Humidity
+    rain: Rain
+    feelsLike: Feels like
+    noForecast: No forecast for this date
+    weatherLoading: Loading the weather…
+    weatherFailed: Could not get the weather
+    openCalendar: Open in Calendar
+    loadingEvents: Reading the calendar…
+    noEvents: Nothing scheduled for this day
+    allDay: All day
+    ongoing: Ongoing
+    unavailable: The calendar is not available
+    unavailableNote: It needs the VasakOS accounts service, which keeps the local copy of the calendars.
+    denied: No permission to read the calendar
+    deniedNote: It can be granted in Settings, under application permissions.
+    failed: Could not read the events
+    truncated: There are more events than shown.
+    conditions:
+      "0": Clear sky
+      "1": Mainly clear
+      "2": Partly cloudy
+      "3": Overcast
+      "45": Fog
+      "48": Rime fog
+      "51": Light drizzle
+      "53": Drizzle
+      "55": Dense drizzle
+      "56": Light freezing drizzle
+      "57": Dense freezing drizzle
+      "61": Light rain
+      "63": Rain
+      "65": Heavy rain
+      "66": Light freezing rain
+      "67": Heavy freezing rain
+      "71": Light snow
+      "73": Snow
+      "75": Heavy snow
+      "77": Snow grains
+      "80": Light showers
+      "81": Showers
+      "82": Violent showers
+      "85": Light snow showers
+      "86": Heavy snow showers
+      "95": Thunderstorm
+      "96": Thunderstorm with light hail
+      "99": Thunderstorm with heavy hail
   applets:
     panelMenu:
       title: Panel options
@@ -165,6 +228,8 @@ views:
         alert: Alert
 
 components:
+  PanelClock:
+    open: "Open the date board: {0}"
   tray:
     progress: "{0} progress"
   AudioDeviceSelector:

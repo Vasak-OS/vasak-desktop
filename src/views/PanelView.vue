@@ -10,7 +10,7 @@ import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
-import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
+import PanelClockWidget from '@/components/widgets/PanelClockWidget.vue';
 import type { ConnectDevice } from '@/interfaces/connect';
 import type {
 	Notification as AppNotification,
@@ -314,7 +314,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
     <WindowsArea />
     <div class="flex content-center items-center" :class="vertical ? 'flex-col' : ''">
       <TrayBarArea />
-      <PanelClockwidget />
+      <PanelClockWidget />
       <!-- La insignia la dibuja el botón de la librería; el número no pasa de
            99 para que entre en la píldora. -->
       <TrayIconButton
