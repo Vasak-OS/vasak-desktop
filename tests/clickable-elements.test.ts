@@ -31,7 +31,10 @@ const sources = await Promise.all(
 const read = (path: string) => sources.find((f) => f.path === path)?.text ?? '';
 
 /** Etiquetas nativas que no hacen nada por sí solas al recibir un clic. */
-const DEAF_TAGS = /<(div|span|img|li|p|a)\b((?:[^<>]|"[^"]*"|'[^']*')*?)>/g;
+// Las comillas no entran en la primera alternativa: si entraran, una cadena de
+// comillas se podría repartir de muchas maneras y la búsqueda retrocedería sin
+// fin (CodeQL, js/redos).
+const DEAF_TAGS = /<(div|span|img|li|p|a)\b((?:[^<>"']|"[^"]*"|'[^']*')*?)>/g;
 
 function deafTagsListeningToClick(text: string): number {
 	let count = 0;

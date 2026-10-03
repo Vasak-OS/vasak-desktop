@@ -273,7 +273,7 @@ describe('las píldoras del panel dejan ver el escritorio entre ellas', () => {
 
 	test.each(PILL_FILES)('%s no le pone a sus píldoras un fondo opaco ni backdrop-blur', (file) => {
 		const view = template(file);
-		const pills = [...view.matchAll(/<(PanelPill|WorkspaceSwitcher)\b((?:[^<>]|"[^"]*")*)>/g)];
+		const pills = [...view.matchAll(/<(PanelPill|WorkspaceSwitcher)\b((?:[^<>"]|"[^"]*")*)>/g)];
 		expect(pills.length, `sin píldoras en ${file}`).toBeGreaterThan(0);
 		for (const [, , attributes] of pills) {
 			const classes = [...(attributes ?? '').matchAll(/(?:^|\s):?class="([^"]*)"/g)].map((match) => match[1]).join(' ');
