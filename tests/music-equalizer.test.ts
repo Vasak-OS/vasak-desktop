@@ -47,7 +47,7 @@ describe('el ecualizador al pie de la tarjeta', () => {
 		music.equalizer.value = ROCK;
 		const view = await mountApplet();
 		expect(view.find('[data-footer] [data-equalizer]').exists()).toBe(true);
-		expect(view.findAll('[data-thumb]')).toHaveLength(10);
+		expect(view.findAll('[data-equalizer] [data-thumb]')).toHaveLength(10);
 		const rock = view.find('[data-preset="rock"]');
 		expect(rock.attributes('aria-checked')).toBe('true');
 		// Sin catálogo en la prueba, la clave de traducción es la de la app.
@@ -64,7 +64,7 @@ describe('el ecualizador al pie de la tarjeta', () => {
 	test('sin el servicio se ve no disponible, nunca roto', async () => {
 		const view = await mountApplet();
 		expect(view.find('[data-unavailable]').exists()).toBe(true);
-		expect(view.find('[data-thumb]').exists()).toBe(false);
+		expect(view.find('[data-equalizer] [data-thumb]').exists()).toBe(false);
 		view.unmount();
 	});
 
