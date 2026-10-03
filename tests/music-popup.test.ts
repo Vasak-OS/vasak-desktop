@@ -56,8 +56,34 @@ describe('la píldora del panel', () => {
 
 		expect(pill.element.tagName).toBe('BUTTON');
 		expect(view.findAll('button')).toHaveLength(1);
-		expect(view.find('[data-music-title]').text()).toBe('Atardecer en la terraza del taller');
-		expect(view.find('[data-music-title]').classes()).toContain('truncate');
+		expect(view.find('[data-pill-label]').text()).toBe('Atardecer en la terraza del taller');
+		expect(view.find('[data-pill-label]').classes()).toContain('truncate');
+		view.unmount();
+	});
+
+	test('debajo del título, chico, por dónde va: «01:36 / 04:05»', async () => {
+		// Como en el video de referencia (vasak-desktop#151). Con las cifras
+		// tabulares de la píldora, el número no baila al avanzar.
+		const view = await mountPill();
+		expect(view.find('[data-pill-caption]').text()).toBe('01:36 / 04:05');
+		expect(view.find('[data-panel-pill]').classes()).toContain('tabular-nums');
+		view.unmount();
+	});
+
+	test('una radio en vivo, sin largo, no muestra posición', async () => {
+		music.info.value = { ...music.info.value, length: 0 };
+		const view = await mountPill();
+		expect(view.find('[data-pill-label]').exists()).toBe(true);
+		expect(view.find('[data-pill-caption]').exists()).toBe(false);
+		view.unmount();
+	});
+
+	test('es una píldora translúcida del panel, y abierta lo dice', async () => {
+		const view = await mountPill();
+		const pill = view.find('[data-panel-pill]');
+		expect(pill.classes()).toContain('bg-ui-shell');
+		expect(pill.classes().join(' ')).not.toMatch(/backdrop-blur/);
+		expect(pill.attributes('aria-expanded')).toBe('false');
 		view.unmount();
 	});
 
@@ -88,14 +114,14 @@ describe('la píldora del panel', () => {
 	test('con el panel a un costado queda la portada sola', async () => {
 		music.vertical.value = true;
 		const view = await mountPill();
-		expect(view.find('[data-music-title]').exists()).toBe(false);
+		expect(view.find('[data-pill-label]').exists()).toBe(false);
 		view.unmount();
 	});
 
 	test('sin nada sonando no hay título, y el botón igual tiene nombre', async () => {
 		music.info.value = { ...music.info.value, title: '', artist: '', status: 'Stopped' };
 		const view = await mountPill();
-		expect(view.find('[data-music-title]').exists()).toBe(false);
+		expect(view.find('[data-pill-label]').exists()).toBe(false);
 		expect(view.find('button').attributes('aria-label')).toBeTruthy();
 		view.unmount();
 	});

@@ -76,7 +76,14 @@ views:
     menuAlt: Menu
     settingsAlt: Settings
     filesAlt: Files
+    pinnedAlt: Pinned apps
     notificationsAlt: Notifications
+    workspaces: Workspaces
+    workspace: "Workspace {0}"
+    keyboardLayout: "Keyboard layout: {0}"
+    keyboardLayoutNext: "{0}. Press to switch to the next one"
+    windowsAlt: Open windows
+    trayAlt: System tray
   desktop:
     backgroundAlt: Wallpaper
     videoWallpaperPowerTitle: A moving wallpaper uses more power
@@ -387,6 +394,7 @@ components:
   TrayIconBluetooth:
     statusOn: Bluetooth on
     statusOff: Bluetooth off
+    connectedTo: "Bluetooth connected to {0}"
     iconAlt: Bluetooth icon
   TrayIconCapsLock:
     capsLock: Caps Lock
@@ -403,8 +411,8 @@ components:
     screen: Screen shared
     usedBy: "{0} — {1}"
   TrayIconSound:
-    mute: Mute
-    unmute: Unmute
+    level: "Volume: {0} %"
+    muted: Sound muted
   TrayIconTwingate:
     connected: "Twingate: {0} resources"
     disconnected: "Twingate: disconnected"
@@ -433,6 +441,7 @@ components:
   TrayNetworkRateControl:
     title: "Network transfer: download and upload"
   TrayWeatherControl:
+    open: Open the date board
     summary: "High {0}° and low {1}°"
   WeatherIcon:
     unknown: Unknown weather condition

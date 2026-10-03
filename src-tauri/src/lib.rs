@@ -91,6 +91,7 @@ use applets::{
     battery::BatteryApplet,
     bluetooth::BluetoothApplet,
     brightness::BrightnessApplet,
+    compositor::CompositorApplet,
     connect::ConnectApplet,
     equalizer::EqualizerApplet,
     keyboard_leds::KeyboardLedsApplet,
@@ -184,6 +185,11 @@ pub fn run() {
             toggle_menu,
             set_menu_button,
             show_panel,
+            set_panel_input_region,
+            get_workspaces,
+            switch_workspace,
+            get_keyboard_layout,
+            next_keyboard_layout,
             get_audio_volume,
             bluetooth_audio_profile::get_bluetooth_audio_profile,
             set_audio_volume,
@@ -412,6 +418,8 @@ pub fn run() {
                 // Normal: Spawned after critical are ready, without awaiting
                 manager.register(BatteryApplet, AppletPriority::Normal).await;
                 manager.register(KeyboardLedsApplet, AppletPriority::Normal).await;
+                // Los espacios de trabajo y la distribución de teclado del panel.
+                manager.register(CompositorApplet, AppletPriority::Normal).await;
                 manager.register(MusicApplet, AppletPriority::Normal).await;
                 manager.register(TrayApplet, AppletPriority::Normal).await;
                 manager.register(NotificationApplet, AppletPriority::Normal).await;

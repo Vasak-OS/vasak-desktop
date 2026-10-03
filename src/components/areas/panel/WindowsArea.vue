@@ -2,6 +2,8 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { PanelPill } from '@vasakgroup/vue-libvasak';
 import { onMounted, ref } from 'vue';
 import WindowPanelButton from '@/components/buttons/WindowPanelButton.vue';
 import type { LauncherEntryView } from '@/interfaces/tray';
@@ -22,6 +24,7 @@ interface WindowDelta {
 // De costado las ventanas se apilan, y lo que sobra scrollea a lo largo de la
 // barra en vez de desbordarse fuera de la pantalla.
 const { vertical } = usePanelConfig();
+const { t } = useI18n();
 
 const windows = ref<WindowInfo[]>([]);
 
@@ -85,16 +88,30 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
 </script>
 
 <template>
-  <div
-    class="flex items-center justify-center"
+  <!-- Las ventanas abiertas, en su píldora del panel (vasak-desktop#151). El
+       video de referencia no tiene barra de tareas, pero acá es la única
+       manera de volver a una ventana minimizada sin abrir el menú: queda, en
+       una píldora más, y sin ventanas no se dibuja. No se pliega en ningún
+       ancho (decisión del usuario, 03/10/2026): son sólo iconos, y lo que no
+       entra se desplaza adentro de la píldora. Lo que no entra se
+       desplaza adentro de la píldora en vez de empujar a las demás. -->
+  <PanelPill
+    v-if="windows.length > 0"
+    :interactive="false"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
+    flush
+    role="group"
+    :accessible-label="t('views.panel.windowsAlt')"
+    class="shrink-0"
     :class="vertical
-      ? 'flex-col min-h-0 flex-1 py-3 overflow-y-auto overflow-x-hidden'
-      : 'px-3 overflow-x-auto overflow-y-hidden'"
+      ? 'min-h-0 flex-1 py-1 overflow-y-auto overflow-x-hidden'
+      : 'px-1 overflow-x-auto overflow-y-hidden'"
+    data-windows-pill
   >
-    <TransitionGroup 
+    <TransitionGroup
       move-class="transition-transform duration-300 ease-in-out" enter-active-class="transition-all duration-300 ease-in-out" leave-active-class="transition-all duration-300 ease-in-out" enter-from-class="opacity-0 translate-y-[30px]" leave-to-class="opacity-0 translate-y-[30px]"
       tag="div"
-      class="flex items-center justify-center gap-0.5"
+      class="flex items-center gap-0.5"
       :class="vertical ? 'flex-col' : ''"
     >
       <WindowPanelButton
@@ -104,6 +121,5 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
         :launcher="launcherForApp(launcherEntries, window.app_id)"
       />
     </TransitionGroup>
-  </div>
+  </PanelPill>
 </template>
-

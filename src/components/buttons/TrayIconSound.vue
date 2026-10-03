@@ -2,17 +2,22 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { PanelPill } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import type { VolumeInfo } from '@/interfaces/volume';
 import { getAudioVolume } from '@/services/core.service';
 import { toggleApplet } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
+import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { useSharedEvent } from '@/tools/event.bus';
+import { showsNumbers } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
 
 const { t } = useI18n();
+const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 const volumeInfo = ref<VolumeInfo>({
 	current: 0,
@@ -39,7 +44,23 @@ async function getVolumeInfo(): Promise<void> {
 }
 
 const button = ref<unknown>(null);
-const { openClasses } = useOpenApplet('audio');
+const { isOpen } = useOpenApplet('audio');
+
+/**
+ * El número de la píldora (vasak-desktop#151): «50», como en el video. En
+ * silencio no hay número: el icono tachado ya lo dice.
+ */
+const level = computed(() => Math.round(volumePercentage.value));
+const label = computed(() =>
+	vertical.value || !showsNumbers(density.value) || volumeInfo.value.is_muted
+		? ''
+		: String(level.value)
+);
+const description = computed(() =>
+	volumeInfo.value.is_muted
+		? t('components.TrayIconSound.muted')
+		: t('components.TrayIconSound.level').replace('{0}', String(level.value))
+);
 
 async function toggleAudioApplet(): Promise<void> {
 	try {
@@ -63,17 +84,19 @@ useSharedEvent<VolumeInfo>(
 );
 </script>
 <template>
-  <TrayIconButton
+  <!-- La píldora del volumen: el icono y el número; abre el applet de audio
+       colgado de acá. -->
+  <PanelPill
     ref="button"
-    :name="currentIcon"
-    :tooltip="volumeInfo.is_muted
-      ? t('components.TrayIconSound.unmute')
-      : t('components.TrayIconSound.mute')"
-    :alt="volumeInfo.is_muted
-      ? t('components.TrayIconSound.unmute')
-      : t('components.TrayIconSound.mute')"
-    :icon-class="{ 'opacity-60': volumeInfo.is_muted }"
-    :custom-class="openClasses"
+    :icon="currentIcon"
+    icon-type="icon"
+    :label="label"
+    :expanded="isOpen"
+    :title="description"
+    :accessible-label="description"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
+    class="shrink-0"
+    data-volume-pill
     @click="toggleAudioApplet"
   />
 </template>

@@ -2,14 +2,19 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { PanelPill } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import type { BatteryInfo } from '@/interfaces/battery';
 import { getBatteryInfo } from '@/services/core.service';
+import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { useSharedEvent } from '@/tools/event.bus';
+import { showsNumbers } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
+const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 const batteryInfo = ref<BatteryInfo>({
 	has_battery: false,
@@ -26,15 +31,12 @@ const batteryAltText = computed(() => {
 		.replace('{1}', String(batteryInfo.value.state));
 });
 
-const tooltipClass = computed(() => ({
-	'text-status-success': batteryInfo.value.is_charging,
-	'text-status-error': batteryInfo.value.percentage < 20 && !batteryInfo.value.is_charging,
-	'text-status-warning':
-		batteryInfo.value.percentage < 50 &&
-		batteryInfo.value.percentage >= 20 &&
-		!batteryInfo.value.is_charging,
-	'text-primary': batteryInfo.value.percentage >= 50 && !batteryInfo.value.is_charging,
-}));
+/** El número de la píldora (vasak-desktop#151): «100», como en el video. */
+const label = computed(() =>
+	vertical.value || !showsNumbers(density.value) || !batteryInfo.value.has_battery
+		? ''
+		: String(Math.round(batteryInfo.value.percentage))
+);
 
 const batteryIconName = computed(() => {
 	if (!batteryInfo.value.has_battery) return 'battery-missing-symbolic';
@@ -93,18 +95,18 @@ useSharedEvent<BatteryInfo>('battery-update', (payload) => {
 </script>
 
 <template>
-  <TrayIconButton
-    :name="batteryIconName"
-    :alt="batteryAltText"
-    :tooltip="batteryAltText"
-    :show-custom-tooltip="batteryInfo.has_battery"
-    :custom-tooltip-text="batteryInfo.has_battery ? Math.round(batteryInfo.percentage) + '%' : ''"
-    :tooltip-class="tooltipClass"
-    :icon-class="{
-      'opacity-60': !batteryInfo.has_battery,
-      'animate-pulse': batteryInfo.is_charging,
-    }"
+  <!-- La píldora de la batería: el icono y el porcentaje. Sólo informa, así
+       que no es un botón ni se pinta al pasar. Sin batería —un escritorio—
+       no se dibuja. -->
+  <PanelPill
+    v-if="batteryInfo.has_battery"
+    :icon="batteryIconName"
+    icon-type="icon"
+    :label="label"
     :interactive="false"
+    :title="batteryAltText"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
+    class="shrink-0"
+    data-battery-pill
   />
 </template>
-

@@ -1,12 +1,14 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SpinningCover, TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { PanelPill, SpinningCover } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import { toggleApplet } from '@/services/window.service';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
+import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 import { formatDuration, playbackStateOf } from '@/utils/playback';
 
@@ -22,10 +24,15 @@ import { formatDuration, playbackStateOf } from '@/utils/playback';
  * reproductor era la portada de 22 píxeles (vasak-desktop#131).
  *
  * Con el panel a un costado no hay lugar para el título: queda la portada.
+ *
+ * En el panel en píldoras (vasak-desktop#151) es una `PanelPill` como las
+ * demás: la portada mini, el título cortado y, chico debajo, por dónde va
+ * —«01:42 / 04:19»—, como en el video de referencia. Sigue sin comandos.
  */
 
 const { t } = useI18n();
 const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
 const { musicInfo, imgSrc, position, progress, onImgError, initIcons, initMusicInfo } =
 	useMusicPlayer();
@@ -57,16 +64,25 @@ const accessibleName = computed(() => {
 /** Si suena, está en pausa o no hay nada: el disco gira, se congela o se queda quieto. */
 const state = computed(() => playbackStateOf(musicInfo.value.status));
 
-const showTitle = computed(() => !vertical.value && Boolean(musicInfo.value.title));
+// En un panel angosto queda la portada sola: el título entero sigue en el globo.
+const showTitle = computed(
+	() => !vertical.value && showsNames(density.value) && Boolean(musicInfo.value.title)
+);
+
+/**
+ * «01:42 / 04:19», con los minutos en dos cifras como en el video de
+ * referencia; con horas queda como viene («1:02:03»). Sin largo conocido (una
+ * radio en vivo), nada.
+ */
+const clock = (micros: number) => formatDuration(micros).padStart(5, '0');
+const timing = computed(() => {
+	const info = musicInfo.value;
+	if (!showTitle.value || info.length <= 0) return '';
+	return `${clock(position.value)} / ${clock(info.length)}`;
+});
 
 const opener = ref<unknown>(null);
-const { openClasses } = useOpenApplet('music');
-
-const buttonClasses = computed(() => ({
-	'flex items-center gap-2': true,
-	'pr-2': showTitle.value,
-	...openClasses.value,
-}));
+const { isOpen } = useOpenApplet('music');
 
 async function openPlayer(): Promise<void> {
 	try {
@@ -83,31 +99,33 @@ onMounted(async () => {
 </script>
 
 <template>
-  <!-- La píldora es el botón de la bandeja de la librería: se apunta entera,
-       se realza mientras el reproductor está abierto y es el ancla de dónde
-       se despliega. Adentro, la portada (`SpinningCover`, que se congela en
-       pausa en vez de volver a cero y se queda quieta con menos movimiento)
-       con el aro de avance, y el título cortado. -->
-  <TrayIconButton
+  <!-- La píldora es un botón entero: se apunta entera, se realza mientras el
+       reproductor está abierto y es el ancla de dónde se despliega. Adentro,
+       la portada (`SpinningCover`, que se congela en pausa en vez de volver a
+       cero y se queda quieta con menos movimiento) con el aro de avance, el
+       título cortado y la posición. -->
+  <PanelPill
     ref="opener"
-    :alt="accessibleName"
-    :tooltip="summary"
-    :custom-class="buttonClasses"
+    :label="showTitle ? musicInfo.title : ''"
+    :caption="timing"
+    :expanded="isOpen"
+    :title="summary"
+    :accessible-label="accessibleName"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
+    class="max-w-56"
+    data-music-pill
     @click="openPlayer"
   >
-    <SpinningCover
-      class="size-5.5"
-      :src="imgSrc"
-      :alt="musicInfo.title"
-      :state="state"
-      :progress="musicInfo.length > 0 ? progress * 100 : null"
-      :progress-label="t('components.TrayMusicControl.progress')"
-      @error="onImgError"
-    />
-    <span
-      v-if="showTitle"
-      class="min-w-0 max-w-32 truncate text-label-xs text-tx-main"
-      data-music-title
-    >{{ musicInfo.title }}</span>
-  </TrayIconButton>
+    <template #leading>
+      <SpinningCover
+        class="size-6 shrink-0"
+        :src="imgSrc"
+        :alt="musicInfo.title"
+        :state="state"
+        :progress="musicInfo.length > 0 ? progress * 100 : null"
+        :progress-label="t('components.TrayMusicControl.progress')"
+        @error="onImgError"
+      />
+    </template>
+  </PanelPill>
 </template>

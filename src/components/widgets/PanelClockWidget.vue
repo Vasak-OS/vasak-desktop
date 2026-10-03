@@ -1,71 +1,49 @@
 <script setup lang="ts">
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { PanelPill } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { toggleApplet } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
+import { clockParts } from '@/tools/panel-clock';
+import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
-const { t } = useI18n();
-
-interface TimeData {
-	day: string;
-	month: string;
-	year: string;
-	hour: string;
-	minute: string;
-}
-
 /**
- * De costado la hora va apilada sobre los minutos.
+ * El reloj del panel, en su píldora (vasak-desktop#151): la hora y, chica
+ * debajo, la fecha —«domingo, 22 de marzo»—, como en el video de referencia.
+ * Tocarlo abre el tablero de fecha colgado de acá (vasak-desktop#130).
  *
- * «12:34» son cinco caracteres: en una barra de 36 píxeles de ancho no entran
- * en una línea, y encogerlos hasta que entren los deja ilegibles. Dos líneas de
- * dos dígitos sí entran, y el día completo sigue estando en el `title`.
+ * De costado la hora va apilada sobre los minutos: «12:34» son cinco
+ * caracteres y en una barra de 36 píxeles de ancho no entran en una línea.
+ * Dos de dos dígitos sí, y la fecha entera queda en el globo.
  */
+const { t, locale } = useI18n();
 const { vertical } = usePanelConfig();
+const density = usePanelDensity();
 
-const timeData = ref<TimeData>({
-	day: '00',
-	month: '00',
-	year: '0000',
-	hour: '00',
-	minute: '00',
-});
-
-const formatNumber = (num: number): string => num.toString().padStart(2, '0');
-
-const updateTime = () => {
-	const date = new Date();
-	timeData.value = {
-		hour: formatNumber(date.getHours()),
-		minute: formatNumber(date.getMinutes()),
-		day: formatNumber(date.getDate()),
-		month: formatNumber(date.getMonth() + 1),
-		year: date.getFullYear().toString(),
-	};
-};
+const now = ref(new Date());
+const parts = computed(() => clockParts(now.value, locale.value));
 
 /**
  * Wakes up on the minute instead of every five seconds.
  *
- * The old timer fired 12 times a minute for a clock that only shows HH:MM, and
- * because it was not aligned to the minute the displayed time could be up to
- * five seconds stale. Scheduling to the next minute boundary is both accurate
- * and ~12x fewer wakeups. The interval was also never cleared.
+ * The clock only shows HH:MM, so waking up at the next minute boundary is both
+ * accurate and ~12x fewer wakeups than a fixed five-second timer.
  */
 let tickTimer: ReturnType<typeof setTimeout> | undefined;
 
 const scheduleNextTick = () => {
 	const msUntilNextMinute = 60_000 - (Date.now() % 60_000);
 	tickTimer = setTimeout(() => {
-		updateTime();
+		now.value = new Date();
 		scheduleNextTick();
 	}, msUntilNextMinute);
 };
 
 onMounted(() => {
-	updateTime();
+	now.value = new Date();
 	scheduleNextTick();
 });
 
@@ -73,20 +51,10 @@ onUnmounted(() => {
 	if (tickTimer !== undefined) clearTimeout(tickTimer);
 });
 
-/**
- * El tablero de fecha, colgado del reloj (vasak-desktop#130).
- *
- * El reloj es el lugar donde se busca «qué día es y qué tengo hoy», y hasta
- * acá no abría nada. Ahora es un botón: abre el tablero debajo de él y se
- * realza mientras está abierto, como los demás del panel.
- */
-const opener = ref<HTMLElement | null>(null);
-const { isOpen, openClasses } = useOpenApplet('date');
-const fullDate = computed(
-	() => `${timeData.value.day}/${timeData.value.month}/${timeData.value.year}`
-);
+const opener = ref<unknown>(null);
+const { isOpen } = useOpenApplet('date');
 const openLabel = computed(() =>
-	t('components.PanelClock.open').replace('{0}', () => fullDate.value)
+	t('components.PanelClock.open').replace('{0}', () => parts.value.longDate)
 );
 
 async function openBoard(): Promise<void> {
@@ -99,24 +67,17 @@ async function openBoard(): Promise<void> {
 </script>
 
 <template>
-  <button
+  <PanelPill
     ref="opener"
-    type="button"
-    class="flex items-center justify-center rounded-corner-m p-1 font-mono transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ui-focus"
-    :class="[vertical ? 'flex-col text-label-xs leading-tight' : 'text-label-m', openClasses]"
-    :title="fullDate"
-    :aria-label="openLabel"
-    :aria-expanded="isOpen"
+    :label="vertical ? parts.hour : parts.time"
+    :caption="vertical ? parts.minute : showsNames(density) ? parts.date : ''"
+    :expanded="isOpen"
+    :title="parts.longDate"
+    :accessible-label="openLabel"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
     aria-haspopup="dialog"
+    class="shrink-0"
+    data-clock-pill
     @click="openBoard"
-  >
-    <span aria-hidden="true">
-      <template v-if="vertical">{{ timeData.hour }}</template>
-      <template v-else>{{ timeData.hour }}:{{ timeData.minute }}</template>
-    </span>
-    <span v-if="vertical" aria-hidden="true">
-      {{ timeData.minute }}
-    </span>
-  </button>
+  />
 </template>
-
