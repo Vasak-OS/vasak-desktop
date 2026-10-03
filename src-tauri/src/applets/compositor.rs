@@ -322,15 +322,24 @@ pub struct CompositorApplet;
 
 /// Una vuelta de seguimiento: conectarse, suscribirse y avisar hasta que el
 /// socket se caiga.
-async fn follow(app: &AppHandle) -> Result<(), Box<dyn Error + Send + Sync>> {
-    let client = WayfireClient::connect().await?;
+///
+/// Devuelve si llegó a suscribirse: con `true` el reintento es rápido (la
+/// sesión anduvo y se cayó Wayfire); con `false` ni conectó y toca backoff.
+async fn follow(app: &AppHandle) -> (Result<(), Box<dyn Error + Send + Sync>>, bool) {
+    let client = match WayfireClient::connect().await {
+        Ok(client) => client,
+        Err(error) => return (Err(error), false),
+    };
     let mut events = client.subscribe();
-    client
+    if let Err(error) = client
         .send_and_wait(
             "window-rules/events/watch",
             json!({ "events": WATCHED_EVENTS }),
         )
-        .await?;
+        .await
+    {
+        return (Err(error), false);
+    }
 
     let mut workspaces = workspace_state_with(&client).await.ok().flatten();
     let mut layout = keyboard_layout_with(&client).await.ok().flatten();
@@ -341,7 +350,7 @@ async fn follow(app: &AppHandle) -> Result<(), Box<dyn Error + Send + Sync>> {
         let event = match events.recv().await {
             Ok(event) => event,
             Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
-            Err(_) => return Err("el socket de Wayfire se cerró".into()),
+            Err(_) => return (Err("el socket de Wayfire se cerró".into()), true),
         };
         let name = event
             .get("event")
@@ -364,6 +373,29 @@ async fn follow(app: &AppHandle) -> Result<(), Box<dyn Error + Send + Sync>> {
     }
 }
 
+/// Cuánto espera el reintento antes de volver a conectarse.
+const BASE_RECONNECT_DELAY: Duration = Duration::from_secs(2);
+/// Tope del backoff cuando Wayfire ni responde.
+const MAX_RECONNECT_DELAY: Duration = Duration::from_secs(30);
+
+/// El delay con el que se duerme antes del próximo intento.
+///
+/// Si la vuelta llegó a suscribirse (`connected`), la sesión anduvo y el
+/// próximo reintento es rápido; si ni conectó, el backoff crece.
+fn next_reconnect_delay(connected: bool, current: Duration) -> Duration {
+    if connected {
+        BASE_RECONNECT_DELAY
+    } else {
+        current
+    }
+}
+
+/// El delay a guardar después de dormir: prepara el backoff del siguiente
+/// fallo sin cambiar el que se acaba de usar.
+fn backoff_after_sleep(current: Duration) -> Duration {
+    (current * 2).min(MAX_RECONNECT_DELAY)
+}
+
 #[async_trait]
 impl Applet for CompositorApplet {
     fn name(&self) -> &'static str {
@@ -372,16 +404,15 @@ impl Applet for CompositorApplet {
 
     async fn start(&self, app: AppHandle) -> Result<(), Box<dyn Error>> {
         tauri::async_runtime::spawn(async move {
-            let mut delay = Duration::from_secs(2);
+            let mut delay = BASE_RECONNECT_DELAY;
             loop {
-                match follow(&app).await {
-                    Ok(()) => delay = Duration::from_secs(2),
-                    Err(error) => {
-                        log::debug!("[compositor] sin eventos de Wayfire: {error}");
-                    }
+                let (result, connected) = follow(&app).await;
+                if let Err(error) = result {
+                    log::debug!("[compositor] sin eventos de Wayfire: {error}");
                 }
+                delay = next_reconnect_delay(connected, delay);
                 tokio::time::sleep(delay).await;
-                delay = (delay * 2).min(Duration::from_secs(30));
+                delay = backoff_after_sleep(delay);
             }
         });
         Ok(())
@@ -545,5 +576,31 @@ mod tests {
     fn un_indice_fuera_de_rango_se_acota() {
         let state = json!({ "possible-layouts": ["A"], "layout": "A", "layout-index": 7 });
         assert_eq!(layout_from_state(&state, &HashMap::new()).unwrap().index, 0);
+    }
+
+    #[test]
+    fn tras_una_sesion_que_anduvo_el_reintento_es_rapido() {
+        // Aunque el backoff haya llegado al tope, si la vuelta se suscribió
+        // y después se cayó el socket, el próximo intento espera la base.
+        assert_eq!(
+            next_reconnect_delay(true, Duration::from_secs(30)),
+            BASE_RECONNECT_DELAY
+        );
+    }
+
+    #[test]
+    fn sin_conexion_el_backoff_crece_hasta_el_tope() {
+        assert_eq!(
+            next_reconnect_delay(false, Duration::from_secs(8)),
+            Duration::from_secs(8)
+        );
+        assert_eq!(
+            backoff_after_sleep(Duration::from_secs(8)),
+            Duration::from_secs(16)
+        );
+        assert_eq!(
+            backoff_after_sleep(Duration::from_secs(30)),
+            Duration::from_secs(30)
+        );
     }
 }
