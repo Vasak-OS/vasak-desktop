@@ -1,4 +1,6 @@
-use crate::commands::{toggle_control_center, toggle_menu, toggle_session_popup};
+use crate::commands::{
+    toggle_control_center, toggle_menu, toggle_session_popup, toggle_wallpaper_picker,
+};
 use crate::constants::DBUS_SERVICE_NAME;
 use crate::logger::{log_debug, log_error, log_info, log_warning};
 use futures_util::TryStreamExt;
@@ -97,6 +99,17 @@ impl DesktopService {
                 if let Err(error) = crate::screen_time::clear() {
                     log_error(&format!(
                         "D-Bus: no se pudo borrar el tiempo de pantalla: {error}"
+                    ));
+                }
+            }
+            // El selector rápido de fondos (vasak-desktop#133). Para un atajo de
+            // teclado de Wayfire, como `OpenMenu`; no contesta.
+            "OpenWallpaperPicker" => {
+                log_info("D-Bus: alternando el selector de fondos");
+                if let Err(error) = toggle_wallpaper_picker(self.app_handle.clone()) {
+                    log_error(&format!(
+                        "D-Bus: no se pudo alternar el selector de fondos: {}",
+                        error
                     ));
                 }
             }

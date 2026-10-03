@@ -17,6 +17,7 @@ mod session;
 mod session_popup;
 mod tray;
 mod twingate;
+mod wallpaper_picker;
 mod weather;
 mod window_manager;
 
@@ -52,6 +53,9 @@ pub use tray::{
     tray_menu_item_click, tray_popup_click,
 };
 pub use twingate::{twingate_authorize, twingate_info};
+pub use wallpaper_picker::{
+    hide_wallpaper_picker, prepare_wallpaper, toggle_wallpaper_picker, wallpaper_catalog,
+};
 pub use weather::{
     weather_cached, weather_claim, weather_place, weather_release, weather_store, WeatherCache,
 };

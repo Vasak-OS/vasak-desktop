@@ -141,6 +141,14 @@ views:
       hours: "{0}h"
       minutes: "{0}m"
       underMinute: under 1m
+  wallpaperPicker:
+    title: Wallpapers
+    more: More wallpapers…
+    empty: No wallpapers available
+    video: Moving wallpaper
+    current: Current wallpaper
+    hint: "Arrows or wheel to move · Enter to apply · Esc to close"
+    applyError: "The wallpaper could not be applied: {0}"
   applets:
     panelMenu:
       title: Panel options

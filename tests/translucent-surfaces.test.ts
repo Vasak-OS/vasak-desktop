@@ -71,6 +71,8 @@ const SURFACES: Array<[string, string, RegExp, Blur]> = [
 	['el menú de Connect', 'src/views/ConnectMenuView.vue', /'(flex h-screen[^']*)'/, 'none'],
 	['el OSD', 'src/views/apps/OsdPopupView.vue', /class="(w-screen h-screen[^"]*)"/, 'none'],
 	['la ventana de sesión', 'src/views/apps/SessionPopupView.vue', /'(h-screen w-screen[^']*)'/, 'none'],
+	// El selector rápido de fondos: sólo un velo detrás de la fila (vasak-desktop#133).
+	['el selector de fondos', 'src/views/apps/WallpaperPickerView.vue', /<div\s+class="([^"]*h-screen w-screen[^"]*)"/, 'none'],
 	// La excepción: el marco que flota sobre el fondo de pantalla.
 	['el marco de los widgets', 'src/components/widgets/WidgetFrame.vue', /surface === 'shell' \? '([^']*)'/, 'blur'],
 	// El marco suelto del menú (el clima) va dentro del menú, que ya desenfoca Wayfire.

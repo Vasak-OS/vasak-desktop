@@ -69,6 +69,11 @@ const routes = [
 				path: 'session-popup',
 				component: () => import('@/views/apps/SessionPopupView.vue'),
 			},
+			// El selector rápido de fondos: ver `windows_apps/wallpaper_picker.rs`.
+			{
+				path: 'wallpaper-picker',
+				component: () => import('@/views/apps/WallpaperPickerView.vue'),
+			},
 		],
 	},
 ];
