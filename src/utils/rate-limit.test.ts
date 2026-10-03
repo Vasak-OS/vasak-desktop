@@ -103,3 +103,27 @@ describe('el límite de llamadas por segundo', () => {
 		expect(sent).toHaveLength(2);
 	});
 });
+
+describe('lo que ya salió no sale dos veces', () => {
+	test('un temporizador que vence sin nada pendiente no manda nada', () => {
+		const time = fakeTime();
+		const sent: Array<[number, number]> = [];
+		// Un planificador que no cancela: el temporizador vence igual después
+		// de que `flush` ya mandó lo pendiente.
+		const limiter = rateLimited<number, number>(
+			(k, v) => sent.push([k, v]),
+			33,
+			time.clock,
+			time.schedule,
+			() => {}
+		);
+		limiter.push(0, 1);
+		limiter.push(0, 2);
+		limiter.flush();
+		time.advance(100);
+		expect(sent).toEqual([
+			[0, 1],
+			[0, 2],
+		]);
+	});
+});
