@@ -1,8 +1,8 @@
-use crate::logger::{log_error, log_info};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::Command;
+use crate::logger::{log_info, log_error};
 
 /// El directorio desde el que arranca una aplicación que abre el escritorio.
 ///
@@ -73,10 +73,7 @@ pub async fn open_app(path: &str) -> Result<(), String> {
 
             log_info(&format!("Ejecutando comando: {} {:?}", cmd, args));
             comando_de_aplicacion(&cmd, &args).spawn().map_err(|e| {
-                log_error(&format!(
-                    "Error al ejecutar comando {} {:?}: {}",
-                    cmd, args, e
-                ));
+                log_error(&format!("Error al ejecutar comando {} {:?}: {}", cmd, args, e));
                 e.to_string()
             })?;
 
@@ -229,10 +226,7 @@ mod tests_seccion {
         assert!(!es_nombre_de_seccion("/etc/passwd"));
         assert!(!es_nombre_de_seccion("Appearance-Panel"));
         assert!(!es_nombre_de_seccion("dos palabras"));
-        assert!(
-            !es_nombre_de_seccion("--help"),
-            "una opción, no una sección"
-        );
+        assert!(!es_nombre_de_seccion("--help"), "una opción, no una sección");
         assert!(!es_nombre_de_seccion(&"a".repeat(41)));
     }
 }
