@@ -84,10 +84,12 @@ describe('el reproductor desplegable', () => {
 		expect(VIEW).not.toContain('type="radio"');
 	});
 
-	test('el espacio del ecualizador no se dibuja mientras no exista', () => {
-		// La ranura `footer` de la tarjeta sin contenido no se dibuja; ponerle
-		// algo vacío dibujaría la línea y un hueco.
-		expect(VIEW).not.toContain('#footer');
+	test('el pie de la tarjeta es el ecualizador de la librería', () => {
+		expect(VIEW).toContain('<template #footer>');
+		expect(VIEW).toContain('<Equalizer');
+		expect(VIEW).toContain('useEqualizer()');
+		// Sin el servicio se dibuja como no disponible: la propiedad es la del bus.
+		expect(VIEW).toContain(':available="equalizer.service"');
 	});
 
 	test('cada vez que vuelve a la vista pide lo que muestra', () => {
@@ -167,6 +169,20 @@ describe('los textos', () => {
 		for (const key of ['byArtist', 'currentOutput']) {
 			expect(ES.views.musicApplet[key]).toContain('{0}');
 			expect(EN.views.musicApplet[key]).toContain('{0}');
+		}
+	});
+});
+
+describe('los textos del ecualizador', () => {
+	test('los nueve perfiles (los ocho de fábrica y el propio) en los dos idiomas', () => {
+		for (const catalog of [ES, EN]) {
+			const eq = catalog.views.musicApplet.equalizer;
+			for (const key of ['title', 'saved', 'unsaved', 'unavailable', 'presets']) {
+				expect(typeof eq[key]).toBe('string');
+			}
+			for (const preset of ['flat', 'bass', 'treble', 'vocal', 'pop', 'rock', 'jazz', 'classic', 'custom']) {
+				expect(typeof eq.presetNames[preset]).toBe('string');
+			}
 		}
 	});
 });

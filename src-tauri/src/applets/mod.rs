@@ -10,6 +10,7 @@ pub mod battery;
 pub mod bluetooth;
 pub mod brightness;
 pub mod connect;
+pub mod equalizer;
 pub mod keyboard_leds;
 pub mod music;
 pub mod network;

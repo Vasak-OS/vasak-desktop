@@ -227,9 +227,4 @@ describe('la tarjeta del reproductor', () => {
 		view.unmount();
 	});
 
-	test('la tarjeta termina en los controles: sin ecualizador no hay pie', async () => {
-		const view = await mountApplet();
-		expect(view.find('[data-footer]').exists()).toBe(false);
-		view.unmount();
-	});
 });

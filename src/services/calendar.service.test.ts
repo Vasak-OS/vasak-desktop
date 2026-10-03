@@ -8,6 +8,13 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 const calls: Array<{ cmd: string; args: Record<string, unknown> }> = [];
 let service: typeof import('@/services/calendar.service');
 
+/**
+ * El `window` que había antes, para devolverlo al terminar: con el DOM del
+ * `preload` (`tests/support/dom.ts`) es el de happy-dom, y borrarlo deja sin
+ * `window` a las pruebas que montan componentes después.
+ */
+const previousWindow = (globalThis as any).window;
+
 beforeAll(async () => {
 	(globalThis as any).window = {
 		__TAURI_INTERNALS__: {
@@ -24,7 +31,7 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-	delete (globalThis as any).window;
+	(globalThis as any).window = previousWindow;
 });
 
 describe('el servicio del calendario', () => {

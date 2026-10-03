@@ -92,6 +92,7 @@ use applets::{
     bluetooth::BluetoothApplet,
     brightness::BrightnessApplet,
     connect::ConnectApplet,
+    equalizer::EqualizerApplet,
     keyboard_leds::KeyboardLedsApplet,
     manager::{AppletManager, AppletPriority},
     music::MusicApplet,
@@ -225,6 +226,10 @@ pub fn run() {
             music_players,
             music_select_player,
             music_artwork,
+            equalizer_state,
+            equalizer_set_gain,
+            equalizer_set_preset,
+            equalizer_set_enabled,
             battery_exists,
             battery_fetch_info,
             get_battery_info,
@@ -412,6 +417,8 @@ pub fn run() {
                 manager.register(NotificationApplet, AppletPriority::Normal).await;
 
                 // Deferred: Started after panel-ready event from frontend
+                // El ecualizador de sistema sólo lo mira el reproductor desplegable.
+                manager.register(EqualizerApplet, AppletPriority::Deferred).await;
                 manager.register(BluetoothApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkRateApplet, AppletPriority::Deferred).await;

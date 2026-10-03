@@ -107,6 +107,22 @@ views:
     noOutputs: No audio outputs.
     viaCaption: via
     players: Open players
+    equalizer:
+      title: Equalizer
+      saved: Saved
+      unsaved: Not saved
+      unavailable: The equalizer is not available.
+      presets: Equalizer presets
+      presetNames:
+        flat: Flat
+        bass: Bass
+        treble: Treble
+        vocal: Vocal
+        pop: Pop
+        rock: Rock
+        jazz: Jazz
+        classic: Classic
+        custom: Custom
     back: Back
   screenTimeApplet:
     title: Screen time

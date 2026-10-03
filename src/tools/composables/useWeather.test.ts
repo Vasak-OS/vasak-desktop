@@ -34,6 +34,13 @@ let weather: ReturnType<typeof useWeather>;
 /** Espera a que se terminen de encadenar las promesas del módulo. */
 const settle = () => new Promise((done) => setTimeout(done, 20));
 
+/**
+ * El `window` que había antes, para devolverlo al terminar: con el DOM del
+ * `preload` (`tests/support/dom.ts`) es el de happy-dom, y borrarlo deja sin
+ * `window` a las pruebas que montan componentes después.
+ */
+const previousWindow = (globalThis as any).window;
+
 beforeAll(async () => {
 	(globalThis as any).window = {
 		__TAURI_INTERNALS__: {
@@ -57,7 +64,7 @@ beforeAll(async () => {
 });
 
 afterAll(() => {
-	delete (globalThis as any).window;
+	(globalThis as any).window = previousWindow;
 	globalThis.fetch = realFetch;
 });
 

@@ -125,14 +125,14 @@ pub const APPLETS: &[AppletSpec] = &[
     // de eso se trata la pantalla.
     AppletSpec { id: "twingate", route: "twingate", size: (480.0, 560.0) },
     // El reproductor que se despliega desde el control de música: el disco,
-    // los datos de la pista, la barra y el transporte. Cuatrocientos de ancho
-    // como en la referencia; el alto es el de la tarjeta sin ecualizador —que
-    // todavía no existe— con el título en dos líneas, las dos pastillas en un
-    // renglón y los puntos de varios reproductores abiertos, que es el caso
-    // más alto que se dibuja hoy (238 de contenido más el relleno del
-    // contenedor; con un solo reproductor lo que sobra se reparte arriba y
-    // abajo). Cuando llegue el ecualizador, este es el número que crece.
-    AppletSpec { id: "music", route: "music", size: (400.0, 272.0) },
+    // los datos de la pista, la barra, el transporte y el ecualizador de
+    // sistema. Cuatrocientos de ancho como en la referencia; el alto es el del
+    // caso más alto que se dibuja: título en dos líneas, las dos pastillas en
+    // un renglón, el ecualizador con sus perfiles y los puntos de varios
+    // reproductores (501 de contenido, medido en el banco, más el relleno y el
+    // borde del contenedor). Lo que sobra en los demás —un solo reproductor, el
+    // ecualizador no disponible— se reparte arriba y abajo.
+    AppletSpec { id: "music", route: "music", size: (400.0, 536.0) },
     // El tablero de tiempo de pantalla (vasak-desktop#150), que abre un botón
     // del centro de control. Sin botón del panel del que colgar, va centrado
     // en el eje del panel. El tamaño es el de la referencia a 1280 de

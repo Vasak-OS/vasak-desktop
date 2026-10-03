@@ -3,6 +3,8 @@ import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	ActionButton,
 	Chip,
+	Equalizer,
+	type EqualizerPreset,
 	NowPlayingCard,
 	OptionGroup,
 	type OptionGroupOption,
@@ -13,6 +15,7 @@ import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import type { AudioDevice } from '@/interfaces/audio-device';
 import { getAudioDevices, setAudioDevice } from '@/services/core.service';
 import { currentOutput, outputIcon, outputLabel } from '@/tools/audio-outputs';
+import { useEqualizer } from '@/tools/composables/useEqualizer';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { useSharedEvent } from '@/tools/event.bus';
 import { activePlayerIndex, playerLabels } from '@/tools/music-players';
@@ -33,9 +36,10 @@ import { formatDuration, playbackStateOf } from '@/utils/playback';
  * fija con `music_select_player`, el mismo camino que el selector del widget.
  * Con uno solo los puntos no se dibujan.
  *
- * El espacio del ecualizador (vasak-wireplumber-modules#10) es la ranura
- * `footer` de la tarjeta, que sin contenido no se dibuja: hasta que exista, la
- * tarjeta termina en el transporte.
+ * El pie es el ecualizador de sistema (vasak-wireplumber-modules#10, #12):
+ * `Equalizer` de la librería en la ranura `footer` de la tarjeta, con el estado
+ * de `useEqualizer`. Sin el servicio en el bus se dibuja como no disponible,
+ * nunca roto.
  */
 
 const { t } = useI18n();
@@ -85,6 +89,24 @@ function seekTo(micros: number): void {
 
 /** Por dónde suena: el nombre del reproductor, con «vía» delante en la pastilla. */
 const via = computed(() => musicInfo.value.playerIdentity || '');
+
+// ── El ecualizador ──────────────────────────────────────────────────────────
+
+const { state: equalizer, load: loadEqualizer, setGain, setPreset } = useEqualizer();
+
+/** Los perfiles con su nombre traducido; los identificadores van en inglés. */
+const equalizerPresets = computed<EqualizerPreset[]>(() =>
+	equalizer.value.presets.map((value) => ({
+		value,
+		label: presetLabel(value),
+	}))
+);
+
+function presetLabel(value: string): string {
+	const key = `views.musicApplet.equalizer.presetNames.${value}`;
+	const translated = t(key);
+	return translated && translated !== key ? translated : value;
+}
 
 // ── Los reproductores ───────────────────────────────────────────────────────
 
@@ -158,7 +180,7 @@ async function chooseOutput(device: AudioDevice): Promise<void> {
  */
 async function refresh(): Promise<void> {
 	pickingOutput.value = false;
-	await Promise.all([initMusicInfo(), loadDevices(), loadPlayers()]);
+	await Promise.all([initMusicInfo(), loadDevices(), loadPlayers(), loadEqualizer()]);
 }
 
 onMounted(async () => {
@@ -199,9 +221,9 @@ function onOutputChange(id: string): void {
 		     ventana. El selector **reemplaza** a la tarjeta, como una ficha con
 		     volver, en vez de taparla con una capa opaca: así el applet sigue
 		     dejando ver el desenfoque de Wayfire. El alto es el de `APPLETS`, el
-		     del caso más alto (título en dos renglones y los puntos de varios
-		     reproductores); lo que sobra en los demás se reparte arriba y abajo
-		     en vez de quedar como un hueco al pie. En un monitor tan angosto que
+		     del caso más alto (título en dos renglones, el ecualizador y los
+		     puntos de varios reproductores); lo que sobra en los demás se
+		     reparte arriba y abajo en vez de quedar como un hueco al pie. En un monitor tan angosto que
 		     el applet no entra en su ancho, la tarjeta pasa a una columna (lo
 		     hace la librería por container query), las pastillas se parten en
 		     renglones y lo que no entra en el alto se desplaza: nada se corta. -->
@@ -234,6 +256,26 @@ function onOutputChange(id: string): void {
 					@seek="seekTo"
 					@cover-error="onImgError"
 				>
+					<template #footer>
+						<Equalizer
+							:frequencies="equalizer.frequencies"
+							:gains="equalizer.gains"
+							:range="equalizer.range"
+							:presets="equalizerPresets"
+							:preset="equalizer.preset"
+							:saved="equalizer.saved"
+							:enabled="equalizer.enabled"
+							:available="equalizer.service"
+							:title="t('views.musicApplet.equalizer.title')"
+							:saved-label="t('views.musicApplet.equalizer.saved')"
+							:unsaved-label="t('views.musicApplet.equalizer.unsaved')"
+							:unavailable-label="t('views.musicApplet.equalizer.unavailable')"
+							:presets-label="t('views.musicApplet.equalizer.presets')"
+							:custom-label="presetLabel('custom')"
+							@gain="setGain"
+							@preset="setPreset"
+						/>
+					</template>
 					<template #details>
 						<!-- Dos pastillas en un renglón, como en la referencia: la
 						     salida, que abre el selector, y la aplicación de origen,
