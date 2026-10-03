@@ -4,7 +4,7 @@
  * la red y el volumen. Lo que habla con Tauri o con otras ventanas es un doble
  * que la prueba controla desde `panel`.
  */
-import { computed, ref } from 'vue';
+import { computed, defineComponent, h, ref } from 'vue';
 import type { KeyboardLayout, WorkspaceState } from '../../src/services/compositor.service';
 import type { NetworkInfo } from '../../src/services/network.service';
 
@@ -98,3 +98,19 @@ export function useSharedEvent(name: string, handler: Handler) {
 }
 
 export const logError = () => {};
+
+export const getWindows = async () => [
+	{ id: '1', title: 'Firefox', is_minimized: false, icon: 'firefox', app_id: 'firefox' },
+	{ id: '2', title: 'Terminal', is_minimized: false, icon: 'utilities-terminal', app_id: 'vasak-terminal' },
+];
+export const getLauncherEntries = async () => [];
+export const launcherForApp = () => undefined;
+
+/** El botón de cada ventana: una caja con su título, para contarlas. */
+export default defineComponent({
+	name: 'WindowButtonDouble',
+	props: { title: { type: String, default: '' } },
+	setup(props) {
+		return () => h('button', { 'data-window': props.title }, props.title);
+	},
+});

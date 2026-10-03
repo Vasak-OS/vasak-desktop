@@ -16,6 +16,7 @@ import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import TrayWeatherControl from '@/components/controls/TrayWeatherControl.vue';
 import KeyboardLayoutPill from '@/components/panel/KeyboardLayoutPill.vue';
+import PinnedAppsPill from '@/components/panel/PinnedAppsPill.vue';
 import WorkspacesPill from '@/components/panel/WorkspacesPill.vue';
 import PanelClockWidget from '@/components/widgets/PanelClockWidget.vue';
 import type { ConnectDevice } from '@/interfaces/connect';
@@ -28,7 +29,7 @@ import { getAllNotifications } from '@/services/notification.service';
 import { reportMenuButton, toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
-import { watchPanelDensity } from '@/tools/composables/usePanelDensity';
+import { usePanelDensity, watchPanelDensity } from '@/tools/composables/usePanelDensity';
 import { usePanelInputRegion } from '@/tools/composables/usePanelInputRegion';
 import { useSharedEvent } from '@/tools/event.bus';
 import { containsNewNotifications } from '@/tools/notifications';
@@ -61,6 +62,8 @@ usePanelInputRegion(bar);
  * icono (`panel-density.ts`), medido sobre la propia barra.
  */
 watchPanelDensity(bar, vertical);
+const density = usePanelDensity();
+const windowsFirst = computed(() => density.value === 'tight');
 
 /**
  * El clic derecho del panel: sólo cosas del panel.
@@ -152,10 +155,10 @@ const openPhoneMenu = async () => {
 };
 
 /**
- * La lupa, que abre el menú con la búsqueda enfocada: de ella cuelga el menú,
- * lo abra un clic o la tecla Super. Es una píldora de la librería, así que el
- * `ref` es la instancia: `anchorOf` sabe leerle el `$el`, y el observador
- * necesita el elemento.
+ * El botón del menú, el lince: de él cuelga el menú, lo abra un clic o la
+ * tecla Super. Es una píldora de la librería, así que el `ref` es la
+ * instancia: `anchorOf` sabe leerle el `$el`, y el observador necesita el
+ * elemento.
  */
 const menuButton = ref<{ $el?: Element } | null>(null);
 const { isOpen: menuIsOpen } = useOpenApplet('menu');
@@ -263,8 +266,8 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 	<!-- El panel en píldoras flotantes (vasak-desktop#151), como el video de
 	     referencia: la barra ya no es una franja continua sino píldoras sueltas
 	     sobre el escritorio. La `<nav>` es transparente y sólo reparte: a la
-	     izquierda la búsqueda, las notificaciones, los espacios de trabajo, la
-	     música y las ventanas; al centro el reloj y el clima; a la derecha la
+	     izquierda el menú, los accesos fijos, las notificaciones, los espacios
+	     de trabajo, la música y las ventanas; al centro el reloj y el clima; a la derecha la
 	     bandeja, el teclado, la red, el Bluetooth, el volumen y la batería.
 	     Cada píldora es una `PanelPill` de la librería en `ui-shell`, sin
 	     `backdrop-blur`: el desenfoque lo pone Wayfire detrás de cada una. La
@@ -277,17 +280,29 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 		data-panel-bar
 	>
     <div class="flex min-w-0 items-center gap-1.5 overflow-x-clip" :class="GROUP_CLASSES[position].start" data-panel-start>
+      <!-- El botón del menú: el lince de VasakOS (`start-here` del tema), como
+           siempre. Abre el menú con la búsqueda enfocada, lo abra este botón o
+           la tecla Super (tests/menu-search-focus.test.ts). -->
       <PanelPill
         ref="menuButton"
-        icon="system-search"
-        :accessible-label="t('views.panel.searchAlt')"
-        :title="t('views.panel.searchAlt')"
+        icon="start-here"
+        icon-type="icon"
+        :accessible-label="t('views.panel.menuAlt')"
+        :title="t('views.panel.menuAlt')"
         :expanded="menuIsOpen"
         :orientation="vertical ? 'vertical' : 'horizontal'"
         class="shrink-0"
-        data-search-pill
+        data-menu-pill
         @click="openMenu"
       />
+      <!-- Configuración y Archivos: la zona de los accesos fijos, donde después
+           van las aplicaciones ancladas. -->
+      <PinnedAppsPill />
+      <!-- En el panel más angosto las ventanas suben al lado de los accesos
+           fijos: así, si lo de la izquierda no entra, lo que se recorta es la
+           música o los espacios de trabajo y no la barra de ventanas, que no
+           sale nunca (decisión del usuario, 03/10/2026). -->
+      <WindowsArea v-if="windowsFirst" />
       <!-- El número no pasa de 99 para que entre en la píldora. -->
       <PanelPill
         :accessible-label="t('views.panel.notificationsAlt')"
@@ -337,7 +352,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       </PanelPill>
       <WorkspacesPill />
       <TrayMusicControl v-if="showMusic" />
-      <WindowsArea />
+      <WindowsArea v-if="!windowsFirst" />
     </div>
     <div class="flex items-center gap-1.5" :class="GROUP_CLASSES[position].center" data-panel-center>
       <PanelClockWidget />

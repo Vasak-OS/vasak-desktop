@@ -146,9 +146,9 @@ describe('los botones del panel se anuncian con nombre', () => {
 	 * panel —la búsqueda, las notificaciones, el teléfono, la red, el
 	 * Bluetooth, el volumen, la música, el reloj— pasaron a ser `PanelPill`, y
 	 * los espacios de trabajo `WorkspaceSwitcher`. `TrayIconButton` queda para
-	 * los cinco iconos chicos que viven adentro de la píldora de la bandeja y
-	 * de la de las ventanas: privacidad, Bloq Mayús, micrófono, Twingate y el
-	 * botón de cada ventana.
+	 * los iconos chicos que viven adentro de una píldora: privacidad, Bloq
+	 * Mayús, micrófono, Twingate, el botón de cada ventana y los accesos fijos
+	 * (Configuración y Archivos).
 	 */
 	test('el de la bandeja ya no tiene copia acá', () => {
 		expect(sources.filter(({ path }) => path.endsWith('buttons/TrayIconButton.vue'))).toEqual([]);
@@ -168,13 +168,13 @@ describe('los botones del panel se anuncian con nombre', () => {
 		expect(offenders).toEqual([]);
 	});
 
-	test('son cinco los iconos de la bandeja y doce las píldoras, no menos', () => {
+	test('son seis los iconos chicos y doce las píldoras, no menos', () => {
 		// Sin esto, la de arriba pasa sobre una lista vacía el día que alguien
 		// renombre los archivos y el patrón deje de encontrarlos.
 		const users = (name: string) =>
 			sources.filter(({ text }) => new RegExp(`<${name}\\b`).test(text)).map(({ path }) => path).sort();
 
-		expect(users('TrayIconButton')).toHaveLength(5);
+		expect(users('TrayIconButton')).toHaveLength(6);
 		expect(users('PanelPill')).toEqual([
 			'components/areas/panel/TrayBarArea.vue',
 			'components/areas/panel/WindowsArea.vue',
@@ -185,6 +185,7 @@ describe('los botones del panel se anuncian con nombre', () => {
 			'components/controls/TrayMusicControl.vue',
 			'components/controls/TrayWeatherControl.vue',
 			'components/panel/KeyboardLayoutPill.vue',
+			'components/panel/PinnedAppsPill.vue',
 			'components/widgets/PanelClockWidget.vue',
 			'views/PanelView.vue',
 		]);
@@ -197,7 +198,9 @@ describe('los botones del panel se anuncian con nombre', () => {
 		expect(read('components/buttons/TrayIconPrivacy.vue')).toContain(':alt="detail"');
 		expect(read('components/buttons/WindowPanelButton.vue')).toContain(':alt="title"');
 		const panel = read('views/PanelView.vue');
-		expect(panel).toContain(':accessible-label="t(\'views.panel.searchAlt\')"');
+		expect(panel).toContain(':accessible-label="t(\'views.panel.menuAlt\')"');
+		// Los accesos fijos, por `alt` como los demás iconos chicos.
+		expect(read('components/panel/PinnedAppsPill.vue')).toContain(':alt="t(app.label)"');
 		expect(panel).toContain(':accessible-label="t(\'views.panel.notificationsAlt\')"');
 		for (const path of [
 			'components/buttons/TrayIconNetwork.vue',

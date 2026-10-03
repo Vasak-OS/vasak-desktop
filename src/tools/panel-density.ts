@@ -5,9 +5,9 @@
  * el nombre de la red y del auricular, la fecha bajo la hora. En una más
  * angosta esos textos largos se pliegan al icono —el nombre entero queda en el
  * globo y en el nombre accesible— y, más angosta todavía, también los números
- * del volumen y la batería, el clima y la píldora de las ventanas, que se
- * alcanzan desde sus applets y el menú. Así ninguna píldora se monta sobre
- * otra.
+ * del volumen, la batería y el clima, que se leen en sus applets. La barra de
+ * ventanas no se pliega nunca: ya son sólo iconos. Así ninguna píldora se
+ * monta sobre otra.
  *
  * Se decide por el largo de la propia barra, no por el de la pantalla:
  * `ResizeObserver` sobre la `<nav>`, nunca un punto de corte del viewport.
@@ -28,5 +28,5 @@ export function panelDensity(length: number): PanelDensity {
 /** Si el texto largo de una píldora (nombres, título, fecha) entra. */
 export const showsNames = (density: PanelDensity) => density === 'full';
 
-/** Si entran los números cortos (volumen, batería, grados) y las ventanas. */
+/** Si entran los números cortos (volumen, batería, grados). */
 export const showsNumbers = (density: PanelDensity) => density !== 'tight';

@@ -19,6 +19,7 @@ let Workspaces: any;
 let Keyboard: any;
 let Network: any;
 let Sound: any;
+let Windows: any;
 
 beforeAll(async () => {
 	const load = (file: string, name: string) => loadComponent(dom.workdir(), file, DOUBLES, name);
@@ -26,6 +27,7 @@ beforeAll(async () => {
 	Keyboard = await load('src/components/panel/KeyboardLayoutPill.vue', 'KeyboardLayoutPill');
 	Network = await load('src/components/buttons/TrayIconNetwork.vue', 'TrayIconNetwork');
 	Sound = await load('src/components/buttons/TrayIconSound.vue', 'TrayIconSound');
+	Windows = await load('src/components/areas/panel/WindowsArea.vue', 'WindowsArea');
 }, 60_000);
 
 beforeEach(() => panel.reset());
@@ -189,6 +191,19 @@ describe('en un panel angosto', () => {
 		const tight = await render(Sound);
 		expect(tight.find('[data-pill-label]').exists()).toBe(false);
 		tight.unmount();
+	});
+});
+
+describe('la barra de ventanas', () => {
+	test('no se pliega en ningún ancho: en el panel más angosto siguen todas', async () => {
+		// Decisión del usuario (03/10/2026): la barra de ventanas queda siempre.
+		for (const level of ['full', 'compact', 'tight'] as const) {
+			density.value = level;
+			const view = await render(Windows);
+			expect(view.find('[data-windows-pill]').exists(), level).toBe(true);
+			expect(view.findAll('[data-window]').map((button) => button.text())).toEqual(['Firefox', 'Terminal']);
+			view.unmount();
+		}
 	});
 });
 

@@ -235,6 +235,7 @@ describe('las píldoras del panel dejan ver el escritorio entre ellas', () => {
 		'src/components/controls/TrayMusicControl.vue',
 		'src/components/controls/TrayWeatherControl.vue',
 		'src/components/panel/KeyboardLayoutPill.vue',
+		'src/components/panel/PinnedAppsPill.vue',
 		'src/components/widgets/PanelClockWidget.vue',
 	];
 
