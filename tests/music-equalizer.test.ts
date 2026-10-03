@@ -50,8 +50,9 @@ describe('el ecualizador al pie de la tarjeta', () => {
 		expect(view.findAll('[data-equalizer] [data-thumb]')).toHaveLength(10);
 		const rock = view.find('[data-preset="rock"]');
 		expect(rock.attributes('aria-checked')).toBe('true');
-		// Sin catálogo en la prueba, la clave de traducción es la de la app.
-		expect(rock.text()).toBe('views.musicApplet.equalizer.presetNames.rock');
+		// Sin catálogo en la prueba `t()` devuelve la clave cruda, y la vista cae
+		// en el identificador del perfil antes que leer la clave en voz alta.
+		expect(rock.text()).toBe('rock');
 		view.unmount();
 	});
 
