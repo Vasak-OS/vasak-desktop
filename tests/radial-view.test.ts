@@ -44,7 +44,9 @@ describe('la vista radial', () => {
 		);
 		expect(AREA).toContain('<DeviceOrbit');
 		expect(AREA).toContain('<SegmentedControl');
-		expect(PACKAGE.dependencies['@vasakgroup/vue-libvasak']).toBe('^2.6.0');
+		// DeviceOrbit llegó en la 2.6.0.
+		const [major, minor] = (PACKAGE.dependencies['@vasakgroup/vue-libvasak'] ?? '').replace('^', '').split('.').map(Number);
+		expect(major === 2 && (minor ?? 0) >= 6).toBe(true);
 		// Ni líneas ni círculos propios: los dibuja la órbita.
 		expect(AREA).not.toMatch(/<svg[\s>]/);
 		expect(AREA).not.toMatch(/rounded-corner-full/);
