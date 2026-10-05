@@ -224,8 +224,31 @@ fn run_idle(tx: Sender<IdleEvent>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::screen_time::store::tests::TempDir;
     use std::fs;
+    use std::path::PathBuf;
+
+    /// Un directorio propio en el temporal del sistema: **nunca** `/proc` de
+    /// verdad. Se borra al soltarlo. (Antes vivía en `store.rs`, que se fue con
+    /// la contabilidad al servicio de salud.)
+    pub struct TempDir(pub PathBuf);
+
+    impl TempDir {
+        pub fn new(label: &str) -> Self {
+            let dir = std::env::temp_dir().join(format!(
+                "vasak-screen-time-{label}-{}-{}",
+                std::process::id(),
+                uuid::Uuid::new_v4()
+            ));
+            fs::create_dir_all(&dir).expect("se crea el directorio temporal");
+            Self(dir)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
 
     #[test]
     fn el_bloqueo_se_reconoce_por_el_nombre_cortado_del_proceso() {
