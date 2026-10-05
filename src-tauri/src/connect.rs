@@ -124,7 +124,9 @@ pub async fn connect_list_devices(app: AppHandle) -> Vec<ConnectDevice> {
     match call::<(), Vec<ConnectDevice>>(&app, "ListDevices", &()).await {
         Ok(devices) => devices,
         Err(err) => {
-            logger::log_info(&format!("vasak-connect: no se pudieron listar dispositivos: {err}"));
+            logger::log_info(&format!(
+                "vasak-connect: no se pudieron listar dispositivos: {err}"
+            ));
             Vec::new()
         }
     }
@@ -241,9 +243,7 @@ pub async fn watch_signals(app: AppHandle) -> Result<(), Box<dyn std::error::Err
 
     // One match rule for the whole interface rather than four: fewer round
     // trips to the bus, and no chance of half the signals being subscribed.
-    let rule = format!(
-        "type='signal',sender='{SERVICE}',path='{PATH}',interface='{SERVICE}'"
-    );
+    let rule = format!("type='signal',sender='{SERVICE}',path='{PATH}',interface='{SERVICE}'");
 
     let proxy = zbus::fdo::DBusProxy::new(&connection).await?;
     proxy
