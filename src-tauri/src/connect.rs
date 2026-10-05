@@ -103,21 +103,16 @@ async fn session(app: &AppHandle) -> Option<Connection> {
 }
 
 /// Calls a method on the service and deserialises the reply.
+///
+/// The connection, the `call_method` and the "no bus" handling are the same for
+/// every VasakOS service client, so they live once in `dbus_pool`; here we only
+/// pin the service and path.
 async fn call<A, R>(app: &AppHandle, method: &str, args: &A) -> Result<R, String>
 where
     A: serde::ser::Serialize + Type,
     R: for<'d> Deserialize<'d> + Type,
 {
-    let connection = session(app)
-        .await
-        .ok_or_else(|| "no hay conexión con el bus de sesión".to_string())?;
-
-    let reply = connection
-        .call_method(Some(SERVICE), PATH, Some(SERVICE), method, args)
-        .await
-        .map_err(|err| err.to_string())?;
-
-    reply.body().deserialize().map_err(|err| err.to_string())
+    crate::dbus_pool::session_call(app, SERVICE, PATH, method, args).await
 }
 
 /// The phones connected right now.

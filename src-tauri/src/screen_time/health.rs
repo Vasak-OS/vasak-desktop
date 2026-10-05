@@ -21,11 +21,10 @@
 //! vasak-desktop suba a zbus 5.
 
 use serde::Deserialize;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use zbus::zvariant::Type;
-use zbus::Connection;
 
-use crate::dbus_pool::DbusPool;
+use crate::dbus_pool;
 
 /// Las direcciones del servicio en el bus de **sesión**: el tiempo de pantalla
 /// es de quien está sentado en la máquina, y nada de esto sale de ahí.
@@ -78,15 +77,11 @@ pub struct ScreenTimeReport {
 }
 
 // ── El transporte, prestado del pool compartido ───────────────────────────────
-
-/// Toma prestada la conexión de sesión compartida.
-///
-/// Devuelve `None` en vez de un error cuando el bus no está: para el escritorio,
-/// «no hay servicio» y «no hay datos» son lo mismo —un tablero vacío— y una
-/// muestra que no se pudo empujar no vale un diálogo.
-async fn session(app: &AppHandle) -> Option<Connection> {
-    app.try_state::<DbusPool>()?.session().await
-}
+//
+// La conexión, el `call_method` y el manejo de «no hay bus» son los mismos para
+// todos los clientes de servicios propios, así que viven una sola vez en
+// `dbus_pool`. Acá sólo se fijan el servicio y la ruta y se traducen los
+// nombres de los métodos a PascalCase.
 
 /// Empuja algo al servicio sin mirar la respuesta (los métodos de ingreso no
 /// devuelven nada). El servicio es activable por D-Bus: este llamado lo arranca
@@ -95,14 +90,9 @@ async fn send<A>(app: &AppHandle, method: &str, args: &A) -> Result<(), String>
 where
     A: serde::ser::Serialize + Type,
 {
-    let connection = session(app)
+    dbus_pool::session_call_raw(app, SERVICE, PATH, method, args)
         .await
-        .ok_or_else(|| "no hay conexión con el bus de sesión".to_string())?;
-    connection
-        .call_method(Some(SERVICE), PATH, Some(SERVICE), method, args)
-        .await
-        .map_err(|err| err.to_string())?;
-    Ok(())
+        .map(|_| ())
 }
 
 /// Llama un método que devuelve algo y deserializa la respuesta.
@@ -111,14 +101,7 @@ where
     A: serde::ser::Serialize + Type,
     R: for<'d> Deserialize<'d> + Type,
 {
-    let connection = session(app)
-        .await
-        .ok_or_else(|| "no hay conexión con el bus de sesión".to_string())?;
-    let reply = connection
-        .call_method(Some(SERVICE), PATH, Some(SERVICE), method, args)
-        .await
-        .map_err(|err| err.to_string())?;
-    reply.body().deserialize().map_err(|err| err.to_string())
+    dbus_pool::session_call(app, SERVICE, PATH, method, args).await
 }
 
 // ── Ingreso: lo empuja el escritorio ──────────────────────────────────────────
