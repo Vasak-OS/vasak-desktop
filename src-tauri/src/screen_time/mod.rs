@@ -202,13 +202,37 @@ fn focused_app() -> Option<String> {
     })
 }
 
+/// Cuánto se espera a que el servicio guarde antes de cerrar la sesión o apagar.
+///
+/// Corto a propósito: esto corre en el camino de `logout`/`shutdown`/`reboot`, y
+/// una llamada de D-Bus que se cuelga —el servicio trabado, o la activación por
+/// D-Bus que no termina— esperaría si no el tiempo por omisión de zbus (~25 s),
+/// demorando la acción de energía todo ese rato. Guardar es deseable, no al
+/// precio de dejar la pantalla congelada al apagar.
+const FLUSH_TIMEOUT: Duration = Duration::from_secs(2);
+
 /// Guarda todo lo contado, sin esperar a la ventana de descuento: antes de
-/// cerrar la sesión o apagar.
+/// cerrar la sesión o apagar. Si el servicio no contesta en [`FLUSH_TIMEOUT`],
+/// se sigue igual.
 pub async fn flush(app: &AppHandle) {
-    if let Err(error) = health::flush(app).await {
-        log_error(&format!(
+    flush_within(FLUSH_TIMEOUT, health::flush(app)).await;
+}
+
+/// Espera a que `save` termine, pero no más de `timeout`, y anota lo que pase.
+/// Separa el «cuánto esperar y qué anotar» de la llamada de D-Bus para poder
+/// probarlo sin un bus.
+async fn flush_within(
+    timeout: Duration,
+    save: impl std::future::Future<Output = Result<(), String>>,
+) {
+    match tokio::time::timeout(timeout, save).await {
+        Ok(Ok(())) => {}
+        Ok(Err(error)) => log_error(&format!(
             "[tiempo de pantalla] no se pudo guardar antes de cerrar: {error}"
-        ));
+        )),
+        Err(_) => log_error(
+            "[tiempo de pantalla] el servicio no contestó a tiempo al guardar antes de cerrar",
+        ),
     }
 }
 
@@ -453,6 +477,34 @@ mod tests {
         assert_eq!(json["first_day"], "2026-03-15");
         assert_eq!(json["days"]["2026-03-16"]["code"], 5_000);
         assert_eq!(json["apps"]["code"]["category"], "Development");
+    }
+
+    #[test]
+    fn flush_se_rinde_si_el_servicio_no_contesta() {
+        tauri::async_runtime::block_on(async {
+            // El servicio colgado: un futuro que no termina nunca. `flush_within`
+            // no se cuelga con él —corta al vencer el plazo— así la acción de
+            // energía no espera los ~25 s por omisión de zbus.
+            let start = Instant::now();
+            flush_within(
+                Duration::from_millis(20),
+                std::future::pending::<Result<(), String>>(),
+            )
+            .await;
+            let waited = start.elapsed();
+            assert!(waited >= Duration::from_millis(20), "cortó antes del plazo");
+            assert!(waited < Duration::from_secs(5), "esperó de más: {waited:?}");
+        });
+    }
+
+    #[test]
+    fn flush_vuelve_en_el_acto_si_ya_guardó() {
+        tauri::async_runtime::block_on(async {
+            // Guardó bien y rápido: no espera el plazo entero.
+            let start = Instant::now();
+            flush_within(Duration::from_secs(30), async { Ok(()) }).await;
+            assert!(start.elapsed() < Duration::from_secs(1));
+        });
     }
 
     #[test]
