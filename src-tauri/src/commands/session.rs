@@ -1,4 +1,5 @@
 use crate::logger::{log_error, log_info};
+use tauri::AppHandle;
 use zbus::Connection;
 
 extern "C" {
@@ -25,12 +26,12 @@ pub fn detect_display_server() -> String {
 }
 
 #[tauri::command]
-pub async fn logout(_display_server: String) -> Result<(), String> {
+pub async fn logout(app: AppHandle, _display_server: String) -> Result<(), String> {
     log_info("Cerrando sesión de usuario");
-    // Lo que el tiempo de pantalla todavía no guardó (los últimos minutos,
-    // que esperan por si llega un aviso de inactividad): al disco, antes de
-    // que la sesión se lleve el proceso.
-    crate::screen_time::flush();
+    // Lo que el tiempo de pantalla todavía no guardó (los últimos minutos, que
+    // esperan por si llega un aviso de inactividad): que el servicio lo guarde,
+    // antes de que la sesión se lleve el proceso.
+    crate::screen_time::flush(&app).await;
 
     // The graphical session is managed by uwsm as a systemd user unit hierarchy.
     // `uwsm stop` tears down graphical-session.target and its daemons in order.
@@ -75,9 +76,9 @@ pub async fn logout(_display_server: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn shutdown() -> Result<(), String> {
+pub async fn shutdown(app: AppHandle) -> Result<(), String> {
     log_info("Apagando el sistema");
-    crate::screen_time::flush();
+    crate::screen_time::flush(&app).await;
     let connection = Connection::system().await.map_err(|e| {
         log_error(&format!("No se pudo conectar a D-Bus para shutdown: {}", e));
         format!("No se pudo conectar a D-Bus: {}", e)
@@ -98,9 +99,9 @@ pub async fn shutdown() -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn reboot() -> Result<(), String> {
+pub async fn reboot(app: AppHandle) -> Result<(), String> {
     log_info("Reiniciando el sistema");
-    crate::screen_time::flush();
+    crate::screen_time::flush(&app).await;
     let connection = Connection::system().await.map_err(|e| {
         log_error(&format!("No se pudo conectar a D-Bus para reboot: {}", e));
         format!("No se pudo conectar a D-Bus: {}", e)

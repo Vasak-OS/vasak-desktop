@@ -2,10 +2,12 @@ import { describe, expect, test } from 'bun:test';
 import {
 	addDays,
 	appsOf,
+	categoriesOf,
 	dailyAverage,
 	dayTotal,
 	differenceFromYesterday,
 	formatDuration,
+	hoursOf,
 	isDay,
 	isEmpty,
 	monthOf,
@@ -205,5 +207,54 @@ describe('el tablero vacío', () => {
 		const values = monthValues(days, '2026-03-05');
 		expect(Object.keys(values).map(Number)).toEqual([16, 17, 18, 19, 20, 21]);
 		expect(values[16]).toBe(3.5 * H);
+	});
+});
+
+describe('la categoría y las horas, para los informes nuevos', () => {
+	const apps = {
+		firefox: { name: 'Firefox', icon: 'firefox', category: 'Network' },
+		code: { name: 'Code', icon: 'code', category: 'Development' },
+		// Sin categoría conocida: cae en ''.
+		raro: { name: 'Raro', icon: 'raro' },
+	};
+	const withDays: Pick<ScreenTimeRange, 'days' | 'apps'> = {
+		apps,
+		days: { '2026-03-16': { firefox: 3 * H, code: 2 * H, raro: 30 * M } },
+	};
+
+	test('appsOf arrastra la categoría de cada aplicación', () => {
+		const rows = appsOf(withDays, '2026-03-16');
+		expect(rows.find((r) => r.appId === 'firefox')?.category).toBe('Network');
+		expect(rows.find((r) => r.appId === 'raro')?.category).toBe('');
+	});
+
+	test('categoriesOf suma por categoría, de la más usada a la menos', () => {
+		expect(categoriesOf(withDays, '2026-03-16')).toEqual([
+			{ category: 'Network', ms: 3 * H },
+			{ category: 'Development', ms: 2 * H },
+			{ category: '', ms: 30 * M },
+		]);
+		// Un día sin nada: lista vacía.
+		expect(categoriesOf(withDays, '2026-03-17')).toEqual([]);
+	});
+
+	test('hoursOf suma el desglose por hora de todas las aplicaciones', () => {
+		const hours: ScreenTimeRange['hours'] = {
+			'2026-03-16': {
+				firefox: Array.from({ length: 24 }, (_, h) => (h === 9 ? 2 * M : 0)),
+				code: Array.from({ length: 24 }, (_, h) => (h === 9 ? 1 * M : h === 14 ? 5 * M : 0)),
+			},
+		};
+		const result = hoursOf({ hours }, '2026-03-16');
+		expect(result).toHaveLength(24);
+		expect(result[9]).toBe(3 * M);
+		expect(result[14]).toBe(5 * M);
+		expect(result[0]).toBe(0);
+	});
+
+	test('un día sin desglose por hora da las 24 en cero', () => {
+		const result = hoursOf({ hours: {} }, '2026-03-16');
+		expect(result).toHaveLength(24);
+		expect(result.every((ms) => ms === 0)).toBe(true);
 	});
 });

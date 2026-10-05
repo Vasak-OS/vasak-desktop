@@ -96,11 +96,16 @@ impl DesktopService {
             // contesta, como los demás.
             "ClearScreenTime" => {
                 log_info("D-Bus: borrando el historial de tiempo de pantalla");
-                if let Err(error) = crate::screen_time::clear() {
-                    log_error(&format!(
-                        "D-Bus: no se pudo borrar el tiempo de pantalla: {error}"
-                    ));
-                }
+                // El borrado vive ahora en el servicio de salud; el escritorio
+                // sólo reenvía el pedido que le llega de Configuración.
+                let app_handle = self.app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(error) = crate::screen_time::clear(&app_handle).await {
+                        log_error(&format!(
+                            "D-Bus: no se pudo borrar el tiempo de pantalla: {error}"
+                        ));
+                    }
+                });
             }
             // El selector rápido de fondos (vasak-desktop#133). Para un atajo de
             // teclado de Wayfire, como `OpenMenu`; no contesta.

@@ -1,7 +1,9 @@
 /**
  * Las cuentas del tablero de tiempo de pantalla (vasak-desktop#150).
  *
- * El backend (`src-tauri/src/screen_time/`) manda los milisegundos de cada
+ * El escritorio (`src-tauri/src/screen_time/`) consulta al servicio de salud
+ * (`vasak-health-service`) y enriquece cada aplicación con su nombre y su icono;
+ * manda los milisegundos de cada
  * aplicación en cada día; todo lo que el tablero dice encima —el total del
  * día, el promedio de la semana, la diferencia con ayer, la parte de cada
  * aplicación— sale de acá, en funciones puras que se prueban sin ventana
@@ -28,19 +30,30 @@ export interface ScreenTimeRange {
 	enabled: boolean;
 	today: string;
 	first_day: string | null;
-	/** Milisegundos por día y por `app-id`; los días sin nada no vienen. */
+	/** Milisegundos por día y por `app-id`; los días sin nada no vienen. Es la
+	 * forma que el tablero ya dibuja para el total; no cambió. */
 	days: Record<string, Record<string, number>>;
-	apps: Record<string, { name: string; icon: string }>;
+	/** El nombre, el icono y la categoría de cada aplicación. La categoría la
+	 * trae el servicio de salud; puede faltar (datos viejos o sin `.desktop`). */
+	apps: Record<string, { name: string; icon: string; category?: string }>;
+	/** Milisegundos por hora (24 valores) por día y por `app-id`, para los
+	 * informes por horario. Los días sin desglose no vienen. */
+	hours: Record<string, Record<string, number[]>>;
 }
 
 export interface AppUsage {
 	appId: string;
 	name: string;
 	icon: string;
+	/** La categoría freedesktop principal, o vacío si no se sabe. */
+	category: string;
 	ms: number;
 	/** La parte de la que más se usó ese día, de 0 a 1. */
 	share: number;
 }
+
+/** Cuántas cubetas tiene el desglose por hora: una por cada hora del día. */
+export const HOURS_IN_DAY = 24;
 
 const DAY_MS = 86_400_000;
 
@@ -141,6 +154,7 @@ export function appsOf(range: Pick<ScreenTimeRange, 'days' | 'apps'>, day: strin
 			appId,
 			name: range.apps[appId]?.name || appId,
 			icon: range.apps[appId]?.icon || 'application-x-executable',
+			category: range.apps[appId]?.category || '',
 			ms,
 		}))
 		.sort((a, b) => b.ms - a.ms || a.name.localeCompare(b.name));
@@ -195,4 +209,41 @@ export function monthValues(days: ScreenTimeRange['days'], day: string): Record<
 /** Si en el rango no hay nada de nada: el tablero vacío. */
 export function isEmpty(days: ScreenTimeRange['days']): boolean {
 	return Object.keys(days).every((day) => dayTotal(days, day) === 0);
+}
+
+/**
+ * Los milisegundos por hora de un día (24 valores, del 0 al 23), sumando todas
+ * las aplicaciones: la base del informe por horario. Un día sin desglose —o de
+ * la versión vieja, que sólo guardaba el total— da las 24 horas en cero.
+ */
+export function hoursOf(range: Pick<ScreenTimeRange, 'hours'>, day: string): number[] {
+	const perApp = range.hours[day] ?? {};
+	const totals = new Array<number>(HOURS_IN_DAY).fill(0);
+	for (const values of Object.values(perApp)) {
+		for (let hour = 0; hour < HOURS_IN_DAY && hour < values.length; hour += 1) {
+			const ms = values[hour];
+			if (typeof ms === 'number' && Number.isFinite(ms) && ms > 0) totals[hour] += ms;
+		}
+	}
+	return totals;
+}
+
+/**
+ * Los milisegundos por categoría de un día, de la más usada a la menos. La
+ * categoría sale de `apps`; lo que no tiene categoría conocida cae en `''`.
+ */
+export function categoriesOf(
+	range: Pick<ScreenTimeRange, 'days' | 'apps'>,
+	day: string
+): { category: string; ms: number }[] {
+	const apps = range.days[day] ?? {};
+	const totals = new Map<string, number>();
+	for (const [appId, ms] of Object.entries(apps)) {
+		if (!Number.isFinite(ms) || ms <= 0) continue;
+		const category = range.apps[appId]?.category || '';
+		totals.set(category, (totals.get(category) ?? 0) + ms);
+	}
+	return [...totals.entries()]
+		.map(([category, ms]) => ({ category, ms }))
+		.sort((a, b) => b.ms - a.ms || a.category.localeCompare(b.category));
 }
