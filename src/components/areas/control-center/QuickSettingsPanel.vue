@@ -48,9 +48,13 @@ async function back(): Promise<void> {
 </script>
 
 <template>
-  <section id="control-center-quick-settings" class="@container flex min-h-0 flex-col gap-2" data-quick-settings>
+  <section id="control-center-quick-settings" class="@container flex flex-col gap-2" data-quick-settings>
+    <!-- Ni la lista ni la ficha se achican por debajo de lo suyo: si no
+         entran, se desplaza el bloque de arriba del centro entero, que es un
+         solo desplazamiento y no uno adentro de otro. -->
     <ListGroup
       v-show="!openTile"
+      class="shrink-0"
       :divided="false"
       role="group"
       :label="t('views.controlCenter.quickSettings')"
@@ -74,7 +78,7 @@ async function back(): Promise<void> {
           @click="back"
         />
       </div>
-      <div class="flex min-h-0 flex-1 flex-col overflow-y-auto" :data-tile-detail="openTile.id">
+      <div class="flex shrink-0 flex-col" :data-tile-detail="openTile.id">
         <component :is="openTile.detail" v-bind="openTile.detailProps ?? {}" />
       </div>
     </template>
