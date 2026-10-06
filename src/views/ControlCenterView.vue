@@ -49,6 +49,12 @@ import { logError } from '@/utils/logger';
 const { t } = useI18n();
 
 const bluetoothInitialized: Ref<boolean> = ref(false);
+/**
+ * Si hay un reproductor sonando o en pausa (vasak-desktop#176). Lo avisa el
+ * propio widget; sin reproductor la caja se esconde y su alto vuelve a las
+ * notificaciones.
+ */
+const musicActive = ref(false);
 const leaving = ref(false);
 
 // ── Los dos estados ──────────────────────────────────────────────────────────
@@ -270,9 +276,13 @@ onBeforeUnmount(() => {
              `h-full` —se adapta con consultas de contenedor— y una clase de
              alto puesta desde acá compite con esa y pierde. Sin una altura
              resuelta, la carátula se estira hasta tapar el brillo y el
-             volumen. -->
-        <div class="h-24 w-full">
-          <MusicWidget class="w-full" />
+             volumen.
+
+             `v-show` y no `v-if`: el widget es quien escucha a MPRIS y avisa
+             si hay algo sonando, así que tiene que seguir montado aunque no se
+             vea. Escondido no ocupa lugar y las notificaciones crecen. -->
+        <div v-show="musicActive" class="h-24 w-full" data-music-box>
+          <MusicWidget class="w-full" @presence="musicActive = $event" />
         </div>
         <!-- A: los interruptores redondos y «más». Se parten en renglones en
              vez de salirse cuando el centro es angosto. En B están en los

@@ -6,7 +6,7 @@
  * probarse; el componente sólo lo dibuja con las piezas de la librería.
  */
 import type { MusicInfo } from '@/interfaces/music';
-import { progressRatio } from '@/utils/playback';
+import { playbackStateOf, progressRatio } from '@/utils/playback';
 
 /** Reproducir o pausar, según lo que el reproductor diga que acepta ahora. */
 export function playPauseAvailable(info: MusicInfo, isPlaying: boolean): boolean {
@@ -49,4 +49,17 @@ export function percentToVolume(percent: number): number {
 /** La fracción de la pista para un salto en microsegundos, o `null` sin duración. */
 export function seekRatio(micros: number, length: number): number | null {
 	return length > 0 ? micros / length : null;
+}
+
+/**
+ * Si hay un reproductor que mostrar: uno que suena o está en pausa
+ * (vasak-desktop#176).
+ *
+ * Detenido —o sin reproductor— no hay nada que controlar, y el centro de control
+ * le devuelve ese alto a las notificaciones. Un reproductor sin nombre de bus
+ * no cuenta aunque diga «Playing»: no habría a quién mandarle los comandos.
+ */
+export function hasActivePlayer(info: Pick<MusicInfo, 'player' | 'status'>): boolean {
+	if (!info.player) return false;
+	return playbackStateOf(info.status) !== 'stopped';
 }

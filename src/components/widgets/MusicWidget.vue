@@ -17,6 +17,7 @@ import { activePlayerIndex, playerLabels } from '@/tools/music-players';
 import {
 	coverRingProgress,
 	hasExtras as extrasOf,
+	hasActivePlayer,
 	loopStatusIconName,
 	percentToVolume,
 	playPauseAvailable,
@@ -72,6 +73,16 @@ const {
 	initIcons,
 	initMusicInfo,
 } = useMusicPlayer();
+
+/**
+ * Si hay algo sonando o en pausa, para quien aloja el widget.
+ *
+ * El centro de control sólo lo muestra entonces (vasak-desktop#176): sin
+ * reproductor, sus 96 px vuelven a las notificaciones. Lo avisa el widget
+ * porque es quien ya escucha a MPRIS; leerlo de nuevo afuera sería otra
+ * suscripción al mismo bus. Los widgets del escritorio no lo escuchan.
+ */
+const emit = defineEmits<{ presence: [active: boolean] }>();
 
 const dbusStatus = ref('connected');
 const dbusMessage = ref('');
@@ -182,6 +193,12 @@ onUnmounted(() => boxObserver?.disconnect());
  * segundo arranca después, el selector tiene que aparecer igual.
  */
 watch(() => musicInfo.value?.player, loadPlayers);
+
+watch(
+	() => hasActivePlayer(musicInfo.value),
+	(active) => emit('presence', active),
+	{ immediate: true }
+);
 </script>
 
 <template>
@@ -255,44 +272,46 @@ watch(() => musicInfo.value?.player, loadPlayers);
             :title="`${t('components.MusicWidget.viaCaption')} ${via}`"
           />
         </div>
-      </div>
 
-      <!-- El transporte, con los botones de la librería: anterior, reproducir y
-           siguiente, como en la tarjeta. Al costado del título aprovecha el
-           ancho de la fila; cada botón dice si sirve. -->
-      <div class="flex shrink-0 items-center gap-[2cqmin]">
-        <ActionButton
-          label=""
-          :icon="prevIcon"
-          icon-type="symbol"
-          :icon-alt="t('components.MusicWidget.previous')"
-          :title="t('components.MusicWidget.previous')"
-          variant="ghost"
-          size="sm"
-          :disabled="!musicInfo.canGoPrevious"
-          @click="onPrev"
-        />
-        <ActionButton
-          label=""
-          :icon="isPlaying ? pauseIcon : playIcon"
-          icon-type="symbol"
-          :icon-alt="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
-          :title="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
-          variant="primary"
-          :disabled="!canPlayPause"
-          @click="onPlayPause"
-        />
-        <ActionButton
-          label=""
-          :icon="nextIcon"
-          icon-type="symbol"
-          :icon-alt="t('components.MusicWidget.next')"
-          :title="t('components.MusicWidget.next')"
-          variant="ghost"
-          size="sm"
-          :disabled="!musicInfo.canGoNext"
-          @click="onNext"
-        />
+        <!-- El transporte, con los botones de la librería: anterior, reproducir
+             y siguiente, como en la tarjeta. Va **debajo** del título y el
+             artista (vasak-desktop#176): al costado se comía el ancho del
+             título, que en la caja del centro de control quedaba en tres
+             letras. Cada botón dice si sirve. -->
+        <div class="mt-[1cqmin] flex shrink-0 items-center gap-[2cqmin]" data-transport>
+          <ActionButton
+            label=""
+            :icon="prevIcon"
+            icon-type="symbol"
+            :icon-alt="t('components.MusicWidget.previous')"
+            :title="t('components.MusicWidget.previous')"
+            variant="ghost"
+            size="sm"
+            :disabled="!musicInfo.canGoPrevious"
+            @click="onPrev"
+          />
+          <ActionButton
+            label=""
+            :icon="isPlaying ? pauseIcon : playIcon"
+            icon-type="symbol"
+            :icon-alt="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
+            :title="isPlaying ? t('components.MusicWidget.pause') : t('components.MusicWidget.play')"
+            variant="primary"
+            :disabled="!canPlayPause"
+            @click="onPlayPause"
+          />
+          <ActionButton
+            label=""
+            :icon="nextIcon"
+            icon-type="symbol"
+            :icon-alt="t('components.MusicWidget.next')"
+            :title="t('components.MusicWidget.next')"
+            variant="ghost"
+            size="sm"
+            :disabled="!musicInfo.canGoNext"
+            @click="onNext"
+          />
+        </div>
       </div>
     </div>
 
