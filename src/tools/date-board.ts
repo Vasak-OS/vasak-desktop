@@ -346,3 +346,64 @@ export function ringFill(
 		}
 	}
 }
+
+/** Un anillo del clima del día, como lo dibuja `ProgressRing`. */
+export interface WeatherRing {
+	key: 'wind' | 'humidity' | 'rain' | 'feelsLike';
+	/** El nombre debajo, ya traducido: «Viento». */
+	label: string;
+	/** Lo que va adentro: «12», «54%», «24°». */
+	display: string;
+	/** La unidad, en un renglón propio: «km/h». Sin unidad, nada. */
+	unit?: string;
+	/** Qué tan lleno va, de 0 a 100, o `null` si no hay dato. */
+	value: number | null;
+}
+
+/** Los textos de los cuatro anillos, ya traducidos. */
+export interface WeatherRingLabels {
+	wind: string;
+	humidity: string;
+	rain: string;
+	feelsLike: string;
+}
+
+/**
+ * Los cuatro anillos del clima de un día: viento, humedad, lluvia y sensación.
+ *
+ * Lo comparten el tablero de fecha y el widget de clima, para que digan lo mismo
+ * y se dibujen igual (vasak-desktop#167). El viento lleva su unidad en un renglón
+ * aparte; la humedad y la lluvia son porcentajes y la sensación, grados.
+ */
+export function weatherRings(day: DayWeather | null, labels: WeatherRingLabels): WeatherRing[] {
+	if (!day) return [];
+	const whole = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
+	const n = (value: number | null) => (value === null ? '–' : whole.format(value));
+	return [
+		{
+			key: 'wind',
+			label: labels.wind,
+			display: n(day.wind),
+			unit: day.units.wind,
+			value: ringFill('wind', day.wind, day.units.wind),
+		},
+		{
+			key: 'humidity',
+			label: labels.humidity,
+			display: day.humidity === null ? '–' : `${n(day.humidity)}%`,
+			value: ringFill('humidity', day.humidity),
+		},
+		{
+			key: 'rain',
+			label: labels.rain,
+			display: day.rain === null ? '–' : `${n(day.rain)}%`,
+			value: ringFill('rain', day.rain),
+		},
+		{
+			key: 'feelsLike',
+			label: labels.feelsLike,
+			display: day.feelsLike === null ? '–' : `${n(day.feelsLike)}°`,
+			value: ringFill('feelsLike', day.feelsLike, day.units.temperature),
+		},
+	];
+}

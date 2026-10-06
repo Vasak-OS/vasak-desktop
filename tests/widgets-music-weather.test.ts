@@ -57,10 +57,11 @@ describe('el widget de clima, como el clima del tablero de fecha', () => {
 			/import \{[\s\S]*?ProgressRing[\s\S]*?\} from '@vasakgroup\/vue-libvasak'/
 		);
 		expect(WEATHER).toContain('<ProgressRing');
-		// Las mismas cuentas que el tablero de fecha, no una copia.
+		// Las mismas cuentas que el tablero de fecha, no una copia: los anillos
+		// salen del ayudante compartido `weatherRings`.
 		expect(WEATHER).toMatch(/from '@\/tools\/date-board'/);
 		expect(WEATHER).toContain('dayWeather(');
-		expect(WEATHER).toContain('ringFill(');
+		expect(WEATHER).toContain('weatherRings(');
 		expect(WEATHER).toContain('weatherIcon(');
 	});
 

@@ -38,10 +38,10 @@ import {
 	gridRange,
 	occurrenceKey,
 	relativeDayLabel,
-	ringFill,
 	toCalendarEntry,
 	upcomingHours,
 	weatherIcon,
+	weatherRings,
 } from '@/tools/date-board';
 import { logError } from '@/utils/logger';
 
@@ -138,44 +138,17 @@ const day = computed<DayWeather | null>(() =>
 );
 
 const degrees = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
-const whole = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 const tempText = (value: number | null) => (value === null ? '–' : `${degrees.format(value)}°`);
 
-const rings = computed(() => {
-	const d = day.value;
-	if (!d) return [];
-	const n = (value: number | null) => (value === null ? '–' : whole.format(value));
-	return [
-		{
-			key: 'wind',
-			label: t('views.dateBoard.wind'),
-			display: n(d.wind),
-			unit: d.units.wind,
-			value: ringFill('wind', d.wind, d.units.wind),
-		},
-		{
-			key: 'humidity',
-			label: t('views.dateBoard.humidity'),
-			display: d.humidity === null ? '–' : `${n(d.humidity)}%`,
-			unit: undefined,
-			value: ringFill('humidity', d.humidity),
-		},
-		{
-			key: 'rain',
-			label: t('views.dateBoard.rain'),
-			display: d.rain === null ? '–' : `${n(d.rain)}%`,
-			unit: undefined,
-			value: ringFill('rain', d.rain),
-		},
-		{
-			key: 'feelsLike',
-			label: t('views.dateBoard.feelsLike'),
-			display: d.feelsLike === null ? '–' : `${n(d.feelsLike)}°`,
-			unit: undefined,
-			value: ringFill('feelsLike', d.feelsLike, d.units.temperature),
-		},
-	];
-});
+/** Los cuatro anillos del día, los mismos que el widget de clima. */
+const rings = computed(() =>
+	weatherRings(day.value, {
+		wind: t('views.dateBoard.wind'),
+		humidity: t('views.dateBoard.humidity'),
+		rain: t('views.dateBoard.rain'),
+		feelsLike: t('views.dateBoard.feelsLike'),
+	})
+);
 
 // ── Los eventos ──────────────────────────────────────────────────────────────
 

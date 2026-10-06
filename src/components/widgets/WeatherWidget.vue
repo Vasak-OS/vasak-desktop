@@ -6,13 +6,13 @@ import {
 	ProgressRing,
 	parseIsoDate,
 	SegmentedControl,
-	type SegmentedOption,
 	ThemeIcon,
 	toIsoDate,
 } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useWeather } from '@/tools/composables/useWeather';
-import { dayWeather, type ForecastData, ringFill, weatherIcon } from '@/tools/date-board';
+import { dayWeather, type ForecastData, weatherIcon, weatherRings } from '@/tools/date-board';
+import { canStep, dayOptions, stepDate, weatherLayout } from '@/tools/weather-widget';
 
 /**
  * El widget de clima del escritorio, con la estética del clima del tablero de
@@ -73,18 +73,11 @@ function pick(date: IsoDate): void {
 }
 function stepDay(amount: number): void {
 	if (soloHoy.value) return;
-	const list = days.value;
-	const index = list.indexOf(weatherDay.value);
-	if (index < 0) return;
-	const next = list[Math.min(list.length - 1, Math.max(0, index + amount))];
+	const next = stepDate(days.value, weatherDay.value, amount);
 	if (next) selected.value = next;
 }
-const canPrev = computed(() => !soloHoy.value && days.value.indexOf(weatherDay.value) > 0);
-const canNext = computed(() => {
-	if (soloHoy.value) return false;
-	const index = days.value.indexOf(weatherDay.value);
-	return index >= 0 && index < days.value.length - 1;
-});
+const canPrev = computed(() => !soloHoy.value && canStep(days.value, weatherDay.value, -1));
+const canNext = computed(() => !soloHoy.value && canStep(days.value, weatherDay.value, 1));
 
 const whole = new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 });
 const tempText = (value: number | null) => (value === null ? '–' : `${whole.format(value)}°`);
@@ -94,12 +87,8 @@ const shortWeekday = (date: IsoDate) =>
 	parseIsoDate(date)?.toLocaleDateString(undefined, { weekday: 'short' }) ?? date;
 
 /** Los días como opciones del control segmentado: el nombre corto y la máxima. */
-const dayOptions = computed<SegmentedOption<IsoDate>[]>(() =>
-	days.value.map((date, index) => ({
-		value: date,
-		label: shortWeekday(date),
-		badge: tempText(forecast.value?.daily?.temperature_2m_max?.[index] ?? null),
-	}))
+const options = computed(() =>
+	dayOptions(days.value, forecast.value?.daily?.temperature_2m_max ?? [], shortWeekday, tempText)
 );
 
 const describe = (code: number | null | undefined) => {
@@ -109,42 +98,15 @@ const describe = (code: number | null | undefined) => {
 	return text === key ? '' : text;
 };
 
-/** Los cuatro anillos del día, como en el tablero de fecha. */
-const rings = computed(() => {
-	const d = day.value;
-	if (!d) return [];
-	const n = (value: number | null) => (value === null ? '–' : whole.format(value));
-	return [
-		{
-			key: 'wind',
-			label: t('components.WeatherWidget.wind'),
-			display: n(d.wind),
-			unit: d.units.wind,
-			value: ringFill('wind', d.wind, d.units.wind),
-		},
-		{
-			key: 'humidity',
-			label: t('components.WeatherWidget.humidity'),
-			display: d.humidity === null ? '–' : `${n(d.humidity)}%`,
-			unit: undefined,
-			value: ringFill('humidity', d.humidity),
-		},
-		{
-			key: 'rain',
-			label: t('components.WeatherWidget.rain'),
-			display: d.rain === null ? '–' : `${n(d.rain)}%`,
-			unit: undefined,
-			value: ringFill('rain', d.rain),
-		},
-		{
-			key: 'feelsLike',
-			label: t('components.WeatherWidget.feelsLike'),
-			display: d.feelsLike === null ? '–' : `${n(d.feelsLike)}°`,
-			unit: undefined,
-			value: ringFill('feelsLike', d.feelsLike, d.units.temperature),
-		},
-	];
-});
+/** Los cuatro anillos del día, los mismos que el tablero de fecha. */
+const rings = computed(() =>
+	weatherRings(day.value, {
+		wind: t('components.WeatherWidget.wind'),
+		humidity: t('components.WeatherWidget.humidity'),
+		rain: t('components.WeatherWidget.rain'),
+		feelsLike: t('components.WeatherWidget.feelsLike'),
+	})
+);
 
 /** Hay con qué dibujar cuando el día del pronóstico está. */
 const listo = computed(() => day.value !== null);
@@ -167,13 +129,10 @@ onMounted(() => {
 });
 onUnmounted(() => observer?.disconnect());
 
-/** Los anillos entran cuando la celda tiene alto; las tarjetas, con más. */
-const showRings = computed(() => boxHeight.value >= 260);
-const showStrip = computed(() => !soloHoy.value && boxHeight.value >= 400 && days.value.length > 1);
-/** En celda angosta, los anillos van de a dos; con ancho, los cuatro en fila. */
-const ringColumns = computed(() => (boxWidth.value >= 260 ? 4 : 2));
-/** En celda muy baja y ancha —la variante de hoy— el resumen va en fila. */
-const compactRow = computed(() => boxHeight.value < 150);
+/** Qué entra según el tamaño medido de la celda. */
+const layout = computed(() =>
+	weatherLayout(boxWidth.value, boxHeight.value, soloHoy.value, days.value.length)
+);
 </script>
 
 <template>
@@ -229,14 +188,14 @@ const compactRow = computed(() => boxHeight.value < 150);
       <div
         v-if="day"
         class="flex min-w-0 items-center gap-[3cqmin]"
-        :class="compactRow ? 'flex-1' : 'flex-col justify-center text-center'"
+        :class="layout.compactRow ? 'flex-1' : 'flex-col justify-center text-center'"
       >
         <ThemeIcon
           :name="weatherIcon(day.code, day.isDay)"
           class="shrink-0"
-          :style="compactRow ? 'width: 26cqmin; height: 26cqmin' : 'width: 22cqmin; height: 22cqmin'"
+          :style="layout.compactRow ? 'width: 26cqmin; height: 26cqmin' : 'width: 22cqmin; height: 22cqmin'"
         />
-        <div class="flex min-w-0 flex-col" :class="compactRow ? 'items-start' : 'items-center'">
+        <div class="flex min-w-0 flex-col" :class="layout.compactRow ? 'items-start' : 'items-center'">
           <div class="font-bold leading-none tabular-nums text-tx-main" style="font-size: clamp(1.1rem, 18cqmin, 2.4rem)">
             {{ tempText(day.temperature) }}
           </div>
@@ -252,9 +211,9 @@ const compactRow = computed(() => boxHeight.value < 150);
 
       <!-- Los cuatro anillos, cuando hay alto para ellos. -->
       <div
-        v-if="day && showRings"
+        v-if="day && layout.showRings"
         class="grid min-w-0 gap-[2cqmin]"
-        :style="`grid-template-columns: repeat(${ringColumns}, minmax(0, 1fr))`"
+        :style="`grid-template-columns: repeat(${layout.ringColumns}, minmax(0, 1fr))`"
       >
         <ProgressRing
           v-for="ring in rings"
@@ -270,10 +229,10 @@ const compactRow = computed(() => boxHeight.value < 150);
       <!-- Las tarjetas pasantes: los otros días, para elegir uno. El control
            segmentado de la librería (variante de pastillas), que se desplaza sin
            cortar ninguna. -->
-      <div v-if="showStrip" class="min-w-0 overflow-x-auto pb-[1cqmin]">
+      <div v-if="layout.showStrip" class="min-w-0 overflow-x-auto pb-[1cqmin]">
         <SegmentedControl
           variant="chips"
-          :options="dayOptions"
+          :options="options"
           :model-value="weatherDay"
           :label="t('components.WeatherWidget.nextDay')"
           @change="pick"

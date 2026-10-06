@@ -14,7 +14,16 @@ import {
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { activePlayerIndex, playerLabels } from '@/tools/music-players';
-import { formatDuration, playbackStateOf, progressRatio, sectionsFor } from '@/utils/playback';
+import {
+	coverRingProgress,
+	hasExtras as extrasOf,
+	loopStatusIconName,
+	percentToVolume,
+	playPauseAvailable,
+	seekRatio,
+	volumeToPercent,
+} from '@/tools/music-widget';
+import { formatDuration, playbackStateOf, sectionsFor } from '@/utils/playback';
 
 /**
  * El widget de música del escritorio, con la estética del reproductor nuevo del
@@ -80,24 +89,18 @@ const sections = computed(() => sectionsFor(boxHeight.value));
 /** El estado del disco: suena, pausa o detenido. */
 const state = computed(() => playbackStateOf(musicInfo.value.status));
 /** El aro de avance del disco, de 0 a 100; sin duración conocida, sin aro. */
-const ringProgress = computed(() =>
-	musicInfo.value.length > 0 ? progressRatio(position.value, musicInfo.value.length) * 100 : null
-);
+const ringProgress = computed(() => coverRingProgress(position.value, musicInfo.value.length));
 
 /** Reproducir o pausar, según lo que el reproductor diga que acepta ahora. */
-const canPlayPause = computed(() => {
-	const info = musicInfo.value;
-	if (!info.player) return false;
-	return isPlaying.value ? info.canPause : info.canPlay;
-});
+const canPlayPause = computed(() => playPauseAvailable(musicInfo.value, isPlaying.value));
 
 /** Por dónde suena: el nombre del reproductor, con «vía» delante en la pastilla. */
 const via = computed(() => musicInfo.value.playerIdentity || '');
 
 /** La barra emite en microsegundos; el composable salta por fracción. */
 function seekTo(micros: number): void {
-	const length = musicInfo.value.length;
-	if (length > 0) onSeek(micros / length);
+	const ratio = seekRatio(micros, musicInfo.value.length);
+	if (ratio !== null) onSeek(ratio);
 }
 
 /**
@@ -106,12 +109,12 @@ function seekTo(micros: number): void {
  * MPRIS lo publica entre 0 y 1, y el deslizador compartido se mueve de a uno.
  */
 const volumePercent = computed({
-	get: () => Math.round((musicInfo.value.volume ?? 0) * 100),
-	set: (value: number) => onVolume(Math.min(1, Math.max(0, value / 100))),
+	get: () => volumeToPercent(musicInfo.value.volume),
+	set: (value: number) => onVolume(percentToVolume(value)),
 });
 
 const loopStatusIcon = computed(() =>
-	musicInfo.value.loopStatus === 'Track' ? loopOneIcon : loopIcon
+	loopStatusIconName(musicInfo.value.loopStatus, loopIcon, loopOneIcon)
 );
 const loopLabel = computed(() => {
 	switch (musicInfo.value.loopStatus) {
@@ -126,11 +129,8 @@ const loopLabel = computed(() => {
 
 /** Sin duración publicada no hay barra: una radio en vivo no sabe cuánto dura. */
 const hasProgress = computed(() => musicInfo.value.length > 0);
-/** Si hay aleatorio, repetición, parar o volumen que mostrar. */
-const hasExtras = computed(() => {
-	const info = musicInfo.value;
-	return info.shuffle !== null || info.loopStatus !== null || info.volume !== null;
-});
+/** Si hay aleatorio, repetición o volumen que mostrar. */
+const hasExtras = computed(() => extrasOf(musicInfo.value));
 
 // ── Los reproductores ─────────────────────────────────────────────────────────
 
