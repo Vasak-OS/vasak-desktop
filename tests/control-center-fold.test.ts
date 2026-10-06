@@ -92,6 +92,7 @@ describe('los mosaicos', () => {
 		expect(CONTROL_CENTER_TILES.map((tile) => tile.id)).toEqual([
 			'network',
 			'bluetooth',
+			'do-not-disturb',
 			'theme',
 			'screen-time',
 			'search',
@@ -112,13 +113,14 @@ describe('los mosaicos', () => {
 	test('se cargan bajo demanda: ningún mosaico entra en el paquete de la vista', () => {
 		const registry = read('src/tools/control-center-tiles.ts');
 		expect(registry).not.toMatch(/^import \w+ from '@\/components/m);
-		expect(registry.match(/defineAsyncComponent\(/g)?.length).toBe(7);
+		expect(registry.match(/defineAsyncComponent\(/g)?.length).toBe(8);
 	});
 
 	test('todos los textos de los mosaicos existen en los dos idiomas', () => {
 		const sources = [
 			'NetworkTile.vue',
 			'BluetoothTile.vue',
+			'DoNotDisturbTile.vue',
 			'ThemeTile.vue',
 			'ScreenTimeTile.vue',
 			'SearchTile.vue',

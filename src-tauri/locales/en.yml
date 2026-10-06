@@ -290,6 +290,9 @@ components:
   BrightnessControl:
     brightness: "Brightness: {0}%"
   ControlCenterTiles:
+    doNotDisturb: Do not disturb
+    doNotDisturbOn: Urgent only
+    unavailable: Unavailable
     network: Network
     bluetooth: Bluetooth
     theme: Theme
@@ -410,6 +413,8 @@ components:
     title: Audio settings
     volumeControl: Volume control
     deviceSelector: Audio device selector
+  DoNotDisturbToggle:
+    label: Do not disturb
   ThemeToggle:
     toLight: Switch to light theme
     toDark: Switch to dark theme
@@ -423,6 +428,8 @@ components:
     iconAlt: Bluetooth icon
   TrayIconCapsLock:
     capsLock: Caps Lock
+  TrayIconDoNotDisturb:
+    label: "Do not disturb: only urgent notifications pop up"
   TrayIconMicrophone:
     muted: Microphone muted
   TrayIconNetwork:

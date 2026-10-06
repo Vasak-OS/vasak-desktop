@@ -17,6 +17,7 @@ mod brightness;
 mod commands;
 mod connect;
 mod dbus_service;
+pub mod do_not_disturb;
 mod eventloops;
 /// Where the translations live.
 ///
@@ -203,6 +204,8 @@ pub fn run() {
             get_all_notifications,
             delete_notification,
             invoke_notification_action,
+            get_do_not_disturb,
+            set_do_not_disturb,
             toggle_control_center,
             hide_control_center,
             toggle_wallpaper_picker,

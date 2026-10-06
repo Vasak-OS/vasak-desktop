@@ -168,13 +168,13 @@ describe('los botones del panel se anuncian con nombre', () => {
 		expect(offenders).toEqual([]);
 	});
 
-	test('son seis los iconos chicos y doce las píldoras, no menos', () => {
+	test('son siete los iconos chicos y doce las píldoras, no menos', () => {
 		// Sin esto, la de arriba pasa sobre una lista vacía el día que alguien
 		// renombre los archivos y el patrón deje de encontrarlos.
 		const users = (name: string) =>
 			sources.filter(({ text }) => new RegExp(`<${name}\\b`).test(text)).map(({ path }) => path).sort();
 
-		expect(users('TrayIconButton')).toHaveLength(6);
+		expect(users('TrayIconButton')).toHaveLength(7);
 		expect(users('PanelPill')).toEqual([
 			'components/areas/panel/TrayBarArea.vue',
 			'components/areas/panel/WindowsArea.vue',

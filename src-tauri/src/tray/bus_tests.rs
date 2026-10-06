@@ -33,14 +33,14 @@ use zbus::{fdo, interface, Connection, MatchRule, MessageStream, MessageType};
 /// Va sin `--fork`: con `--fork` había que esperar a que se cerrara la salida
 /// del que lo lanza, y con varias pruebas a la vez esa espera se colgaba.
 /// Así se lee la primera línea —la dirección— y el proceso queda en la mano.
-struct PrivateBus {
+pub(crate) struct PrivateBus {
     address: String,
     child: std::process::Child,
     dir: std::path::PathBuf,
 }
 
 impl PrivateBus {
-    fn start() -> Option<Self> {
+    pub(crate) fn start() -> Option<Self> {
         use std::io::BufRead;
         static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
         let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -71,11 +71,11 @@ impl PrivateBus {
         })
     }
 
-    async fn connect(&self) -> Connection {
+    pub(crate) async fn connect(&self) -> Connection {
         self.connect_serving(Ok).await
     }
 
-    async fn connect_serving<F>(&self, serve: F) -> Connection
+    pub(crate) async fn connect_serving<F>(&self, serve: F) -> Connection
     where
         F: FnOnce(
             zbus::connection::Builder<'static>,
@@ -109,6 +109,7 @@ macro_rules! private_bus {
         }
     };
 }
+pub(crate) use private_bus;
 
 /// Un StatusNotifierItem de mentira. Lo que está en `None` responde con error,
 /// como Chromium con `IconName`.

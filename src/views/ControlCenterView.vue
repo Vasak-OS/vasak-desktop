@@ -31,6 +31,7 @@ import PhoneControlCenterCard from '@/components/cards/PhoneControlCenterCard.vu
 import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue';
 import BluetoothControl from '@/components/controls/BluetoothControl.vue';
 import BrightnessControl from '@/components/controls/BrightnessControl.vue';
+import DoNotDisturbToggle from '@/components/controls/DoNotDisturbToggle.vue';
 import NetworkControl from '@/components/controls/NetworkControl.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
@@ -294,6 +295,7 @@ onBeforeUnmount(() => {
         >
           <NetworkControl />
           <BluetoothControl v-if="bluetoothInitialized" />
+          <DoNotDisturbToggle />
           <ThemeToggle />
           <ToggleControl
             name="go-up"

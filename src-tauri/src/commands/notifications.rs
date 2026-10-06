@@ -1,8 +1,30 @@
+use crate::do_not_disturb::DoNotDisturbState;
+use crate::logger::{log_error, log_info};
 use crate::notifications::{
     clear_all_notifications, get_notifications, remove_notification, send_system_notification,
 };
-use crate::logger::{log_info, log_error};
 use crate::structs::Notification;
+
+/// El estado de «No molestar» que ya se conoce. No cruza el bus.
+#[tauri::command]
+pub fn get_do_not_disturb() -> DoNotDisturbState {
+    crate::do_not_disturb::state()
+}
+
+/// Pone «No molestar» y devuelve el estado anterior.
+#[tauri::command]
+pub async fn set_do_not_disturb(enabled: bool) -> Result<bool, String> {
+    log_info(&format!(
+        "«No molestar»: {}",
+        if enabled { "poniendo" } else { "quitando" }
+    ));
+    crate::do_not_disturb::set_enabled(enabled)
+        .await
+        .map_err(|e| {
+            log_error(&format!("No se pudo cambiar «No molestar»: {e}"));
+            e
+        })
+}
 
 #[tauri::command]
 pub async fn send_notify(
@@ -11,10 +33,12 @@ pub async fn send_notify(
     urgency: Option<String>,
 ) -> Result<String, String> {
     log_info(&format!("Enviando notificación: {}", summary));
-    send_system_notification(summary, body, urgency).await.map_err(|e| {
-        log_error(&format!("Error al enviar notificación: {}", e));
-        e
-    })
+    send_system_notification(summary, body, urgency)
+        .await
+        .map_err(|e| {
+            log_error(&format!("Error al enviar notificación: {}", e));
+            e
+        })
 }
 
 #[tauri::command]
@@ -40,9 +64,14 @@ pub async fn delete_notification(id: u32) -> Result<bool, String> {
 
 #[tauri::command]
 pub async fn invoke_notification_action(id: u32, action_key: String) -> Result<(), String> {
-    log_info(&format!("Invocando acción '{}' en notificación {}", action_key, id));
-    crate::notifications::invoke_action(id, action_key).await.map_err(|e| {
-        log_error(&format!("Error al invocar acción de notificación: {}", e));
-        e
-    })
+    log_info(&format!(
+        "Invocando acción '{}' en notificación {}",
+        action_key, id
+    ));
+    crate::notifications::invoke_action(id, action_key)
+        .await
+        .map_err(|e| {
+            log_error(&format!("Error al invocar acción de notificación: {}", e));
+            e
+        })
 }
