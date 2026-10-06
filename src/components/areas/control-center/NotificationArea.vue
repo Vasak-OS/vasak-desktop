@@ -56,7 +56,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ActionButton, EmptyState } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
 import type {
 	Notification,
@@ -73,10 +73,28 @@ import { groupNotifications } from '@/tools/notifications';
 
 const { t } = useI18n();
 
+/**
+ * Cuántas hay y de cuántas aplicaciones, para quien la aloja.
+ *
+ * El centro de control decide con esto si abre en las notificaciones o en los
+ * ajustes, y arma la línea resumen del estado B (vasak-desktop#175). `loaded`
+ * dice si la cuenta ya es la de verdad o el cero de antes de la primera carga.
+ */
+const emit = defineEmits<{
+	summary: [summary: { count: number; apps: number; loaded: boolean }];
+}>();
+
 const notifications = ref<Notification[]>([]);
+const loaded = ref(false);
 
 const groupedNotifications = computed<NotificationGroupData[]>(() =>
 	groupNotifications(notifications.value)
+);
+
+watch(
+	[() => notifications.value.length, () => groupedNotifications.value.length, loaded],
+	([count, apps, isLoaded]) => emit('summary', { count, apps, loaded: isLoaded }),
+	{ immediate: true }
 );
 
 async function loadNotifications() {
@@ -84,6 +102,8 @@ async function loadNotifications() {
 		notifications.value = await getAllNotifications();
 	} catch (error) {
 		console.error('Error loading notifications:', error);
+	} finally {
+		loaded.value = true;
 	}
 }
 

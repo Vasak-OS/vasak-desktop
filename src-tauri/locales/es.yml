@@ -29,6 +29,7 @@ common:
   loading: Cargando…
   noResults: Sin resultados
   retry: Reintentar
+  back: Volver
 
 views:
   privacyApplet:
@@ -235,6 +236,14 @@ views:
       "95": Tormenta
       "96": Tormenta con granizo leve
       "99": Tormenta con granizo intenso
+  controlCenter:
+    quickSettings: Ajustes rápidos
+    more: Más ajustes
+    session: Sesión
+    summaryNone: Sin notificaciones
+    summaryOneOne: 1 notificación de 1 app
+    summaryOtherOne: "{0} notificaciones de 1 app"
+    summaryOtherOther: "{0} notificaciones de {1} apps"
   applets:
     panelMenu:
       title: Opciones del panel
@@ -275,6 +284,19 @@ components:
     disconnect: Desconectar
   BrightnessControl:
     brightness: "Brillo: {0}%"
+  ControlCenterTiles:
+    network: Red
+    bluetooth: Bluetooth
+    theme: Tema
+    screenTime: Tiempo de pantalla
+    search: Buscar
+    disconnected: Sin conexión
+    enabled: Encendido
+    disabled: Apagado
+    devicesOne: 1 dispositivo conectado
+    devicesOther: "{0} dispositivos conectados"
+    dark: Oscuro
+    light: Claro
   ConnectionsArea:
     connected: Conectado
     scan: Buscar dispositivos
@@ -377,11 +399,6 @@ components:
     unreadMany: "{0} nuevas"
     empty: Sin notificaciones
     now: ahora
-  SearchButtonControl:
-    openSearch: Abrir el lanzador
-    searchAlt: Buscar
-  ScreenTimeControl:
-    open: Tiempo de pantalla
   SearchMenuComponent:
     placeholder: Buscar
   SystemAudioArea:
