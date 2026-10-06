@@ -23,15 +23,24 @@ export function useDoNotDisturb() {
 	const available = ref(false);
 	const enabled = ref(false);
 	const busy = ref(false);
+	/**
+	 * Cuántas veces cambió el estado desde que se montó. La lectura inicial
+	 * puede volver después de un evento o de un cambio propio: si llegó algo
+	 * más nuevo mientras tanto, la respuesta vieja se descarta.
+	 */
+	let revision = 0;
 
 	function apply(state: DoNotDisturbState): void {
+		revision += 1;
 		available.value = state.available;
 		enabled.value = state.available && state.enabled;
 	}
 
 	onMounted(async () => {
+		const asked = revision;
 		try {
-			apply(await getDoNotDisturb());
+			const state = await getDoNotDisturb();
+			if (revision === asked) apply(state);
 		} catch (error) {
 			console.error('[do-not-disturb] no se pudo leer el estado:', error);
 		}
@@ -46,6 +55,7 @@ export function useDoNotDisturb() {
 		const wanted = !enabled.value;
 		try {
 			const previous = await setDoNotDisturb(wanted);
+			revision += 1;
 			enabled.value = wanted;
 			return previous;
 		} catch (error) {

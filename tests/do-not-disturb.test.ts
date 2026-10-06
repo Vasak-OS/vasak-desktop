@@ -118,6 +118,31 @@ describe('el mosaico de «No molestar»', () => {
 		view.unmount();
 	});
 
+	test('una lectura inicial que vuelve tarde no pisa un evento más nuevo', async () => {
+		daemon.state.enabled = false;
+		let answer: (value: unknown) => void = () => {};
+		const internals = (globalThis as unknown as { __TAURI_INTERNALS__: Record<string, any> }).__TAURI_INTERNALS__;
+		const invoke = internals.invoke;
+		internals.invoke = (cmd: string, args: Record<string, unknown>) =>
+			cmd === 'get_do_not_disturb'
+				? new Promise((resolve) => {
+						answer = resolve;
+					})
+				: invoke(cmd, args);
+		try {
+			const view = mount(Tile, { attachTo: document.body });
+			await settle();
+			daemon.emit('do-not-disturb-changed', { available: true, enabled: true });
+			await settle();
+			answer({ available: true, enabled: false });
+			await settle();
+			expect(view.find('[data-tile-main]').attributes('aria-pressed')).toBe('true');
+			view.unmount();
+		} finally {
+			internals.invoke = invoke;
+		}
+	});
+
 	test('sin demonio que lo entienda se ve no disponible y no pide nada', async () => {
 		daemon.state = { available: false, enabled: false };
 		const view = mount(Tile, { attachTo: document.body });

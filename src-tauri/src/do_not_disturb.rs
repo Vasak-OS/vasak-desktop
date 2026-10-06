@@ -14,6 +14,7 @@
 //!   `set_enabled(anterior)`.
 
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use futures_util::StreamExt;
@@ -44,6 +45,12 @@ pub struct DoNotDisturbState {
     pub available: bool,
     pub enabled: bool,
 }
+
+/// Sin demonio que conteste, o con uno anterior a la 0.6.0.
+const UNAVAILABLE: DoNotDisturbState = DoNotDisturbState {
+    available: false,
+    enabled: false,
+};
 
 /// La copia en memoria. Aparte de la global para que cada prueba tenga la suya.
 #[derive(Debug, Default)]
@@ -77,6 +84,21 @@ impl Mirror {
 
 static MIRROR: Mirror = Mirror::new();
 
+/// Para publicar a las ventanas un cambio hecho desde este proceso. Se pone al
+/// arrancar el seguimiento.
+static APP: OnceLock<AppHandle> = OnceLock::new();
+
+/// Manda el estado a todas las ventanas.
+fn publish(state: DoNotDisturbState) {
+    log_info(&format!(
+        "«No molestar»: {}",
+        if state.enabled { "puesto" } else { "quitado" }
+    ));
+    if let Some(app) = APP.get() {
+        let _ = app.emit(CHANGED_EVENT, state);
+    }
+}
+
 /// El estado conocido, sin cruzar el bus.
 pub fn state() -> DoNotDisturbState {
     MIRROR.state()
@@ -107,31 +129,34 @@ async fn fetch(conn: &Connection) -> DoNotDisturbState {
             available: true,
             enabled,
         },
-        Err(_) => DoNotDisturbState {
-            available: false,
-            enabled: false,
-        },
+        Err(_) => UNAVAILABLE,
     }
 }
 
 /// Pone el modo en el demonio y devuelve el que había.
 ///
-/// La copia en memoria se actualiza al toque; el evento lo dispara la señal
-/// del demonio, que llega a todas las ventanas por el mismo camino.
+/// La copia en memoria se actualiza al toque y, si cambió, `on_change` lo
+/// publica en ese momento. Tiene que ser acá y no esperar a la señal del
+/// demonio: el seguimiento comparte esta misma copia, así que cuando la señal
+/// llega ya no ve ningún cambio y no avisaría a nadie — el indicador de la
+/// bandeja se quedaba sin enterarse de lo que se tocó en el mosaico.
 pub async fn set_enabled_on(
     conn: &Connection,
     mirror: &Mirror,
     enabled: bool,
+    on_change: impl Fn(DoNotDisturbState),
 ) -> Result<bool, String> {
     let proxy = dnd_proxy(conn).await.map_err(|e| e.to_string())?;
     let previous: bool = proxy
         .call("SetEnabled", &(enabled,))
         .await
         .map_err(|e| format!("el demonio de notificaciones no aceptó «No molestar»: {e}"))?;
-    mirror.apply(DoNotDisturbState {
+    if mirror.apply(DoNotDisturbState {
         available: true,
         enabled,
-    });
+    }) {
+        on_change(mirror.state());
+    }
     Ok(previous)
 }
 
@@ -144,7 +169,7 @@ pub async fn set_enabled_on(
 /// ```
 pub async fn set_enabled(enabled: bool) -> Result<bool, String> {
     let conn = crate::notifications::connection().await?;
-    set_enabled_on(&conn, &MIRROR, enabled).await
+    set_enabled_on(&conn, &MIRROR, enabled, publish).await
 }
 
 /// Sigue al demonio hasta que la conexión se corta: lee el valor, y lo vuelve
@@ -206,21 +231,29 @@ pub async fn follow(
 
 /// Arranca el seguimiento, reconectando con espera creciente si el bus falla.
 pub async fn start(app: AppHandle) {
+    let _ = APP.set(app);
     tokio::spawn(async move {
         let mut delay = Duration::from_secs(1);
         loop {
-            let emit = |state: DoNotDisturbState| {
-                log_info(&format!(
-                    "«No molestar»: {}",
-                    if state.enabled { "puesto" } else { "quitado" }
-                ));
-                let _ = app.emit(CHANGED_EVENT, state);
-            };
+            // Si el seguimiento se corta, lo que se sabe puede haber quedado
+            // viejo: se vuelve a preguntar —o se da por no disponible, sin bus—
+            // en vez de seguir mostrando el último valor hasta reconectar.
             let result = match crate::notifications::connection().await {
-                Ok(conn) => follow(&conn, &MIRROR, emit)
-                    .await
-                    .map_err(|e| e.to_string()),
-                Err(e) => Err(e),
+                Ok(conn) => {
+                    let result = follow(&conn, &MIRROR, publish)
+                        .await
+                        .map_err(|e| e.to_string());
+                    if MIRROR.apply(fetch(&conn).await) {
+                        publish(MIRROR.state());
+                    }
+                    result
+                }
+                Err(e) => {
+                    if MIRROR.apply(UNAVAILABLE) {
+                        publish(MIRROR.state());
+                    }
+                    Err(e)
+                }
             };
             match result {
                 Ok(()) => delay = Duration::from_secs(1),
@@ -245,6 +278,9 @@ mod tests {
     /// Un demonio de notificaciones de mentira con la interfaz de la 0.6.0.
     struct FakeFlare {
         enabled: Arc<AtomicBool>,
+        /// No avisa el cambio al contestar: lo avisa la prueba después, para
+        /// fijar el orden en que el que lo pidió y el seguimiento se enteran.
+        late_signal: bool,
     }
 
     #[interface(name = "org.vasak.Notifications.DoNotDisturb")]
@@ -260,7 +296,12 @@ mod tests {
             #[zbus(signal_context)] ctxt: SignalContext<'_>,
         ) -> bool {
             let previous = self.enabled.swap(enabled, Ordering::SeqCst);
-            if previous != enabled {
+            if previous == enabled {
+                return previous;
+            }
+            // Con `late_signal` la prueba lo avisa a mano, después de la
+            // respuesta.
+            if !self.late_signal {
                 let _ = self.enabled_changed(&ctxt).await;
             }
             previous
@@ -277,12 +318,17 @@ mod tests {
     }
 
     async fn serve_fake(bus: &PrivateBus, enabled: bool) -> Connection {
+        serve_fake_with(bus, enabled, false).await
+    }
+
+    async fn serve_fake_with(bus: &PrivateBus, enabled: bool, late_signal: bool) -> Connection {
         bus.connect_serving(|builder| {
             builder
                 .serve_at(
                     FLARE_PATH,
                     FakeFlare {
                         enabled: Arc::new(AtomicBool::new(enabled)),
+                        late_signal,
                     },
                 )?
                 .name(FLARE_DEST)
@@ -324,9 +370,13 @@ mod tests {
         let client = bus.connect().await;
         let mirror = Mirror::new();
 
-        assert!(!set_enabled_on(&client, &mirror, true).await.unwrap());
+        assert!(!set_enabled_on(&client, &mirror, true, |_| {})
+            .await
+            .unwrap());
         assert!(mirror.state().enabled);
-        assert!(set_enabled_on(&client, &mirror, false).await.unwrap());
+        assert!(set_enabled_on(&client, &mirror, false, |_| {})
+            .await
+            .unwrap());
         assert!(!mirror.state().enabled);
     }
 
@@ -362,10 +412,68 @@ mod tests {
             "lee lo que quedó de la sesión anterior"
         );
 
-        set_enabled_on(&other, &Mirror::new(), false).await.unwrap();
+        set_enabled_on(&other, &Mirror::new(), false, |_| {})
+            .await
+            .unwrap();
         let second = recv(&mut rx).await;
         assert!(!second.enabled, "el cambio llega por PropertiesChanged");
         assert!(!mirror.state().enabled);
+
+        task.abort();
+    }
+
+    /// Un cambio hecho desde este proceso, con la misma copia que usa el
+    /// seguimiento, se publica una vez: lo publica quien lo hizo, y la señal
+    /// que llega después no lo repite. Antes no lo publicaba nadie.
+    #[tokio::test]
+    async fn el_cambio_propio_se_publica_una_vez() {
+        let bus = crate::tray::bus_tests::private_bus!();
+        // La señal llega después de la respuesta: es el orden en que el
+        // seguimiento ya no ve ningún cambio.
+        let flare = serve_fake_with(&bus, false, true).await;
+        let follower = bus.connect().await;
+        let setter = bus.connect().await;
+        let mirror = Arc::new(Mirror::new());
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let task = {
+            let mirror = mirror.clone();
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                let _ = follow(&follower, &mirror, move |state| {
+                    let _ = tx.send(state);
+                })
+                .await;
+            })
+        };
+        let first = recv(&mut rx).await;
+        assert!(first.available && !first.enabled);
+
+        let published = tx.clone();
+        set_enabled_on(&setter, &mirror, true, move |state| {
+            let _ = published.send(state);
+        })
+        .await
+        .unwrap();
+
+        let second = recv(&mut rx).await;
+        assert!(second.enabled, "el cambio se publica");
+
+        // Ahora llega la señal del demonio.
+        let iface = flare
+            .object_server()
+            .interface::<_, FakeFlare>(FLARE_PATH)
+            .await
+            .unwrap();
+        iface
+            .get()
+            .await
+            .enabled_changed(iface.signal_context())
+            .await
+            .unwrap();
+        // La señal del demonio llega y no repite nada.
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        assert!(rx.try_recv().is_err(), "la señal no lo publica otra vez");
 
         task.abort();
     }
@@ -382,6 +490,8 @@ mod tests {
                 enabled: false
             }
         );
-        assert!(set_enabled_on(&client, &Mirror::new(), true).await.is_err());
+        assert!(set_enabled_on(&client, &Mirror::new(), true, |_| {})
+            .await
+            .is_err());
     }
 }
