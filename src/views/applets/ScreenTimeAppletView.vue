@@ -176,7 +176,7 @@ const title = computed(() => {
 	if (day.value === today.value) return t('views.screenTimeApplet.today');
 	if (day.value === addDays(today.value, -1)) return t('views.screenTimeApplet.yesterday');
 	const text = dateFormat.value.format(asDate(day.value));
-	return capitalizeFirst(text);
+	return capitalizeFirst(text, locale.value || undefined);
 });
 
 const week = computed(() => (day.value ? weekOf(day.value) : []));
@@ -223,7 +223,7 @@ const bars = computed<BarChartItem[]>(() =>
 		const name = weekdayLong.value.format(asDate(each)).replace('.', '');
 		return {
 			key: each,
-			label: capitalizeFirst(name),
+			label: capitalizeFirst(name, locale.value || undefined),
 			shortLabel: weekdayNarrow.value.format(asDate(each)).toLocaleUpperCase(),
 			value,
 			valueLabel: duration(value),

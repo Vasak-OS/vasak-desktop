@@ -33,6 +33,8 @@ const status = computed(() => {
 });
 
 async function onActivate(): Promise<void> {
+	// Un doble clic mientras el primero sigue en curso no manda otro pedido.
+	if (toggling.value) return;
 	toggling.value = true;
 	try {
 		await toggleBluetooth();

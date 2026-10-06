@@ -53,18 +53,19 @@ async function back(): Promise<void> {
          entran, se desplaza el bloque de arriba del centro entero, que es un
          solo desplazamiento y no uno adentro de otro. Cada mosaico es un
          `QuickSettingsTile` de la librería: la tarjeta la pone él. -->
-    <div
+    <!-- `fieldset` y no `role="group"`: el grupo nativo lo anuncian todos los
+         lectores. `min-w-0` le saca el ancho mínimo de contenido que trae. -->
+    <fieldset
       v-show="!openTile"
       ref="grid"
-      role="group"
       :aria-label="t('views.controlCenter.quickSettings')"
-      class="grid shrink-0 grid-cols-1 gap-2 @[17rem]:grid-cols-2"
+      class="m-0 grid min-w-0 shrink-0 grid-cols-1 gap-2 border-0 p-0 @[17rem]:grid-cols-2"
       data-tile-grid
     >
       <div v-for="spec in tiles" :key="spec.id" class="min-w-0" :data-tile-id="spec.id">
         <component :is="spec.tile" @open="open(spec.id)" />
       </div>
-    </div>
+    </fieldset>
 
     <template v-if="openTile">
       <div ref="backButton" class="flex shrink-0">

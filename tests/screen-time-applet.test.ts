@@ -35,6 +35,14 @@ const EN = Bun.YAML.parse(read('src-tauri/locales/en.yml')) as Record<string, an
 const template = VIEW.slice(VIEW.indexOf('<template>'), VIEW.lastIndexOf('</template>'));
 
 describe('el tablero de tiempo de pantalla', () => {
+	test('la mayúscula de la fecha y de los días sigue el idioma con que se formatearon', () => {
+		// Sin el idioma, `toLocaleUpperCase` usa el del sistema y puede no ser el
+		// de `Intl.DateTimeFormat` (la «i» turca, por ejemplo).
+		const calls = VIEW.match(/capitalizeFirst\([^)]*\)/g) ?? [];
+		expect(calls.length).toBeGreaterThan(0);
+		for (const call of calls) expect(call).toContain('locale.value');
+	});
+
 	test('lo abre un mosaico del centro de control, como applet anclado', () => {
 		// Desde vasak-desktop#175 es un mosaico del estado B, no un botón redondo.
 		expect(CENTER).toContain('<QuickSettingsPanel');

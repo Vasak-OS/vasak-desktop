@@ -234,7 +234,7 @@ onBeforeUnmount(() => {
         />
         <PhoneControlCenterCard />
 
-        <!-- A: la lista, con todo el alto que sobra y nunca menos que unas dos
+        <!-- A: la lista, con el alto entero que sobra y nunca menos que unas dos
              tarjetas. Escondida con `v-show` en B: sigue montada, y es la que
              cuenta para la línea resumen. -->
         <NotificationArea

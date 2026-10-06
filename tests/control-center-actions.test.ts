@@ -12,9 +12,9 @@ import { useThemeToggle } from '../src/tools/composables/useThemeToggle';
 import { useWifiToggle } from '../src/tools/composables/useWifiToggle';
 import { openScreenTime, openSearch } from '../src/tools/control-center-actions';
 import { capitalizeFirst } from '../src/tools/text-case';
-import { tauriCalls, useDom } from './support/mount-sfc';
+import { loadComponent, ROOT, tauriCalls, useDom } from './support/mount-sfc';
 
-useDom();
+const dom = useDom();
 
 type Internals = { invoke: (cmd: string, args?: unknown) => Promise<unknown> };
 const internals = () => (globalThis as unknown as { __TAURI_INTERNALS__: Internals }).__TAURI_INTERNALS__;
@@ -169,6 +169,56 @@ describe('el Wi-Fi del mosaico', () => {
 			await wifi.toggle();
 			expect(wifi.enabled.value).toBe(false);
 			expect(wifi.busy.value).toBe(false);
+		});
+	});
+});
+
+describe('el mosaico de Bluetooth', () => {
+	const doubles = `${ROOT}/tests/support/bluetooth-tile-doubles.ts`;
+	const adapter = { path: '/org/bluez/hci0', powered: true };
+
+	/** Un backend con un adaptador cuyo cambio de estado tarda hasta que se lo suelta. */
+	function slowAdapter() {
+		const powered: boolean[] = [];
+		let release: () => void = () => {};
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const invoke = async (cmd: string, args?: unknown) => {
+			if (cmd === 'plugin:bluetooth-manager|list_adapters') return [adapter];
+			if (cmd === 'plugin:bluetooth-manager|set_adapter_powered') {
+				powered.push((args as { powered: boolean }).powered);
+				await gate;
+				return null;
+			}
+			if (cmd === 'plugin:i18n|load_translations') return {};
+			if (cmd === 'plugin:i18n|get_locale') return 'es';
+			return '';
+		};
+		return { invoke, powered, release: () => release() };
+	}
+
+	test('un doble clic mientras el primero sigue en curso manda un solo pedido', async () => {
+		const backend = slowAdapter();
+		await withInvoke(backend.invoke, async () => {
+			const BluetoothTile = await loadComponent(
+				dom.workdir(),
+				'src/components/controls/tiles/BluetoothTile.vue',
+				doubles,
+				'BluetoothTileDoubleClick'
+			);
+			const view = mount(BluetoothTile, { global: { plugins: [createPinia()] }, attachTo: document.body });
+			const main = view.find('[data-tile-main]');
+			// Los dos clics antes de que Vue vuelva a dibujar: el mosaico de la
+			// librería todavía no se ve ocupado, así que la guarda es la del componente.
+			(main.element as HTMLButtonElement).click();
+			(main.element as HTMLButtonElement).click();
+			for (let i = 0; i < 10; i++) await Promise.resolve();
+			await nextTick();
+			backend.release();
+			for (let i = 0; i < 10; i++) await Promise.resolve();
+			expect(backend.powered).toEqual([false]);
+			view.unmount();
 		});
 	});
 });

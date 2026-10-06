@@ -140,6 +140,11 @@ describe('el bloque de mosaicos, montado', () => {
 
 	test('muestra un mosaico por ajuste, sin Bluetooth si el equipo no tiene', async () => {
 		const view = mount(Panel, { props: { bluetooth: false }, attachTo: document.body });
+		// Grupo nativo y con nombre, no `role="group"` sobre un div.
+		const group = view.find('[data-tile-grid]');
+		expect(group.element.tagName).toBe('FIELDSET');
+		expect(group.attributes('role')).toBeUndefined();
+		expect(group.attributes('aria-label')).toBeTruthy();
 		await settle();
 		expect(view.findAll('[data-fake-tile]').map((tile) => tile.text())).toEqual(['network', 'theme', 'screen-time', 'search']);
 		view.unmount();
