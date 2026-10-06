@@ -53,8 +53,8 @@ async function back(): Promise<void> {
          entran, se desplaza el bloque de arriba del centro entero, que es un
          solo desplazamiento y no uno adentro de otro. Cada mosaico es un
          `QuickSettingsTile` de la librería: la tarjeta la pone él. -->
-    <!-- `fieldset` y no `role="group"`: el grupo nativo lo anuncian todos los
-         lectores. `min-w-0` le saca el ancho mínimo de contenido que trae. -->
+    <!-- `fieldset` y no `role="group"`: el grupo nativo lo anuncia cualquier
+         lector. `min-w-0` le saca el ancho mínimo de contenido que trae. -->
     <fieldset
       v-show="!openTile"
       ref="grid"
