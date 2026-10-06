@@ -97,6 +97,26 @@ export async function allowWallpaperAsset(path: string): Promise<string> {
 }
 
 /**
+ * La URL `asset:` de un fondo, autorizando antes el archivo exacto.
+ *
+ * Un fondo propio puede estar en cualquier carpeta del hogar o en una carpeta
+ * propia fuera de él (vasak-settings#148): el alcance declarado con globs no
+ * cubre una subcarpeta oculta ni una carpeta arbitraria, y una ruta con enlaces
+ * simbólicos no coincide con el patrón. Autorizar el archivo canonicalizado no
+ * depende de esos bordes, y así el fondo no queda negro (vasak-desktop#163). Si
+ * no se pudo autorizar se intenta con la ruta tal cual, que es lo de antes.
+ *
+ * `toUrl` se inyecta para poder probarlo sin el backend de Tauri.
+ */
+export async function wallpaperAssetUrl(path: string, toUrl = convertFileSrc): Promise<string> {
+	try {
+		return toUrl(await allowWallpaperAsset(path));
+	} catch {
+		return toUrl(path);
+	}
+}
+
+/**
  * La configuración con el fondo nuevo, sin tocar nada más.
  *
  * Igual que Configuración: `desktop.wallpaper` pasa a ser `[ruta]` y el resto de

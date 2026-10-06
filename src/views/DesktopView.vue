@@ -10,7 +10,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import WidgetLayer from '@/components/widgets/WidgetLayer.vue';
 import { getBatteryInfo } from '@/services/core.service';
-import { allowWallpaperAsset } from '@/services/wallpaper.service';
+import { wallpaperAssetUrl } from '@/services/wallpaper.service';
 import { createWallpaperFollower } from '@/services/wallpaper-colors.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError, logInfo, logWarning } from '@/utils/logger';
@@ -36,24 +36,6 @@ const DEFAULT_WALLPAPER = '/usr/share/backgrounds/cutefishos/wallpaper-9.jpg';
 const backgroundPath = computed(() => {
 	return (configStore as any).config?.desktop?.wallpaper?.[0] || DEFAULT_WALLPAPER;
 });
-
-/**
- * La URL `asset:` del fondo, autorizando antes el archivo exacto.
- *
- * Un fondo propio puede estar en cualquier carpeta del hogar o en una carpeta
- * propia fuera de él (vasak-settings#148): el alcance declarado con globs no
- * cubre una subcarpeta oculta ni una carpeta arbitraria, y una ruta con enlaces
- * simbólicos no coincide con el patrón. Autorizar el archivo canonicalizado no
- * depende de esos bordes, y así el fondo no queda negro (vasak-desktop#163). Si
- * no se pudo autorizar se intenta con la ruta tal cual, que es lo de antes.
- */
-async function resolveWallpaperUrl(path: string): Promise<string> {
-	try {
-		return convertFileSrc(await allowWallpaperAsset(path));
-	} catch {
-		return convertFileSrc(path);
-	}
-}
 
 /**
  * Fondos en movimiento.
@@ -203,7 +185,7 @@ function showDefaultImage(): void {
 
 async function loadBackground() {
 	if (!backgroundIsVideo.value) {
-		showLayer('image', await resolveWallpaperUrl(backgroundPath.value));
+		showLayer('image', await wallpaperAssetUrl(backgroundPath.value));
 		return;
 	}
 
@@ -219,7 +201,7 @@ async function loadBackground() {
 
 	const requested = backgroundPath.value;
 	try {
-		const url = await fetchVideoBlob(await resolveWallpaperUrl(requested));
+		const url = await fetchVideoBlob(await wallpaperAssetUrl(requested));
 		// Mientras se leía, se eligió otro fondo: éste ya no va.
 		if (requested !== backgroundPath.value) {
 			URL.revokeObjectURL(url);

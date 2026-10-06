@@ -100,6 +100,16 @@ pub fn merge_catalog(
     paths
 }
 
+/// El argumento `folder` con el que pedirle a Configuración los fondos de la
+/// carpeta propia, o `None` si no hay carpeta elegida (vasak-settings#148). La
+/// ruta se recorta, y una vacía o de sólo espacios no es una carpeta.
+pub fn custom_folder_arg(custom_folder: Option<&str>) -> Option<String> {
+    custom_folder
+        .map(str::trim)
+        .filter(|folder| !folder.is_empty())
+        .map(str::to_string)
+}
+
 /// Arma la fila con las miniaturas que devolvió Configuración.
 pub fn build_entries(
     paths: Vec<String>,
@@ -164,12 +174,8 @@ pub async fn wallpaper_catalog(
             Vec::new()
         });
 
-    let custom = match custom_folder
-        .as_deref()
-        .map(str::trim)
-        .filter(|f| !f.is_empty())
-    {
-        Some(folder) => ask_settings::<Vec<String>>(&["folder", folder])
+    let custom = match custom_folder_arg(custom_folder.as_deref()) {
+        Some(folder) => ask_settings::<Vec<String>>(&["folder", &folder])
             .await
             .unwrap_or_else(|error| {
                 log_warning(&format!(
@@ -391,5 +397,21 @@ mod tests {
             tauri::async_runtime::block_on(prepare_wallpaper("/o/1.jpg".into())).unwrap();
         assert_eq!(prepared.path, "/o/1.jpg");
         assert!(!prepared.optimized);
+    }
+
+    #[test]
+    fn la_carpeta_propia_se_pide_solo_si_hay_una() {
+        assert_eq!(
+            custom_folder_arg(Some("/mnt/fotos")),
+            Some("/mnt/fotos".to_string())
+        );
+        // Recortada, y una vacía o de sólo espacios no es una carpeta.
+        assert_eq!(
+            custom_folder_arg(Some("  /home/p/Fondos  ")),
+            Some("/home/p/Fondos".to_string())
+        );
+        assert_eq!(custom_folder_arg(Some("   ")), None);
+        assert_eq!(custom_folder_arg(Some("")), None);
+        assert_eq!(custom_folder_arg(None), None);
     }
 }
