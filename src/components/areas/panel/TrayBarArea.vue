@@ -5,6 +5,7 @@ import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { PanelPill, ProgressBar } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import TrayIconCapsLock from '@/components/buttons/TrayIconCapsLock.vue';
+import TrayIconDoNotDisturb from '@/components/buttons/TrayIconDoNotDisturb.vue';
 import TrayIconMicrophone from '@/components/buttons/TrayIconMicrophone.vue';
 import TrayIconPrivacy from '@/components/buttons/TrayIconPrivacy.vue';
 import TrayIconTwingate from '@/components/buttons/TrayIconTwingate.vue';
@@ -251,6 +252,7 @@ useSharedEvent('tray-update', refreshTrayItems);
       </div>
       <TrayIconPrivacy v-if="showPrivacy" key="icon-privacy" data-tray-entry />
       <TrayIconCapsLock key="icon-capslock" data-tray-entry />
+      <TrayIconDoNotDisturb key="icon-do-not-disturb" data-tray-entry />
       <TrayIconMicrophone key="icon-micmute" data-tray-entry />
       <TrayIconTwingate key="icon-twingate" data-tray-entry />
     </TransitionGroup>

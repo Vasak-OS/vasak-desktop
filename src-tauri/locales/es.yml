@@ -290,6 +290,9 @@ components:
   BrightnessControl:
     brightness: "Brillo: {0}%"
   ControlCenterTiles:
+    doNotDisturb: No molestar
+    doNotDisturbOn: Sólo urgentes
+    unavailable: No disponible
     network: Red
     bluetooth: Bluetooth
     theme: Tema
@@ -410,6 +413,8 @@ components:
     title: Configuración de audio
     volumeControl: Control de volumen
     deviceSelector: Selector de dispositivo de audio
+  DoNotDisturbToggle:
+    label: No molestar
   ThemeToggle:
     toLight: Cambiar a tema claro
     toDark: Cambiar a tema oscuro
@@ -423,6 +428,8 @@ components:
     iconAlt: Icono de Bluetooth
   TrayIconCapsLock:
     capsLock: Bloq Mayús
+  TrayIconDoNotDisturb:
+    label: "No molestar: sólo avisan las urgentes"
   TrayIconMicrophone:
     muted: Micrófono silenciado
   TrayIconNetwork:

@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod bus_tests;
+pub(crate) mod bus_tests;
 pub mod dbus_menu;
 pub mod item_props;
 pub mod launcher_entry;

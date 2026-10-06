@@ -51,8 +51,8 @@ pub use music::{
     music_set_shuffle, music_set_volume, music_stop,
 };
 pub use notifications::{
-    clear_notifications, delete_notification, get_all_notifications, invoke_notification_action,
-    send_notify,
+    clear_notifications, delete_notification, get_all_notifications, get_do_not_disturb,
+    invoke_notification_action, send_notify, set_do_not_disturb,
 };
 pub use osd::show_osd;
 pub use panel::show_panel;

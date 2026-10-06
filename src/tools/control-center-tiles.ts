@@ -11,7 +11,13 @@
  */
 import { type Component, defineAsyncComponent } from 'vue';
 
-export type TileId = 'network' | 'bluetooth' | 'theme' | 'screen-time' | 'search';
+export type TileId =
+	| 'network'
+	| 'bluetooth'
+	| 'do-not-disturb'
+	| 'theme'
+	| 'screen-time'
+	| 'search';
 
 export interface TileSpec {
 	id: TileId;
@@ -40,6 +46,10 @@ export const CONTROL_CENTER_TILES: readonly TileSpec[] = [
 			() => import('@/components/areas/bluetooth/BluetoothControlArea.vue')
 		),
 		requires: 'bluetooth',
+	},
+	{
+		id: 'do-not-disturb',
+		tile: defineAsyncComponent(() => import('@/components/controls/tiles/DoNotDisturbTile.vue')),
 	},
 	{
 		id: 'theme',
