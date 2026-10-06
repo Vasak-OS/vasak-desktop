@@ -20,6 +20,7 @@ mod session;
 mod session_popup;
 mod tray;
 mod twingate;
+mod wallpaper_assets;
 mod wallpaper_colors;
 mod wallpaper_picker;
 mod weather;
@@ -65,6 +66,7 @@ pub use tray::{
     tray_menu_item_click, tray_popup_click,
 };
 pub use twingate::{twingate_authorize, twingate_info};
+pub use wallpaper_assets::allow_wallpaper_asset;
 pub use wallpaper_colors::wallpaper_pixels;
 pub use wallpaper_picker::{
     hide_wallpaper_picker, prepare_wallpaper, toggle_wallpaper_picker, wallpaper_catalog,

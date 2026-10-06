@@ -17,6 +17,8 @@
       "assetProtocol": {
         "scope": [
           "$HOME/**",
+          "$CACHE/vasak/**",
+          "$HOME/.cache/vasak/**",
           "/usr/share/**",
           "/run/media/**",
           "/mnt/**"

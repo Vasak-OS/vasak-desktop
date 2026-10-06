@@ -26,6 +26,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 
 import {
 	applyWallpaper,
 	currentWallpaper,
+	customWallpaperFolder,
 	hideWallpaperPicker,
 	loadWallpaperCatalog,
 	openWallpaperSettings,
@@ -69,8 +70,13 @@ async function load(): Promise<void> {
 	loading.value = true;
 	error.value = '';
 	try {
-		current.value = currentWallpaper(await readConfig());
-		baseItems.value = toCarouselItems(await loadWallpaperCatalog(current.value));
+		const config = await readConfig();
+		current.value = currentWallpaper(config);
+		// La carpeta propia la guarda Configuración (vasak-settings#148); el
+		// selector lee la misma clave y le pasa la carpeta al catálogo para que
+		// sus imágenes aparezcan junto a las oficiales.
+		const folder = customWallpaperFolder(config);
+		baseItems.value = toCarouselItems(await loadWallpaperCatalog(current.value, folder));
 	} catch (reason) {
 		logError(`[wallpaper_picker] no se pudo armar la lista de fondos: ${reason}`);
 		baseItems.value = [];

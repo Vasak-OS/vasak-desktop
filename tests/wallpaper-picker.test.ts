@@ -22,6 +22,7 @@ import type { VSKConfig } from '@vasakgroup/plugin-config-manager';
 import {
 	applyWallpaper,
 	currentWallpaper,
+	customWallpaperFolder,
 	toCarouselItems,
 	wallpaperLabel,
 	withWallpaper,
@@ -77,6 +78,17 @@ describe('aplicar un fondo escribe la clave de Configuración', () => {
 		expect(currentWallpaper({ desktop: { ...CONFIG.desktop, wallpaper: [] } })).toBeNull();
 		expect(currentWallpaper({ desktop: { ...CONFIG.desktop, wallpaper: [' '] } })).toBeNull();
 		expect(currentWallpaper(null)).toBeNull();
+	});
+
+	test('la carpeta propia sale de la misma clave que escribe Configuración', () => {
+		expect(
+			customWallpaperFolder({ desktop: { ...CONFIG.desktop, wallpaperfolder: '/mnt/fotos' } })
+		).toBe('/mnt/fotos');
+		// Sin carpeta elegida, o con una clave que no es una cadena: no hay carpeta.
+		expect(customWallpaperFolder(CONFIG)).toBeNull();
+		expect(customWallpaperFolder({ desktop: { ...CONFIG.desktop, wallpaperfolder: '  ' } })).toBeNull();
+		expect(customWallpaperFolder({ desktop: { ...CONFIG.desktop, wallpaperfolder: 7 } })).toBeNull();
+		expect(customWallpaperFolder(null)).toBeNull();
 	});
 });
 
