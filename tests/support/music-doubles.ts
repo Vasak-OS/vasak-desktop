@@ -1,6 +1,6 @@
 /**
- * Los dobles de lo que importan `TrayMusicControl.vue` y `MusicAppletView.vue`
- * desde `@/…`. Lo puro (los tiempos, las salidas, los reproductores) es el
+ * Los dobles de lo que importan `TrayMusicControl.vue`, `MusicAppletView.vue` y
+ * `MusicWidget.vue` desde `@/…`. Lo puro (los tiempos, las salidas, los reproductores) es el
  * módulo de verdad; lo que habla con Tauri o con otras ventanas es un doble
  * que la prueba controla desde `music`.
  */
@@ -10,7 +10,17 @@ import type { MusicInfo, PlayerRef } from '../../src/interfaces/music';
 
 export { currentOutput, outputIcon, outputLabel } from '../../src/tools/audio-outputs';
 export { activePlayerIndex, playerLabels } from '../../src/tools/music-players';
-export { formatDuration, playbackStateOf } from '../../src/utils/playback';
+export { formatDuration, playbackStateOf, sectionsFor } from '../../src/utils/playback';
+export {
+	coverRingProgress,
+	hasActivePlayer,
+	hasExtras,
+	loopStatusIconName,
+	percentToVolume,
+	playPauseAvailable,
+	seekRatio,
+	volumeToPercent,
+} from '../../src/tools/music-widget';
 
 export function blankInfo(): MusicInfo {
 	return {

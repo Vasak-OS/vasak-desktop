@@ -61,9 +61,10 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
 		labelKey: 'widgets.music.name',
 		descriptionKey: 'widgets.music.description',
 		icon: 'multimedia-player-symbolic',
-		// Una sola fila alcanza: portada, título y los tres botones entran de
-		// lado. Antes el mínimo era de dos filas y por eso no se podía achicar
-		// —y el ancho mínimo de dos celdas dejaba los botones sin lugar—.
+		// Una sola fila alcanza: la portada al costado, y el título, el artista
+		// y los tres botones apilados al lado (vasak-desktop#176). Antes el
+		// mínimo era de dos filas y por eso no se podía achicar —y el ancho
+		// mínimo de dos celdas dejaba los botones sin lugar—.
 		default: { w: 4, h: 1 },
 		min: { w: 3, h: 1 },
 		max: { w: 8, h: 3 },
