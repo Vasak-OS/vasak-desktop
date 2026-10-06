@@ -1,7 +1,7 @@
 /**
  * Lo que comparten los botones redondos y los mosaicos del centro de control
  * (vasak-desktop#175): abrir el tablero de tiempo de pantalla, abrir el
- * lanzador y alternar el tema. Se prueba contra un `__TAURI_INTERNALS__` de
+ * lanzador, alternar el tema y prender o apagar el Wi-Fi. Se prueba contra un `__TAURI_INTERNALS__` de
  * mentira (`support/mount-sfc.ts`), mirando lo que se le pidió al backend.
  */
 import { beforeEach, describe, expect, test } from 'bun:test';
@@ -9,6 +9,7 @@ import { mount } from '@vue/test-utils';
 import { createPinia } from 'pinia';
 import { defineComponent, h, nextTick } from 'vue';
 import { useThemeToggle } from '../src/tools/composables/useThemeToggle';
+import { useWifiToggle } from '../src/tools/composables/useWifiToggle';
 import { openScreenTime, openSearch } from '../src/tools/control-center-actions';
 import { capitalizeFirst } from '../src/tools/text-case';
 import { tauriCalls, useDom } from './support/mount-sfc';
@@ -110,6 +111,65 @@ describe('alternar el tema', () => {
 		expect(document.documentElement.classList.contains('dark')).toBe(false);
 		await Bun.sleep(850);
 		view.unmount();
+	});
+});
+
+describe('el Wi-Fi del mosaico', () => {
+	/** Un backend con radio, que recuerda si está prendida. */
+	function radio(initial: boolean, present = true) {
+		let on = initial;
+		const sets: boolean[] = [];
+		const invoke = async (cmd: string, args?: unknown) => {
+			if (cmd === 'plugin:network-manager|is_wireless_available') return present;
+			if (cmd === 'plugin:network-manager|get_wireless_enabled') return on;
+			if (cmd === 'plugin:network-manager|set_wireless_enabled') {
+				on = (args as { enabled: boolean }).enabled;
+				sets.push(on);
+				return on;
+			}
+			return null;
+		};
+		return { invoke, sets };
+	}
+
+	test('lee la radio y la alterna', async () => {
+		const backend = radio(false);
+		await withInvoke(backend.invoke, async () => {
+			const wifi = useWifiToggle();
+			await wifi.refresh();
+			expect(wifi.available.value).toBe(true);
+			expect(wifi.enabled.value).toBe(false);
+			await wifi.toggle();
+			expect(wifi.enabled.value).toBe(true);
+			expect(wifi.busy.value).toBe(false);
+			await wifi.toggle();
+			expect(backend.sets).toEqual([true, false]);
+		});
+	});
+
+	test('sin radio no hay nada que alternar', async () => {
+		const backend = radio(true, false);
+		await withInvoke(backend.invoke, async () => {
+			const wifi = useWifiToggle();
+			await wifi.refresh();
+			expect(wifi.available.value).toBe(false);
+			expect(wifi.enabled.value).toBe(false);
+			await wifi.toggle();
+			expect(backend.sets).toEqual([]);
+		});
+	});
+
+	test('si el backend falla, queda como estaba', async () => {
+		await withInvoke(async () => {
+			throw new Error('sin NetworkManager');
+		}, async () => {
+			const wifi = useWifiToggle();
+			await wifi.refresh();
+			expect(wifi.available.value).toBe(true);
+			await wifi.toggle();
+			expect(wifi.enabled.value).toBe(false);
+			expect(wifi.busy.value).toBe(false);
+		});
 	});
 });
 

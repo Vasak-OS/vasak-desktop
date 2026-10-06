@@ -1,23 +1,27 @@
 <script setup lang="ts">
 /**
- * El mosaico de Bluetooth: dice si está encendido y cuántos dispositivos hay
- * conectados, y abre su detalle dentro del bloque.
+ * El mosaico de Bluetooth (vasak-desktop#175): el cuerpo lo prende y lo apaga,
+ * la línea de estado dice cuántos dispositivos hay conectados y la flecha abre
+ * el detalle dentro del bloque.
  */
+import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { computed } from 'vue';
+import { QuickSettingsTile } from '@vasakgroup/vue-libvasak';
+import { computed, ref } from 'vue';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
-import ControlCenterTile from './ControlCenterTile.vue';
+import { logError } from '@/utils/logger';
 
 const emit = defineEmits<{ open: [] }>();
 const { t } = useI18n();
 const { isBluetoothOn, connectedDevicesCount } = useBluetoothState({ getIcon: async () => '' });
+const toggling = ref(false);
 
 const icon = computed(() => {
 	if (!isBluetoothOn.value) return 'bluetooth-disabled';
 	return connectedDevicesCount.value > 0 ? 'bluetooth-active' : 'bluetooth';
 });
 
-const description = computed(() => {
+const status = computed(() => {
 	if (!isBluetoothOn.value) return t('components.ControlCenterTiles.disabled');
 	const count = connectedDevicesCount.value;
 	if (count === 0) return t('components.ControlCenterTiles.enabled');
@@ -27,14 +31,28 @@ const description = computed(() => {
 			: 'components.ControlCenterTiles.devicesOther'
 	).replace('{0}', String(count));
 });
+
+async function onActivate(): Promise<void> {
+	toggling.value = true;
+	try {
+		await toggleBluetooth();
+	} catch (error) {
+		logError('[BluetoothTile] no se pudo alternar el Bluetooth:', error);
+	} finally {
+		toggling.value = false;
+	}
+}
 </script>
 
 <template>
-  <ControlCenterTile
+  <QuickSettingsTile
     :icon="icon"
     :title="t('components.ControlCenterTiles.bluetooth')"
-    :description="description"
-    has-detail
-    @click="emit('open')"
+    :status="status"
+    :active="Boolean(isBluetoothOn)"
+    :loading="toggling"
+    detail
+    @activate="onActivate"
+    @detail="emit('open')"
   />
 </template>

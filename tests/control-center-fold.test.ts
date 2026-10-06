@@ -168,7 +168,7 @@ describe('el bloque de mosaicos, montado', () => {
 		expect(detail.exists()).toBe(true);
 		expect(JSON.parse(detail.attributes('data-attrs') ?? '{}')).toEqual({ hideX: true });
 		// La lista queda montada pero escondida: no vuelve a pedir nada al volver.
-		expect((view.find('[data-tile-grid]').element.parentElement as HTMLElement).style.display).toBe('none');
+		expect((view.find('[data-tile-grid]').element as HTMLElement).style.display).toBe('none');
 		const back = view.find('[data-tile-back]');
 		expect(back.exists()).toBe(true);
 
@@ -178,6 +178,8 @@ describe('el bloque de mosaicos, montado', () => {
 		await view.setProps({ detail: null });
 		await settle();
 		expect(view.find('[data-fake-detail]').exists()).toBe(false);
+		// El foco vuelve a la flecha que abrió la ficha.
+		expect(document.activeElement).toBe(view.find('[data-fake-tile="network"]').element);
 		view.unmount();
 	});
 

@@ -39,7 +39,7 @@ describe('el tablero de tiempo de pantalla', () => {
 		// Desde vasak-desktop#175 es un mosaico del estado B, no un botón redondo.
 		expect(CENTER).toContain('<QuickSettingsPanel');
 		expect(TILES).toContain("import('@/components/controls/tiles/ScreenTimeTile.vue')");
-		expect(TILE).toContain('@click="openScreenTime"');
+		expect(TILE).toContain('@activate="openScreenTime"');
 		expect(ACTIONS).toContain("toggleApplet('screen-time')");
 		// Primero se va el centro de control: el tablero ocupa el centro.
 		expect(ACTIONS.indexOf('hideControlCenter()')).toBeLessThan(ACTIONS.indexOf("toggleApplet('screen-time')"));

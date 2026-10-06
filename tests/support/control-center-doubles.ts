@@ -11,14 +11,14 @@ import type { TileSpec } from '../../src/tools/control-center-tiles';
 export { availableTiles } from '../../src/tools/control-center-tiles';
 export { groupNotifications } from '../../src/tools/notifications';
 
-/** Un mosaico de mentira: un botón que emite `open`, como los de verdad. */
+/** Un mosaico de mentira: la flecha del detalle emite `open`, como los de verdad. */
 function fakeTile(id: string) {
 	return defineComponent({
 		name: `FakeTile-${id}`,
 		emits: ['open'],
 		setup(_props, { emit }) {
 			return () =>
-				h('button', { type: 'button', 'data-tile': '', 'data-fake-tile': id, onClick: () => emit('open') }, id);
+				h('button', { type: 'button', 'data-tile-detail': '', 'data-fake-tile': id, onClick: () => emit('open') }, id);
 		},
 	});
 }

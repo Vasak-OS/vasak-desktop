@@ -12,7 +12,7 @@
  * escucha y consulta mientras está abierta se va con ella.
  */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ActionButton, ListGroup } from '@vasakgroup/vue-libvasak';
+import { ActionButton } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref } from 'vue';
 import { availableTiles, CONTROL_CENTER_TILES, type TileId } from '@/tools/control-center-tiles';
 
@@ -38,12 +38,12 @@ async function open(id: TileId): Promise<void> {
 	backButton.value?.querySelector('button')?.focus();
 }
 
-/** Vuelve a la lista con el foco en el mosaico que abrió la ficha. */
+/** Vuelve a la lista con el foco en la flecha que abrió la ficha. */
 async function back(): Promise<void> {
 	const from = detail.value;
 	detail.value = null;
 	await nextTick();
-	grid.value?.querySelector<HTMLElement>(`[data-tile-id="${from}"] [data-tile]`)?.focus();
+	grid.value?.querySelector<HTMLElement>(`[data-tile-id="${from}"] [data-tile-detail]`)?.focus();
 }
 </script>
 
@@ -51,20 +51,20 @@ async function back(): Promise<void> {
   <section id="control-center-quick-settings" class="@container flex flex-col gap-2" data-quick-settings>
     <!-- Ni la lista ni la ficha se achican por debajo de lo suyo: si no
          entran, se desplaza el bloque de arriba del centro entero, que es un
-         solo desplazamiento y no uno adentro de otro. -->
-    <ListGroup
+         solo desplazamiento y no uno adentro de otro. Cada mosaico es un
+         `QuickSettingsTile` de la librería: la tarjeta la pone él. -->
+    <div
       v-show="!openTile"
-      class="shrink-0"
-      :divided="false"
+      ref="grid"
       role="group"
-      :label="t('views.controlCenter.quickSettings')"
+      :aria-label="t('views.controlCenter.quickSettings')"
+      class="grid shrink-0 grid-cols-1 gap-2 @[17rem]:grid-cols-2"
+      data-tile-grid
     >
-      <div ref="grid" class="grid grid-cols-1 gap-0.5 @[17rem]:grid-cols-2" data-tile-grid>
-        <div v-for="spec in tiles" :key="spec.id" class="min-w-0" :data-tile-id="spec.id">
-          <component :is="spec.tile" @open="open(spec.id)" />
-        </div>
+      <div v-for="spec in tiles" :key="spec.id" class="min-w-0" :data-tile-id="spec.id">
+        <component :is="spec.tile" @open="open(spec.id)" />
       </div>
-    </ListGroup>
+    </div>
 
     <template v-if="openTile">
       <div ref="backButton" class="flex shrink-0">
@@ -78,7 +78,7 @@ async function back(): Promise<void> {
           @click="back"
         />
       </div>
-      <div class="flex shrink-0 flex-col" :data-tile-detail="openTile.id">
+      <div class="flex shrink-0 flex-col" :data-tile-sheet="openTile.id">
         <component :is="openTile.detail" v-bind="openTile.detailProps ?? {}" />
       </div>
     </template>

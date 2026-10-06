@@ -1,7 +1,12 @@
 import { setDarkMode, useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { computed, onMounted, type Ref, ref } from 'vue';
 import { cancelRunningThemeTransitions } from '@/tools/theme.utils';
-import { logError } from '@/utils/logger';
+
+// Los errores van por `console.error` y no por `logError`: el logger del
+// escritorio reemplaza `console.error` al arrancar y lo manda al mismo archivo,
+// así que en la sesión es lo mismo. Importar el logger acá lo construiría en
+// las pruebas antes que `el-logger-no-se-llama-a-si-mismo.test.ts`, que necesita
+// ser el primero en hacerlo (y en CI el orden de los archivos no es fijo).
 
 /**
  * Pasar del tema claro al oscuro y al revés.
@@ -38,7 +43,7 @@ export function useThemeToggle() {
 			// Volver atrás si falló.
 			const currentDark = !!configStore.value?.config?.style?.darkmode;
 			document.documentElement.classList.toggle('dark', currentDark);
-			logError('Error toggling system theme:', error);
+			console.error('Error toggling system theme:', error);
 		} finally {
 			setTimeout(() => {
 				isSwitching.value = false;

@@ -8,7 +8,12 @@
  */
 import { Command } from '@tauri-apps/plugin-shell';
 import { hideControlCenter, toggleApplet } from '@/services/window.service';
-import { logError } from '@/utils/logger';
+
+// Los errores van por `console.error` y no por `logError`: el logger del
+// escritorio reemplaza `console.error` al arrancar y lo manda al mismo archivo,
+// así que en la sesión es lo mismo. Importar el logger acá lo construiría en
+// las pruebas antes que `el-logger-no-se-llama-a-si-mismo.test.ts`, que necesita
+// ser el primero en hacerlo (y en CI el orden de los archivos no es fijo).
 
 /**
  * Abre el tablero de tiempo de pantalla (vasak-desktop#150).
@@ -23,7 +28,7 @@ export async function openScreenTime(): Promise<void> {
 		await hideControlCenter();
 		await toggleApplet('screen-time');
 	} catch (error) {
-		logError('[control-center] no se pudo abrir el tablero de tiempo de pantalla:', error);
+		console.error('[control-center] no se pudo abrir el tablero de tiempo de pantalla:', error);
 	}
 }
 
@@ -48,6 +53,6 @@ export async function openSearch(): Promise<void> {
 	try {
 		await Command.create('vasak-prism', ['--toggle']).spawn();
 	} catch (error) {
-		logError('[control-center] no se pudo abrir el lanzador:', error);
+		console.error('[control-center] no se pudo abrir el lanzador:', error);
 	}
 }
