@@ -93,8 +93,15 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
        manera de volver a una ventana minimizada sin abrir el menú: queda, en
        una píldora más, y sin ventanas no se dibuja. No se pliega en ningún
        ancho (decisión del usuario, 03/10/2026): son sólo iconos, y lo que no
-       entra se desplaza adentro de la píldora. Lo que no entra se
-       desplaza adentro de la píldora en vez de empujar a las demás. -->
+       entra se desplaza adentro de la píldora.
+
+       Acotada para no pisar a las vecinas (vasak-desktop#161): en horizontal un
+       ancho máximo (`max-w-[20rem]`) y, además, `min-w-0` sin `shrink-0`, así
+       cuando falta lugar la fila cede y lo que no entra se desplaza adentro
+       —`overflow` en el eje de la barra— en vez de empujar al resto; de costado
+       toma el alto que sobra (`flex-1`) y desplaza hacia abajo. La barra de
+       desplazamiento va oculta (`.windows-pill`, abajo): se ve una píldora
+       limpia, se arrastra igual con la rueda o el gesto. -->
   <PanelPill
     v-if="windows.length > 0"
     :interactive="false"
@@ -102,10 +109,10 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
     flush
     role="group"
     :accessible-label="t('views.panel.windowsAlt')"
-    class="shrink-0"
+    class="windows-pill min-w-0"
     :class="vertical
       ? 'min-h-0 flex-1 py-1 overflow-y-auto overflow-x-hidden'
-      : 'px-1 overflow-x-auto overflow-y-hidden'"
+      : 'max-w-[20rem] px-1 overflow-x-auto overflow-y-hidden'"
     data-windows-pill
   >
     <TransitionGroup
@@ -123,3 +130,20 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
     </TransitionGroup>
   </PanelPill>
 </template>
+
+<style scoped>
+/**
+ * La píldora de ventanas desplaza su contenido sin barra visible
+ * (vasak-desktop#161): la barra global de `scrollbar.css` dibujaría 8 píxeles
+ * dentro de la píldora y la afearía. Van las dos formas: el pseudoelemento de
+ * WebKit —lo que dibuja WebKitGTK y el banco en Chromium— y `scrollbar-width`
+ * estándar. El desplazamiento sigue: rueda, gesto táctil y teclado.
+ */
+.windows-pill {
+	scrollbar-width: none;
+}
+
+.windows-pill::-webkit-scrollbar {
+	display: none;
+}
+</style>

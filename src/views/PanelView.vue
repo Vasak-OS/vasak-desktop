@@ -303,34 +303,6 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
            música o los espacios de trabajo y no la barra de ventanas, que no
            sale nunca (decisión del usuario, 03/10/2026). -->
       <WindowsArea v-if="windowsFirst" />
-      <!-- El número no pasa de 99 para que entre en la píldora. -->
-      <PanelPill
-        :accessible-label="t('views.panel.notificationsAlt')"
-        :title="t('views.panel.notificationsAlt')"
-        :orientation="vertical ? 'vertical' : 'horizontal'"
-        class="shrink-0"
-        data-notifications-pill
-        @click="openNotificationCenter"
-      >
-        <template #leading>
-          <ThemeIcon
-            name="preferences-desktop-notification"
-            type="symbol"
-            :size="18"
-            alt=""
-            class="shrink-0"
-            :class="{ 'animate-bell-shake': hasNewNotifications }"
-          />
-        </template>
-        <Badge
-          v-if="notifications.length > 0 && !vertical"
-          tone="accent"
-          variant="solid"
-          counter
-          :label="notifications.length"
-          :max="99"
-        />
-      </PanelPill>
       <!-- Only while a phone is connected: a permanent button for hardware
            most people never plug in is clutter in the one strip of screen that
            is always on top of everything else. -->
@@ -365,6 +337,37 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       <TrayIconBluetooth />
       <TrayIconSound />
       <TrayIconBattery />
+      <!-- La campanita vuelve al extremo del panel, junto a la bandeja, como
+           antes del pasaje a píldoras (vasak-desktop#160): es el último grupo,
+           así que queda en el final de la barra sin importar de qué lado esté.
+           El número no pasa de 99 para que entre en la píldora. -->
+      <PanelPill
+        :accessible-label="t('views.panel.notificationsAlt')"
+        :title="t('views.panel.notificationsAlt')"
+        :orientation="vertical ? 'vertical' : 'horizontal'"
+        class="shrink-0"
+        data-notifications-pill
+        @click="openNotificationCenter"
+      >
+        <template #leading>
+          <ThemeIcon
+            name="preferences-desktop-notification"
+            type="symbol"
+            :size="18"
+            alt=""
+            class="shrink-0"
+            :class="{ 'animate-bell-shake': hasNewNotifications }"
+          />
+        </template>
+        <Badge
+          v-if="notifications.length > 0 && !vertical"
+          tone="accent"
+          variant="solid"
+          counter
+          :label="notifications.length"
+          :max="99"
+        />
+      </PanelPill>
     </div>
   </nav>
 </template>

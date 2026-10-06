@@ -82,6 +82,7 @@ export function useOpenApplet(_applet: string) {
 }
 
 export { showsNames, showsNumbers } from '../../src/tools/panel-density';
+export { clockParts } from '../../src/tools/panel-clock';
 
 /** La densidad del panel: llena salvo que la prueba diga otra cosa. */
 export const density = ref<'full' | 'compact' | 'tight'>('full');

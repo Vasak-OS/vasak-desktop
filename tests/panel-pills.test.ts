@@ -6,10 +6,11 @@
  * escritorio, dobles (`support/panel-doubles.ts`).
  */
 import { beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
-import { loadComponent, useDom } from './support/mount-sfc';
+import { loadComponent, ROOT, useDom } from './support/mount-sfc';
 import { density, panel } from './support/panel-doubles';
 
 const DOUBLES = join(import.meta.dir, 'support', 'panel-doubles.ts');
@@ -20,6 +21,7 @@ let Keyboard: any;
 let Network: any;
 let Sound: any;
 let Windows: any;
+let Clock: any;
 
 beforeAll(async () => {
 	const load = (file: string, name: string) => loadComponent(dom.workdir(), file, DOUBLES, name);
@@ -28,6 +30,7 @@ beforeAll(async () => {
 	Network = await load('src/components/buttons/TrayIconNetwork.vue', 'TrayIconNetwork');
 	Sound = await load('src/components/buttons/TrayIconSound.vue', 'TrayIconSound');
 	Windows = await load('src/components/areas/panel/WindowsArea.vue', 'WindowsArea');
+	Clock = await load('src/components/widgets/PanelClockWidget.vue', 'PanelClockWidget');
 }, 60_000);
 
 beforeEach(() => panel.reset());
@@ -205,6 +208,45 @@ describe('la barra de ventanas', () => {
 			view.unmount();
 		}
 	});
+
+	test('acotada y con scroll adentro, no empuja a las vecinas (vasak-desktop#161)', async () => {
+		// Arriba: un ancho máximo la acota y, sin `shrink-0` y con `min-w-0`,
+		// cede cuando falta lugar; lo que no entra se desplaza a lo largo de la
+		// barra adentro de la píldora.
+		const view = await render(Windows);
+		const pill = view.find('[data-windows-pill]');
+
+		expect(pill.classes()).toContain('max-w-[20rem]');
+		expect(pill.classes()).toContain('overflow-x-auto');
+		expect(pill.classes()).toContain('overflow-y-hidden');
+		expect(pill.classes()).toContain('min-w-0');
+		expect(pill.classes()).not.toContain('shrink-0');
+		view.unmount();
+	});
+
+	test('de costado el scroll es vertical y toma el alto que sobra', async () => {
+		panel.vertical.value = true;
+		const view = await render(Windows);
+		const pill = view.find('[data-windows-pill]');
+
+		expect(pill.classes()).toContain('overflow-y-auto');
+		expect(pill.classes()).toContain('overflow-x-hidden');
+		expect(pill.classes()).toContain('flex-1');
+		expect(pill.classes()).not.toContain('max-w-[20rem]');
+		view.unmount();
+	});
+
+	test('la barra de desplazamiento va oculta, en las dos formas', () => {
+		// En el DOM de prueba no se puede leer el estilo calculado del
+		// pseudoelemento; se comprueba que el estilo acotado esté declarado.
+		const source = readFileSync(
+			join(ROOT, 'src/components/areas/panel/WindowsArea.vue'),
+			'utf8'
+		);
+		expect(source).toContain('scrollbar-width: none');
+		expect(source).toContain('::-webkit-scrollbar');
+		expect(source).toContain('display: none');
+	});
 });
 
 describe('el volumen', () => {
@@ -220,5 +262,70 @@ describe('el volumen', () => {
 		const view = await render(Sound);
 		expect(view.find('[data-pill-label]').exists()).toBe(false);
 		view.unmount();
+	});
+});
+
+describe('el reloj', () => {
+	test('arriba: la hora alta a un lado y la fecha en dos renglones (vasak-desktop#168)', async () => {
+		const view = await render(Clock);
+
+		expect(view.find('[data-clock-time]').text()).toMatch(/^\d{2}:\d{2}$/);
+		// La fecha apilada: el día arriba, el número y el mes abajo.
+		const dateLines = view.find('[data-clock-date]').findAll('span');
+		expect(dateLines).toHaveLength(2);
+		expect(dateLines[0]?.text().length).toBeGreaterThan(0);
+		expect(dateLines[1]?.text()).toMatch(/\d/);
+		view.unmount();
+	});
+
+	test('en un panel angosto se pliega la fecha y queda la hora', async () => {
+		density.value = 'compact';
+		const view = await render(Clock);
+
+		expect(view.find('[data-clock-time]').text()).toMatch(/^\d{2}:\d{2}$/);
+		expect(view.find('[data-clock-date]').exists()).toBe(false);
+		view.unmount();
+	});
+
+	test('de costado la hora va apilada sobre los minutos', async () => {
+		panel.vertical.value = true;
+		const view = await render(Clock);
+
+		// De costado no hay contenido propio: la hora y el minuto van por
+		// `label`/`caption`, que es lo que entra en la columna de 36 píxeles.
+		expect(view.find('[data-clock-date]').exists()).toBe(false);
+		expect(view.find('[data-pill-label]').text()).toMatch(/^\d{2}$/);
+		expect(view.find('[data-pill-caption]').text()).toMatch(/^\d{2}$/);
+		view.unmount();
+	});
+
+	test('tocarlo abre el tablero de fecha colgado de la píldora', async () => {
+		const view = await render(Clock);
+		await view.find('[data-clock-pill]').trigger('click');
+		await settle();
+
+		const call = panel.calls.find((entry) => entry.name === 'toggleApplet');
+		expect(call?.args[0]).toBe('date');
+		view.unmount();
+	});
+});
+
+describe('la píldora de notificaciones', () => {
+	test('va al final del panel, en el grupo del extremo (vasak-desktop#160)', () => {
+		// Montar la vista entera arrastra demasiado backend; se comprueba el
+		// orden en la plantilla: la campanita vive en el grupo del final
+		// (`data-panel-end`), no en el del principio.
+		const source = readFileSync(join(ROOT, 'src/views/PanelView.vue'), 'utf8');
+		const start = source.indexOf('data-panel-start');
+		const center = source.indexOf('data-panel-center');
+		const end = source.indexOf('data-panel-end');
+		const bell = source.indexOf('data-notifications-pill');
+
+		expect(start).toBeGreaterThan(-1);
+		expect(end).toBeGreaterThan(-1);
+		expect(bell).toBeGreaterThan(-1);
+		// Después del principio y del centro: está en el grupo del final.
+		expect(bell).toBeGreaterThan(end);
+		expect(bell).toBeGreaterThan(center);
 	});
 });

@@ -13,6 +13,10 @@ export interface ClockParts {
 	minute: string;
 	/** La de abajo de la hora: «domingo, 22 de marzo». */
 	date: string;
+	/** El día de la semana solo, para el renglón de arriba de la fecha: «domingo». */
+	weekday: string;
+	/** El número y el mes, para el renglón de abajo de la fecha: «22 de marzo». */
+	dayMonth: string;
 	/** La del globo y el nombre accesible: «domingo, 22 de marzo de 2026». */
 	longDate: string;
 }
@@ -42,6 +46,8 @@ export function clockParts(date: Date, locale?: string): ClockParts {
 		hour,
 		minute,
 		date: formatter(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(date),
+		weekday: formatter(locale, { weekday: 'long' }).format(date),
+		dayMonth: formatter(locale, { day: 'numeric', month: 'long' }).format(date),
 		longDate: formatter(locale, {
 			weekday: 'long',
 			day: 'numeric',
