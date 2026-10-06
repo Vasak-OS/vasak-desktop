@@ -20,9 +20,13 @@ import { join } from 'node:path';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import type { VSKConfig } from '@vasakgroup/plugin-config-manager';
 import {
+	allowWallpaperAsset,
 	applyWallpaper,
 	currentWallpaper,
+	customWallpaperFolder,
+	loadWallpaperCatalog,
 	toCarouselItems,
+	wallpaperAssetUrl,
 	wallpaperLabel,
 	withWallpaper,
 } from '../src/services/wallpaper.service';
@@ -78,6 +82,17 @@ describe('aplicar un fondo escribe la clave de Configuración', () => {
 		expect(currentWallpaper({ desktop: { ...CONFIG.desktop, wallpaper: [' '] } })).toBeNull();
 		expect(currentWallpaper(null)).toBeNull();
 	});
+
+	test('la carpeta propia sale de la misma clave que escribe Configuración', () => {
+		expect(
+			customWallpaperFolder({ desktop: { ...CONFIG.desktop, wallpaperfolder: '/mnt/fotos' } })
+		).toBe('/mnt/fotos');
+		// Sin carpeta elegida, o con una clave que no es una cadena: no hay carpeta.
+		expect(customWallpaperFolder(CONFIG)).toBeNull();
+		expect(customWallpaperFolder({ desktop: { ...CONFIG.desktop, wallpaperfolder: '  ' } })).toBeNull();
+		expect(customWallpaperFolder({ desktop: { ...CONFIG.desktop, wallpaperfolder: 7 } })).toBeNull();
+		expect(customWallpaperFolder(null)).toBeNull();
+	});
 });
 
 describe('aplicar, de punta a punta contra el backend', () => {
@@ -132,6 +147,79 @@ describe('aplicar, de punta a punta contra el backend', () => {
 		expect(calls[0]).toEqual({ cmd: 'prepare_wallpaper', args: { path: '/home/pato/Videos/lago.mp4' } });
 		expect(applied).toBe('/home/pato/.cache/vasak/wallpapers/fondo-1.mp4');
 		expect(written().desktop.wallpaper).toEqual(['/home/pato/.cache/vasak/wallpapers/fondo-1.mp4']);
+	});
+});
+
+describe('el catálogo y el acceso a los fondos', () => {
+	const scope = globalThis as Record<string, unknown>;
+	const previousWindow = scope.window;
+
+	beforeAll(() => {
+		if (!previousWindow) scope.window = globalThis;
+	});
+
+	afterAll(() => {
+		clearMocks();
+		scope.window = previousWindow;
+	});
+
+	test('el catálogo le pasa al backend el fondo actual y la carpeta propia', async () => {
+		const calls: { cmd: string; args: unknown }[] = [];
+		mockIPC((cmd, args) => {
+			calls.push({ cmd, args });
+			if (cmd === 'wallpaper_catalog') return [];
+			return null;
+		});
+
+		await loadWallpaperCatalog('/o/1.jpg', '/mnt/fotos');
+
+		expect(calls).toEqual([
+			{ cmd: 'wallpaper_catalog', args: { current: '/o/1.jpg', customFolder: '/mnt/fotos' } },
+		]);
+	});
+
+	test('sin carpeta propia, la pasa en null', async () => {
+		const calls: { cmd: string; args: unknown }[] = [];
+		mockIPC((cmd, args) => {
+			calls.push({ cmd, args });
+			return cmd === 'wallpaper_catalog' ? [] : null;
+		});
+
+		await loadWallpaperCatalog(null);
+
+		expect(calls[0]).toEqual({
+			cmd: 'wallpaper_catalog',
+			args: { current: null, customFolder: null },
+		});
+	});
+
+	test('autorizar un fondo devuelve la ruta canónica que da el backend', async () => {
+		mockIPC((cmd, args) =>
+			cmd === 'allow_wallpaper_asset'
+				? `/home/pato/real/${(args as { path: string }).path.split('/').pop()}`
+				: null
+		);
+
+		expect(await allowWallpaperAsset('/home/pato/enlace/fondo.jpg')).toBe(
+			'/home/pato/real/fondo.jpg'
+		);
+	});
+
+	test('la URL del fondo autoriza primero y usa la ruta canónica', async () => {
+		mockIPC((cmd) => (cmd === 'allow_wallpaper_asset' ? '/home/pato/real/fondo.jpg' : null));
+
+		const url = await wallpaperAssetUrl('/home/pato/enlace/fondo.jpg', (p) => `asset://localhost${p}`);
+		expect(url).toBe('asset://localhost/home/pato/real/fondo.jpg');
+	});
+
+	test('si no se puede autorizar, cae a la ruta tal cual', async () => {
+		mockIPC((cmd) => {
+			if (cmd === 'allow_wallpaper_asset') throw new Error('no existe');
+			return null;
+		});
+
+		const url = await wallpaperAssetUrl('/home/pato/fondo.jpg', (p) => `asset://localhost${p}`);
+		expect(url).toBe('asset://localhost/home/pato/fondo.jpg');
 	});
 });
 

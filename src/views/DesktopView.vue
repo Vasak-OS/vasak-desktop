@@ -10,6 +10,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import WidgetLayer from '@/components/widgets/WidgetLayer.vue';
 import { getBatteryInfo } from '@/services/core.service';
+import { wallpaperAssetUrl } from '@/services/wallpaper.service';
 import { createWallpaperFollower } from '@/services/wallpaper-colors.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError, logInfo, logWarning } from '@/utils/logger';
@@ -35,8 +36,6 @@ const DEFAULT_WALLPAPER = '/usr/share/backgrounds/cutefishos/wallpaper-9.jpg';
 const backgroundPath = computed(() => {
 	return (configStore as any).config?.desktop?.wallpaper?.[0] || DEFAULT_WALLPAPER;
 });
-
-const background = computed(() => convertFileSrc(backgroundPath.value));
 
 /**
  * Fondos en movimiento.
@@ -186,7 +185,13 @@ function showDefaultImage(): void {
 
 async function loadBackground() {
 	if (!backgroundIsVideo.value) {
-		showLayer('image', background.value);
+		// Autorizar el fondo es asíncrono: mientras tanto se pudo elegir otro
+		// (desde el selector o Configuración). Si cambió, este resultado viejo no
+		// se aplica, para que no pise al nuevo.
+		const requested = backgroundPath.value;
+		const url = await wallpaperAssetUrl(requested);
+		if (requested !== backgroundPath.value) return;
+		showLayer('image', url);
 		return;
 	}
 
@@ -202,7 +207,7 @@ async function loadBackground() {
 
 	const requested = backgroundPath.value;
 	try {
-		const url = await fetchVideoBlob(background.value);
+		const url = await fetchVideoBlob(await wallpaperAssetUrl(requested));
 		// Mientras se leía, se eligió otro fondo: éste ya no va.
 		if (requested !== backgroundPath.value) {
 			URL.revokeObjectURL(url);

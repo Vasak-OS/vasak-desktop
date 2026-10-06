@@ -209,6 +209,7 @@ pub fn run() {
             hide_wallpaper_picker,
             wallpaper_catalog,
             prepare_wallpaper,
+            allow_wallpaper_asset,
             init_sni_watcher,
             get_tray_items,
             get_launcher_entries,

@@ -69,28 +69,45 @@ pub fn is_video_path(path: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Qué fondos lista el selector: los oficiales y, si no es uno de ellos, el que
-/// está puesto ahora, **primero** —el carrusel abre centrado en él y así queda
-/// en una punta, no perdido en el medio de los oficiales—.
+/// Qué fondos lista el selector: los oficiales, los de la carpeta propia
+/// (vasak-settings#148) y, si no es ninguno de ellos, el que está puesto ahora,
+/// **primero** —el carrusel abre centrado en él y así queda en una punta, no
+/// perdido en el medio—.
 ///
 /// Un fondo elegido antes desde Configuración (una foto propia, un video) no se
-/// pierde por abrir el selector: sigue en la fila mientras sea el aplicado.
-pub fn merge_catalog(official: Vec<String>, current: Option<&str>) -> Vec<String> {
-    let mut paths: Vec<String> = Vec::with_capacity(official.len() + 1);
+/// pierde por abrir el selector: sigue en la fila mientras sea el aplicado. Las
+/// imágenes de la carpeta propia van después de las oficiales, y sin repetir si
+/// una ya estaba.
+pub fn merge_catalog(
+    official: Vec<String>,
+    custom: Vec<String>,
+    current: Option<&str>,
+) -> Vec<String> {
+    let mut paths: Vec<String> = Vec::with_capacity(official.len() + custom.len() + 1);
 
     if let Some(current) = current.map(str::trim).filter(|current| !current.is_empty()) {
-        if !official.iter().any(|path| path == current) {
+        if !official.contains(&current.to_string()) && !custom.contains(&current.to_string()) {
             paths.push(current.to_string());
         }
     }
 
-    for path in official {
+    for path in official.into_iter().chain(custom) {
         if !paths.contains(&path) {
             paths.push(path);
         }
     }
 
     paths
+}
+
+/// El argumento `folder` con el que pedirle a Configuración los fondos de la
+/// carpeta propia, o `None` si no hay carpeta elegida (vasak-settings#148). La
+/// ruta se recorta, y una vacía o de sólo espacios no es una carpeta.
+pub fn custom_folder_arg(custom_folder: Option<&str>) -> Option<String> {
+    custom_folder
+        .map(str::trim)
+        .filter(|folder| !folder.is_empty())
+        .map(str::to_string)
 }
 
 /// Arma la fila con las miniaturas que devolvió Configuración.
@@ -135,9 +152,19 @@ pub(super) async fn ask_settings<T: serde::de::DeserializeOwned>(
         .map_err(|error| format!("{SETTINGS_PROGRAM} contestó algo que no se entiende: {error}"))
 }
 
-/// La fila del carrusel: los fondos oficiales y el actual, con sus miniaturas.
+/// La fila del carrusel: los fondos oficiales, los de la carpeta propia y el
+/// actual, con sus miniaturas.
+///
+/// `custom_folder` es la carpeta propia que guarda Configuración en
+/// `desktop.wallpaperfolder` (vasak-settings#148); la página la lee de la misma
+/// clave y la pasa acá. Sus imágenes se le piden a Configuración
+/// (`--wallpaper folder`), que es quien sabe recorrer una carpeta y con qué
+/// extensiones, igual que con los oficiales: una sola implementación.
 #[tauri::command]
-pub async fn wallpaper_catalog(current: Option<String>) -> Result<Vec<WallpaperEntry>, String> {
+pub async fn wallpaper_catalog(
+    current: Option<String>,
+    custom_folder: Option<String>,
+) -> Result<Vec<WallpaperEntry>, String> {
     let official = ask_settings::<Vec<String>>(&["list"])
         .await
         .unwrap_or_else(|error| {
@@ -147,7 +174,19 @@ pub async fn wallpaper_catalog(current: Option<String>) -> Result<Vec<WallpaperE
             Vec::new()
         });
 
-    let paths = merge_catalog(official, current.as_deref());
+    let custom = match custom_folder_arg(custom_folder.as_deref()) {
+        Some(folder) => ask_settings::<Vec<String>>(&["folder", &folder])
+            .await
+            .unwrap_or_else(|error| {
+                log_warning(&format!(
+                    "[wallpaper_picker] sin los fondos de la carpeta propia: {error}"
+                ));
+                Vec::new()
+            }),
+        None => Vec::new(),
+    };
+
+    let paths = merge_catalog(official, custom, current.as_deref());
     if paths.is_empty() {
         return Ok(Vec::new());
     }
@@ -249,7 +288,11 @@ mod tests {
 
     #[test]
     fn el_fondo_actual_va_primero_si_no_es_oficial() {
-        let merged = merge_catalog(paths(&["/o/1.jpg", "/o/2.jpg"]), Some("/home/p/video.mp4"));
+        let merged = merge_catalog(
+            paths(&["/o/1.jpg", "/o/2.jpg"]),
+            Vec::new(),
+            Some("/home/p/video.mp4"),
+        );
         assert_eq!(
             merged,
             paths(&["/home/p/video.mp4", "/o/1.jpg", "/o/2.jpg"])
@@ -258,19 +301,56 @@ mod tests {
 
     #[test]
     fn un_fondo_oficial_no_se_repite() {
-        let merged = merge_catalog(paths(&["/o/1.jpg", "/o/2.jpg"]), Some("/o/2.jpg"));
+        let merged = merge_catalog(
+            paths(&["/o/1.jpg", "/o/2.jpg"]),
+            Vec::new(),
+            Some("/o/2.jpg"),
+        );
         assert_eq!(merged, paths(&["/o/1.jpg", "/o/2.jpg"]));
+    }
+
+    #[test]
+    fn la_carpeta_propia_va_despues_de_las_oficiales_sin_repetir() {
+        // Las imágenes de la carpeta propia se suman detrás de las oficiales, y
+        // una que también es oficial no aparece dos veces. El actual, cuando ya
+        // está en el catálogo (acá en la carpeta propia), queda en su lugar: el
+        // carrusel se centra en él por la propiedad `current`, igual que con un
+        // oficial.
+        let merged = merge_catalog(
+            paths(&["/o/1.jpg", "/o/2.jpg"]),
+            paths(&["/c/a.png", "/o/2.jpg", "/c/b.mp4"]),
+            Some("/c/b.mp4"),
+        );
+        assert_eq!(
+            merged,
+            paths(&["/o/1.jpg", "/o/2.jpg", "/c/a.png", "/c/b.mp4"])
+        );
+    }
+
+    #[test]
+    fn un_fondo_de_afuera_del_catalogo_va_primero() {
+        // Una foto suelta que no está ni en los oficiales ni en la carpeta
+        // propia sí va primero, para no quedar perdida.
+        let merged = merge_catalog(
+            paths(&["/o/1.jpg"]),
+            paths(&["/c/a.png"]),
+            Some("/home/p/suelta.png"),
+        );
+        assert_eq!(
+            merged,
+            paths(&["/home/p/suelta.png", "/o/1.jpg", "/c/a.png"])
+        );
     }
 
     #[test]
     fn sin_configuracion_queda_al_menos_el_actual() {
         assert_eq!(
-            merge_catalog(Vec::new(), Some("/home/p/foto.png")),
+            merge_catalog(Vec::new(), Vec::new(), Some("/home/p/foto.png")),
             paths(&["/home/p/foto.png"])
         );
-        assert!(merge_catalog(Vec::new(), None).is_empty());
+        assert!(merge_catalog(Vec::new(), Vec::new(), None).is_empty());
         assert!(
-            merge_catalog(Vec::new(), Some("  ")).is_empty(),
+            merge_catalog(Vec::new(), Vec::new(), Some("  ")).is_empty(),
             "un fondo vacío no es un fondo"
         );
     }
@@ -317,5 +397,21 @@ mod tests {
             tauri::async_runtime::block_on(prepare_wallpaper("/o/1.jpg".into())).unwrap();
         assert_eq!(prepared.path, "/o/1.jpg");
         assert!(!prepared.optimized);
+    }
+
+    #[test]
+    fn la_carpeta_propia_se_pide_solo_si_hay_una() {
+        assert_eq!(
+            custom_folder_arg(Some("/mnt/fotos")),
+            Some("/mnt/fotos".to_string())
+        );
+        // Recortada, y una vacía o de sólo espacios no es una carpeta.
+        assert_eq!(
+            custom_folder_arg(Some("  /home/p/Fondos  ")),
+            Some("/home/p/Fondos".to_string())
+        );
+        assert_eq!(custom_folder_arg(Some("   ")), None);
+        assert_eq!(custom_folder_arg(Some("")), None);
+        assert_eq!(custom_folder_arg(None), None);
     }
 }

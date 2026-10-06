@@ -17,7 +17,6 @@
  *   el puntero, **de a uno**: el carrusel dice cuál (`preview`) y acá se carga
  *   ese solo, soltando el anterior antes (`createPreviewLoader`).
  */
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { readConfig } from '@vasakgroup/plugin-config-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
@@ -26,10 +25,12 @@ import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef } from 
 import {
 	applyWallpaper,
 	currentWallpaper,
+	customWallpaperFolder,
 	hideWallpaperPicker,
 	loadWallpaperCatalog,
 	openWallpaperSettings,
 	toCarouselItems,
+	wallpaperAssetUrl,
 } from '@/services/wallpaper.service';
 import { logError } from '@/utils/logger';
 import { createPreviewLoader, fetchVideoBlob } from '@/utils/video-blob';
@@ -47,7 +48,10 @@ const shown = ref(false);
 const preview = ref<{ id: string | null; url: string | null }>({ id: null, url: null });
 
 const previews = createPreviewLoader({
-	load: (path) => fetchVideoBlob(convertFileSrc(path)),
+	// Se autoriza el video antes de leerlo: uno de la carpeta propia (fuera del
+	// hogar, o en una subcarpeta oculta) no lo alcanza el alcance declarado, y la
+	// previsualización quedaría en negro (vasak-desktop#163).
+	load: (path) => wallpaperAssetUrl(path).then(fetchVideoBlob),
 	release: (url) => URL.revokeObjectURL(url),
 	onChange: (id, url) => {
 		preview.value = { id, url };
@@ -69,8 +73,13 @@ async function load(): Promise<void> {
 	loading.value = true;
 	error.value = '';
 	try {
-		current.value = currentWallpaper(await readConfig());
-		baseItems.value = toCarouselItems(await loadWallpaperCatalog(current.value));
+		const config = await readConfig();
+		current.value = currentWallpaper(config);
+		// La carpeta propia la guarda Configuración (vasak-settings#148); el
+		// selector lee la misma clave y le pasa la carpeta al catálogo para que
+		// sus imágenes aparezcan junto a las oficiales.
+		const folder = customWallpaperFolder(config);
+		baseItems.value = toCarouselItems(await loadWallpaperCatalog(current.value, folder));
 	} catch (reason) {
 		logError(`[wallpaper_picker] no se pudo armar la lista de fondos: ${reason}`);
 		baseItems.value = [];

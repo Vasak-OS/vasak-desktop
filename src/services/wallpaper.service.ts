@@ -40,6 +40,21 @@ export function currentWallpaper(
 	return typeof first === 'string' && first.trim() !== '' ? first : null;
 }
 
+/**
+ * La clave donde Configuración guarda la carpeta propia de fondos
+ * (vasak-settings#148). La misma que lee y escribe Configuración: un solo
+ * contrato entre los dos repositorios.
+ */
+export const WALLPAPER_FOLDER_KEY = 'wallpaperfolder';
+
+/** La carpeta propia de fondos elegida en Configuración, o `null`. */
+export function customWallpaperFolder(
+	config: Pick<VSKConfig, 'desktop'> | null | undefined
+): string | null {
+	const stored = config?.desktop?.[WALLPAPER_FOLDER_KEY];
+	return typeof stored === 'string' && stored.trim() !== '' ? stored.trim() : null;
+}
+
 /** El nombre que se lee de un fondo: el archivo, sin la carpeta ni la extensión. */
 export function wallpaperLabel(path: string): string {
 	const file = path.split('/').pop() ?? path;
@@ -63,8 +78,42 @@ export function toCarouselItems(
 	}));
 }
 
-export async function loadWallpaperCatalog(current: string | null): Promise<WallpaperEntry[]> {
-	return invoke<WallpaperEntry[]>('wallpaper_catalog', { current });
+export async function loadWallpaperCatalog(
+	current: string | null,
+	customFolder: string | null = null
+): Promise<WallpaperEntry[]> {
+	return invoke<WallpaperEntry[]>('wallpaper_catalog', { current, customFolder });
+}
+
+/**
+ * Da acceso del protocolo de assets a un archivo de fondo y devuelve su ruta
+ * canónica, la que hay que usar con `convertFileSrc`. El mismo contrato que
+ * Configuración: una imagen de cualquier carpeta del hogar o de una carpeta
+ * propia (dentro o fuera del hogar) se puede mostrar de fondo sin depender de
+ * los globs del alcance (vasak-desktop#163, vasak-settings#148).
+ */
+export async function allowWallpaperAsset(path: string): Promise<string> {
+	return invoke<string>('allow_wallpaper_asset', { path });
+}
+
+/**
+ * La URL `asset:` de un fondo, autorizando antes el archivo exacto.
+ *
+ * Un fondo propio puede estar en cualquier carpeta del hogar o en una carpeta
+ * propia fuera de él (vasak-settings#148): el alcance declarado con globs no
+ * cubre una subcarpeta oculta ni una carpeta arbitraria, y una ruta con enlaces
+ * simbólicos no coincide con el patrón. Autorizar el archivo canonicalizado no
+ * depende de esos bordes, y así el fondo no queda negro (vasak-desktop#163). Si
+ * no se pudo autorizar se intenta con la ruta tal cual, que es lo de antes.
+ *
+ * `toUrl` se inyecta para poder probarlo sin el backend de Tauri.
+ */
+export async function wallpaperAssetUrl(path: string, toUrl = convertFileSrc): Promise<string> {
+	try {
+		return toUrl(await allowWallpaperAsset(path));
+	} catch {
+		return toUrl(path);
+	}
 }
 
 /**
