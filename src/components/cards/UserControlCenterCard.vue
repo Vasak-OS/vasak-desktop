@@ -37,7 +37,7 @@
         >
           {{ currentTime }}
         </div>
-        <div class="text-label-m text-tx-muted capitalize">
+        <div class="text-label-m text-tx-muted" data-user-date>
           {{ currentDate }}
         </div>
       </div>
@@ -50,6 +50,7 @@ import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { Avatar } from '@vasakgroup/vue-libvasak';
 import { onMounted, onUnmounted, ref } from 'vue';
+import { capitalizeFirst } from '@/tools/text-case';
 import { logError } from '@/utils/logger';
 
 const { locale } = useI18n();
@@ -73,11 +74,16 @@ const updateDateTime = () => {
 		hour: '2-digit',
 		minute: '2-digit',
 	});
-	const newDate = now.toLocaleDateString(locale.value, {
-		weekday: 'long',
-		day: 'numeric',
-		month: 'long',
-	});
+	// Sólo la primera letra en mayúscula: el `capitalize` de CSS que había la
+	// ponía en cada palabra («Martes, 6 De Octubre»).
+	const newDate = capitalizeFirst(
+		now.toLocaleDateString(locale.value, {
+			weekday: 'long',
+			day: 'numeric',
+			month: 'long',
+		}),
+		locale.value
+	);
 
 	if (currentTime.value !== newTime) {
 		currentTime.value = newTime;

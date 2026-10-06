@@ -34,6 +34,7 @@ import {
 	type ScreenTimeRange,
 	weekOf,
 } from '@/tools/screen-time';
+import { capitalizeFirst } from '@/tools/text-case';
 import { logError } from '@/utils/logger';
 
 /**
@@ -175,7 +176,7 @@ const title = computed(() => {
 	if (day.value === today.value) return t('views.screenTimeApplet.today');
 	if (day.value === addDays(today.value, -1)) return t('views.screenTimeApplet.yesterday');
 	const text = dateFormat.value.format(asDate(day.value));
-	return text.charAt(0).toLocaleUpperCase() + text.slice(1);
+	return capitalizeFirst(text);
 });
 
 const week = computed(() => (day.value ? weekOf(day.value) : []));
@@ -222,7 +223,7 @@ const bars = computed<BarChartItem[]>(() =>
 		const name = weekdayLong.value.format(asDate(each)).replace('.', '');
 		return {
 			key: each,
-			label: name.charAt(0).toLocaleUpperCase() + name.slice(1),
+			label: capitalizeFirst(name),
 			shortLabel: weekdayNarrow.value.format(asDate(each)).toLocaleUpperCase(),
 			value,
 			valueLabel: duration(value),
