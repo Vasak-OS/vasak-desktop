@@ -13,15 +13,15 @@ import { join } from 'node:path';
  * de una tarde.
  */
 
-const COMPONENTE = readFileSync(join(import.meta.dir, 'UserControlCenterCard.vue'), 'utf8');
+const COMPONENT = readFileSync(join(import.meta.dir, 'UserControlCenterCard.vue'), 'utf8');
 
 describe('tarjeta del usuario', () => {
 	test('no reacciona al pasar el mouse', () => {
-		const reacciones = [...COMPONENTE.matchAll(/(?:group-)?hover:[a-z0-9:[\]/.-]+/g)].map(
-			([clase]) => clase
+		const reactions = [...COMPONENT.matchAll(/(?:group-)?hover:[a-z0-9:[\]/.-]+/g)].map(
+			([className]) => className
 		);
 
-		expect(reacciones).toEqual([]);
+		expect(reactions).toEqual([]);
 	});
 
 	test('la foto del usuario es la de la librería', () => {
@@ -29,13 +29,20 @@ describe('tarjeta del usuario', () => {
 		// eligió la persona— y cae a las iniciales si no hay foto o no carga.
 		// La copia a mano dejaba la foto cuadrada dentro de un círculo que no
 		// recortaba nada.
-		expect(COMPONENTE).toMatch(/<Avatar[^>]*size="xl"/);
-		expect(COMPONENTE).not.toContain('<img');
+		expect(COMPONENT).toMatch(/<Avatar[^>]*size="xl"/);
+		expect(COMPONENT).not.toContain('<img');
 	});
 
 	test('sin el fondo de la ventana encima de la ventana', () => {
 		// `ui-bg` es el fondo de la ventana; una tarjeta va en la superficie.
-		expect(COMPONENTE).not.toMatch(/bg-ui-bg\b/);
-		expect(COMPONENTE).toContain('bg-ui-surface/70');
+		expect(COMPONENT).not.toMatch(/bg-ui-bg\b/);
+		expect(COMPONENT).toContain('bg-ui-surface/70');
+	});
+
+	test('la fecha lleva mayúscula sólo en la primera letra', () => {
+		// El `capitalize` de CSS la ponía en cada palabra: «Martes, 6 De
+		// Octubre». La primera letra sale del formateo, con el idioma.
+		expect(COMPONENT).not.toMatch(/class="[^"]*\bcapitalize\b/);
+		expect(COMPONENT).toMatch(/capitalizeFirst\(\s*now\.toLocaleDateString/);
 	});
 });

@@ -20,7 +20,9 @@ const ROOT = join(import.meta.dir, '..');
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
 
 const VIEW = read('src/views/applets/ScreenTimeAppletView.vue');
-const CONTROL = read('src/components/controls/ScreenTimeControl.vue');
+const ACTIONS = read('src/tools/control-center-actions.ts');
+const TILE = read('src/components/controls/tiles/ScreenTimeTile.vue');
+const TILES = read('src/tools/control-center-tiles.ts');
 const CENTER = read('src/views/ControlCenterView.vue');
 const ROUTES = read('src/routes/index.ts');
 const SERVICE = read('src/services/screen-time.service.ts');
@@ -33,12 +35,22 @@ const EN = Bun.YAML.parse(read('src-tauri/locales/en.yml')) as Record<string, an
 const template = VIEW.slice(VIEW.indexOf('<template>'), VIEW.lastIndexOf('</template>'));
 
 describe('el tablero de tiempo de pantalla', () => {
-	test('lo abre un botón del centro de control, como applet anclado', () => {
-		expect(CENTER).toContain('<ScreenTimeControl />');
-		expect(CONTROL).toContain("toggleApplet('screen-time')");
+	test('la mayúscula de la fecha y de los días sigue el idioma con que se formatearon', () => {
+		// Sin el idioma, `toLocaleUpperCase` usa el del sistema y puede no ser el
+		// de `Intl.DateTimeFormat` (la «i» turca, por ejemplo).
+		const calls = VIEW.match(/capitalizeFirst\([^)]*\)/g) ?? [];
+		expect(calls.length).toBeGreaterThan(0);
+		for (const call of calls) expect(call).toContain('locale.value');
+	});
+
+	test('lo abre un mosaico del centro de control, como applet anclado', () => {
+		// Desde vasak-desktop#175 es un mosaico del estado B, no un botón redondo.
+		expect(CENTER).toContain('<QuickSettingsPanel');
+		expect(TILES).toContain("import('@/components/controls/tiles/ScreenTimeTile.vue')");
+		expect(TILE).toContain('@activate="openScreenTime"');
+		expect(ACTIONS).toContain("toggleApplet('screen-time')");
 		// Primero se va el centro de control: el tablero ocupa el centro.
-		expect(CONTROL.indexOf('hideControlCenter()')).toBeLessThan(CONTROL.indexOf("toggleApplet('screen-time')"));
-		expect(CONTROL).toContain('<ToggleControl');
+		expect(ACTIONS.indexOf('hideControlCenter()')).toBeLessThan(ACTIONS.indexOf("toggleApplet('screen-time')"));
 	});
 
 	test('tiene su fila en APPLETS, su ruta y su ventana en la capability', () => {
@@ -121,7 +133,7 @@ describe('el tablero de tiempo de pantalla', () => {
 			expect(typeof es, `es: ${key}`).toBe('string');
 			expect(typeof en, `en: ${key}`).toBe('string');
 		}
-		expect(ES.components.ScreenTimeControl.open).toBe('Tiempo de pantalla');
-		expect(EN.components.ScreenTimeControl.open).toBe('Screen time');
+		expect(ES.components.ControlCenterTiles.screenTime).toBe('Tiempo de pantalla');
+		expect(EN.components.ControlCenterTiles.screenTime).toBe('Screen time');
 	});
 });

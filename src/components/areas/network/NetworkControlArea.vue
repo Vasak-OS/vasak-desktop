@@ -322,6 +322,30 @@ const closeApplet = async () => {
 	}
 };
 
+/** Ya se desmontó: lo que termine de cargar después no arranca nada. */
+let disposed = false;
+
+const startPolling = () => {
+	if (disposed || statsPollInterval !== undefined) return;
+	statsPollInterval = setInterval(() => {
+		void refreshNetworkStats();
+	}, 2000);
+};
+
+const stopPolling = () => {
+	if (statsPollInterval === undefined) return;
+	clearInterval(statsPollInterval);
+	statsPollInterval = undefined;
+};
+
+const onVisibilityChange = () => {
+	if (document.hidden) stopPolling();
+	else {
+		void refreshNetworkStats();
+		startPolling();
+	}
+};
+
 onMounted(async () => {
 	await checkWirelessStatus();
 	await refreshEthernetStatus();
@@ -331,32 +355,19 @@ onMounted(async () => {
 	// hidden rather than destroyed now, so an unconditional timer would keep
 	// querying NetworkManager every two seconds for a panel nobody is looking
 	// at, for the whole session.
-	const startPolling = () => {
-		if (statsPollInterval !== undefined) return;
-		statsPollInterval = setInterval(() => {
-			void refreshNetworkStats();
-		}, 2000);
-	};
-
-	const stopPolling = () => {
-		if (statsPollInterval === undefined) return;
-		clearInterval(statsPollInterval);
-		statsPollInterval = undefined;
-	};
-
-	document.addEventListener('visibilitychange', () => {
-		if (document.hidden) stopPolling();
-		else {
-			void refreshNetworkStats();
-			startPolling();
-		}
-	});
-
+	if (disposed) return;
 	startPolling();
+	document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
+// El oyente se saca al desmontar. Antes quedaba colgado: con el panel abierto
+// desde el centro de control —que lo monta y desmonta al entrar y salir de la
+// ficha de red (vasak-desktop#175)— cada ficha cerrada dejaba un oyente que
+// volvía a encender el sondeo cada vez que la ventana se mostraba.
 onUnmounted(() => {
-	clearInterval(statsPollInterval);
+	disposed = true;
+	document.removeEventListener('visibilitychange', onVisibilityChange);
+	stopPolling();
 });
 
 useSharedEvent<any>('network-changed', async () => {

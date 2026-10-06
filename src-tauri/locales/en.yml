@@ -29,6 +29,12 @@ common:
   loading: Loading…
   noResults: No results
   retry: Retry
+  back: Back
+
+# Lo que busca QuickSettingsTile de vue-libvasak en el catálogo.
+quickSettings:
+  details: Details
+  unavailable: Not available
 
 views:
   privacyApplet:
@@ -235,6 +241,14 @@ views:
       "95": Thunderstorm
       "96": Thunderstorm with light hail
       "99": Thunderstorm with heavy hail
+  controlCenter:
+    quickSettings: Quick settings
+    more: More settings
+    session: Session
+    summaryNone: No notifications
+    summaryOneOne: 1 notification from 1 app
+    summaryOtherOne: "{0} notifications from 1 app"
+    summaryOtherOther: "{0} notifications from {1} apps"
   applets:
     panelMenu:
       title: Panel options
@@ -275,6 +289,19 @@ components:
     disconnect: Disconnect
   BrightnessControl:
     brightness: "Brightness: {0}%"
+  ControlCenterTiles:
+    network: Network
+    bluetooth: Bluetooth
+    theme: Theme
+    screenTime: Screen time
+    search: Search
+    disconnected: Disconnected
+    enabled: "On"
+    disabled: "Off"
+    devicesOne: 1 device connected
+    devicesOther: "{0} devices connected"
+    dark: Dark
+    light: Light
   ConnectionsArea:
     connected: Connected
     scan: Scan devices
@@ -377,11 +404,6 @@ components:
     unreadMany: "{0} new"
     empty: No notifications
     now: now
-  SearchButtonControl:
-    openSearch: Open the launcher
-    searchAlt: Search
-  ScreenTimeControl:
-    open: Screen time
   SearchMenuComponent:
     placeholder: Search
   SystemAudioArea:
