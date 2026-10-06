@@ -20,8 +20,19 @@ const route = useRoute();
 const { t } = useI18n();
 
 /**
- * Secondary monitors get a lightweight view: wallpaper only, no widgets or file grid.
- * The backend passes ?monitor=desktop_N for secondary monitors.
+ * La salida en la que se dibuja este escritorio. El backend abre una ventana por
+ * monitor y le pasa `?monitor=<salida>`: la principal es `desktop` y las demás
+ * `desktop_1`, `desktop_2`… Se usa para que la capa de widgets guarde y lea su
+ * layout por salida (ver `WidgetLayer`).
+ */
+const monitorId = computed(() => (route.query.monitor as string) || 'desktop');
+
+/**
+ * Todos los monitores tienen clic derecho y edición de widgets; cada uno con su
+ * propio layout. Lo que sigue siendo sólo del principal son los efectos de los
+ * que alcanza con uno en todo el escritorio: el seguidor de colores del fondo y
+ * el aviso de consumo del fondo en movimiento (si no, llegan duplicados por cada
+ * pantalla).
  */
 const isSecondaryMonitor = computed(() => {
 	const monitorParam = route.query.monitor as string | undefined;
@@ -357,7 +368,9 @@ onMounted(async () => {
 	// arranque): se pone al día al abrir.
 	followWallpaper();
 
-	// El escritorio secundario sólo necesita el fondo: ni widgets ni escuchas.
+	// El seguidor de colores corre sólo en el principal (ver `followWallpaper`):
+	// alcanza con uno en todo el escritorio. Los widgets, en cambio, los dibuja
+	// ahora cada monitor con su propio layout (ver `WidgetLayer`).
 	//
 	// El aviso de cambio de tema de los iconos ya no se escucha acá: servía para
 	// redibujar los iconos de los archivos del escritorio, que ahora son un
@@ -398,6 +411,9 @@ useSharedEvent('config-changed', async () => {
 
   <!-- Widgets: ahora viven en una cuadrícula con su posición guardada, y se
        mueven, se agregan y se sacan desde el modo edición. Antes estaban
-       apilados en un flex centrado, sin posición ni nada que se pudiera tocar. -->
-  <WidgetLayer v-if="!isSecondaryMonitor" :config="(configStore as any).config" />
+       apilados en un flex centrado, sin posición ni nada que se pudiera tocar.
+       En todos los monitores, no sólo el principal: cada salida tiene su propio
+       layout (`monitorId`), así el secundario también ofrece el clic derecho
+       —cambiar el fondo, abrir Configuración— y la edición de widgets. -->
+  <WidgetLayer :config="(configStore as any).config" :monitor-id="monitorId" />
 </template>
