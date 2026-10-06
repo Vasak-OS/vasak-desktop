@@ -185,7 +185,13 @@ function showDefaultImage(): void {
 
 async function loadBackground() {
 	if (!backgroundIsVideo.value) {
-		showLayer('image', await wallpaperAssetUrl(backgroundPath.value));
+		// Autorizar el fondo es asíncrono: mientras tanto se pudo elegir otro
+		// (desde el selector o Configuración). Si cambió, este resultado viejo no
+		// se aplica, para que no pise al nuevo.
+		const requested = backgroundPath.value;
+		const url = await wallpaperAssetUrl(requested);
+		if (requested !== backgroundPath.value) return;
+		showLayer('image', url);
 		return;
 	}
 
