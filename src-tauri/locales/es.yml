@@ -326,6 +326,9 @@ components:
     loopTrack: Repetir la pista
     raise: Ir al reproductor
     choosePlayer: Elegir reproductor
+    viaCaption: vía
+    byArtist: de {0}
+    players: Reproductores
   NetworkControl:
     connected: Conectado
     vpn: Conectado por VPN
@@ -448,6 +451,14 @@ components:
   WeatherWidget:
     failed: No se pudo obtener el clima
     loading: Cargando el clima…
+    wind: Viento
+    humidity: Humedad
+    rain: Lluvia
+    feelsLike: Sensación
+    previousDay: Día anterior
+    nextDay: Día siguiente
+    max: "Máx. {0}"
+    min: "Mín. {0}"
   useNetworkState:
     connectedTo: Conectado a {0} {1}
     disconnected: Desconectado

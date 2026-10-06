@@ -17,6 +17,7 @@ import { entriesOn, markedDates } from '@vasakgroup/vue-libvasak';
 import type { CalendarOccurrence } from '@/services/calendar.service';
 import {
 	ARC_HOURS,
+	type DayWeather,
 	dayWeather,
 	type ForecastData,
 	gridRange,
@@ -26,6 +27,7 @@ import {
 	toCalendarEntry,
 	upcomingHours,
 	weatherIcon,
+	weatherRings,
 } from '@/tools/date-board';
 
 const occurrence = (extra: Partial<CalendarOccurrence> = {}): CalendarOccurrence => ({
@@ -284,5 +286,41 @@ describe('qué tan lleno va cada anillo', () => {
 		expect(ringFill('feelsLike', 15, '°C')).toBe(50);
 		expect(ringFill('feelsLike', 59, '°F')).toBeCloseTo(50, 5);
 		expect(ringFill('feelsLike', -30, '°C')).toBe(0);
+	});
+});
+
+describe('los cuatro anillos del día', () => {
+	const labels = { wind: 'Viento', humidity: 'Humedad', rain: 'Lluvia', feelsLike: 'Sensación' };
+	const day: DayWeather = {
+		date: '2026-03-22',
+		temperature: 20,
+		max: 24,
+		min: 14,
+		code: 2,
+		isDay: true,
+		wind: 30,
+		humidity: 54,
+		rain: 10,
+		feelsLike: 15,
+		units: { temperature: '°C', wind: 'km/h' },
+	};
+
+	test('sin día, ninguno', () => {
+		expect(weatherRings(null, labels)).toEqual([]);
+	});
+
+	test('viento con su unidad, humedad y lluvia en %, sensación en grados', () => {
+		const rings = weatherRings(day, labels);
+		expect(rings.map((r) => r.key)).toEqual(['wind', 'humidity', 'rain', 'feelsLike']);
+		expect(rings[0]).toMatchObject({ label: 'Viento', display: '30', unit: 'km/h', value: 50 });
+		expect(rings[1]).toMatchObject({ display: '54%', value: 54 });
+		expect(rings[2]).toMatchObject({ display: '10%', value: 10 });
+		expect(rings[3]).toMatchObject({ display: '15°', value: 50 });
+	});
+
+	test('un dato que falta sale como «–» y sin anillo', () => {
+		const rings = weatherRings({ ...day, wind: null, humidity: null }, labels);
+		expect(rings[0]).toMatchObject({ display: '–', value: null });
+		expect(rings[1]).toMatchObject({ display: '–', value: null });
 	});
 });
