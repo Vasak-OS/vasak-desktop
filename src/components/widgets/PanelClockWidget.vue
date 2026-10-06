@@ -11,9 +11,14 @@ import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 /**
- * El reloj del panel, en su píldora (vasak-desktop#151): la hora y, chica
- * debajo, la fecha —«domingo, 22 de marzo»—, como en el video de referencia.
- * Tocarlo abre el tablero de fecha colgado de acá (vasak-desktop#130).
+ * El reloj del panel, en su píldora (vasak-desktop#151, rediseño #168).
+ *
+ * En el panel horizontal la hora va alta a un lado —ocupa el alto de la
+ * píldora— y la fecha apilada al otro, en dos renglones: el día de la semana
+ * arriba, el número y el mes abajo. Así se lee de un vistazo. Tocarlo abre el
+ * tablero de fecha colgado de acá (vasak-desktop#130). En un panel angosto la
+ * fecha se pliega (`showsNames`) y queda sólo la hora, con la fecha entera en
+ * el globo.
  *
  * De costado la hora va apilada sobre los minutos: «12:34» son cinco
  * caracteres y en una barra de 36 píxeles de ancho no entran en una línea.
@@ -69,8 +74,8 @@ async function openBoard(): Promise<void> {
 <template>
   <PanelPill
     ref="opener"
-    :label="vertical ? parts.hour : parts.time"
-    :caption="vertical ? parts.minute : showsNames(density) ? parts.date : ''"
+    :label="vertical ? parts.hour : ''"
+    :caption="vertical ? parts.minute : ''"
     :expanded="isOpen"
     :title="parts.longDate"
     :accessible-label="openLabel"
@@ -79,5 +84,31 @@ async function openBoard(): Promise<void> {
     class="shrink-0"
     data-clock-pill
     @click="openBoard"
-  />
+  >
+    <!-- Arriba y abajo: la hora alta a un lado, la fecha apilada al otro
+         (vasak-desktop#168). De costado la hora/minutos siguen por `label` y
+         `caption`, que es lo que entra en una columna de 36 píxeles. -->
+    <template v-if="!vertical" #default>
+      <span class="flex items-center gap-2 px-0.5">
+        <span
+          class="font-semibold leading-none tabular-nums text-heading-l"
+          data-clock-time
+        >
+          {{ parts.time }}
+        </span>
+        <span
+          v-if="showsNames(density)"
+          class="flex min-w-0 flex-col items-start gap-0.5 text-left leading-none"
+          data-clock-date
+        >
+          <span class="max-w-full truncate text-label-xs leading-none text-tx-muted">
+            {{ parts.weekday }}
+          </span>
+          <span class="max-w-full truncate text-label-xs leading-none">
+            {{ parts.dayMonth }}
+          </span>
+        </span>
+      </span>
+    </template>
+  </PanelPill>
 </template>
