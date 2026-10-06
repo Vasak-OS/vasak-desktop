@@ -89,14 +89,42 @@ describe('los controles van debajo del título', () => {
 		view.unmount();
 	});
 
-	test('las secciones que dependen del alto siguen saliendo de la medida', () => {
-		// La barra, el álbum y los extras se deciden por `sectionsFor` sobre el
-		// alto medido de la caja: mover el transporte no les cambia la cuenta.
-		const source = readFileSync(join(ROOT, 'src/components/widgets/MusicWidget.vue'), 'utf8');
-		expect(source).toContain('sectionsFor(boxHeight.value)');
-		expect(source).toContain('v-if="sections.progress && hasProgress"');
-		expect(source).toContain('v-if="sections.album && musicInfo.album"');
-		expect(source).toContain('v-if="sections.extras && hasExtras"');
+	/**
+	 * Monta el widget con la caja medida a `height` px. happy-dom no maqueta, así
+	 * que el alto que lee el widget (`clientHeight`) se fija acá y se devuelve.
+	 */
+	async function mountAt(height: number) {
+		const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientHeight');
+		Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, get: () => height });
+		try {
+			const view = mount(Widget, { attachTo: document.body });
+			await settle();
+			return view;
+		} finally {
+			if (original) Object.defineProperty(HTMLElement.prototype, 'clientHeight', original);
+			else delete (HTMLElement.prototype as unknown as { clientHeight?: number }).clientHeight;
+		}
+	}
+
+	test('con alto, la barra, el álbum y los extras siguen apareciendo', async () => {
+		music.info.value = { ...music.info.value, shuffle: false };
+		const view = await mountAt(240);
+		const text = view.text();
+		expect(text).toContain('Superficies translúcidas');
+		expect(view.find('input[type="range"]').exists()).toBe(true);
+		expect(view.find('[aria-pressed]').exists()).toBe(true);
+		expect(view.find('[data-transport]').exists()).toBe(true);
+		view.unmount();
+	});
+
+	test('en la caja baja del centro, sólo título, artista y transporte', async () => {
+		music.info.value = { ...music.info.value, shuffle: false };
+		const view = await mountAt(96);
+		expect(view.text()).not.toContain('Superficies translúcidas');
+		expect(view.find('input[type="range"]').exists()).toBe(false);
+		expect(view.find('[aria-pressed]').exists()).toBe(false);
+		expect(view.find('[data-transport]').findAll('button')).toHaveLength(3);
+		view.unmount();
 	});
 });
 
