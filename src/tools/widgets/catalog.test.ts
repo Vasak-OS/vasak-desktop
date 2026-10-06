@@ -194,6 +194,26 @@ describe('qué disposición se muestra', () => {
 		expect(result.fromDefault).toBe(false);
 	});
 
+	/**
+	 * El monitor secundario no arranca con la disposición de siempre: eso
+	 * duplicaría en cada pantalla el reloj y la música del principal. Empieza
+	 * vacío y la persona agrega lo que quiera.
+	 */
+	test('sin default, nada guardado es un escritorio vacío (monitor secundario)', () => {
+		const result = resolveLayout(undefined, true, columns, rows, false);
+
+		expect(result.placements).toEqual([]);
+		expect(result.fromDefault).toBe(false);
+	});
+
+	test('sin default, lo guardado del secundario se respeta igual', () => {
+		const saved = [{ id: 'clock', type: 'clock', x: 1, y: 1, w: 4, h: 2 }];
+		const result = resolveLayout(saved, false, columns, rows, false);
+
+		expect(result.placements).toEqual(saved as WidgetPlacement[]);
+		expect(result.fromDefault).toBe(false);
+	});
+
 	test('un widget que esta versión no conoce se deja afuera', () => {
 		const saved = [
 			{ id: 'x', type: 'no-existe', x: 1, y: 1, w: 1, h: 1 },

@@ -154,14 +154,21 @@ export function defaultLayout(
  * `fromDefault` dice cuál de las dos fue: la de siempre se recalcula cuando
  * cambia la pantalla, porque no es de nadie; la guardada se acomoda y se
  * respeta.
+ *
+ * `allowDefault` decide qué es «nada guardado». El monitor principal arranca con
+ * la disposición de siempre (`true`); un monitor secundario arranca **vacío**
+ * (`false`), para no duplicar en cada pantalla el reloj y la música del
+ * principal: cada salida empieza limpia y la persona agrega lo que quiera.
  */
 export function resolveLayout(
 	saved: unknown,
 	showFiles: boolean,
 	columns: number,
-	rows: number
+	rows: number,
+	allowDefault = true
 ): { placements: WidgetPlacement[]; fromDefault: boolean } {
 	if (!Array.isArray(saved)) {
+		if (!allowDefault) return { placements: [], fromDefault: false };
 		return { placements: defaultLayout(showFiles, columns, rows), fromDefault: true };
 	}
 
