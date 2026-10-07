@@ -1,6 +1,10 @@
 import { computed, ref } from 'vue';
 import type { VolumeInfo } from '@/interfaces/volume';
-import { getMicrophone, setMicrophoneVolume, toggleMicrophoneMute } from '@/services/core.service';
+import {
+	getMicrophone,
+	setMicrophoneVolume,
+	toggleMicrophoneMute,
+} from '@/services/audio-input.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getMicrophoneIconName } from '@/utils/volume';

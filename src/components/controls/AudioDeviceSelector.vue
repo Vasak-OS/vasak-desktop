@@ -13,12 +13,8 @@ import {
 	ThemeIcon,
 } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref } from 'vue';
-import {
-	getAudioDevices,
-	getAudioInputDevices,
-	setAudioDevice,
-	setAudioInputDevice,
-} from '@/services/core.service';
+import { getAudioInputDevices, setAudioInputDevice } from '@/services/audio-input.service';
+import { getAudioDevices, setAudioDevice } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
