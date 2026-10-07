@@ -332,8 +332,11 @@ pub async fn calendar_locations(app: AppHandle, events: Vec<EventRef>) -> Vec<St
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::os::unix::net::UnixStream;
     use std::sync::{Arc, Mutex};
+    // De tokio y no de `std`: con `tauri-plugin-display-manager` zbus se
+    // compila con su característica `tokio`, y entonces `unix_stream` pide
+    // este tipo.
+    use tokio::net::UnixStream;
     use zbus::{connection, Guid};
 
     /// Un almacén de mentira, del otro lado de un par de sockets: la llamada

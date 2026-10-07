@@ -290,6 +290,8 @@ components:
   BrightnessControl:
     brightness: "Brillo: {0}%"
   ControlCenterTiles:
+    nightLight: Luz nocturna
+    nightLightFailed: No se pudo cambiar
     doNotDisturb: No molestar
     doNotDisturbOn: Sólo urgentes
     gameMode: Juegos
@@ -417,6 +419,24 @@ components:
     deviceSelector: Selector de dispositivo de audio
   DoNotDisturbToggle:
     label: No molestar
+  NightLightToggle:
+    label: Luz nocturna
+  NightLightDetail:
+    temperature: Calidez de noche
+    kelvin: "{0} K"
+    schedule: Cuándo
+    atSunset: Al atardecer
+    manual: Horario fijo
+    from: Desde
+    until: Hasta
+    latitude: Latitud
+    longitude: Longitud
+    locationHint: Se enciende al atardecer y se apaga al amanecer de esta ubicación.
+    missing: Falta wlsunset. Instalalo para usar la luz nocturna.
+    loadFailed: No se pudo leer la configuración de la luz nocturna.
+    saveFailed: No se pudo guardar la luz nocturna.
+    invalidCoordinates: La latitud va de -90 a 90 y la longitud de -180 a 180.
+    saving: Guardando…
   ThemeToggle:
     toLight: Cambiar a tema claro
     toDark: Cambiar a tema oscuro

@@ -15,6 +15,7 @@ export type TileId =
 	| 'network'
 	| 'bluetooth'
 	| 'do-not-disturb'
+	| 'night-light'
 	| 'game-mode'
 	| 'theme'
 	| 'screen-time'
@@ -51,6 +52,13 @@ export const CONTROL_CENTER_TILES: readonly TileSpec[] = [
 	{
 		id: 'do-not-disturb',
 		tile: defineAsyncComponent(() => import('@/components/controls/tiles/DoNotDisturbTile.vue')),
+	},
+	{
+		id: 'night-light',
+		tile: defineAsyncComponent(() => import('@/components/controls/tiles/NightLightTile.vue')),
+		detail: defineAsyncComponent(
+			() => import('@/components/areas/night-light/NightLightDetail.vue')
+		),
 	},
 	{
 		id: 'game-mode',

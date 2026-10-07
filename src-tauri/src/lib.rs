@@ -20,6 +20,7 @@ mod dbus_service;
 pub mod do_not_disturb;
 mod eventloops;
 pub mod game_mode;
+pub mod night_light;
 /// Where the translations live.
 ///
 /// The i18n plugin resolves them at runtime and only probes paths relative to
@@ -141,6 +142,10 @@ pub fn run() {
         .plugin(tauri_plugin_user_data::init())
         .plugin(tauri_plugin_network_manager::init())
         .plugin(tauri_plugin_bluetooth_manager::init())
+        // Brillo y configuración de la luz nocturna (vasak-desktop#178). Sin
+        // `prefetch_ddc`: el escritorio sólo muestra el panel interno, así que
+        // nunca le habla por DDC/CI a un monitor externo y `ddcutil` no corre.
+        .plugin(tauri_plugin_display_manager::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_vicons::init())
         .plugin(tauri_plugin_i18n_vsk::init_with_path(
@@ -209,6 +214,9 @@ pub fn run() {
             set_do_not_disturb,
             get_game_mode,
             set_game_mode,
+            night_light::get_night_light_state,
+            night_light::set_night_light_enabled,
+            night_light::apply_night_light,
             toggle_control_center,
             hide_control_center,
             toggle_wallpaper_picker,

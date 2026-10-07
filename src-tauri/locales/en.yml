@@ -290,6 +290,8 @@ components:
   BrightnessControl:
     brightness: "Brightness: {0}%"
   ControlCenterTiles:
+    nightLight: Night light
+    nightLightFailed: Couldn't change it
     doNotDisturb: Do not disturb
     doNotDisturbOn: Urgent only
     gameMode: Games
@@ -417,6 +419,24 @@ components:
     deviceSelector: Audio device selector
   DoNotDisturbToggle:
     label: Do not disturb
+  NightLightToggle:
+    label: Night light
+  NightLightDetail:
+    temperature: Night warmth
+    kelvin: "{0} K"
+    schedule: When
+    atSunset: At sunset
+    manual: Fixed schedule
+    from: From
+    until: Until
+    latitude: Latitude
+    longitude: Longitude
+    locationHint: Turns on at sunset and off at sunrise for this location.
+    missing: wlsunset is missing. Install it to use night light.
+    loadFailed: Couldn't read the night light settings.
+    saveFailed: Couldn't save the night light.
+    invalidCoordinates: Latitude goes from -90 to 90 and longitude from -180 to 180.
+    saving: Saving…
   ThemeToggle:
     toLight: Switch to light theme
     toDark: Switch to dark theme
