@@ -843,4 +843,43 @@ mod tests {
 
         task.abort();
     }
+
+    /// Medición, a mano y con el dispositivo de verdad: `cargo test --lib
+    /// airplane_mode::tests::medir -- --ignored --nocapture`. En reposo, el
+    /// seguimiento avisa una vez (las radios al abrir) y no vuelve a leer; y
+    /// preguntar el estado cuesta lo que tomar un candado.
+    #[tokio::test]
+    #[ignore = "usa /dev/rfkill de la máquina"]
+    async fn medir_el_seguimiento_en_reposo() {
+        let (file, _) = open_device().expect("se abre /dev/rfkill");
+        let mirror = std::sync::Arc::new(Mirror::new());
+        mirror.reset(true);
+        let changes = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let task = {
+            let mirror = mirror.clone();
+            let changes = changes.clone();
+            tokio::spawn(async move {
+                let _ = follow(file, &mirror, move |_| {
+                    changes.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                })
+                .await;
+            })
+        };
+        tokio::time::sleep(Duration::from_secs(5)).await;
+        task.abort();
+        println!(
+            "avisos en 5 s de reposo: {}",
+            changes.load(std::sync::atomic::Ordering::SeqCst)
+        );
+        println!("estado: {:?}", mirror.state());
+
+        let start = std::time::Instant::now();
+        for _ in 0..1_000_000 {
+            std::hint::black_box(mirror.state());
+        }
+        println!(
+            "preguntar el estado: {:?} por llamada",
+            start.elapsed() / 1_000_000
+        );
+    }
 }
