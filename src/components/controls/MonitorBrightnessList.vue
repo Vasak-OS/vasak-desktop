@@ -51,6 +51,7 @@ const rows = computed(() =>
 	})
 );
 
+/** El `change` nativo del deslizador sube hasta la fila: es al soltar. */
 function onChange(monitor: MonitorBrightness, event: Event): void {
 	const target = event.target as HTMLInputElement | null;
 	if (target?.type !== 'range') return;
@@ -69,6 +70,7 @@ function onChange(monitor: MonitorBrightness, event: Event): void {
       :key="row.key"
       class="flex min-w-0 flex-col gap-1"
       :data-monitor="row.key"
+      @change="onChange(row.monitor, $event)"
     >
       <span
         v-if="named"
@@ -85,7 +87,6 @@ function onChange(monitor: MonitorBrightness, event: Event): void {
         :show-button="false"
         :get-percentage-class="brightnessPercentageClass"
         @update:model-value="preview(row.monitor, $event)"
-        @change="onChange(row.monitor, $event)"
       />
     </div>
 
@@ -107,6 +108,7 @@ function onChange(monitor: MonitorBrightness, event: Event): void {
         notice.unavailable ? 'rounded-corner-l border border-ui-line bg-ui-surface/70 p-3' : '',
       ]"
       :data-unavailable="notice.unavailable ? 'true' : undefined"
+      :data-output="notice.args[0]"
       data-ddc-notice
       aria-live="polite"
     >

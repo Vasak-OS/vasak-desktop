@@ -37,18 +37,19 @@ function onChange(event: Event): void {
 </script>
 
 <template>
-  <SliderControl
-    v-if="primary"
-    :name="brightnessIcon(value)"
-    type="symbol"
-    :label="label"
-    :model-value="value"
-    :min="0"
-    :max="100"
-    :show-button="false"
-    :get-percentage-class="brightnessPercentageClass"
-    data-primary-brightness
-    @update:model-value="onInput"
-    @change="onChange"
-  />
+  <!-- El `change` del deslizador se escucha acá: la tarjeta de la librería no
+       lo declara, y el nativo sube desde su `input`. -->
+  <div v-if="primary" data-primary-brightness @change="onChange">
+    <SliderControl
+      :name="brightnessIcon(value)"
+      type="symbol"
+      :label="label"
+      :model-value="value"
+      :min="0"
+      :max="100"
+      :show-button="false"
+      :get-percentage-class="brightnessPercentageClass"
+      @update:model-value="onInput"
+    />
+  </div>
 </template>

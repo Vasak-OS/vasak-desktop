@@ -30,8 +30,8 @@ import BrightnessControl from '@/components/controls/BrightnessControl.vue';
 import DoNotDisturbToggle from '@/components/controls/DoNotDisturbToggle.vue';
 import MonitorBrightnessList from '@/components/controls/MonitorBrightnessList.vue';
 import NetworkControl from '@/components/controls/NetworkControl.vue';
-import PowerProfileControl from '@/components/controls/PowerProfileControl.vue';
 import NightLightToggle from '@/components/controls/NightLightToggle.vue';
+import PowerProfileControl from '@/components/controls/PowerProfileControl.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
@@ -308,7 +308,7 @@ onBeforeUnmount(() => {
           </div>
           <VolumeControl />
           <!-- B: debajo del volumen, un brillo por monitor y el perfil de
-               energía (vasak-desktop#189). Como los mosaicos, no existen hasta
+               energía (issue 189 de vasak-desktop). Como los mosaicos, no existen hasta
                que B se ve por primera vez con el centro abierto. -->
           <div
             v-if="tilesMounted"
