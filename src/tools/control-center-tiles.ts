@@ -18,6 +18,7 @@ export type TileId =
 	| 'night-light'
 	| 'game-mode'
 	| 'airplane-mode'
+	| 'keep-awake'
 	| 'theme'
 	| 'screen-time'
 	| 'search';
@@ -68,6 +69,10 @@ export const CONTROL_CENTER_TILES: readonly TileSpec[] = [
 	{
 		id: 'airplane-mode',
 		tile: defineAsyncComponent(() => import('@/components/controls/tiles/AirplaneModeTile.vue')),
+	},
+	{
+		id: 'keep-awake',
+		tile: defineAsyncComponent(() => import('@/components/controls/tiles/KeepAwakeTile.vue')),
 	},
 	{
 		id: 'theme',

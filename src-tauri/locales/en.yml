@@ -303,6 +303,9 @@ components:
     airplaneMode: Airplane mode
     airplaneModeHardware: Blocked by the device
     airplaneModeFailed: Couldn't change it
+    keepAwake: Keep awake
+    keepAwakeFailed: "Couldn't change it"
+    keepAwakeReason: "Keep awake is on: no lock or suspend on idle"
     unavailable: Unavailable
     network: Network
     bluetooth: Bluetooth
