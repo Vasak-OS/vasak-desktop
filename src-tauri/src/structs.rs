@@ -74,17 +74,6 @@ pub struct CategoryInfo {
     pub apps: Vec<AppEntry>,
 }
 
-/// Información sobre el brillo del sistema
-#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
-pub struct BrightnessInfo {
-    /// Nivel de brillo actual (0-100)
-    pub current: u32,
-    /// Nivel máximo de brillo
-    pub max: u32,
-    /// Nivel mínimo de brillo
-    pub min: u32,
-}
-
 /// Información sobre el volumen del sistema
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub struct VolumeInfo {

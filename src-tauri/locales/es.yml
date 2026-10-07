@@ -293,6 +293,23 @@ components:
     disconnect: Desconectar
   BrightnessControl:
     brightness: "Brillo: {0}%"
+  MonitorBrightness:
+    title: Brillo de las pantallas
+    builtIn: Integrada
+    brightnessOf: "Brillo de {0}: {1}%"
+    none: "Brillo: no disponible"
+    ddcDetecting: Buscando monitores externos…
+    ddcNotInstalled: "Monitores externos: no disponible (falta ddcutil)"
+    ddcNoI2cDev: "Monitores externos: no disponible (falta el módulo i2c-dev)"
+    ddcNoPermission: "Monitores externos: no disponible (sin permiso para usar i2c)"
+    ddcUnsupported: "{0}: no disponible (no contesta DDC/CI)"
+  PowerProfileControl:
+    title: Perfil de energía
+    powerSaver: Ahorro
+    balanced: Equilibrado
+    performance: Rendimiento
+    unavailable: No disponible
+    degraded: Rendimiento limitado
   ControlCenterTiles:
     nightLight: Luz nocturna
     nightLightFailed: No se pudo cambiar

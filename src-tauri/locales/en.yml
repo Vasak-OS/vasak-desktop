@@ -293,6 +293,23 @@ components:
     disconnect: Disconnect
   BrightnessControl:
     brightness: "Brightness: {0}%"
+  MonitorBrightness:
+    title: Screen brightness
+    builtIn: Built-in
+    brightnessOf: "{0} brightness: {1}%"
+    none: "Brightness: unavailable"
+    ddcDetecting: Looking for external monitors…
+    ddcNotInstalled: "External monitors: unavailable (ddcutil is missing)"
+    ddcNoI2cDev: "External monitors: unavailable (the i2c-dev module is missing)"
+    ddcNoPermission: "External monitors: unavailable (no permission to use i2c)"
+    ddcUnsupported: "{0}: unavailable (doesn't answer DDC/CI)"
+  PowerProfileControl:
+    title: Power profile
+    powerSaver: Power saver
+    balanced: Balanced
+    performance: Performance
+    unavailable: Unavailable
+    degraded: Performance limited
   ControlCenterTiles:
     nightLight: Night light
     nightLightFailed: Couldn't change it

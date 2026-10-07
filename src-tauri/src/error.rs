@@ -7,9 +7,6 @@ pub enum VasakError {
     #[error("Audio error: {0}")]
     Audio(String),
     
-    #[error("Brightness error: {0}")]
-    Brightness(String),
-    
     #[error("DBus error: {0}")]
     DBus(#[from] zbus::Error),
     

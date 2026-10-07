@@ -5078,6 +5078,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-power-profiles"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4819805f6b8cf391d44b73e83ee12c6f29f677d391d99b7671fd32bc0868eee6"
+dependencies = [
+ "futures-util",
+ "log",
+ "serde",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.21",
+ "tokio",
+ "zbus 4.4.0",
+]
+
+[[package]]
 name = "tauri-plugin-shell"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5850,6 +5866,7 @@ dependencies = [
  "tauri-plugin-network-manager",
  "tauri-plugin-opener",
  "tauri-plugin-positioner",
+ "tauri-plugin-power-profiles",
  "tauri-plugin-shell",
  "tauri-plugin-single-instance",
  "tauri-plugin-user-data",

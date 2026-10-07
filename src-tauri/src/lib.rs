@@ -14,7 +14,6 @@ mod artwork;
 mod audio;
 mod audio_native;
 mod bluetooth_audio_profile;
-mod brightness;
 mod commands;
 mod connect;
 mod dbus_service;
@@ -145,10 +144,21 @@ pub fn run() {
         .plugin(tauri_plugin_user_data::init())
         .plugin(tauri_plugin_network_manager::init())
         .plugin(tauri_plugin_bluetooth_manager::init())
-        // Brillo y configuración de la luz nocturna (vasak-desktop#178). Sin
-        // `prefetch_ddc`: el escritorio sólo muestra el panel interno, así que
-        // nunca le habla por DDC/CI a un monitor externo y `ddcutil` no corre.
-        .plugin(tauri_plugin_display_manager::Builder::new().build())
+        // Brillo por monitor y configuración de la luz nocturna
+        // (vasak-desktop#178, #189). Con `prefetch_ddc`: los monitores externos
+        // se buscan una vez al iniciar la sesión, en segundo plano, y quedan
+        // guardados hasta que el kernel avisa que se conectó o desconectó uno.
+        // Así abrir el centro nunca espera a `ddcutil`: lee lo guardado. Sin
+        // monitores externos no se llama a `ddcutil` en absoluto.
+        .plugin(
+            tauri_plugin_display_manager::Builder::new()
+                .prefetch_ddc(true)
+                .build(),
+        )
+        // El perfil de energía de power-profiles-daemon (vasak-desktop#189). El
+        // plugin guarda una copia que mantienen las señales de D-Bus: leerlo no
+        // va al bus, y nada sondea. Sin el demonio queda «no disponible».
+        .plugin(tauri_plugin_power_profiles::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_vicons::init())
         .plugin(tauri_plugin_i18n_vsk::init_with_path(
@@ -208,8 +218,6 @@ pub fn run() {
             toggle_audio_mute,
             get_audio_devices,
             set_audio_device,
-            get_brightness_info,
-            set_brightness_info,
             send_notify,
             clear_notifications,
             get_all_notifications,
