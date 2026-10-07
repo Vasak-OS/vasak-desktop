@@ -691,6 +691,9 @@ fn spawn_applet(
             on_hide: Some(on_hide),
             // Antes de mostrarse: ver `LayerSpec::input_region`.
             input_region: Some(placement.input_rect()),
+            // El auto-ocultar por cruce del puntero es sólo del panel.
+            on_pointer_enter: None,
+            on_pointer_leave: None,
         },
     )
 }

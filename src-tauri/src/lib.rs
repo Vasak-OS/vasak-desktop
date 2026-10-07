@@ -62,6 +62,7 @@ mod menu_manager;
 mod menu_watcher;
 mod monitor_manager;
 mod notifications;
+mod panel_autohide;
 mod panel_position;
 mod screen_time;
 mod session_lock;
@@ -524,6 +525,12 @@ pub fn run() {
 /// posición. Sin la comparación, cada uno reacomodaría las superficies para
 /// dejarlas donde ya estaban, y cerraría el applet abierto sin motivo.
 ///
+/// Se sigue también el auto-ocultar (`panel.autohide`), porque prenderlo o
+/// apagarlo cambia cuánto reserva la franja (la zona exclusiva) sin mover el
+/// panel de lado. Eso se vuelve a aplicar con `relocate_panel`; lo demás —cerrar
+/// el applet abierto, apartar el centro de control— sólo hace falta cuando
+/// además cambió la posición.
+///
 /// # Y por qué el trabajo se marshalla al hilo principal
 ///
 /// El evento llega desde una tarea de Tokio, y lo que hay que tocar son objetos
@@ -531,34 +538,48 @@ pub fn run() {
 /// desde cualquier otro se ve vacío. Hacerlo en el hilo equivocado no falla con
 /// un error, no hace nada.
 fn follow_panel_position(app: tauri::AppHandle) {
-    let last = Arc::new(std::sync::Mutex::new(panel_position::read()));
+    let last = Arc::new(std::sync::Mutex::new((
+        panel_position::read(),
+        panel_autohide::read(),
+    )));
     let listener_app = app.clone();
 
     app.listen("config-changed", move |_| {
         let current = panel_position::read();
+        let current_autohide = panel_autohide::read();
 
+        let position_changed;
         {
             let Ok(mut last) = last.lock() else {
                 logger::log_error("[panel] el candado de la posición quedó envenenado");
                 return;
             };
-            if *last == current {
+            if last.0 == current && last.1 == current_autohide {
                 return;
             }
-            *last = current;
+            position_changed = last.0 != current;
+            *last = (current, current_autohide);
         }
 
         logger::log_info(&format!(
-            "[panel] la configuración lo manda a {}",
-            current.key()
+            "[panel] la configuración: {}, auto-ocultar {}",
+            current.key(),
+            current_autohide
         ));
 
         let app = listener_app.clone();
         unsafe {
             gtk_utils::invoke_on_main(move || {
-                windows_apps::anchored_applet::close_open_applet(&app);
+                // Cerrar el applet y apartar el centro de control sólo hacen falta
+                // cuando el panel cambió de lado; el auto-ocultar no mueve nada,
+                // sólo cambia lo que reserva, que `relocate_panel` reaplica.
+                if position_changed {
+                    windows_apps::anchored_applet::close_open_applet(&app);
+                }
                 relocate_panel(&app, current);
-                relocate_control_center(&app, current);
+                if position_changed {
+                    relocate_control_center(&app, current);
+                }
             });
         }
     });

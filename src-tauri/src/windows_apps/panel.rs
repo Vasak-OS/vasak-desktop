@@ -1,5 +1,5 @@
 use gtk_layer_shell::Layer;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 use crate::logger::{log_error, log_info};
 use crate::monitor_manager::{find_gdk_monitor, get_primary_monitor};
@@ -9,6 +9,20 @@ use crate::windows_apps::shell_layer::{
 };
 
 pub const PANEL_LABEL: &str = "panel";
+
+/// Cuánto espacio reserva la superficie del panel.
+///
+/// Con auto-ocultar (`panel.autohide`) la zona exclusiva es cero: las ventanas
+/// maximizadas ocupan también la franja del panel, y es la interfaz la que lo
+/// esconde y lo revela al pasar el cursor por el borde. Sin él, `None` deja que
+/// `gtk-layer-shell` reserve la franja automáticamente, como siempre.
+fn panel_exclusive_zone() -> Option<i32> {
+    if crate::panel_autohide::read() {
+        Some(0)
+    } else {
+        None
+    }
+}
 
 /// Lo que mide la pantalla del panel, en píxeles lógicos.
 ///
@@ -45,6 +59,13 @@ pub fn create_panels(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
 
     log_info(&format!("[panel] posición: {}", position.key()));
 
+    // El puntero entrando y saliendo de la superficie, para el auto-ocultar: la
+    // página no recibe la salida del puntero en una superficie de capa, así que
+    // se la toma del `leave-notify` de GTK y se le avisa a la página por evento.
+    // Se emiten siempre; la interfaz sólo les hace caso con el auto-ocultar puesto.
+    let enter_app = app.clone();
+    let leave_app = app.clone();
+
     spawn_layer_window(
         app,
         PANEL_LABEL,
@@ -55,8 +76,15 @@ pub fn create_panels(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> 
             namespace: "vasak-panel",
             layer: Layer::Top,
             anchors: position.anchors(),
-            // Automatic: the panel reserves its strip so windows don't sit under it.
-            exclusive_zone: None,
+            // Reserva su franja, salvo con auto-ocultar: ahí la zona es cero y las
+            // ventanas ocupan también lo del panel.
+            exclusive_zone: panel_exclusive_zone(),
+            on_pointer_enter: Some(Box::new(move || {
+                let _ = enter_app.emit("panel-pointer-entered", ());
+            })),
+            on_pointer_leave: Some(Box::new(move || {
+                let _ = leave_app.emit("panel-pointer-left", ());
+            })),
             ..Default::default()
         },
     )
@@ -84,7 +112,10 @@ pub fn relocate_panel(app: &AppHandle, position: PanelPosition) {
             anchors: position.anchors(),
             size: position.size(width, height),
             margins: (0, 0, 0, 0),
-            exclusive_zone: None,
+            // Se vuelve a leer en cada acomodo: prender o apagar el auto-ocultar
+            // no cambia de lado el panel, pero sí cuánto reserva, y `relocate` es
+            // lo que corre cuando la configuración cambia.
+            exclusive_zone: panel_exclusive_zone(),
         },
     );
 

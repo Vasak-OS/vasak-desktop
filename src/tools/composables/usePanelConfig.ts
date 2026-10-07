@@ -11,6 +11,7 @@ import {
 	panelStyle,
 	panelSurfaceClass,
 } from '@/tools/panel-appearance';
+import { readPanelAutohide } from '@/tools/panel-autohide';
 import { isVertical, panelPosition } from '@/tools/panel-position';
 
 /**
@@ -66,5 +67,7 @@ export function usePanelConfig() {
 		animationClass: computed(() => panelAnimationClass(animation.value)),
 		/** El factor de escala para `--panel-scale`. */
 		sizeStyle: computed(() => panelScaleStyle(size.value)),
+		/** `true` cuando el panel se esconde solo y se revela al rozar el borde. */
+		autohide: computed(() => readPanelAutohide(config.value)),
 	};
 }
