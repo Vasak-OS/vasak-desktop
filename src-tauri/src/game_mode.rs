@@ -355,10 +355,20 @@ fn remove_recovery(path: Option<&Path>) {
     }
 }
 
+/// Lo que el candado protege.
+#[derive(Default)]
+struct State {
+    /// `Some` mientras el modo está puesto, con lo que hay que deshacer.
+    session: Option<Vec<Undo>>,
+    /// Lo que no se pudo deshacer la última vez —Wayfire no contestó, el bus
+    /// se cortó—. Sigue en el archivo de recuperación y se vuelve a intentar
+    /// al salir la próxima vez o al arrancar el próximo escritorio.
+    leftover: Vec<Undo>,
+}
+
 /// El estado del modo. Aparte de la global para que cada prueba tenga el suyo.
 pub struct Controller {
-    /// `Some` mientras el modo está puesto, con lo que hay que deshacer.
-    session: Mutex<Option<Vec<Undo>>>,
+    state: Mutex<State>,
     /// La copia para preguntar sin esperar el candado.
     active: AtomicBool,
     recovery: Option<PathBuf>,
@@ -367,7 +377,7 @@ pub struct Controller {
 impl Controller {
     pub fn new(recovery: Option<PathBuf>) -> Self {
         Self {
-            session: Mutex::new(None),
+            state: Mutex::new(State::default()),
             active: AtomicBool::new(false),
             recovery,
         }
@@ -389,13 +399,15 @@ impl Controller {
         enabled: bool,
         actions: impl FnOnce() -> Vec<Action>,
     ) -> bool {
-        let mut session = self.session.lock().await;
-        let previous = session.is_some();
+        let mut state = self.state.lock().await;
+        let previous = state.session.is_some();
         if previous == enabled {
             return previous;
         }
         if enabled {
-            let mut undo = Vec::new();
+            // Lo que quedó sin deshacer va primero: se deshace último, después
+            // de lo de esta vez, y se reintenta al salir.
+            let mut undo = std::mem::take(&mut state.leftover);
             for action in actions() {
                 match action.enter(host).await {
                     Ok(Some(step)) => {
@@ -406,14 +418,18 @@ impl Controller {
                     Err(e) => log_error(&format!("[game-mode] {action:?} no se aplicó: {e}")),
                 }
             }
-            *session = Some(undo);
-        } else if let Some(undo) = session.take() {
-            for step in undo.iter().rev() {
+            state.session = Some(undo);
+        } else if let Some(undo) = state.session.take() {
+            let mut failed = Vec::new();
+            for step in undo.into_iter().rev() {
                 if let Err(e) = step.exit(host).await {
                     log_error(&format!("[game-mode] no se pudo deshacer {step:?}: {e}"));
+                    failed.push(step);
                 }
             }
-            remove_recovery(self.recovery.as_deref());
+            failed.reverse();
+            self.keep(&failed);
+            state.leftover = failed;
         }
         self.active.store(enabled, Ordering::Release);
         previous
@@ -425,18 +441,32 @@ impl Controller {
         let Some(path) = self.recovery.as_deref() else {
             return false;
         };
-        let _session = self.session.lock().await;
+        let mut state = self.state.lock().await;
         let Some(undo) = read_recovery(path) else {
             return false;
         };
         log_info("[game-mode] el escritorio se cayó con el modo puesto: restaurando");
-        for step in undo.iter().rev() {
+        let mut failed = Vec::new();
+        for step in undo.into_iter().rev() {
             if let Err(e) = step.restore(host).await {
                 log_error(&format!("[game-mode] no se pudo restaurar {step:?}: {e}"));
+                failed.push(step);
             }
         }
-        remove_recovery(Some(path));
+        failed.reverse();
+        self.keep(&failed);
+        state.leftover = failed;
         true
+    }
+
+    /// Deja en el archivo sólo lo que falta deshacer, o lo borra si no falta
+    /// nada.
+    fn keep(&self, failed: &[Undo]) {
+        if failed.is_empty() {
+            remove_recovery(self.recovery.as_deref());
+        } else {
+            self.save(failed);
+        }
     }
 
     fn save(&self, undo: &[Undo]) {
@@ -636,6 +666,7 @@ mod tests {
         revision: AtomicU64,
         wayfire: StdMutex<BTreeMap<String, String>>,
         wayfire_calls: AtomicU64,
+        wayfire_down: AtomicBool,
         gamemode: Option<StdMutex<Vec<i32>>>,
         pid: i32,
     }
@@ -656,6 +687,7 @@ mod tests {
                 revision: AtomicU64::new(0),
                 wayfire: StdMutex::new(wayfire),
                 wayfire_calls: AtomicU64::new(0),
+                wayfire_down: AtomicBool::new(false),
                 gamemode: Some(StdMutex::new(Vec::new())),
                 pid: 4242,
             }
@@ -698,6 +730,9 @@ mod tests {
         }
 
         async fn wayfire_option(&self, option: &str) -> Result<String, String> {
+            if self.wayfire_down.load(Ordering::SeqCst) {
+                return Err("Wayfire no contesta".into());
+            }
             self.wayfire
                 .lock()
                 .unwrap()
@@ -976,6 +1011,57 @@ mod tests {
         assert!(!controller.is_active(), "no se recuerda");
         assert!(!path.exists());
         assert!(!controller.recover(&after).await, "una sola vez");
+    }
+
+    /// Si Wayfire no contesta al salir, lo que no se deshizo queda en el
+    /// archivo y se reintenta la próxima vez que se sale.
+    #[tokio::test]
+    async fn lo_que_no_se_pudo_deshacer_queda_anotado() {
+        let path = temp_recovery("pendiente");
+        let host = FakeHost::new();
+        let controller = Controller::new(Some(path.clone()));
+        controller.set(&host, true, all).await;
+
+        host.wayfire_down.store(true, Ordering::SeqCst);
+        controller.set(&host, false, Vec::new).await;
+        assert!(!controller.is_active());
+        assert!(!host.dnd.load(Ordering::SeqCst), "lo demás se deshizo");
+        assert!(host.registered().is_empty());
+        let pending = read_recovery(&path).expect("queda anotado");
+        assert!(matches!(
+            pending.as_slice(),
+            [Undo::DisableAnimations { .. }]
+        ));
+
+        // Wayfire vuelve; la próxima vuelta lo deshace también.
+        host.wayfire_down.store(false, Ordering::SeqCst);
+        controller.set(&host, true, all).await;
+        controller.set(&host, false, Vec::new).await;
+        assert_eq!(host.option("animate/open_animation"), "fade");
+        assert_eq!(host.option("animate/minimize_animation"), "squeezimize");
+        assert!(!path.exists());
+    }
+
+    /// Lo mismo al restaurar tras una caída: si Wayfire todavía no contesta,
+    /// el archivo no se borra.
+    #[tokio::test]
+    async fn la_recuperacion_que_falla_no_borra_el_archivo() {
+        let path = temp_recovery("recupera-falla");
+        let before = FakeHost::new();
+        Controller::new(Some(path.clone()))
+            .set(&before, true, all)
+            .await;
+
+        let after = FakeHost::new();
+        *after.wayfire.lock().unwrap() = before.wayfire.lock().unwrap().clone();
+        after.wayfire_down.store(true, Ordering::SeqCst);
+        assert!(Controller::new(Some(path.clone())).recover(&after).await);
+        assert!(path.exists());
+
+        after.wayfire_down.store(false, Ordering::SeqCst);
+        assert!(Controller::new(Some(path.clone())).recover(&after).await);
+        assert_eq!(after.option("animate/open_animation"), "fade");
+        assert!(!path.exists());
     }
 
     #[tokio::test]
