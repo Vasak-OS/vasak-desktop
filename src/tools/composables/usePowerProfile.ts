@@ -5,7 +5,11 @@ import {
 	setPowerProfile,
 } from '@vasakgroup/plugin-power-profiles';
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
-import { logError } from '@/utils/logger';
+
+// Los errores van por `console.error` y no por `logError`: el logger del
+// escritorio reemplaza `console.error` al arrancar y lo manda al mismo archivo,
+// así que en la sesión es lo mismo (ver `useBackendToggle`). Importar el logger
+// acá lo construiría en las pruebas antes de que la suya lo doble.
 
 const UNAVAILABLE: PowerState = {
 	available: false,
@@ -37,7 +41,7 @@ export function usePowerProfile() {
 		try {
 			apply(await getPowerState());
 		} catch (error) {
-			logError('[power-profile] no se pudo leer el perfil:', error);
+			console.error('[power-profile] no se pudo leer el perfil:', error);
 		} finally {
 			loaded.value = true;
 		}
@@ -47,7 +51,7 @@ export function usePowerProfile() {
 			if (disposed) stop();
 			else unlisten = stop;
 		} catch (error) {
-			logError('[power-profile] no se pudo escuchar el perfil:', error);
+			console.error('[power-profile] no se pudo escuchar el perfil:', error);
 		}
 	});
 
@@ -68,7 +72,7 @@ export function usePowerProfile() {
 		try {
 			apply(await setPowerProfile(profile));
 		} catch (error) {
-			logError('[power-profile] no se pudo cambiar el perfil:', error);
+			console.error('[power-profile] no se pudo cambiar el perfil:', error);
 			apply(previous);
 		}
 	}

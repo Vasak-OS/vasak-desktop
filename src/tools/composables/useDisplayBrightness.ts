@@ -8,7 +8,11 @@ import {
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import { createLatestWriter, monitorKey, primaryMonitor } from '@/tools/display-brightness';
 import { eventBus } from '@/tools/event.bus';
-import { logError } from '@/utils/logger';
+
+// Los errores van por `console.error` y no por `logError`: el logger del
+// escritorio reemplaza `console.error` al arrancar y lo manda al mismo archivo,
+// así que en la sesión es lo mismo (ver `useBackendToggle`). Importar el logger
+// acá lo construiría en las pruebas antes de que la suya lo doble.
 
 /**
  * El brillo de las pantallas para el centro de control (vasak-desktop#189),
@@ -72,7 +76,7 @@ async function load(): Promise<void> {
 	try {
 		apply(await getBrightness());
 	} catch (error) {
-		logError('[brightness] no se pudo leer el brillo:', error);
+		console.error('[brightness] no se pudo leer el brillo:', error);
 	}
 }
 
@@ -90,7 +94,7 @@ async function subscribe(): Promise<void> {
 		if (users === 0) unlisten();
 		else stopListening = unlisten;
 	} catch (error) {
-		logError('[brightness] no se pudo escuchar el brillo:', error);
+		console.error('[brightness] no se pudo escuchar el brillo:', error);
 	}
 }
 
@@ -134,7 +138,7 @@ export function useDisplayBrightness() {
 		try {
 			await write(key, { monitor, percent });
 		} catch (error) {
-			logError('[brightness] no se pudo cambiar el brillo:', error);
+			console.error('[brightness] no se pudo cambiar el brillo:', error);
 		} finally {
 			// Si se volvió a arrastrar mientras tanto, el borrador nuevo se queda.
 			if (drafts.value[key] === percent) {
