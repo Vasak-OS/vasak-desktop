@@ -41,6 +41,9 @@ const UNIT_IFACE: &str = "org.freedesktop.systemd1.Unit";
 /// Lo que contesta systemd por una unidad cuyo archivo no existe: la luz
 /// nocturna nunca se guardó.
 const NO_SUCH_UNIT: &str = "org.freedesktop.systemd1.NoSuchUnit";
+/// Lo que devuelven `EnableUnitFiles` y `DisableUnitFiles`: qué enlaces tocó
+/// (tipo, enlace, destino).
+type UnitFileChanges = Vec<(String, String, String)>;
 /// Lo que contesta `Subscribe` si esta conexión ya estaba suscrita.
 const ALREADY_SUBSCRIBED: &str = "org.freedesktop.systemd1.AlreadySubscribed";
 
@@ -150,10 +153,7 @@ pub async fn switch_on(conn: &Connection, unit: &str) -> zbus::Result<()> {
     // `runtime = false`: en `~/.config`, que sobrevive al reinicio.
     // `force = false`: no pisa un enlace que el usuario haya hecho a otra cosa.
     manager
-        .call::<_, _, (bool, Vec<(String, String, String)>)>(
-            "EnableUnitFiles",
-            &(vec![unit], false, false),
-        )
+        .call::<_, _, (bool, UnitFileChanges)>("EnableUnitFiles", &(vec![unit], false, false))
         .await?;
     manager
         .call::<_, _, zbus::zvariant::OwnedObjectPath>("StartUnit", &(unit, "replace"))
@@ -167,7 +167,7 @@ pub async fn switch_on(conn: &Connection, unit: &str) -> zbus::Result<()> {
 pub async fn switch_off(conn: &Connection, unit: &str) -> zbus::Result<()> {
     let manager = manager(conn).await?;
     match manager
-        .call::<_, _, Vec<(String, String, String)>>("DisableUnitFiles", &(vec![unit], false))
+        .call::<_, _, UnitFileChanges>("DisableUnitFiles", &(vec![unit], false))
         .await
     {
         Err(e) if !is_error(&e, NO_SUCH_UNIT) => return Err(e),
@@ -534,7 +534,7 @@ mod tests {
             files: Vec<String>,
             runtime: bool,
             force: bool,
-        ) -> Result<(bool, Vec<(String, String, String)>), SystemdError> {
+        ) -> Result<(bool, UnitFileChanges), SystemdError> {
             self.note(format!("EnableUnitFiles {files:?} {runtime} {force}"));
             for file in &files {
                 self.check(file)
@@ -546,7 +546,7 @@ mod tests {
             &self,
             files: Vec<String>,
             runtime: bool,
-        ) -> Result<Vec<(String, String, String)>, SystemdError> {
+        ) -> Result<UnitFileChanges, SystemdError> {
             self.note(format!("DisableUnitFiles {files:?} {runtime}"));
             for file in &files {
                 self.check(file)

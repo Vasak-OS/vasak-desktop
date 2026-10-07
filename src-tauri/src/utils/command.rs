@@ -51,11 +51,6 @@ impl CommandExecutor {
 
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
-    
-    /// Ejecuta un comando y retorna true si tiene éxito, false en caso contrario
-    pub fn run_silent(cmd: &str, args: &[&str]) -> bool {
-        Self::run(cmd, args).is_ok()
-    }
 }
 
 #[cfg(test)]
@@ -77,11 +72,5 @@ mod tests {
             Duration::from_secs(1)
         );
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_run_silent() {
-        assert!(CommandExecutor::run_silent("echo", &["test"]));
-        assert!(!CommandExecutor::run_silent("nonexistent_command_xyz", &[]));
     }
 }
