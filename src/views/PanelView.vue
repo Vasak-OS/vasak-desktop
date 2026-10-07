@@ -33,7 +33,7 @@ import { usePanelDensity, watchPanelDensity } from '@/tools/composables/usePanel
 import { usePanelInputRegion } from '@/tools/composables/usePanelInputRegion';
 import { useSharedEvent } from '@/tools/event.bus';
 import { containsNewNotifications } from '@/tools/notifications';
-import { BAR_CLASSES, GROUP_CLASSES } from '@/tools/panel-position';
+import { GROUP_CLASSES } from '@/tools/panel-position';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -48,14 +48,26 @@ const { t } = useI18n();
  * Es reactivo, así que mover el panel en Configuración lo acomoda en el acto,
  * al mismo tiempo que la superficie se reancla.
  */
-const { position, vertical, showWeather, showMusic } = usePanelConfig();
+const {
+	position,
+	vertical,
+	showWeather,
+	showMusic,
+	barClasses,
+	surfaceClass,
+	hasSurface,
+	animationClass,
+	sizeStyle,
+} = usePanelConfig();
 
 /**
- * Lo que recibe el puntero: sólo las píldoras (vasak-desktop#151). Entre una
- * y otra se ve el escritorio, y un clic ahí tiene que caer en él.
+ * Lo que recibe el puntero. En píldoras son sólo las píldoras (vasak-desktop#151):
+ * entre una y otra se ve el escritorio, y un clic ahí tiene que caer en él.
+ * Con una superficie continua —flotante, barra o dock— es la barra entera, que
+ * entonces no tiene huecos (`hasSurface`).
  */
 const bar = ref<HTMLElement | null>(null);
-usePanelInputRegion(bar);
+usePanelInputRegion(bar, hasSurface);
 
 /**
  * Cuánto texto entra: en un panel angosto los nombres largos se pliegan al
@@ -270,15 +282,33 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 	     de trabajo, la música y las ventanas; al centro el reloj y el clima; a la derecha la
 	     bandeja, el teclado, la red, el Bluetooth, el volumen y la batería.
 	     Cada píldora es una `PanelPill` de la librería en `ui-shell`, sin
-	     `backdrop-blur`: el desenfoque lo pone Wayfire detrás de cada una. La
-	     región de entrada se recorta a las píldoras (`usePanelInputRegion`). -->
+	     `backdrop-blur`: el desenfoque lo pone Wayfire detrás de cada una.
+
+	     El tipo, la densidad, la animación y el tamaño salen de la configuración
+	     (`panel-appearance.ts`): en píldoras la `<nav>` queda transparente y la
+	     región de entrada se recorta a las píldoras; en flotante, barra y dock se
+	     dibuja una superficie detrás y la región pasa a ser la barra entera
+	     (`usePanelInputRegion`). -->
 	<nav
 		ref="bar"
 		@contextmenu.prevent="openPanelContextMenu"
-		class="panel-bar relative z-20 grid items-center gap-2 bg-transparent"
-		:class="BAR_CLASSES[position]"
+		class="panel-bar z-20 grid items-center gap-2 bg-transparent"
+		:class="[barClasses, animationClass]"
+		:style="sizeStyle"
 		data-panel-bar
 	>
+    <!-- La superficie continua de flotante, barra y dock, detrás de las
+         píldoras. En píldoras no existe: la `<nav>` es transparente y entre una
+         píldora y otra se ve el escritorio. Es translúcida y sin `backdrop-blur`:
+         el desenfoque lo pone Wayfire detrás de la franja. Su forma —el fondo, el
+         canto y el redondeo— sale de `panelSurfaceClass`. -->
+    <div
+      v-if="hasSurface"
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-0 -z-10"
+      :class="surfaceClass"
+      data-panel-surface
+    ></div>
     <div class="flex min-w-0 items-center gap-1.5 overflow-x-clip" :class="GROUP_CLASSES[position].start" data-panel-start>
       <!-- El botón del menú: el lince de VasakOS (`start-here` del tema), como
            siempre. Abre el menú con la búsqueda enfocada, lo abra este botón o

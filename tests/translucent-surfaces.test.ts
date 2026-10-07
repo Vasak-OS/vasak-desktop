@@ -289,7 +289,9 @@ describe('las píldoras del panel dejan ver el escritorio entre ellas', () => {
 		expect(backgroundsOf(nav)).toEqual(['transparent']);
 		expect(nav).not.toMatch(/border|shadow/);
 		expect(panel).toMatch(/<nav\b[^>]*\sref="bar"/);
-		expect(panel).toContain('usePanelInputRegion(bar)');
+		// Con una superficie continua la región pasa a ser la barra entera; en
+		// píldoras sigue recortada a ellas. El recorte se arma igual desde `bar`.
+		expect(panel).toContain('usePanelInputRegion(bar');
 	});
 });
 

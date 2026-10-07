@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.51.0",
+	"version": "1.52.0",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -36,7 +36,7 @@
 		"@vasakgroup/vue-libvasak": "^2.13.2",
 		"pinia": "^3.0.4",
 		"vue": "^3.5.43",
-		"vue-router": "^5.3.1"
+		"vue-router": "^5.4.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
