@@ -229,6 +229,19 @@ describe('el bloque de mosaicos, montado', () => {
 		view.unmount();
 	});
 
+	test('de la ficha de salida a la de entrada sin volver: lista entradas, no salidas', async () => {
+		const view = mount(Panel, { props: { bluetooth: true, detail: 'audio-output' }, attachTo: document.body });
+		await settle();
+		expect(view.find('[data-fake-detail="audio-output"]').exists()).toBe(true);
+
+		// La flecha del micrófono con la ficha de salida abierta.
+		await view.setProps({ detail: 'audio-input' });
+		await settle();
+		expect(view.find('[data-fake-detail="audio-output"]').exists()).toBe(false);
+		expect(view.find('[data-fake-detail="audio-input"]').exists()).toBe(true);
+		view.unmount();
+	});
+
 	test('un mosaico sin ficha no abre nada en el bloque', async () => {
 		const view = mount(Panel, { props: { bluetooth: true, detail: 'theme' }, attachTo: document.body });
 		await settle();

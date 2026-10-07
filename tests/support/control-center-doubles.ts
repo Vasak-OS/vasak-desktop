@@ -43,10 +43,24 @@ export const CONTROL_CENTER_TILES: readonly TileSpec[] = [
 	{ id: 'search', tile: fakeTile('search') },
 ];
 
+/**
+ * Las dos fichas comparten componente, como el `AudioDeviceSelector` de
+ * verdad, y como él leen su clase una sola vez, al crearse: si la instancia se
+ * reusa entre fichas, se nota.
+ */
+const fakeSelector = defineComponent({
+	name: 'FakeAudioDeviceSelector',
+	inheritAttrs: false,
+	setup(_props, { attrs }) {
+		const kind = String(attrs.kind);
+		return () => h('div', { 'data-fake-detail': `audio-${kind}`, 'data-attrs': JSON.stringify(attrs) }, kind);
+	},
+});
+
 /** Las fichas que abre la flecha del volumen y del micrófono (vasak-desktop#182). */
 export const CONTROL_CENTER_SHEETS: readonly SheetSpec[] = [
-	{ id: 'audio-output', detail: fakeDetail('audio-output'), detailProps: { kind: 'output' } },
-	{ id: 'audio-input', detail: fakeDetail('audio-input'), detailProps: { kind: 'input' } },
+	{ id: 'audio-output', detail: fakeSelector, detailProps: { kind: 'output' } },
+	{ id: 'audio-input', detail: fakeSelector, detailProps: { kind: 'input' } },
 ];
 
 /** Lo que la prueba pone y lo que mira. */

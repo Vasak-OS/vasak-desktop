@@ -12,7 +12,7 @@ import {
 	type OptionGroupOption,
 	ThemeIcon,
 } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, type Ref, ref } from 'vue';
+import { computed, onMounted, type Ref, ref, watch } from 'vue';
 import { getAudioInputDevices, setAudioInputDevice } from '@/services/audio-input.service';
 import { getAudioDevices, setAudioDevice } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
@@ -30,25 +30,29 @@ interface AudioDevice {
 	volume: number;
 }
 
-const isInput = props.kind === 'input';
-/** Lo que cambia entre salida y entrada: de dónde se leen, cómo se eligen y el evento. */
-const source = isInput
-	? {
-			read: () => getAudioInputDevices(),
-			choose: (deviceId: string) => setAudioInputDevice(deviceId),
-			event: 'audio-input-devices-changed',
-			icon: 'audio-input-microphone-symbolic',
-			title: 'components.AudioDeviceSelector.inputTitle',
-			iconAlt: 'components.AudioDeviceSelector.microphoneAlt',
-		}
-	: {
-			read: () => getAudioDevices<AudioDevice[]>(),
-			choose: (deviceId: string) => setAudioDevice({ deviceId }),
-			event: 'audio-devices-changed',
-			icon: 'audio-speakers-symbolic',
-			title: 'components.AudioDeviceSelector.title',
-			iconAlt: 'components.AudioDeviceSelector.speakerAlt',
-		};
+/**
+ * Lo que cambia entre salida y entrada: de dónde se leen, cómo se eligen y el
+ * evento. Sigue a `kind` aunque cambie con el componente montado.
+ */
+const SOURCES = {
+	input: {
+		read: () => getAudioInputDevices(),
+		choose: (deviceId: string) => setAudioInputDevice(deviceId),
+		event: 'audio-input-devices-changed',
+		icon: 'audio-input-microphone-symbolic',
+		title: 'components.AudioDeviceSelector.inputTitle',
+		iconAlt: 'components.AudioDeviceSelector.microphoneAlt',
+	},
+	output: {
+		read: () => getAudioDevices<AudioDevice[]>(),
+		choose: (deviceId: string) => setAudioDevice({ deviceId }),
+		event: 'audio-devices-changed',
+		icon: 'audio-speakers-symbolic',
+		title: 'components.AudioDeviceSelector.title',
+		iconAlt: 'components.AudioDeviceSelector.speakerAlt',
+	},
+} as const;
+const source = computed(() => SOURCES[props.kind]);
 
 const devices: Ref<AudioDevice[]> = ref([]);
 const selectedDeviceId = ref('');
@@ -57,7 +61,7 @@ const isLoading = ref(false);
 async function loadDevices() {
 	isLoading.value = true;
 	try {
-		const deviceList = await source.read();
+		const deviceList = await source.value.read();
 		devices.value = deviceList;
 
 		const defaultDevice = deviceList.find((d) => d.is_default);
@@ -85,7 +89,7 @@ const checkedDevice = computed<string | null>({
 
 async function onDeviceChange(deviceId: string) {
 	try {
-		await source.choose(deviceId);
+		await source.value.choose(deviceId);
 		selectedDeviceId.value = deviceId;
 		await loadDevices();
 	} catch (e) {
@@ -97,7 +101,7 @@ onMounted(async () => {
 	await loadDevices();
 });
 
-useSharedEvent<AudioDevice[]>(source.event, (payload) => {
+function applyDevices(payload: AudioDevice[]): void {
 	devices.value = payload;
 	const defaultDevice = payload.find((d) => d.is_default);
 	if (defaultDevice) {
@@ -107,7 +111,24 @@ useSharedEvent<AudioDevice[]>(source.event, (payload) => {
 	} else {
 		selectedDeviceId.value = '';
 	}
-});
+}
+
+// Los dos eventos, y cada uno cuenta sólo si es el de la clase de ahora.
+for (const kind of ['output', 'input'] as const) {
+	useSharedEvent<AudioDevice[]>(SOURCES[kind].event, (payload) => {
+		if (props.kind === kind) applyDevices(payload);
+	});
+}
+
+// Otra clase con el componente montado: se leen sus dispositivos.
+watch(
+	() => props.kind,
+	() => {
+		devices.value = [];
+		selectedDeviceId.value = '';
+		void loadDevices();
+	}
+);
 
 function getDeviceName(device: AudioDevice): string {
 	return device.name

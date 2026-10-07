@@ -103,7 +103,12 @@ async function back(): Promise<void> {
         />
       </div>
       <div class="flex shrink-0 flex-col" :data-tile-sheet="openTile.id">
-        <component :is="openTile.detail" v-bind="openTile.detailProps ?? {}" />
+        <!-- `key`: dos fichas pueden ser el mismo componente con otras
+             propiedades (la salida y la entrada son `AudioDeviceSelector`).
+             Sin él, pasar de una a otra sin volver reusaba la instancia: la
+             ficha de entrada seguía con lo que había creado la de salida. Con
+             él, cada ficha es una instancia nueva. -->
+        <component :is="openTile.detail" :key="openTile.id" v-bind="openTile.detailProps ?? {}" />
       </div>
     </template>
   </section>

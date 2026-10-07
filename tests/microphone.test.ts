@@ -262,6 +262,30 @@ describe('elegir el dispositivo', () => {
 		view.unmount();
 	});
 
+	test('de salida a entrada sin desmontarse: lista entradas y elegir cambia la entrada', async () => {
+		const view = mount(Selector, { props: { kind: 'output' }, attachTo: document.body });
+		await settle();
+		expect(checked(view).join()).toContain('Audio interno');
+
+		await view.setProps({ kind: 'input' });
+		await settle();
+		expect(view.text()).toContain('components.AudioDeviceSelector.inputTitle');
+		expect(view.text()).not.toContain('Audio interno');
+		expect(checked(view).join()).toContain('USB Advanced Audio Device Mono');
+
+		const headset = view.findAll('[role="radio"]').find((radio: any) => radio.text().includes('WH-1000XM4'));
+		await headset?.trigger('click');
+		await settle();
+		expect(called('set_audio_input_device').map((call) => call.args.deviceId)).toEqual(['bluez_input.00_11_22']);
+		expect(called('set_audio_device')).toEqual([]);
+
+		// Y el evento de las salidas ya no la toca.
+		audio.emit('audio-devices-changed', [device('99', 'Otra salida', true)]);
+		await settle();
+		expect(view.text()).not.toContain('Otra salida');
+		view.unmount();
+	});
+
 	test('la salida: elegir otra cambia el sumidero por omisión', async () => {
 		const view = mount(Selector, { props: { kind: 'output' }, attachTo: document.body });
 		await settle();
