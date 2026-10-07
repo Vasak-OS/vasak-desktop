@@ -265,14 +265,29 @@ describe('la fecha de la tarjeta', () => {
 	});
 });
 
-/** Compila la vista con cada `@/…` mandado a los dobles, y cada componente al doble de su nombre. */
+/**
+ * Compila la vista con cada `@/…` mandado a los dobles.
+ *
+ * Cada componente del escritorio es el doble de su nombre, o un doble mudo si
+ * la prueba no lo conoce: la vista suma controles seguido (la luz nocturna, el
+ * micrófono…) y esta prueba no tiene por qué romperse con cada uno. Lo que se
+ * importa por nombre sale del mismo módulo de dobles.
+ */
 async function loadView() {
 	const file = join(ROOT, 'src/views/ControlCenterView.vue');
 	const { descriptor } = parse(read('src/views/ControlCenterView.vue'), { filename: file });
 	const compiled = compileScript(descriptor, { id: 'ControlCenterView', inlineTemplate: true });
-	const code = compiled.content
-		.replace(/import\s+(\w+)\s+from\s+(['"])@\/[^'"]+\.vue\2/g, `import { $1 } from ${JSON.stringify(DOUBLES)}`)
-		.replace(/from\s+(['"])@\/[^'"]+\1/g, `from ${JSON.stringify(DOUBLES)}`);
+	const code = `import * as __doubles from ${JSON.stringify(DOUBLES)};\n${compiled.content
+		.replace(/import\s+type\s+\{[^}]*\}\s+from\s+(['"])@\/[^'"]+\1;?/g, '')
+		.replace(
+			/import\s+(\w+)\s+from\s+(['"])@\/[^'"]+\.vue\2;?/g,
+			"const $1 = __doubles.$1 ?? __doubles.silent('$1');"
+		)
+		.replace(
+			/import\s+\{([^}]*)\}\s+from\s+(['"])@\/[^'"]+\2;?/g,
+			(_all, names: string) =>
+				`const {${names.replace(/\btype\s+\w+\s*,?/g, '').replace(/\s+as\s+/g, ': ')}} = __doubles;`
+		)}`;
 	const out = join(dom.workdir(), 'ControlCenterView.ts');
 	writeFileSync(out, code);
 	return (await import(out)).default;

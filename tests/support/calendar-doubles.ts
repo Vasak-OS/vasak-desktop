@@ -55,6 +55,9 @@ export const toggleSessionPopup = async () => {};
 const stub = (name: string) =>
 	defineComponent({ name, inheritAttrs: false, setup: () => () => h('div', { [`data-stub-${name}`]: '' }) });
 
+/** El doble mudo de un componente que esta prueba no conoce. */
+export const silent = stub;
+
 /** La tarjeta: la fecha es un botón que avisa, como la de verdad. */
 export const UserControlCenterCard = defineComponent({
 	name: 'UserControlCenterCardDouble',
