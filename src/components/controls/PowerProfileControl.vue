@@ -48,12 +48,13 @@ const status = computed(() => {
     :data-unavailable="available ? undefined : 'true'"
     data-power-profile
   >
-    <div class="flex min-w-0 items-center gap-2">
+    <!-- En un centro angosto el estado pasa abajo del título en vez de cortarlo. -->
+    <div class="flex min-w-0 flex-wrap items-center gap-2">
       <ThemeIcon :name="profileIcon(state.activeProfile)" type="symbol" :size="16" alt="" />
-      <span class="min-w-0 flex-1 truncate text-label-m">{{ t('components.PowerProfileControl.title') }}</span>
+      <span class="min-w-0 flex-1 break-words text-label-m">{{ t('components.PowerProfileControl.title') }}</span>
       <span
         v-if="status"
-        class="min-w-0 truncate text-label-s text-tx-muted"
+        class="min-w-0 break-words text-label-s text-tx-muted"
         data-power-status
       >{{ status }}</span>
     </div>

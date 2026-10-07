@@ -104,8 +104,8 @@ function onChange(monitor: MonitorBrightness, event: Event): void {
       v-for="notice in notices"
       :key="notice.text"
       :class="[
-        'flex min-w-0 items-center gap-2 px-1 text-body-s text-tx-muted',
-        notice.unavailable ? 'rounded-corner-l border border-ui-line bg-ui-surface/70 p-3' : '',
+        'flex min-w-0 items-center gap-2 text-body-s text-tx-muted',
+        notice.unavailable ? 'rounded-corner-l border border-ui-line bg-ui-surface/70 p-3' : 'px-1',
       ]"
       :data-unavailable="notice.unavailable ? 'true' : undefined"
       :data-output="notice.args[0]"
