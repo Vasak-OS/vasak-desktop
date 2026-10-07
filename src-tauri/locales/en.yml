@@ -300,6 +300,9 @@ components:
     doNotDisturbOn: Urgent only
     gameMode: Games
     gameModeFailed: Couldn't change it
+    airplaneMode: Airplane mode
+    airplaneModeHardware: Blocked by the device
+    airplaneModeFailed: Couldn't change it
     unavailable: Unavailable
     network: Network
     bluetooth: Bluetooth

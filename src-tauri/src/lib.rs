@@ -8,6 +8,7 @@ mod logger;
 mod structs;
 
 // Feature modules
+mod airplane_mode;
 mod applets;
 mod artwork;
 mod audio;
@@ -220,6 +221,9 @@ pub fn run() {
             night_light::get_night_light_state,
             night_light::set_night_light_enabled,
             night_light::apply_night_light,
+            get_airplane_mode,
+            set_airplane_mode,
+            unblock_radios,
             toggle_control_center,
             hide_control_center,
             toggle_wallpaper_picker,
@@ -381,6 +385,9 @@ pub fn run() {
             // El modo juego no se recuerda; si el escritorio anterior se cayó con
             // él puesto, se deshace lo que dejó.
             game_mode::start(handle.clone());
+            // El modo avión sigue los eventos de /dev/rfkill: sólo despierta
+            // cuando una radio cambia.
+            airplane_mode::start(handle.clone());
             follow_panel_position(app.handle().clone());
             // El tiempo de pantalla por aplicación (`screen_time/`): un hilo que
             // mira el foco cada dos segundos y guarda por día.
