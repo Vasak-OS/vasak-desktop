@@ -33,3 +33,15 @@ export function volumePercentageClass(isMuted: boolean, percentage: number): str
 	if (percentage > 80) return 'text-status-success';
 	return '';
 }
+
+/**
+ * El icono del micrófono según su volumen y si está silenciado
+ * (vasak-desktop#182): `microphone-sensitivity-*` del tema, el nombre
+ * freedesktop que traen Adwaita y Breeze.
+ */
+export function getMicrophoneIconName(isMuted: boolean, percentage: number): string {
+	if (isMuted || percentage <= 0) return 'microphone-sensitivity-muted-symbolic';
+	if (percentage <= 33) return 'microphone-sensitivity-low-symbolic';
+	if (percentage <= 66) return 'microphone-sensitivity-medium-symbolic';
+	return 'microphone-sensitivity-high-symbolic';
+}

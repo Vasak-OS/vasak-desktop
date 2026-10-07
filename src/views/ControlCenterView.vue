@@ -28,6 +28,7 @@ import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue'
 import BluetoothControl from '@/components/controls/BluetoothControl.vue';
 import BrightnessControl from '@/components/controls/BrightnessControl.vue';
 import DoNotDisturbToggle from '@/components/controls/DoNotDisturbToggle.vue';
+import MicrophoneControl from '@/components/controls/MicrophoneControl.vue';
 import MonitorBrightnessList from '@/components/controls/MonitorBrightnessList.vue';
 import NetworkControl from '@/components/controls/NetworkControl.vue';
 import NightLightToggle from '@/components/controls/NightLightToggle.vue';
@@ -42,6 +43,7 @@ import {
 	modeOnOpen,
 	summaryText,
 } from '@/tools/control-center-mode';
+import type { SheetId } from '@/tools/control-center-sheets';
 import type { TileId } from '@/tools/control-center-tiles';
 import { useSharedEvent } from '@/tools/event.bus';
 
@@ -73,7 +75,7 @@ let pendingDecision = false;
 /** Los mosaicos se montan la primera vez que B se ve, y ya no se desmontan. */
 const tilesMounted = ref(false);
 /** La ficha abierta dentro del bloque de ajustes, si hay una. */
-const detail = ref<TileId | null>(null);
+const detail = ref<TileId | SheetId | null>(null);
 
 watch(
 	[showsSettings, visible],
@@ -98,6 +100,15 @@ function onSummary(next: { count: number; apps: number; loaded: boolean }): void
 /** «Más»: el bloque de ajustes crece y las notificaciones quedan en una línea. */
 function showSettings(): void {
 	mode.value = 'settings';
+}
+
+/**
+ * La flecha › del volumen o del micrófono: la elección del dispositivo se abre
+ * dentro del bloque de ajustes, y desde A primero se pasa a B.
+ */
+function openSheet(id: SheetId): void {
+	mode.value = 'settings';
+	detail.value = id;
 }
 
 /** La línea resumen: vuelven las notificaciones y se cierra cualquier ficha. */
@@ -306,7 +317,14 @@ onBeforeUnmount(() => {
           <div v-show="!showsSettings" data-primary-brightness-box>
             <BrightnessControl />
           </div>
-          <VolumeControl />
+          <VolumeControl devices @open-devices="openSheet('audio-output')" />
+          <!-- B: el micrófono, componente propio, entre el volumen y la caja de
+               brillo y energía. -->
+          <MicrophoneControl
+            v-if="tilesMounted"
+            v-show="showsSettings"
+            @open-devices="openSheet('audio-input')"
+          />
           <!-- B: debajo del volumen, un brillo por monitor y el perfil de
                energía (issue 189 de vasak-desktop). Como los mosaicos, no existen hasta
                que B se ve por primera vez con el centro abierto. -->

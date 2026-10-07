@@ -198,6 +198,50 @@ describe('el bloque de mosaicos, montado', () => {
 		view.unmount();
 	});
 
+	test('la flecha del micrófono abre su ficha en el bloque, y volver le devuelve el foco', async () => {
+		// La flecha vive afuera del bloque, abajo, como en la vista.
+		const opener = document.createElement('button');
+		opener.dataset.sheetOpener = 'audio-input';
+		document.body.append(opener);
+		const view = mount(Panel, { props: { bluetooth: true, detail: 'audio-input' }, attachTo: document.body });
+		await settle();
+
+		const sheet = view.find('[data-fake-detail="audio-input"]');
+		expect(sheet.exists()).toBe(true);
+		expect(JSON.parse(sheet.attributes('data-attrs') ?? '{}')).toEqual({ kind: 'input' });
+		expect((view.find('[data-tile-grid]').element as HTMLElement).style.display).toBe('none');
+		// Abierta desde afuera, el foco igual va a «volver».
+		expect(document.activeElement).toBe(view.find('[data-tile-back]').element);
+
+		await view.find('[data-tile-back]').trigger('click');
+		await settle();
+		expect(view.emitted('update:detail')?.at(-1)).toEqual([null]);
+		expect(document.activeElement).toBe(opener);
+		view.unmount();
+		opener.remove();
+	});
+
+	test('la de la salida lleva su clase, para elegir entre las salidas', async () => {
+		const view = mount(Panel, { props: { bluetooth: true, detail: 'audio-output' }, attachTo: document.body });
+		await settle();
+		const sheet = view.find('[data-fake-detail="audio-output"]');
+		expect(JSON.parse(sheet.attributes('data-attrs') ?? '{}')).toEqual({ kind: 'output' });
+		view.unmount();
+	});
+
+	test('de la ficha de salida a la de entrada sin volver: lista entradas, no salidas', async () => {
+		const view = mount(Panel, { props: { bluetooth: true, detail: 'audio-output' }, attachTo: document.body });
+		await settle();
+		expect(view.find('[data-fake-detail="audio-output"]').exists()).toBe(true);
+
+		// La flecha del micrófono con la ficha de salida abierta.
+		await view.setProps({ detail: 'audio-input' });
+		await settle();
+		expect(view.find('[data-fake-detail="audio-output"]').exists()).toBe(false);
+		expect(view.find('[data-fake-detail="audio-input"]').exists()).toBe(true);
+		view.unmount();
+	});
+
 	test('un mosaico sin ficha no abre nada en el bloque', async () => {
 		const view = mount(Panel, { props: { bluetooth: true, detail: 'theme' }, attachTo: document.body });
 		await settle();

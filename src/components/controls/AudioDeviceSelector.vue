@@ -1,5 +1,10 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+/**
+ * Elegir la salida o la entrada de audio por omisión. `kind="input"` es la
+ * ficha del micrófono del centro de control (vasak-desktop#182): las mismas
+ * filas, con las entradas y su evento.
+ */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	LoadingState,
@@ -7,10 +12,13 @@ import {
 	type OptionGroupOption,
 	ThemeIcon,
 } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, type Ref, ref } from 'vue';
+import { computed, onMounted, type Ref, ref, watch } from 'vue';
+import { getAudioInputDevices, setAudioInputDevice } from '@/services/audio-input.service';
 import { getAudioDevices, setAudioDevice } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
+
+const props = withDefaults(defineProps<{ kind?: 'output' | 'input' }>(), { kind: 'output' });
 
 const { t } = useI18n();
 
@@ -22,6 +30,30 @@ interface AudioDevice {
 	volume: number;
 }
 
+/**
+ * Lo que cambia entre salida y entrada: de dónde se leen, cómo se eligen y el
+ * evento. Sigue a `kind` aunque cambie con el componente montado.
+ */
+const SOURCES = {
+	input: {
+		read: () => getAudioInputDevices(),
+		choose: (deviceId: string) => setAudioInputDevice(deviceId),
+		event: 'audio-input-devices-changed',
+		icon: 'audio-input-microphone-symbolic',
+		title: 'components.AudioDeviceSelector.inputTitle',
+		iconAlt: 'components.AudioDeviceSelector.microphoneAlt',
+	},
+	output: {
+		read: () => getAudioDevices<AudioDevice[]>(),
+		choose: (deviceId: string) => setAudioDevice({ deviceId }),
+		event: 'audio-devices-changed',
+		icon: 'audio-speakers-symbolic',
+		title: 'components.AudioDeviceSelector.title',
+		iconAlt: 'components.AudioDeviceSelector.speakerAlt',
+	},
+} as const;
+const source = computed(() => SOURCES[props.kind]);
+
 const devices: Ref<AudioDevice[]> = ref([]);
 const selectedDeviceId = ref('');
 const isLoading = ref(false);
@@ -29,10 +61,10 @@ const isLoading = ref(false);
 async function loadDevices() {
 	isLoading.value = true;
 	try {
-		const deviceList = await getAudioDevices();
+		const deviceList = await source.value.read();
 		devices.value = deviceList;
 
-		const defaultDevice = deviceList.find((d: any) => d.is_default);
+		const defaultDevice = deviceList.find((d) => d.is_default);
 		if (defaultDevice) {
 			selectedDeviceId.value = defaultDevice.id;
 		}
@@ -57,7 +89,7 @@ const checkedDevice = computed<string | null>({
 
 async function onDeviceChange(deviceId: string) {
 	try {
-		await setAudioDevice({ deviceId });
+		await source.value.choose(deviceId);
 		selectedDeviceId.value = deviceId;
 		await loadDevices();
 	} catch (e) {
@@ -69,7 +101,7 @@ onMounted(async () => {
 	await loadDevices();
 });
 
-useSharedEvent<AudioDevice[]>('audio-devices-changed', (payload) => {
+function applyDevices(payload: AudioDevice[]): void {
 	devices.value = payload;
 	const defaultDevice = payload.find((d) => d.is_default);
 	if (defaultDevice) {
@@ -79,7 +111,24 @@ useSharedEvent<AudioDevice[]>('audio-devices-changed', (payload) => {
 	} else {
 		selectedDeviceId.value = '';
 	}
-});
+}
+
+// Los dos eventos, y cada uno cuenta sólo si es el de la clase de ahora.
+for (const kind of ['output', 'input'] as const) {
+	useSharedEvent<AudioDevice[]>(SOURCES[kind].event, (payload) => {
+		if (props.kind === kind) applyDevices(payload);
+	});
+}
+
+// Otra clase con el componente montado: se leen sus dispositivos.
+watch(
+	() => props.kind,
+	() => {
+		devices.value = [];
+		selectedDeviceId.value = '';
+		void loadDevices();
+	}
+);
 
 function getDeviceName(device: AudioDevice): string {
 	return device.name
@@ -108,8 +157,8 @@ const options = computed<OptionGroupOption<string>[]>(() =>
     <!-- `tx-muted` y no `ui-surface`: la superficie es un fondo, y como color
          de texto sobre otra superficie no llegaba ni a 2:1. -->
     <div class="flex items-center gap-2 text-label-m font-medium text-tx-muted">
-      <ThemeIcon name="audio-speakers-symbolic" type="symbol" :size="16" :alt="t('components.AudioDeviceSelector.speakerAlt')" />
-      <span>{{ t('components.AudioDeviceSelector.title') }}</span>
+      <ThemeIcon :name="source.icon" type="symbol" :size="16" :alt="t(source.iconAlt)" />
+      <span>{{ t(source.title) }}</span>
     </div>
 
     <!-- Elegir una salida es elegir una de varias: `OptionGroup` de la
@@ -120,7 +169,7 @@ const options = computed<OptionGroupOption<string>[]>(() =>
       v-if="!isLoading && devices.length > 0"
       v-model="checkedDevice"
       :options="options"
-      :label="t('components.AudioDeviceSelector.title')"
+      :label="t(source.title)"
       size="sm"
       @change="onDeviceChange"
     />

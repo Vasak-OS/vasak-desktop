@@ -12,6 +12,7 @@ mod airplane_mode;
 mod applets;
 mod artwork;
 mod audio;
+mod audio_input;
 mod audio_native;
 mod bluetooth_audio_profile;
 mod commands;
@@ -218,6 +219,11 @@ pub fn run() {
             toggle_audio_mute,
             get_audio_devices,
             set_audio_device,
+            get_microphone,
+            set_microphone_volume,
+            toggle_microphone_mute,
+            get_audio_input_devices,
+            set_audio_input_device,
             send_notify,
             clear_notifications,
             get_all_notifications,

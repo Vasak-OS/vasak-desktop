@@ -30,7 +30,9 @@ mod window_manager;
 pub use airplane_mode::{get_airplane_mode, set_airplane_mode, unblock_radios};
 pub use applets::{dismiss_applet, toggle_applet};
 pub use audio::{
-    get_audio_devices, get_audio_volume, set_audio_device, set_audio_volume, toggle_audio_mute,
+    get_audio_devices, get_audio_input_devices, get_audio_volume, get_microphone, set_audio_device,
+    set_audio_input_device, set_audio_volume, set_microphone_volume, toggle_audio_mute,
+    toggle_microphone_mute,
 };
 pub use batch::batch_invoke;
 pub use battery::{battery_exists, battery_fetch_info, get_battery_info};
