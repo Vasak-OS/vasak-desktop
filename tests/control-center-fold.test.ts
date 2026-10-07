@@ -239,7 +239,7 @@ describe('la vista', () => {
 	const VIEW = read('src/views/ControlCenterView.vue');
 
 	test('A: la lista con todo el alto que sobra y un mínimo de unas dos tarjetas', () => {
-		expect(VIEW).toMatch(/<NotificationArea\s+v-show="!showsSettings"\s+class="min-h-40 flex-1"/);
+		expect(VIEW).toMatch(/<NotificationArea\s+v-show="!showsSettings && !calendarOpen"\s+class="min-h-40 flex-1"/);
 		// La lista se desplaza sola: con muchas notificaciones el mínimo se
 		// respeta y lo de abajo no se va de la pantalla.
 		const area = read('src/components/areas/control-center/NotificationArea.vue');
@@ -251,7 +251,7 @@ describe('la vista', () => {
 	});
 
 	test('B: la línea resumen reabre las notificaciones, que nunca desaparecen', () => {
-		expect(VIEW).toMatch(/<ListRow\s+v-if="showsSettings"[\s\S]*?data-notification-summary\s+@click="showNotifications"/);
+		expect(VIEW).toMatch(/<ListRow\s+v-if="showsSettings && !calendarOpen"[\s\S]*?data-notification-summary\s+@click="showNotifications"/);
 		expect(VIEW).toContain(':title="summaryLabel"');
 		expect(VIEW).toContain("mode.value = 'notifications'");
 	});
@@ -262,7 +262,7 @@ describe('la vista', () => {
 	});
 
 	test('los mosaicos no se montan hasta ver B con el centro abierto', () => {
-		expect(VIEW).toMatch(/<QuickSettingsPanel\s+v-if="tilesMounted"\s+v-show="showsSettings"/);
+		expect(VIEW).toMatch(/<QuickSettingsPanel\s+v-if="tilesMounted"\s+v-show="showsSettings && !calendarOpen"/);
 		expect(VIEW).toContain('if (settings && shown) tilesMounted.value = true;');
 		// Empieza escondido: el centro se crea al iniciar la sesión.
 		expect(VIEW).toContain('const visible = ref(false);');

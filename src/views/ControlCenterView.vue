@@ -24,7 +24,8 @@ import {
 	ThemeIcon,
 	ToggleControl,
 } from '@vasakgroup/vue-libvasak';
-import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
+import CalendarSheet from '@/components/areas/control-center/CalendarSheet.vue';
 import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
 import QuickSettingsPanel from '@/components/areas/control-center/QuickSettingsPanel.vue';
 import PhoneControlCenterCard from '@/components/cards/PhoneControlCenterCard.vue';
@@ -106,7 +107,29 @@ function showSettings(): void {
 /** La línea resumen: vuelven las notificaciones y se cierra cualquier ficha. */
 function showNotifications(): void {
 	detail.value = null;
+	calendarOpen.value = false;
 	mode.value = 'notifications';
+}
+
+// ── El calendario ────────────────────────────────────────────────────────────
+
+/**
+ * Si el calendario del mes está abierto (vasak-desktop#183). Se abre tocando
+ * la fecha de la tarjeta de usuario y tapa lo de abajo —notificaciones o
+ * ajustes— como una ficha con «Volver»; al volver queda el estado que había.
+ */
+const calendarOpen = ref(false);
+const userCard = ref<{ $el?: Element } | null>(null);
+
+function openCalendar(): void {
+	calendarOpen.value = true;
+}
+
+/** Vuelve con el foco en la fecha que lo abrió. */
+async function closeCalendar(): Promise<void> {
+	calendarOpen.value = false;
+	await nextTick();
+	userCard.value?.$el?.querySelector<HTMLElement>('[data-user-date]')?.focus();
 }
 
 // ── La sesión ────────────────────────────────────────────────────────────────
@@ -184,6 +207,7 @@ useSharedEvent('window-shown', () => {
 	leaving.value = false;
 	visible.value = true;
 	detail.value = null;
+	calendarOpen.value = false;
 	// No se recuerda entre aperturas: decide si hay notificaciones.
 	if (summary.value.loaded) mode.value = modeOnOpen(summary.value.count);
 	else pendingDecision = true;
@@ -222,7 +246,7 @@ onBeforeUnmount(() => {
            entra, este bloque se desplaza (`overflow-y-auto`) en vez de pisar a
            los controles de abajo. -->
       <div class="flex min-h-0 flex-1 flex-col w-full gap-2 overflow-y-auto p-2" data-top>
-        <UserControlCenterCard />
+        <UserControlCenterCard ref="userCard" :calendar-open="calendarOpen" @open-calendar="openCalendar" />
         <!-- La sesión, debajo de quién sos: las acciones del diálogo de
              sesión, que pregunta antes de hacerlas. -->
         <PowerActions
@@ -236,11 +260,15 @@ onBeforeUnmount(() => {
         />
         <PhoneControlCenterCard />
 
+        <!-- El calendario del mes, abierto desde la fecha: una ficha con
+             «Volver» en lugar de lo de abajo. Lo de abajo sigue montado. -->
+        <CalendarSheet v-if="calendarOpen" @back="closeCalendar" />
+
         <!-- A: la lista, con el alto entero que sobra y nunca menos que unas dos
              tarjetas. Escondida con `v-show` en B: sigue montada, y es la que
              cuenta para la línea resumen. -->
         <NotificationArea
-          v-show="!showsSettings"
+          v-show="!showsSettings && !calendarOpen"
           class="min-h-40 flex-1"
           data-notifications
           @summary="onSummary"
@@ -249,7 +277,7 @@ onBeforeUnmount(() => {
         <!-- B: las notificaciones en una línea que las vuelve a abrir. Nunca
              desaparecen. -->
         <ListRow
-          v-if="showsSettings"
+          v-if="showsSettings && !calendarOpen"
           class="shrink-0"
           role="button"
           icon="preferences-desktop-notification"
@@ -267,7 +295,7 @@ onBeforeUnmount(() => {
 
         <QuickSettingsPanel
           v-if="tilesMounted"
-          v-show="showsSettings"
+          v-show="showsSettings && !calendarOpen"
           v-model:detail="detail"
           class="flex-1"
           :bluetooth="bluetoothInitialized"

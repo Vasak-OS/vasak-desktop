@@ -37,9 +37,24 @@
         >
           {{ currentTime }}
         </div>
-        <div class="text-label-m text-tx-muted" data-user-date>
-          {{ currentDate }}
-        </div>
+        <!-- La fecha es lo único que se toca de la tarjeta: abre el calendario
+             del mes dentro del centro (vasak-desktop#183). Es el botón fantasma
+             de la librería, con el icono del calendario para que se note que
+             responde; la tarjeta sigue sin reaccionar. -->
+        <ActionButton
+          :label="currentDate"
+          icon="x-office-calendar"
+          icon-type="symbol"
+          icon-right
+          variant="ghost"
+          size="sm"
+          custom-class="-ms-2 @[19rem]:ms-0 @[19rem]:-me-2"
+          :aria-label="openLabel"
+          :title="openLabel"
+          :aria-expanded="calendarOpen"
+          data-user-date
+          @click="emit('open-calendar')"
+        />
       </div>
     </div>
   </div>
@@ -48,12 +63,21 @@
 <script setup lang="ts">
 import { getUserData, type UserInfo } from '@vasakgroup/plugin-user-data';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { Avatar } from '@vasakgroup/vue-libvasak';
-import { onMounted, onUnmounted, ref } from 'vue';
+import { ActionButton, Avatar } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { capitalizeFirst } from '@/tools/text-case';
 import { logError } from '@/utils/logger';
 
-const { locale } = useI18n();
+withDefaults(
+	defineProps<{ /** Si el calendario del mes está abierto. */ calendarOpen?: boolean }>(),
+	{
+		calendarOpen: false,
+	}
+);
+
+const emit = defineEmits<{ /** Se tocó la fecha. */ 'open-calendar': [] }>();
+
+const { t, locale } = useI18n();
 
 const userInfo = ref<UserInfo>({
 	username: '',
@@ -65,6 +89,10 @@ const currentTime = ref('');
 const currentDate = ref('');
 const isTimeUpdating = ref(false);
 const isLoaded = ref(false);
+
+const openLabel = computed(() =>
+	t('views.controlCenter.openCalendar').replace('{0}', currentDate.value)
+);
 
 const updateDateTime = () => {
 	isTimeUpdating.value = true;
