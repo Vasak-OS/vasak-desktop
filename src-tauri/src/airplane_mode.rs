@@ -306,7 +306,9 @@ impl Mirror {
     fn lock(&self) -> std::sync::MutexGuard<'_, Inner> {
         // Nadie entra en pánico con el candado tomado; si pasara, lo que hay
         // adentro sigue siendo coherente.
-        self.inner.lock().unwrap_or_else(|e| e.into_inner())
+        self.inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     pub fn state(&self) -> AirplaneModeState {
