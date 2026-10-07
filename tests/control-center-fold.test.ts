@@ -274,12 +274,12 @@ describe('la vista', () => {
 		expect(shown).toContain('mode.value = modeOnOpen(summary.value.count)');
 	});
 
-	test('la sesión va debajo del usuario, con las acciones del diálogo y su confirmación', () => {
+	test('la sesión va debajo del usuario: la fila de Bloquear y las del diálogo', () => {
 		const template = VIEW.slice(VIEW.indexOf('<template>'));
-		expect(template.indexOf('<UserControlCenterCard />')).toBeLessThan(template.indexOf('<PowerActions'));
-		expect(template.indexOf('<PowerActions')).toBeLessThan(template.indexOf('<PhoneControlCenterCard />'));
-		expect(VIEW).toContain("['suspend', 'logout', 'reboot', 'poweroff']");
-		expect(VIEW).toContain("toggleSessionPopup(action === 'poweroff' ? 'shutdown' : action)");
+		expect(template.indexOf('<UserControlCenterCard />')).toBeLessThan(template.indexOf('<SessionActionsRow'));
+		expect(template.indexOf('<SessionActionsRow')).toBeLessThan(template.indexOf('<PhoneControlCenterCard />'));
+		// Lo que hace cada botón se prueba montado en `session-row.test.ts`.
+		expect(VIEW).not.toContain('<PowerActions');
 	});
 
 	test('no queda nada dibujado a mano: ni colores ni radios', () => {

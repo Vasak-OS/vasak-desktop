@@ -217,8 +217,8 @@ onBeforeUnmount(() => {
       <div class="flex min-h-0 flex-1 flex-col w-full gap-2 overflow-y-auto p-2" data-top>
         <UserControlCenterCard ref="userCard" :calendar-open="calendarOpen" @open-calendar="openCalendar" />
         <!-- La sesión, debajo de quién sos: Bloquear, Cerrar sesión, Reiniciar,
-             Apagar (vasak-desktop#190). Bloquear no pregunta; las demás, con
-             el diálogo de sesión. -->
+             Apagar. Bloquear no pregunta; las demás, con el diálogo de
+             sesión. -->
         <SessionActionsRow class="shrink-0 justify-end" />
         <PhoneControlCenterCard />
 

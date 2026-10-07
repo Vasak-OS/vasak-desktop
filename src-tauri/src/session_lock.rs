@@ -122,6 +122,11 @@ mod tests {
         }
     }
 
+    /// A propósito la ruta escrita y no la constante: si el código pidiera a
+    /// otra sesión (`self`, que no resuelve fuera del ámbito de la sesión), la
+    /// prueba tiene que verlo.
+    const AUTO: &str = "/org/freedesktop/login1/session/auto";
+
     struct Counters {
         locks: Arc<AtomicU32>,
         unlocks: Arc<AtomicU32>,
@@ -144,19 +149,23 @@ mod tests {
     #[tokio::test]
     async fn bloquear_pide_lock_a_la_sesion_grafica_de_logind() {
         let bus = crate::tray::bus_tests::private_bus!();
-        let (_logind, counters) = serve_logind(&bus, DISPLAY_SESSION).await;
+        let (_logind, counters) = serve_logind(&bus, AUTO).await;
         let client = bus.connect().await;
 
         request_lock(&client).await.expect("logind contesta");
 
-        assert_eq!(counters.locks.load(Ordering::SeqCst), 1, "un pedido, un Lock");
+        assert_eq!(
+            counters.locks.load(Ordering::SeqCst),
+            1,
+            "un pedido, un Lock"
+        );
         assert_eq!(counters.unlocks.load(Ordering::SeqCst), 0);
     }
 
     #[tokio::test]
     async fn con_logind_y_sesion_esta_disponible() {
         let bus = crate::tray::bus_tests::private_bus!();
-        let (_logind, counters) = serve_logind(&bus, DISPLAY_SESSION).await;
+        let (_logind, counters) = serve_logind(&bus, AUTO).await;
         let client = bus.connect().await;
 
         assert!(lock_available(&client).await);
