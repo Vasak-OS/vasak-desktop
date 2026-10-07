@@ -4,7 +4,9 @@ import { join } from 'node:path';
 
 /**
  * La tarjeta del usuario en el centro de control no se puede tocar: muestra
- * quién sos, la hora y la fecha, y no responde a ningún clic.
+ * quién sos, la hora y la fecha, y no responde a ningún clic. La excepción es
+ * la fecha, que abre el calendario del mes (vasak-desktop#183): es el botón de
+ * la librería, y la reacción al pasar el mouse es la suya, no de la tarjeta.
  *
  * Es la misma decisión que ya se tomó para los iconos de la bandeja —que no se
  * resalte lo que no se puede tocar—, y volvió a perderse acá: la tarjeta se
@@ -22,6 +24,15 @@ describe('tarjeta del usuario', () => {
 		);
 
 		expect(reactions).toEqual([]);
+	});
+
+	test('lo único que se toca es la fecha, y es el botón de la librería', () => {
+		expect(COMPONENT.match(/<ActionButton\b/g)).toHaveLength(1);
+		expect(COMPONENT).toMatch(
+			/<ActionButton[\s\S]*?data-user-date[\s\S]*?@click="emit\('open-calendar'\)"/
+		);
+		expect(COMPONENT).not.toMatch(/<button\b/);
+		expect(COMPONENT).not.toMatch(/@click="[^"]*"[^>]*data-user-card|data-user-card[^>]*@click/);
 	});
 
 	test('la foto del usuario es la de la librería', () => {

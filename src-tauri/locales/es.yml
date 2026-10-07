@@ -242,6 +242,8 @@ views:
       "96": Tormenta con granizo leve
       "99": Tormenta con granizo intenso
   controlCenter:
+    calendar: Calendario del mes
+    openCalendar: "Abrir el calendario: {0}"
     quickSettings: Ajustes rápidos
     more: Más ajustes
     session: Sesión

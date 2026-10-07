@@ -242,6 +242,8 @@ views:
       "96": Thunderstorm with light hail
       "99": Thunderstorm with heavy hail
   controlCenter:
+    calendar: Month calendar
+    openCalendar: "Open the calendar: {0}"
     quickSettings: Quick settings
     more: More settings
     session: Session
