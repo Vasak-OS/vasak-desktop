@@ -52,7 +52,7 @@ pub use music::{
 };
 pub use notifications::{
     clear_notifications, delete_notification, get_all_notifications, get_do_not_disturb,
-    invoke_notification_action, send_notify, set_do_not_disturb,
+    get_game_mode, invoke_notification_action, send_notify, set_do_not_disturb, set_game_mode,
 };
 pub use osd::show_osd;
 pub use panel::show_panel;

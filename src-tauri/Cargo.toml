@@ -54,7 +54,7 @@ tauri-plugin-fs = "2"
 zbus = { version = "4", default-features = false, features = ["async-io"] }
 zvariant = "4"
 libc = "0.2"
-tokio = { version = "1.0", features = ["rt", "sync", "time", "net", "io-util", "fs", "process", "macros"] }
+tokio = { version = "1.0", features = ["rt", "sync", "time", "net", "io-util", "fs", "process", "macros", "signal"] }
 image = "0.25"
 percent-encoding = "2"
 futures-util = "0.3"

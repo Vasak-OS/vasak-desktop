@@ -19,6 +19,7 @@ mod connect;
 mod dbus_service;
 pub mod do_not_disturb;
 mod eventloops;
+pub mod game_mode;
 /// Where the translations live.
 ///
 /// The i18n plugin resolves them at runtime and only probes paths relative to
@@ -206,6 +207,8 @@ pub fn run() {
             invoke_notification_action,
             get_do_not_disturb,
             set_do_not_disturb,
+            get_game_mode,
+            set_game_mode,
             toggle_control_center,
             hide_control_center,
             toggle_wallpaper_picker,
@@ -364,6 +367,9 @@ pub fn run() {
                 crate::logger::log_error(&format!("[control_center] no se pudo crear: {error}"));
             }
             watch_monitor_changes(&handle);
+            // El modo juego no se recuerda; si el escritorio anterior se cayó con
+            // él puesto, se deshace lo que dejó.
+            game_mode::start(handle.clone());
             follow_panel_position(app.handle().clone());
             // El tiempo de pantalla por aplicación (`screen_time/`): un hilo que
             // mira el foco cada dos segundos y guarda por día.
