@@ -1,10 +1,16 @@
-import { onBeforeUnmount, onMounted, type Ref } from 'vue';
+import { onBeforeUnmount, onMounted, type Ref, watch } from 'vue';
 import { type InputRect, setPanelInputRegion } from '@/services/compositor.service';
 import { PILL_SELECTOR, pillRects, sameRects } from '@/tools/panel-input-region';
 import { logError } from '@/utils/logger';
 
 /**
- * Mantiene la región de entrada del panel recortada a sus píldoras.
+ * Mantiene la región de entrada del panel recortada a lo que se ve.
+ *
+ * En píldoras la región son las píldoras: entre una y otra se ve el escritorio
+ * y un clic ahí tiene que caer en él. Cuando el panel dibuja una superficie
+ * continua —flotante, barra o dock— la región pasa a ser la barra entera
+ * (`wholeBar`), porque entonces no hay huecos: el fondo translúcido ocupa todo
+ * y un clic sobre él no puede atravesarlo.
  *
  * Vuelve a medir cuando una píldora cambia de tamaño (un título de canción
  * más largo, el panel que pasa a un costado) y cuando aparece o desaparece
@@ -13,7 +19,7 @@ import { logError } from '@/utils/logger';
  * Los pedidos se juntan en un cuadro y sólo salen si los rectángulos
  * cambiaron.
  */
-export function usePanelInputRegion(root: Ref<HTMLElement | null>): void {
+export function usePanelInputRegion(root: Ref<HTMLElement | null>, wholeBar?: Ref<boolean>): void {
 	let sizes: ResizeObserver | undefined;
 	let tree: MutationObserver | undefined;
 	let frame = 0;
@@ -25,9 +31,13 @@ export function usePanelInputRegion(root: Ref<HTMLElement | null>): void {
 	const pills = (): HTMLElement[] =>
 		root.value ? [...root.value.querySelectorAll<HTMLElement>(PILL_SELECTOR)] : [];
 
+	/** Lo que se mide: la barra entera con superficie, o cada píldora sin ella. */
+	const targets = (): HTMLElement[] =>
+		wholeBar?.value ? (root.value ? [root.value] : []) : pills();
+
 	const report = () => {
 		frame = 0;
-		const rects = pillRects(pills(), contains);
+		const rects = pillRects(targets(), contains);
 		if (sameRects(rects, sent)) return;
 		sent = rects;
 		setPanelInputRegion(rects).catch((error) =>
@@ -57,6 +67,10 @@ export function usePanelInputRegion(root: Ref<HTMLElement | null>): void {
 		observePills();
 		schedule();
 	});
+
+	// Cambiar de tipo (a una superficie continua o de vuelta a píldoras) cambia
+	// qué se mide, aunque ninguna píldora se haya movido: hay que volver a pedir.
+	if (wholeBar) watch(wholeBar, schedule);
 
 	onBeforeUnmount(() => {
 		sizes?.disconnect();

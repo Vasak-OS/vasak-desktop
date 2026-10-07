@@ -220,6 +220,104 @@
   }
 }
 
+/* ── Animaciones del panel (`panel-appearance.ts`) ─────────────────────────
+   El movimiento opcional de las píldoras: lo elige la persona en Configuración
+   y por omisión está apagado (`off` no pone ninguna clase). Todo es barato
+   —opacidad, `transform`, filtro, sombra— y nada toca la disposición. El color
+   sale del esquema (`--color-primary`), nunca un literal. El bloque de
+   `prefers-reduced-motion` de más abajo las corta a una sola iteración, que es
+   lo que detiene el movimiento para quien lo pidió. */
+
+@keyframes panel-stream {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.14);
+  }
+}
+.panel-anim-stream [data-panel-pill] {
+  animation: panel-stream 2.4s ease-in-out infinite;
+}
+
+@keyframes panel-wave {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+.panel-anim-wave [data-panel-pill] {
+  animation: panel-wave 1.8s ease-in-out infinite;
+}
+/* En oleada cada píldora entra un poco después que la anterior. */
+.panel-anim-wave [data-panel-pill]:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.panel-anim-wave [data-panel-pill]:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.panel-anim-wave [data-panel-pill]:nth-child(4) {
+  animation-delay: 0.36s;
+}
+.panel-anim-wave [data-panel-pill]:nth-child(5) {
+  animation-delay: 0.48s;
+}
+
+@keyframes panel-sweep {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.panel-anim-sweep [data-panel-pill] {
+  animation: panel-sweep 1.6s ease-in-out infinite;
+}
+.panel-anim-sweep [data-panel-pill]:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.panel-anim-sweep [data-panel-pill]:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.panel-anim-sweep [data-panel-pill]:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.panel-anim-sweep [data-panel-pill]:nth-child(5) {
+  animation-delay: 0.4s;
+}
+
+@keyframes panel-reactor {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 8px 1px color-mix(in srgb, var(--color-primary) 55%, transparent);
+  }
+}
+.panel-anim-reactor [data-panel-pill] {
+  animation: panel-reactor 2s ease-in-out infinite;
+}
+
+@keyframes panel-beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+.panel-anim-beat [data-panel-pill] {
+  animation: panel-beat 1.5s ease-in-out infinite;
+}
+
 html,
 body {
   margin: 0;
