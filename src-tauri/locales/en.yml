@@ -280,6 +280,8 @@ components:
     default: Default
     loadingDevices: Loading devices...
     noDevices: No devices available
+    inputTitle: Input device
+    microphoneAlt: Microphone
   BluetoothControl:
     iconAlt: Bluetooth icon
     toggle: Toggle Bluetooth
@@ -390,6 +392,12 @@ components:
     viaCaption: via
     byArtist: by {0}
     players: Players
+  MicrophoneControl:
+    microphone: Microphone
+    mute: Mute the microphone
+    unmute: Unmute the microphone
+    unavailable: No microphone
+    devices: Choose the microphone
   NetworkControl:
     connected: Connected
     vpn: Connected through VPN
@@ -506,6 +514,7 @@ components:
     volume: Volume
     mute: Mute
     unmute: Unmute
+    devices: Choose the audio output
   TwingateArea:
     resourceCount: "{0} resources"
     disconnected: Disconnected

@@ -87,7 +87,7 @@ pub struct VolumeInfo {
     pub is_muted: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AudioDevice {
     pub id: String,
     pub name: String,

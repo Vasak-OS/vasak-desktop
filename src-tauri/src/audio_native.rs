@@ -380,6 +380,10 @@ impl PwDumpMonitor {
                 }
             };
 
+            // Un `pw-dump` nuevo vuelve a mandar el volcado entero: lo que se
+            // sabía del micrófono puede estar viejo.
+            crate::audio_input::reset();
+
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
             let mut json_buffer = String::new();
@@ -407,6 +411,8 @@ impl PwDumpMonitor {
                     // que sale del mismo flujo sin sumar procesos.
                     if let Ok(batch) = serde_json::from_str::<serde_json::Value>(&json_buffer) {
                         crate::bluetooth_audio_profile::ingest(&batch);
+                        // Y el micrófono (vasak-desktop#182), del mismo flujo.
+                        crate::audio_input::ingest(&batch);
                         if let Some(volume_info) = Self::parse_volume_from_value(&batch) {
                             let _ = state_tx.send(volume_info);
                         }

@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
+import type { AudioDevice } from '@/interfaces/audio-device';
+import type { VolumeInfo } from '@/interfaces/volume';
 
 export const getAudioDevices = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('get_audio_devices', args);
@@ -7,6 +9,23 @@ export const getAudioDevices = <T = any>(args?: any): Promise<T> => {
 export const setAudioDevice = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('set_audio_device', args);
 };
+
+// ── El micrófono (vasak-desktop#182) ─────────────────────────────────────────
+
+/** El volumen y el silencio de la fuente por omisión, o `null` sin micrófono. */
+export const getMicrophone = (): Promise<VolumeInfo | null> => invoke('get_microphone');
+
+export const setMicrophoneVolume = (volume: number): Promise<void> =>
+	invoke('set_microphone_volume', { volume });
+
+/** Devuelve si el micrófono quedó silenciado. */
+export const toggleMicrophoneMute = (): Promise<boolean> => invoke('toggle_microphone_mute');
+
+/** Las entradas de audio; el `id` es el nombre del nodo de PipeWire. */
+export const getAudioInputDevices = (): Promise<AudioDevice[]> => invoke('get_audio_input_devices');
+
+export const setAudioInputDevice = (deviceId: string): Promise<boolean> =>
+	invoke('set_audio_input_device', { deviceId });
 
 export const musicNowPlaying = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('music_now_playing', args);

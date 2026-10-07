@@ -7,43 +7,66 @@
  * con «volver»: lista → ficha, como una aplicación de teléfono (decisión 8). Las
  * notificaciones de arriba no se tocan.
  *
+ * Las fichas que abre la flecha de un control de abajo —elegir la salida o la
+ * entrada de audio (vasak-desktop#182)— se ven en el mismo lugar y del mismo
+ * modo (`control-center-sheets.ts`).
+ *
  * Los mosaicos quedan montados mientras se ve una ficha (`v-show`), así no
  * vuelven a pedir su estado al volver. La ficha sí se monta y desmonta: lo que
  * escucha y consulta mientras está abierta se va con ella.
  */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ActionButton } from '@vasakgroup/vue-libvasak';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
+import { CONTROL_CENTER_SHEETS, findSheet, type SheetId } from '@/tools/control-center-sheets';
 import { availableTiles, CONTROL_CENTER_TILES, type TileId } from '@/tools/control-center-tiles';
 
 const props = withDefaults(defineProps<{ bluetooth?: boolean }>(), { bluetooth: false });
 
 /** El mosaico cuya ficha está abierta, o `null` con la lista a la vista. */
-const detail = defineModel<TileId | null>('detail', { default: null });
+const detail = defineModel<TileId | SheetId | null>('detail', { default: null });
 
 const { t } = useI18n();
 
 const tiles = computed(() => availableTiles(CONTROL_CENTER_TILES, { bluetooth: props.bluetooth }));
 const openTile = computed(
-	() => tiles.value.find((tile) => tile.id === detail.value && tile.detail) ?? null
+	() =>
+		tiles.value.find((tile) => tile.id === detail.value && tile.detail) ??
+		findSheet(CONTROL_CENTER_SHEETS, detail.value)
 );
 
 const backButton = ref<HTMLElement | null>(null);
 const grid = ref<HTMLElement | null>(null);
 
-/** Abre la ficha y lleva el foco a «volver», que es lo primero de la ficha. */
-async function open(id: TileId): Promise<void> {
+/** Abre la ficha de un mosaico. */
+function open(id: TileId): void {
 	detail.value = id;
-	await nextTick();
-	backButton.value?.querySelector('button')?.focus();
 }
+
+/**
+ * Al abrirse una ficha, el foco va a «volver», que es lo primero de ella. Va
+ * por vigilancia y no en `open` porque una ficha también se abre desde afuera:
+ * la flecha del volumen o del micrófono, con el bloque recién montado.
+ */
+watch(
+	() => openTile.value?.id,
+	async (now, before) => {
+		if (!now || now === before) return;
+		await nextTick();
+		backButton.value?.querySelector('button')?.focus();
+	},
+	{ immediate: true }
+);
 
 /** Vuelve a la lista con el foco en la flecha que abrió la ficha. */
 async function back(): Promise<void> {
 	const from = detail.value;
 	detail.value = null;
 	await nextTick();
-	grid.value?.querySelector<HTMLElement>(`[data-tile-id="${from}"] [data-tile-detail]`)?.focus();
+	const opener =
+		grid.value?.querySelector<HTMLElement>(`[data-tile-id="${from}"] [data-tile-detail]`) ??
+		document.querySelector<HTMLElement>(`[data-sheet-opener="${from}"]`);
+	opener?.focus();
 }
 </script>
 
