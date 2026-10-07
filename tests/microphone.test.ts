@@ -327,6 +327,8 @@ describe('en la vista', () => {
 		const template = VIEW.slice(VIEW.indexOf('<template>'));
 		expect(template).toMatch(/<MicrophoneControl\s+v-if="tilesMounted"\s+v-show="showsSettings"/);
 		expect(template.indexOf('<VolumeControl')).toBeLessThan(template.indexOf('<MicrophoneControl'));
+		// Y arriba de la caja de brillo por monitor y energía (vasak-desktop#189).
+		expect(template.indexOf('<MicrophoneControl')).toBeLessThan(template.indexOf('data-display-power'));
 	});
 
 	test('las dos flechas abren su ficha dentro del bloque, pasando a B', () => {
