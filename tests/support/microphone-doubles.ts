@@ -6,7 +6,8 @@
  *
  * Lo que viene de `core.service.ts` se escribe acá con el mismo `invoke`: otra
  * prueba dobla ese módulo entero con `mock.module`, y el doble queda en la
- * caché según el orden en que corran los archivos.
+ * caché según el orden en que corran los archivos. Y el logger tampoco se
+ * carga: construirlo antes que esa prueba le gana a su doble.
  */
 import { invoke } from '@tauri-apps/api/core';
 import { computed, ref } from 'vue';
@@ -18,7 +19,6 @@ export {
 } from '../../src/services/audio-input.service';
 export { useMicrophoneState } from '../../src/tools/composables/useMicrophoneState';
 export { useSharedEvent } from '../../src/tools/event.bus';
-export { logError } from '../../src/utils/logger';
 
 export const getAudioDevices = <T = unknown>(): Promise<T> => invoke<T>('get_audio_devices');
 export const setAudioDevice = <T = unknown>(args: { deviceId: string }): Promise<T> =>
@@ -41,3 +41,6 @@ export function useVolumeState() {
 		getPercentageClass: () => '',
 	};
 }
+
+/** El de verdad reemplaza la consola al cargarse: acá alcanza con decirlo. */
+export const logError = (message: string, data?: unknown) => console.error(message, data);

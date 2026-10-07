@@ -6,8 +6,12 @@ import {
 	toggleMicrophoneMute,
 } from '@/services/audio-input.service';
 import { useSharedEvent } from '@/tools/event.bus';
-import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getMicrophoneIconName } from '@/utils/volume';
+
+// Los errores van por `console.error` y no por `logError`, como en
+// `useBackendToggle`: el logger del escritorio reemplaza `console.error` al
+// arrancar y lo manda al mismo archivo, y así este componible no carga el
+// logger en las pruebas que lo montan.
 
 /** El evento del escritorio con el micrófono nuevo (o `null` si no hay). */
 export const MICROPHONE_EVENT = 'microphone-changed';
@@ -44,7 +48,7 @@ export function useMicrophoneState() {
 		try {
 			apply(await getMicrophone());
 		} catch (error) {
-			logError('[microphone] no se pudo leer el micrófono:', error);
+			console.error('[microphone] no se pudo leer el micrófono:', error);
 			loaded.value = true;
 		}
 	}
@@ -60,7 +64,7 @@ export function useMicrophoneState() {
 		commitTimer = setTimeout(() => {
 			commitTimer = undefined;
 			setMicrophoneVolume(currentVolume.value).catch((error) => {
-				logError('[microphone] no se pudo cambiar el volumen:', error);
+				console.error('[microphone] no se pudo cambiar el volumen:', error);
 			});
 		}, COMMIT_DELAY);
 	}
@@ -71,7 +75,7 @@ export function useMicrophoneState() {
 			const muted = await toggleMicrophoneMute();
 			if (microphone.value) microphone.value = { ...microphone.value, is_muted: muted };
 		} catch (error) {
-			logError('[microphone] no se pudo silenciar:', error);
+			console.error('[microphone] no se pudo silenciar:', error);
 		}
 	}
 
