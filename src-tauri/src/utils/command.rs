@@ -1,10 +1,10 @@
+use crate::constants::DEFAULT_COMMAND_TIMEOUT_SECS;
+use crate::error::{Result, VasakError};
+use crate::logger::log_error;
 use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
-use crate::error::{Result, VasakError};
-use crate::logger::log_error;
-use crate::constants::DEFAULT_COMMAND_TIMEOUT_SECS;
 
 /// Ejecutor de comandos del sistema con soporte para timeouts
 pub struct CommandExecutor;
@@ -14,24 +14,26 @@ impl CommandExecutor {
     pub fn run(cmd: &str, args: &[&str]) -> Result<String> {
         Self::run_with_timeout(cmd, args, Duration::from_secs(DEFAULT_COMMAND_TIMEOUT_SECS))
     }
-    
+
     /// Ejecuta un comando con un timeout personalizado
     pub fn run_with_timeout(cmd: &str, args: &[&str], timeout: Duration) -> Result<String> {
         let cmd_owned = cmd.to_string();
         let args_owned: Vec<String> = args.iter().map(|s| s.to_string()).collect();
-        
+
         let (tx, rx) = mpsc::channel();
-        
+
         thread::spawn(move || {
-            let output = Command::new(&cmd_owned)
-                .args(&args_owned)
-                .output();
+            let output = Command::new(&cmd_owned).args(&args_owned).output();
             let _ = tx.send(output);
         });
-        
-        let output = rx.recv_timeout(timeout)
+
+        let output = rx
+            .recv_timeout(timeout)
             .map_err(|_| {
-                log_error(&format!("Timeout ejecutando comando: {} (timeout: {:?})", cmd, timeout));
+                log_error(&format!(
+                    "Timeout ejecutando comando: {} (timeout: {:?})",
+                    cmd, timeout
+                ));
                 VasakError::CommandTimeout { timeout }
             })?
             .map_err(|e| {
@@ -44,8 +46,7 @@ impl CommandExecutor {
             log_error(&format!("Comando {} falló: {}", cmd, stderr));
             return Err(VasakError::Command(format!(
                 "Command {} failed: {}",
-                cmd,
-                stderr
+                cmd, stderr
             )));
         }
 
@@ -66,11 +67,7 @@ mod tests {
 
     #[test]
     fn test_run_with_timeout() {
-        let result = CommandExecutor::run_with_timeout(
-            "echo", 
-            &["test"], 
-            Duration::from_secs(1)
-        );
+        let result = CommandExecutor::run_with_timeout("echo", &["test"], Duration::from_secs(1));
         assert!(result.is_ok());
     }
 }
