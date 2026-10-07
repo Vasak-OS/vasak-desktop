@@ -701,7 +701,16 @@ mod tests {
         let (plan, on) = plan_enable(&radios);
         kernel(&mut radios, &plan);
         let plan = plan_disable(&radios, Some(&on));
-        assert_eq!(plan, vec![RfkillEvent::change(0, false)]);
+        assert!(plan.contains(&RfkillEvent::change(0, false)));
+        assert!(!plan.contains(&RfkillEvent::change(1, false)));
+        assert!(
+            !plan.contains(&RfkillEvent::change_all(TYPE_BLUETOOTH, false)),
+            "no se desbloquea el tipo entero: la otra radio estaba apagada"
+        );
+        assert!(
+            plan.contains(&RfkillEvent::change_all(TYPE_WLAN, false)),
+            "un tipo sin radios vuelve a nacer desbloqueado"
+        );
         kernel(&mut radios, &plan);
         assert_eq!(radios, before);
     }
