@@ -1,15 +1,10 @@
-import { onMounted, readonly, ref } from 'vue';
 import {
 	DO_NOT_DISTURB_EVENT,
 	type DoNotDisturbState,
 	getDoNotDisturb,
 	setDoNotDisturb,
 } from '@/services/do-not-disturb.service';
-import { useSharedEvent } from '@/tools/event.bus';
-
-// Los errores van por `console.error` y no por `logError`: el logger del
-// escritorio reemplaza `console.error` al arrancar y lo manda al mismo archivo,
-// así que en la sesión es lo mismo (ver `useWifiToggle`).
+import { useBackendToggle } from '@/tools/composables/useBackendToggle';
 
 /**
  * «No molestar» para un componente: el mosaico, el botón redondo y el
@@ -20,56 +15,11 @@ import { useSharedEvent } from '@/tools/event.bus';
  * desde otra ventana o por el modo juego llega por el mismo evento.
  */
 export function useDoNotDisturb() {
-	const available = ref(false);
-	const enabled = ref(false);
-	const busy = ref(false);
-	/**
-	 * Cuántas veces cambió el estado desde que se montó. La lectura inicial
-	 * puede volver después de un evento o de un cambio propio: si llegó algo
-	 * más nuevo mientras tanto, la respuesta vieja se descarta.
-	 */
-	let revision = 0;
-
-	function apply(state: DoNotDisturbState): void {
-		revision += 1;
-		available.value = state.available;
-		enabled.value = state.available && state.enabled;
-	}
-
-	onMounted(async () => {
-		const asked = revision;
-		try {
-			const state = await getDoNotDisturb();
-			if (revision === asked) apply(state);
-		} catch (error) {
-			console.error('[do-not-disturb] no se pudo leer el estado:', error);
-		}
+	return useBackendToggle<DoNotDisturbState>({
+		name: 'do-not-disturb',
+		event: DO_NOT_DISTURB_EVENT,
+		read: getDoNotDisturb,
+		write: setDoNotDisturb,
+		toState: (state) => state,
 	});
-
-	useSharedEvent<DoNotDisturbState>(DO_NOT_DISTURB_EVENT, apply);
-
-	/** Lo alterna. Devuelve el estado anterior, o `null` si no se pudo. */
-	async function toggle(): Promise<boolean | null> {
-		if (!available.value || busy.value) return null;
-		busy.value = true;
-		const wanted = !enabled.value;
-		try {
-			const previous = await setDoNotDisturb(wanted);
-			revision += 1;
-			enabled.value = wanted;
-			return previous;
-		} catch (error) {
-			console.error('[do-not-disturb] no se pudo cambiar el modo:', error);
-			return null;
-		} finally {
-			busy.value = false;
-		}
-	}
-
-	return {
-		available: readonly(available),
-		enabled: readonly(enabled),
-		busy: readonly(busy),
-		toggle,
-	};
 }

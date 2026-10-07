@@ -490,7 +490,7 @@ impl WayfireClient {
         }
     }
 
-    #[allow(dead_code)]
+    /// Una opción de la configuración en memoria: `{"value": …, "default": …}`.
     pub async fn get_config_option(
         &self,
         option: &str,
@@ -499,14 +499,31 @@ impl WayfireClient {
             .await
     }
 
-    #[allow(dead_code)]
+    /// Cambia opciones en memoria, sin escribir `wayfire.ini`.
+    ///
+    /// El dato es el mapa `"sección/opción" → valor` tal cual. Envolverlo en
+    /// `{"config": …}`, como se hacía, lo rechaza Wayfire 0.11 con «config:
+    /// Option not found!» (medido sobre el socket).
     pub async fn set_config_options(
         &self,
-        options: Value,
+        options: &std::collections::BTreeMap<String, String>,
     ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        self.send_and_wait("wayfire/set-config-options", json!({ "config": options }))
-            .await
+        self.send_and_wait(
+            "wayfire/set-config-options",
+            config_options_payload(options),
+        )
+        .await
     }
+}
+
+/// El dato de `wayfire/set-config-options`: el mapa, sin envoltorio.
+pub fn config_options_payload(options: &std::collections::BTreeMap<String, String>) -> Value {
+    Value::Object(
+        options
+            .iter()
+            .map(|(option, value)| (option.clone(), Value::String(value.clone())))
+            .collect(),
+    )
 }
 
 /// The live client, replaceable.
@@ -594,6 +611,20 @@ mod geometry_tests {
         assert_eq!(
             (geometry.x, geometry.y, geometry.width, geometry.height),
             (11, 0, 101, 50)
+        );
+    }
+
+    /// Lo que acepta Wayfire 0.11: el mapa directo. Con `{"config": …}`
+    /// contestaba «config: Option not found!».
+    #[test]
+    fn las_opciones_van_sin_envoltorio() {
+        let options = std::collections::BTreeMap::from([(
+            "animate/open_animation".to_string(),
+            "none".to_string(),
+        )]);
+        assert_eq!(
+            config_options_payload(&options),
+            json!({ "animate/open_animation": "none" })
         );
     }
 

@@ -12,8 +12,13 @@
 //! - **Para el modo juego (#181):** [`set_enabled`] devuelve el estado anterior
 //!   en la misma llamada, así que restaurarlo al salir es
 //!   `set_enabled(anterior)`.
+//! - **Para saber si alguien más lo tocó:** [`revision`] cuenta las veces que
+//!   el modo pasó de puesto a quitado o al revés con el demonio presente, venga
+//!   el cambio de donde venga (este proceso, el centro de control, otra
+//!   aplicación por D-Bus). El modo juego la anota después de ponerlo y, si al
+//!   salir no es la misma, no lo pisa.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::OnceLock;
 use std::time::Duration;
 
@@ -57,6 +62,10 @@ const UNAVAILABLE: DoNotDisturbState = DoNotDisturbState {
 pub struct Mirror {
     available: AtomicBool,
     enabled: AtomicBool,
+    /// Cuántas veces se dio vuelta `enabled` con el demonio presente antes y
+    /// después. Que el demonio se vaya y vuelva no cuenta: no es que alguien lo
+    /// haya tocado.
+    revision: AtomicU64,
 }
 
 impl Mirror {
@@ -64,7 +73,12 @@ impl Mirror {
         Self {
             available: AtomicBool::new(false),
             enabled: AtomicBool::new(false),
+            revision: AtomicU64::new(0),
         }
+    }
+
+    pub fn revision(&self) -> u64 {
+        self.revision.load(Ordering::Acquire)
     }
 
     pub fn state(&self) -> DoNotDisturbState {
@@ -78,6 +92,9 @@ impl Mirror {
     pub fn apply(&self, next: DoNotDisturbState) -> bool {
         let was_available = self.available.swap(next.available, Ordering::AcqRel);
         let was_enabled = self.enabled.swap(next.enabled, Ordering::AcqRel);
+        if was_available && next.available && was_enabled != next.enabled {
+            self.revision.fetch_add(1, Ordering::AcqRel);
+        }
         was_available != next.available || was_enabled != next.enabled
     }
 }
@@ -107,6 +124,11 @@ pub fn state() -> DoNotDisturbState {
 /// Si el modo está puesto, sin cruzar el bus.
 pub fn is_enabled() -> bool {
     MIRROR.state().enabled
+}
+
+/// Cuántas veces cambió el modo en esta sesión. Ver [`Mirror::revision`].
+pub fn revision() -> u64 {
+    MIRROR.revision()
 }
 
 async fn dnd_proxy(conn: &Connection) -> zbus::Result<Proxy<'static>> {
@@ -359,6 +381,28 @@ mod tests {
         assert!(mirror.apply(on));
         assert!(!mirror.apply(on), "lo mismo dos veces no es un cambio");
         assert_eq!(mirror.state(), on);
+    }
+
+    #[test]
+    fn la_revision_cuenta_solo_los_cambios_del_modo() {
+        let mirror = Mirror::new();
+        let state = |available, enabled| DoNotDisturbState { available, enabled };
+
+        // Enterarse del valor al arrancar no es que alguien lo haya tocado.
+        mirror.apply(state(true, true));
+        assert_eq!(mirror.revision(), 0);
+
+        mirror.apply(state(true, false));
+        assert_eq!(mirror.revision(), 1, "quitarlo es un cambio");
+        mirror.apply(state(true, false));
+        assert_eq!(mirror.revision(), 1, "lo mismo otra vez no");
+
+        // El demonio se reinicia y vuelve con lo que guardó: no cuenta.
+        mirror.apply(state(true, true));
+        assert_eq!(mirror.revision(), 2);
+        mirror.apply(UNAVAILABLE);
+        mirror.apply(state(true, true));
+        assert_eq!(mirror.revision(), 2, "irse y volver no es tocarlo");
     }
 
     /// `set_enabled` devuelve el anterior y deja la copia al día: es lo que

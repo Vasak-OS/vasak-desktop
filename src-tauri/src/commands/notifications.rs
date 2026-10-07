@@ -75,3 +75,18 @@ pub async fn invoke_notification_action(id: u32, action_key: String) -> Result<(
             e
         })
 }
+
+/// Si el modo juego está puesto (vasak-desktop#181). Sin cruzar nada.
+#[tauri::command]
+pub fn get_game_mode() -> bool {
+    crate::game_mode::is_active()
+}
+
+/// Pone o saca el modo juego y devuelve el estado anterior.
+///
+/// No falla: una acción que no se pudo aplicar queda en el registro y el modo
+/// entra igual con las demás.
+#[tauri::command]
+pub async fn set_game_mode(enabled: bool) -> bool {
+    crate::game_mode::set_enabled(enabled).await
+}

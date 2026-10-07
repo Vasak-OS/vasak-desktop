@@ -15,6 +15,7 @@ export type TileId =
 	| 'network'
 	| 'bluetooth'
 	| 'do-not-disturb'
+	| 'game-mode'
 	| 'theme'
 	| 'screen-time'
 	| 'search';
@@ -50,6 +51,10 @@ export const CONTROL_CENTER_TILES: readonly TileSpec[] = [
 	{
 		id: 'do-not-disturb',
 		tile: defineAsyncComponent(() => import('@/components/controls/tiles/DoNotDisturbTile.vue')),
+	},
+	{
+		id: 'game-mode',
+		tile: defineAsyncComponent(() => import('@/components/controls/tiles/GameModeTile.vue')),
 	},
 	{
 		id: 'theme',

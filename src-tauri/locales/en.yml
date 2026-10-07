@@ -292,6 +292,8 @@ components:
   ControlCenterTiles:
     doNotDisturb: Do not disturb
     doNotDisturbOn: Urgent only
+    gameMode: Games
+    gameModeFailed: Couldn't change it
     unavailable: Unavailable
     network: Network
     bluetooth: Bluetooth
