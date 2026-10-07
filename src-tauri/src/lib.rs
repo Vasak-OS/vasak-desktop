@@ -20,6 +20,7 @@ mod dbus_service;
 pub mod do_not_disturb;
 mod eventloops;
 pub mod game_mode;
+pub mod night_light;
 /// Where the translations live.
 ///
 /// The i18n plugin resolves them at runtime and only probes paths relative to
@@ -213,6 +214,9 @@ pub fn run() {
             set_do_not_disturb,
             get_game_mode,
             set_game_mode,
+            night_light::get_night_light_state,
+            night_light::set_night_light_enabled,
+            night_light::apply_night_light,
             toggle_control_center,
             hide_control_center,
             toggle_wallpaper_picker,

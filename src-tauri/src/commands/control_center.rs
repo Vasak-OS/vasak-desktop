@@ -23,6 +23,7 @@ pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
     if layer_window_visible(CONTROL_CENTER_LABEL).unwrap_or(false) {
         log_info("[control_center] ocultando");
         hide_layer_window(CONTROL_CENTER_LABEL);
+        crate::night_light::unwatch(&app);
         return Ok(());
     }
 
@@ -34,6 +35,9 @@ pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
         let _ = webview.emit("window-shown", ());
     }
     show_layer_window(CONTROL_CENTER_LABEL);
+    // La luz nocturna se sigue sólo con el centro a la vista: las señales de
+    // systemd no le sirven a nadie con el centro cerrado.
+    crate::night_light::watch(&app);
 
     Ok(())
 }
@@ -44,7 +48,8 @@ pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
 /// toggle is the trap the menu fell into: hiding drops focus, focus loss closes
 /// it, and the toggle then finds it hidden and opens it again.
 #[tauri::command]
-pub fn hide_control_center() -> Result<(), ()> {
+pub fn hide_control_center(app: AppHandle) -> Result<(), ()> {
     hide_layer_window(CONTROL_CENTER_LABEL);
+    crate::night_light::unwatch(&app);
     Ok(())
 }
