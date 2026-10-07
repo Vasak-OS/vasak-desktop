@@ -242,8 +242,7 @@ pub fn plan_enable(radios: &Radios) -> (Vec<RfkillEvent>, BTreeSet<u32>) {
 /// Sin nota —el modo lo puso la tecla u otra herramienta— o con una nota que
 /// no sirve (no queda ninguna de esas radios), se desbloquean todas.
 pub fn plan_disable(radios: &Radios, saved: Option<&BTreeSet<u32>>) -> Vec<RfkillEvent> {
-    let Some(saved) = saved.filter(|saved| saved.iter().any(|idx| radios.contains_key(idx)))
-    else {
+    let Some(saved) = saved.filter(|saved| saved.iter().any(|idx| radios.contains_key(idx))) else {
         return vec![RfkillEvent::change_all(TYPE_ALL, false)];
     };
 
@@ -627,8 +626,14 @@ mod tests {
     fn los_eventos_llevan_la_cuenta_de_las_radios() {
         let mut radios = Radios::new();
         apply_event(&mut radios, &event(0, TYPE_WLAN, Op::Add, false, false));
-        apply_event(&mut radios, &event(1, TYPE_BLUETOOTH, Op::Add, false, false));
-        apply_event(&mut radios, &event(1, TYPE_BLUETOOTH, Op::Change, true, false));
+        apply_event(
+            &mut radios,
+            &event(1, TYPE_BLUETOOTH, Op::Add, false, false),
+        );
+        apply_event(
+            &mut radios,
+            &event(1, TYPE_BLUETOOTH, Op::Change, true, false),
+        );
         assert_eq!(radios[&1], radio(TYPE_BLUETOOTH, true));
         apply_event(&mut radios, &event(0, TYPE_WLAN, Op::Del, false, false));
         assert_eq!(radios.len(), 1);
@@ -652,7 +657,10 @@ mod tests {
     fn sin_radios_no_esta_disponible() {
         let state = derive(&Radios::new(), true);
         assert_eq!(state, AirplaneModeState::default());
-        assert!(Mirror::new().plan(true).is_err(), "no hay nada que bloquear");
+        assert!(
+            Mirror::new().plan(true).is_err(),
+            "no hay nada que bloquear"
+        );
     }
 
     #[test]
@@ -680,7 +688,10 @@ mod tests {
 
         let plan = plan_disable(&radios, Some(&on));
         kernel(&mut radios, &plan);
-        assert_eq!(radios, before, "Bluetooth sigue apagado; el resto, prendido");
+        assert_eq!(
+            radios, before,
+            "Bluetooth sigue apagado; el resto, prendido"
+        );
         assert!(
             !plan.contains(&RfkillEvent::change_all(TYPE_BLUETOOTH, false)),
             "el tipo con una radio apagada de antes no se desbloquea entero"
@@ -718,7 +729,10 @@ mod tests {
     #[test]
     fn sin_nota_se_desbloquean_todas() {
         // La tecla de avión lo puso: no hay qué estaba encendido.
-        let radios = Radios::from([(0, radio(TYPE_WLAN, true)), (1, radio(TYPE_BLUETOOTH, true))]);
+        let radios = Radios::from([
+            (0, radio(TYPE_WLAN, true)),
+            (1, radio(TYPE_BLUETOOTH, true)),
+        ]);
         assert_eq!(
             plan_disable(&radios, None),
             vec![RfkillEvent::change_all(TYPE_ALL, false)]

@@ -11,8 +11,8 @@ import { toggleBluetooth } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { QuickSettingsTile } from '@vasakgroup/vue-libvasak';
 import { computed, ref } from 'vue';
-import { useAirplaneMode } from '@/tools/composables/useAirplaneMode';
 import { useBluetoothState } from '@/tools/bluetooth.controller';
+import { useAirplaneMode } from '@/tools/composables/useAirplaneMode';
 import { logError } from '@/utils/logger';
 
 const emit = defineEmits<{ open: [] }>();

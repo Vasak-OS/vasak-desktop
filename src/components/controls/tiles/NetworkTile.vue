@@ -25,8 +25,7 @@ const { wlanBlocked, unblockRadios } = useAirplaneMode();
 const wifiOn = computed(() => wifi.enabled.value && !wlanBlocked.value);
 
 const status = computed(() => {
-	if (wifi.available.value && !wifiOn.value)
-		return t('components.ControlCenterTiles.disabled');
+	if (wifi.available.value && !wifiOn.value) return t('components.ControlCenterTiles.disabled');
 	return networkState.value.is_connected
 		? String(networkState.value.ssid || networkState.value.name)
 		: t('components.ControlCenterTiles.disconnected');
