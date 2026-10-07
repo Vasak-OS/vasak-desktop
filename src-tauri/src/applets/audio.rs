@@ -86,7 +86,10 @@ async fn forward_audio_input(app: AppHandle) {
         let (microphone, devices) = audio_input_changes(last.as_ref(), &snapshot);
         if microphone {
             if let Err(e) = app.emit("microphone-changed", &snapshot.microphone) {
-                log_error(&format!("AudioApplet: failed to emit microphone-changed: {}", e));
+                log_error(&format!(
+                    "AudioApplet: failed to emit microphone-changed: {}",
+                    e
+                ));
             }
         }
         if devices {
@@ -108,7 +111,10 @@ fn audio_input_changes(
 ) -> (bool, bool) {
     match last {
         None => (true, true),
-        Some(last) => (last.microphone != next.microphone, last.devices != next.devices),
+        Some(last) => (
+            last.microphone != next.microphone,
+            last.devices != next.devices,
+        ),
     }
 }
 
@@ -259,7 +265,10 @@ mod tests {
 
     #[test]
     fn la_primera_vez_se_avisan_las_dos_cosas() {
-        assert_eq!(audio_input_changes(None, &snapshot(50, false, 1)), (true, true));
+        assert_eq!(
+            audio_input_changes(None, &snapshot(50, false, 1)),
+            (true, true)
+        );
     }
 
     #[test]

@@ -192,8 +192,7 @@ struct SinkDraft {
 
 impl SinkDraft {
     fn finish(self, default_sink: Option<&str>) -> Option<AudioDevice> {
-        if self.id.is_empty() || self.smart_filter || self.monitor || self.name == EQUALIZER_SINK
-        {
+        if self.id.is_empty() || self.smart_filter || self.monitor || self.name == EQUALIZER_SINK {
             return None;
         }
         let name = if self.description.is_empty() {
@@ -363,7 +362,10 @@ pub fn list_audio_input_devices() -> Result<Vec<AudioDevice>> {
     }
     let output = CommandExecutor::run(CMD_PACTL, &["list", "sources"])?;
     let default_source = CommandExecutor::run(CMD_PACTL, &["get-default-source"]).ok();
-    Ok(parse_sources(&output, default_source.as_deref().map(str::trim)))
+    Ok(parse_sources(
+        &output,
+        default_source.as_deref().map(str::trim),
+    ))
 }
 
 /// Elige la entrada por omisión, por el nombre del nodo.
@@ -372,7 +374,10 @@ pub fn list_audio_input_devices() -> Result<Vec<AudioDevice>> {
 /// `audio-input-devices-changed` desde el applet de audio; sin él se avisa
 /// acá, para que el selector no quede viejo.
 pub fn set_default_audio_input_device(device_id: &str, app: AppHandle) -> Result<()> {
-    log_info(&format!("Estableciendo la entrada de audio por defecto: {}", device_id));
+    log_info(&format!(
+        "Estableciendo la entrada de audio por defecto: {}",
+        device_id
+    ));
     CommandExecutor::run(CMD_PACTL, &["set-default-source", device_id])?;
     if crate::audio_input::snapshot().is_none() {
         if let Ok(devices) = list_audio_input_devices() {

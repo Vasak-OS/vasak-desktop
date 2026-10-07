@@ -94,10 +94,9 @@ impl AudioInputTracker {
         // Un cambio que no trae las propiedades (sólo `params`) no dice qué
         // clase de nodo es: se actualiza lo que se sabía, sin borrarlo.
         if info.and_then(|info| info.get("props")).is_none() {
-            if let (Some(node), Some((volume, muted))) = (
-                self.nodes.get_mut(&id),
-                info.and_then(parse_audio_props),
-            ) {
+            if let (Some(node), Some((volume, muted))) =
+                (self.nodes.get_mut(&id), info.and_then(parse_audio_props))
+            {
                 node.volume = volume.unwrap_or(node.volume);
                 node.muted = muted.unwrap_or(node.muted);
             }
@@ -267,7 +266,9 @@ fn channel() -> &'static broadcast::Sender<AudioInputSnapshot> {
 
 /// Incorpora una tanda del flujo de `pw-dump` y avisa si cambió lo que se ve.
 pub fn ingest(batch: &Value) {
-    let mut shared = shared().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut shared = shared()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     shared.tracker.ingest(batch);
     let current = shared.tracker.snapshot();
     if current.is_some() && current != shared.last_sent {
@@ -281,7 +282,9 @@ pub fn ingest(batch: &Value) {
 
 /// `pw-dump` volvió a arrancar: lo que se sabía puede estar viejo.
 pub fn reset() {
-    let mut shared = shared().lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut shared = shared()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     shared.tracker.reset();
 }
 
@@ -451,7 +454,9 @@ mod tests {
         assert!(microphone.is_muted);
         assert_eq!(microphone.current, 50);
 
-        tracker.ingest(&json!([{ "id": 49, "type": "PipeWire:Interface:Node", "info": { "params": {} } }]));
+        tracker.ingest(
+            &json!([{ "id": 49, "type": "PipeWire:Interface:Node", "info": { "params": {} } }]),
+        );
         assert_eq!(tracker.snapshot().unwrap().devices.len(), 2);
     }
 
