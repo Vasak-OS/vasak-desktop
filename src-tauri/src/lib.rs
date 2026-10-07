@@ -62,6 +62,7 @@ mod monitor_manager;
 mod notifications;
 mod panel_position;
 mod screen_time;
+mod session_lock;
 mod tray;
 mod utils;
 mod window_manager;
@@ -187,6 +188,8 @@ pub fn run() {
             shutdown,
             reboot,
             suspend,
+            session_lock::lock_screen,
+            session_lock::lock_screen_available,
             detect_display_server,
             get_menu_items,
             toggle_menu,

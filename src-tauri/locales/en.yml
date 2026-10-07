@@ -251,6 +251,8 @@ views:
     summaryOneOne: 1 notification from 1 app
     summaryOtherOne: "{0} notifications from 1 app"
     summaryOtherOther: "{0} notifications from {1} apps"
+    lock: Lock
+    lockUnavailable: "Lock (unavailable: no logind session)"
   applets:
     panelMenu:
       title: Panel options

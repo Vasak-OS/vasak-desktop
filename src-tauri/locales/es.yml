@@ -251,6 +251,8 @@ views:
     summaryOneOne: 1 notificación de 1 app
     summaryOtherOne: "{0} notificaciones de 1 app"
     summaryOtherOther: "{0} notificaciones de {1} apps"
+    lock: Bloquear
+    lockUnavailable: "Bloquear (no disponible: no hay sesión de logind)"
   applets:
     panelMenu:
       title: Opciones del panel

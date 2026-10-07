@@ -274,12 +274,18 @@ describe('la vista', () => {
 		expect(shown).toContain('mode.value = modeOnOpen(summary.value.count)');
 	});
 
-	test('la sesión va debajo del usuario, con las acciones del diálogo y su confirmación', () => {
+	test('la sesión va debajo del usuario: la fila de Bloquear y las del diálogo', () => {
 		const template = VIEW.slice(VIEW.indexOf('<template>'));
-		expect(template.indexOf('<UserControlCenterCard />')).toBeLessThan(template.indexOf('<PowerActions'));
-		expect(template.indexOf('<PowerActions')).toBeLessThan(template.indexOf('<PhoneControlCenterCard />'));
-		expect(VIEW).toContain("['suspend', 'logout', 'reboot', 'poweroff']");
-		expect(VIEW).toContain("toggleSessionPopup(action === 'poweroff' ? 'shutdown' : action)");
+		// Sin `/>`: la tarjeta lleva atributos (el calendario, #183), y un
+		// `indexOf` que no encuentra nada da -1 y pasa cualquier comparación.
+		const user = template.indexOf('<UserControlCenterCard');
+		const row = template.indexOf('<SessionActionsRow');
+		const phone = template.indexOf('<PhoneControlCenterCard');
+		expect(user).toBeGreaterThan(-1);
+		expect(row).toBeGreaterThan(user);
+		expect(phone).toBeGreaterThan(row);
+		// Lo que hace cada botón se prueba montado en `session-row.test.ts`.
+		expect(VIEW).not.toContain('<PowerActions');
 	});
 
 	test('no queda nada dibujado a mano: ni colores ni radios', () => {

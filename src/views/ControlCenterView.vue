@@ -17,17 +17,12 @@
  */
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import {
-	ListRow,
-	type PowerAction,
-	PowerActions,
-	ThemeIcon,
-	ToggleControl,
-} from '@vasakgroup/vue-libvasak';
+import { ListRow, ThemeIcon, ToggleControl } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
 import CalendarSheet from '@/components/areas/control-center/CalendarSheet.vue';
 import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
 import QuickSettingsPanel from '@/components/areas/control-center/QuickSettingsPanel.vue';
+import SessionActionsRow from '@/components/areas/control-center/SessionActionsRow.vue';
 import PhoneControlCenterCard from '@/components/cards/PhoneControlCenterCard.vue';
 import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue';
 import BluetoothControl from '@/components/controls/BluetoothControl.vue';
@@ -38,7 +33,7 @@ import NightLightToggle from '@/components/controls/NightLightToggle.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
-import { hideControlCenter, toggleSessionPopup } from '@/services/window.service';
+import { hideControlCenter } from '@/services/window.service';
 import {
 	type ControlCenterMode,
 	modeOnCountChange,
@@ -47,7 +42,6 @@ import {
 } from '@/tools/control-center-mode';
 import type { TileId } from '@/tools/control-center-tiles';
 import { useSharedEvent } from '@/tools/event.bus';
-import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
 
@@ -130,31 +124,6 @@ async function closeCalendar(): Promise<void> {
 	calendarOpen.value = false;
 	await nextTick();
 	userCard.value?.$el?.querySelector<HTMLElement>('[data-user-date]')?.focus();
-}
-
-// ── La sesión ────────────────────────────────────────────────────────────────
-
-/** Las acciones del diálogo de sesión, que es también su confirmación. */
-const SESSION_ACTIONS: readonly PowerAction[] = ['suspend', 'logout', 'reboot', 'poweroff'];
-
-const sessionLabels = computed(() => ({
-	suspend: t('views.menu.suspend'),
-	logout: t('views.menu.logout'),
-	reboot: t('views.menu.reboot'),
-	poweroff: t('views.menu.shutdown'),
-}));
-
-/**
- * Abre el diálogo de sesión con la acción elegida, que pregunta antes de
- * hacerla —el mismo camino que los botones del menú—. El diálogo toma el foco
- * y el centro se cierra solo al perderlo.
- */
-async function onSessionAction(action: PowerAction): Promise<void> {
-	try {
-		await toggleSessionPopup(action === 'poweroff' ? 'shutdown' : action);
-	} catch (error) {
-		logError('[control-center] no se pudo abrir el diálogo de sesión:', error);
-	}
 }
 
 /** Track timeout handles for cleanup */
@@ -247,17 +216,10 @@ onBeforeUnmount(() => {
            los controles de abajo. -->
       <div class="flex min-h-0 flex-1 flex-col w-full gap-2 overflow-y-auto p-2" data-top>
         <UserControlCenterCard ref="userCard" :calendar-open="calendarOpen" @open-calendar="openCalendar" />
-        <!-- La sesión, debajo de quién sos: las acciones del diálogo de
-             sesión, que pregunta antes de hacerlas. -->
-        <PowerActions
-          class="shrink-0 justify-end"
-          :actions="SESSION_ACTIONS"
-          :labels="sessionLabels"
-          :label="t('views.controlCenter.session')"
-          button-variant="ghost"
-          data-session-actions
-          @action="onSessionAction"
-        />
+        <!-- La sesión, debajo de quién sos: Bloquear, Cerrar sesión, Reiniciar,
+             Apagar. Bloquear no pregunta; las demás, con el diálogo de
+             sesión. -->
+        <SessionActionsRow class="shrink-0 justify-end" />
         <PhoneControlCenterCard />
 
         <!-- El calendario del mes, abierto desde la fecha: una ficha con
