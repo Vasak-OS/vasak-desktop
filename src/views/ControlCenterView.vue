@@ -33,6 +33,7 @@ import BluetoothControl from '@/components/controls/BluetoothControl.vue';
 import BrightnessControl from '@/components/controls/BrightnessControl.vue';
 import DoNotDisturbToggle from '@/components/controls/DoNotDisturbToggle.vue';
 import NetworkControl from '@/components/controls/NetworkControl.vue';
+import NightLightToggle from '@/components/controls/NightLightToggle.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
@@ -296,6 +297,7 @@ onBeforeUnmount(() => {
           <NetworkControl />
           <BluetoothControl v-if="bluetoothInitialized" />
           <DoNotDisturbToggle />
+          <NightLightToggle />
           <ThemeToggle />
           <ToggleControl
             name="go-up"

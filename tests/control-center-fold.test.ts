@@ -93,6 +93,7 @@ describe('los mosaicos', () => {
 			'network',
 			'bluetooth',
 			'do-not-disturb',
+			'night-light',
 			'game-mode',
 			'theme',
 			'screen-time',
@@ -100,9 +101,9 @@ describe('los mosaicos', () => {
 		]);
 	});
 
-	test('Wi-Fi y Bluetooth abren su ficha; la de red sin su botón de cerrar', () => {
+	test('Wi-Fi, Bluetooth y la luz nocturna abren su ficha; la de red sin su botón de cerrar', () => {
 		const withDetail = CONTROL_CENTER_TILES.filter((tile) => tile.detail).map((tile) => tile.id);
-		expect(withDetail).toEqual(['network', 'bluetooth']);
+		expect(withDetail).toEqual(['network', 'bluetooth', 'night-light']);
 		expect(CONTROL_CENTER_TILES[0]?.detailProps).toEqual({ hideX: true });
 	});
 
@@ -114,7 +115,7 @@ describe('los mosaicos', () => {
 	test('se cargan bajo demanda: ningún mosaico entra en el paquete de la vista', () => {
 		const registry = read('src/tools/control-center-tiles.ts');
 		expect(registry).not.toMatch(/^import \w+ from '@\/components/m);
-		expect(registry.match(/defineAsyncComponent\(/g)?.length).toBe(9);
+		expect(registry.match(/defineAsyncComponent\(/g)?.length).toBe(11);
 	});
 
 	test('todos los textos de los mosaicos existen en los dos idiomas', () => {
@@ -122,6 +123,7 @@ describe('los mosaicos', () => {
 			'NetworkTile.vue',
 			'BluetoothTile.vue',
 			'DoNotDisturbTile.vue',
+			'NightLightTile.vue',
 			'GameModeTile.vue',
 			'ThemeTile.vue',
 			'ScreenTimeTile.vue',
