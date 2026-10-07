@@ -149,7 +149,10 @@ describe('el mosaico «Mantener despierto»', () => {
 });
 
 describe('el registro y los textos', () => {
-	test('el mosaico va en el registro, sin detalle ni requisito', () => {
+	test('el mosaico va después de No molestar y antes de Juegos, sin detalle ni requisito', () => {
+		const ids = CONTROL_CENTER_TILES.map((tile) => tile.id);
+		expect(ids.indexOf('keep-awake')).toBeGreaterThan(ids.indexOf('do-not-disturb'));
+		expect(ids.indexOf('keep-awake')).toBeLessThan(ids.indexOf('game-mode'));
 		const spec = CONTROL_CENTER_TILES.find((tile) => tile.id === 'keep-awake');
 		expect(spec).toBeDefined();
 		expect(spec?.detail).toBeUndefined();
