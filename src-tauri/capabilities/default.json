@@ -84,6 +84,7 @@
     "vicons:default",
     "config-manager:default",
     "user-data:default",
+    "display-manager:default",
     "network-manager:allow-get-network-state",
     "network-manager:allow-toggle-network-state",
     "network-manager:allow-list-wifi-networks",

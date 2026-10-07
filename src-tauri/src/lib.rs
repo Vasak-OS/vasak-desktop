@@ -141,6 +141,10 @@ pub fn run() {
         .plugin(tauri_plugin_user_data::init())
         .plugin(tauri_plugin_network_manager::init())
         .plugin(tauri_plugin_bluetooth_manager::init())
+        // Brillo y configuración de la luz nocturna (vasak-desktop#178). Sin
+        // `prefetch_ddc`: el escritorio sólo muestra el panel interno, así que
+        // nunca le habla por DDC/CI a un monitor externo y `ddcutil` no corre.
+        .plugin(tauri_plugin_display_manager::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_vicons::init())
         .plugin(tauri_plugin_i18n_vsk::init_with_path(

@@ -43,6 +43,9 @@ tauri-plugin-opener = "2"
 tauri-plugin-network-manager = "2"
 #tauri-plugin-bluetooth-manager = { path = "../../tauri-plugin-bluetooth-manager" }
 tauri-plugin-bluetooth-manager = "2.2.1"
+# Brillo por monitor y configuración de la luz nocturna, compartido con
+# vasak-settings (vasak-desktop#178).
+tauri-plugin-display-manager = "2"
 tauri-plugin-fs = "2"
 # Se quedan en 4 a propósito. La 5 no compila tal cual: saca `zbus::MessageType`,
 # vuelve privados los proxys generados que usa la bandeja (`SniItemProxy`,
