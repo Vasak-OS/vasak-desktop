@@ -505,19 +505,7 @@ pub async fn gamemode_call(conn: &zbus::Connection, method: &str, pid: i32) -> R
 
 /// Si el nombre de `gamemoded` está en el bus o se puede activar.
 pub async fn gamemode_on_bus(conn: &zbus::Connection) -> bool {
-    let Ok(dbus) = zbus::fdo::DBusProxy::new(conn).await else {
-        return false;
-    };
-    let Ok(name) = zbus::names::BusName::try_from(GAMEMODE_DEST) else {
-        return false;
-    };
-    if dbus.name_has_owner(name).await.unwrap_or(false) {
-        return true;
-    }
-    dbus.list_activatable_names()
-        .await
-        .map(|names| names.iter().any(|name| name.as_str() == GAMEMODE_DEST))
-        .unwrap_or(false)
+    crate::dbus_pool::name_on_bus(conn, GAMEMODE_DEST).await
 }
 
 #[async_trait]

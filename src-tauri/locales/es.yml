@@ -303,6 +303,9 @@ components:
     airplaneMode: Modo avión
     airplaneModeHardware: Bloqueado por el equipo
     airplaneModeFailed: No se pudo cambiar
+    keepAwake: Mantener despierto
+    keepAwakeFailed: "No se pudo cambiar"
+    keepAwakeReason: "Mantener despierto está activado: ni bloqueo ni suspensión por inactividad"
     unavailable: No disponible
     network: Red
     bluetooth: Bluetooth

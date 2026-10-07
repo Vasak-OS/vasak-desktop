@@ -21,6 +21,7 @@ mod dbus_service;
 pub mod do_not_disturb;
 mod eventloops;
 pub mod game_mode;
+pub mod keep_awake;
 pub mod night_light;
 /// Where the translations live.
 ///
@@ -224,6 +225,8 @@ pub fn run() {
             get_airplane_mode,
             set_airplane_mode,
             unblock_radios,
+            get_keep_awake,
+            set_keep_awake,
             toggle_control_center,
             hide_control_center,
             toggle_wallpaper_picker,

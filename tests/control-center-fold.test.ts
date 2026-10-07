@@ -94,8 +94,9 @@ describe('los mosaicos', () => {
 			'bluetooth',
 			'do-not-disturb',
 			'night-light',
-			'game-mode',
 			'airplane-mode',
+			'keep-awake',
+			'game-mode',
 			'theme',
 			'screen-time',
 			'search',
@@ -116,7 +117,7 @@ describe('los mosaicos', () => {
 	test('se cargan bajo demanda: ningún mosaico entra en el paquete de la vista', () => {
 		const registry = read('src/tools/control-center-tiles.ts');
 		expect(registry).not.toMatch(/^import \w+ from '@\/components/m);
-		expect(registry.match(/defineAsyncComponent\(/g)?.length).toBe(12);
+		expect(registry.match(/defineAsyncComponent\(/g)?.length).toBe(13);
 	});
 
 	test('todos los textos de los mosaicos existen en los dos idiomas', () => {
@@ -125,6 +126,7 @@ describe('los mosaicos', () => {
 			'BluetoothTile.vue',
 			'DoNotDisturbTile.vue',
 			'NightLightTile.vue',
+			'KeepAwakeTile.vue',
 			'GameModeTile.vue',
 			'AirplaneModeTile.vue',
 			'ThemeTile.vue',

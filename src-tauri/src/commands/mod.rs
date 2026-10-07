@@ -9,6 +9,7 @@ mod compositor;
 mod connect;
 mod control_center;
 mod equalizer;
+mod keep_awake;
 mod logger;
 mod menu;
 mod music;
@@ -45,6 +46,7 @@ pub use control_center::{hide_control_center, toggle_control_center};
 pub use equalizer::{
     equalizer_set_enabled, equalizer_set_gain, equalizer_set_preset, equalizer_state,
 };
+pub use keep_awake::{get_keep_awake, set_keep_awake};
 pub use logger::{get_last_log_lines, get_log_file_path, log_from_frontend, read_log_file};
 pub use menu::{get_menu_items, set_menu_button, toggle_menu};
 pub use music::{

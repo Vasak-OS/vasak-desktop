@@ -16,8 +16,9 @@ export type TileId =
 	| 'bluetooth'
 	| 'do-not-disturb'
 	| 'night-light'
-	| 'game-mode'
 	| 'airplane-mode'
+	| 'keep-awake'
+	| 'game-mode'
 	| 'theme'
 	| 'screen-time'
 	| 'search';
@@ -62,12 +63,16 @@ export const CONTROL_CENTER_TILES: readonly TileSpec[] = [
 		),
 	},
 	{
-		id: 'game-mode',
-		tile: defineAsyncComponent(() => import('@/components/controls/tiles/GameModeTile.vue')),
-	},
-	{
 		id: 'airplane-mode',
 		tile: defineAsyncComponent(() => import('@/components/controls/tiles/AirplaneModeTile.vue')),
+	},
+	{
+		id: 'keep-awake',
+		tile: defineAsyncComponent(() => import('@/components/controls/tiles/KeepAwakeTile.vue')),
+	},
+	{
+		id: 'game-mode',
+		tile: defineAsyncComponent(() => import('@/components/controls/tiles/GameModeTile.vue')),
 	},
 	{
 		id: 'theme',
