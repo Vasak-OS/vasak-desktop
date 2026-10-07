@@ -8,14 +8,6 @@ export const setAudioDevice = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('set_audio_device', args);
 };
 
-export const getBrightnessInfo = <T = any>(args?: any): Promise<T> => {
-	return invoke<T>('get_brightness_info', args);
-};
-
-export const setBrightnessInfo = <T = any>(args: any): Promise<T> => {
-	return invoke<T>('set_brightness_info', args);
-};
-
 export const musicNowPlaying = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('music_now_playing', args);
 };

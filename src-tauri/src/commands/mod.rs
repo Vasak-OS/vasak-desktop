@@ -3,7 +3,6 @@ mod applets;
 mod audio;
 mod batch;
 mod battery;
-mod brightness;
 mod calendar;
 mod compositor;
 mod connect;
@@ -35,7 +34,6 @@ pub use audio::{
 };
 pub use batch::batch_invoke;
 pub use battery::{battery_exists, battery_fetch_info, get_battery_info};
-pub use brightness::{get_brightness_info, set_brightness_info};
 pub use calendar::{calendar_locations, calendar_occurrences};
 pub use compositor::{
     get_keyboard_layout, get_workspaces, next_keyboard_layout, set_panel_input_region,

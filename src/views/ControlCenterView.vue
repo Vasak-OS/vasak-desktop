@@ -28,8 +28,10 @@ import UserControlCenterCard from '@/components/cards/UserControlCenterCard.vue'
 import BluetoothControl from '@/components/controls/BluetoothControl.vue';
 import BrightnessControl from '@/components/controls/BrightnessControl.vue';
 import DoNotDisturbToggle from '@/components/controls/DoNotDisturbToggle.vue';
+import MonitorBrightnessList from '@/components/controls/MonitorBrightnessList.vue';
 import NetworkControl from '@/components/controls/NetworkControl.vue';
 import NightLightToggle from '@/components/controls/NightLightToggle.vue';
+import PowerProfileControl from '@/components/controls/PowerProfileControl.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
@@ -300,8 +302,23 @@ onBeforeUnmount(() => {
           />
         </div>
         <div class="flex flex-col gap-2 w-full mt-4">
-          <BrightnessControl />
+          <!-- A: un solo brillo, el del monitor principal. -->
+          <div v-show="!showsSettings" data-primary-brightness-box>
+            <BrightnessControl />
+          </div>
           <VolumeControl />
+          <!-- B: debajo del volumen, un brillo por monitor y el perfil de
+               energía (issue 189 de vasak-desktop). Como los mosaicos, no existen hasta
+               que B se ve por primera vez con el centro abierto. -->
+          <div
+            v-if="tilesMounted"
+            v-show="showsSettings"
+            class="flex flex-col gap-2"
+            data-display-power
+          >
+            <MonitorBrightnessList />
+            <PowerProfileControl />
+          </div>
         </div>
       </div>
     </main>

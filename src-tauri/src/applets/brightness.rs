@@ -1,22 +1,23 @@
-//! El aviso de que cambió el brillo: el evento `brightness-changed` para el
-//! deslizador del centro de control y el OSD.
+//! El OSD de brillo.
 //!
-//! Antes vigilaba `/sys/class/backlight` con inotify y, si el controlador no
-//! avisaba, sondeaba cada 200 ms–2 s. Ahora escucha
-//! `display-brightness-changed` de `tauri-plugin-display-manager`, que lo
-//! dispara el uevent del kernel: cambia el brillo —por una tecla, por otro
-//! programa o por el deslizador— y llega el aviso. Sin sondeo y sin un hilo
-//! propio; el del plugin ya estaba escuchando.
+//! Escucha `display-brightness-changed` de `tauri-plugin-display-manager`, que
+//! lo dispara el uevent del kernel: cambia el brillo del panel —por una tecla,
+//! por otro programa o por el deslizador— y aparece el OSD. Sin sondeo y sin un
+//! hilo propio; el del plugin ya estaba escuchando.
+//!
+//! Los deslizadores del centro de control escuchan el mismo evento del plugin
+//! directamente (vasak-desktop#189): acá no se reenvía nada al frontend.
 
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use tauri::{AppHandle, Emitter, Listener};
-use tauri_plugin_display_manager::{BrightnessReport, DisplayManagerExt, BRIGHTNESS_EVENT};
+use tauri::{AppHandle, Listener};
+use tauri_plugin_display_manager::{
+    BrightnessKind, BrightnessReport, DisplayManagerExt, MonitorBrightness, BRIGHTNESS_EVENT,
+};
 
 use super::Applet;
-use crate::brightness::backlight;
 use crate::commands::osd::show_osd_internal;
 
 pub struct BrightnessApplet;
@@ -50,13 +51,23 @@ impl Applet for BrightnessApplet {
     }
 }
 
+/// El panel interno: el que regulan las teclas de brillo y el que anuncia el
+/// OSD. El plugin ya elige cuál es cuando hay más de una retroiluminación (la
+/// que cuelga de un conector interno).
+pub fn backlight(report: &BrightnessReport) -> Option<&MonitorBrightness> {
+    report
+        .monitors
+        .iter()
+        .find(|monitor| monitor.kind == BrightnessKind::Backlight)
+}
+
 fn percent_of(report: &BrightnessReport) -> Option<u8> {
     backlight(report).map(|monitor| monitor.percent)
 }
 
 /// El brillo nuevo del panel, si cambió. El evento del plugin llega también
-/// cuando cambian los monitores o el brillo de uno externo; eso no mueve el
-/// deslizador ni muestra el OSD.
+/// cuando cambian los monitores o el brillo de uno externo; eso no muestra el
+/// OSD.
 pub fn changed(last: &mut Option<u8>, report: &BrightnessReport) -> Option<u8> {
     let percent = percent_of(report)?;
     if *last == Some(percent) {
@@ -67,14 +78,6 @@ pub fn changed(last: &mut Option<u8>, report: &BrightnessReport) -> Option<u8> {
 }
 
 fn announce(app: &AppHandle, percent: u8) {
-    let _ = app.emit(
-        "brightness-changed",
-        serde_json::json!({
-            "current": percent,
-            "max": 100,
-            "min": 0
-        }),
-    );
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let _ = show_osd_internal(
@@ -91,7 +94,7 @@ fn announce(app: &AppHandle, percent: u8) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tauri_plugin_display_manager::{BrightnessKind, DdcState, DdcStatus, MonitorBrightness};
+    use tauri_plugin_display_manager::{DdcState, DdcStatus};
 
     fn report(monitors: Vec<(BrightnessKind, u8)>) -> BrightnessReport {
         BrightnessReport {
@@ -155,5 +158,31 @@ mod tests {
         let parsed: BrightnessReport = serde_json::from_str(json).unwrap();
         let mut last = None;
         assert_eq!(changed(&mut last, &parsed), Some(70));
+    }
+
+    #[test]
+    fn el_osd_es_el_del_panel_interno() {
+        let both = BrightnessReport {
+            monitors: vec![
+                MonitorBrightness {
+                    output: Some("HDMI-A-1".into()),
+                    kind: BrightnessKind::Ddc,
+                    handle: "5".into(),
+                    percent: 80,
+                },
+                MonitorBrightness {
+                    output: Some("eDP-1".into()),
+                    kind: BrightnessKind::Backlight,
+                    handle: "intel_backlight".into(),
+                    percent: 40,
+                },
+            ],
+            ddc: DdcStatus {
+                state: DdcState::Ready,
+                reason: None,
+                unsupported: vec![],
+            },
+        };
+        assert_eq!(backlight(&both).unwrap().handle, "intel_backlight");
     }
 }

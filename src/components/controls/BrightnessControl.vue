@@ -1,121 +1,55 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+/**
+ * El brillo del estado A del centro de control: un solo deslizador, el del
+ * monitor principal —el panel interno si hay uno, si no el primer monitor
+ * externo— (vasak-desktop#189). La lista con uno por monitor está en el estado
+ * B (`MonitorBrightnessList`).
+ *
+ * Sin pantalla que se pueda atenuar no ocupa lugar: no hay nada que regular.
+ */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { SliderControl } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
-import {
-	getBrightnessInfo as fetchBrightnessInfo,
-	setBrightnessInfo,
-} from '@/services/core.service';
-import { useSharedEvent } from '@/tools/event.bus';
-import { logError } from '@/utils/logger';
-
-interface BrightnessInfo {
-	current: number;
-	min: number;
-	max: number;
-}
+import { computed } from 'vue';
+import { brightnessIcon, brightnessPercentageClass } from '@/tools/brightness-look';
+import { useDisplayBrightness } from '@/tools/composables/useDisplayBrightness';
 
 const { t } = useI18n();
+const { primary, percentOf, preview, commit } = useDisplayBrightness();
 
-const brightnessInfo = ref<BrightnessInfo>({
-	current: 100,
-	min: 0,
-	max: 100,
-});
+const value = computed(() => (primary.value ? percentOf(primary.value) : 0));
 
-const currentBrightness = ref(100);
-let setDebitTimeout: ReturnType<typeof setTimeout> | null = null;
-
-const brightnessPercentage = computed(() => {
-	if (brightnessInfo.value.max <= 0) return 0;
-	const range = brightnessInfo.value.max - brightnessInfo.value.min;
-	const loading = currentBrightness.value - brightnessInfo.value.min;
-	return Math.round((loading / range) * 100);
-});
-
-const brightnessLabel = computed(() =>
-	t('components.BrightnessControl.brightness').replace('{0}', String(brightnessPercentage.value))
+const label = computed(() =>
+	t('components.BrightnessControl.brightness').replace('{0}', String(value.value))
 );
 
-const currentIcon = computed(() => {
-	if (brightnessPercentage.value > 66) return 'display-brightness-high-symbolic';
-	if (brightnessPercentage.value > 33) return 'display-brightness-medium-symbolic';
-	return 'display-brightness-low-symbolic';
-});
-
-async function getBrightnessInfo() {
-	try {
-		const info = await fetchBrightnessInfo();
-		brightnessInfo.value = info;
-		currentBrightness.value = info.current;
-	} catch (error) {
-		logError('Error getting brightness:', error);
-	}
+function onInput(percent: number): void {
+	if (primary.value) preview(primary.value, percent);
 }
 
-async function updateBrightness() {
-	try {
-		if (setDebitTimeout) {
-			clearTimeout(setDebitTimeout);
-		}
-
-		setDebitTimeout = setTimeout(async () => {
-			await setBrightnessInfo({
-				brightness: Number(currentBrightness.value),
-			});
-		}, 50);
-	} catch (error) {
-		logError('Error setting brightness:', error);
-	}
+/** El `change` nativo del deslizador sube hasta acá: es al soltar. */
+function onChange(event: Event): void {
+	const target = event.target as HTMLInputElement | null;
+	if (!primary.value || target?.type !== 'range') return;
+	void commit(primary.value, Number(target.value));
 }
-
-const getPercentageClass = (percentage: number) => {
-	// Amarillo y naranja como ilustración de la temperatura del brillo, no con
-	// los tokens de estado: un brillo alto **no es un estado del sistema**, y
-	// pintarlo de `status-warning` diría que algo anda mal.
-	if (percentage > 80) return 'text-status-warning';
-	if (percentage < 20) return 'text-tx-muted';
-	return '';
-};
-
-onMounted(async () => {
-	await getBrightnessInfo();
-});
-
-onUnmounted(() => {
-	if (setDebitTimeout) {
-		clearTimeout(setDebitTimeout);
-	}
-});
-
-useSharedEvent<Record<string, number>>(
-	'brightness-changed',
-	(p) => {
-		if (p.current !== undefined) {
-			brightnessInfo.value = p as unknown as BrightnessInfo;
-			currentBrightness.value = p.current;
-		} else if (p.value !== undefined && p.max !== undefined && p.max > 0) {
-			const current = p.percentage ?? Math.round((p.value / p.max) * 100);
-			brightnessInfo.value = { current, max: 100, min: 0 };
-			currentBrightness.value = current;
-		}
-	},
-	{ throttleMs: 16 }
-);
 </script>
 
 <template>
-  <SliderControl
-    :name="currentIcon"
-    type="symbol"
-    :label="brightnessLabel"
-    v-model="currentBrightness"
-    :min="brightnessInfo.min"
-    :max="brightnessInfo.max"
-    :show-button="false"
-    :get-percentage-class="getPercentageClass"
-    @update:model-value="updateBrightness"
-  />
+  <!-- El `change` del deslizador se escucha acá: la tarjeta de la librería no
+       lo declara, y el nativo sube desde su `input`. -->
+  <div v-if="primary" data-primary-brightness @change="onChange">
+    <SliderControl
+      :name="brightnessIcon(value)"
+      type="symbol"
+      :label="label"
+      :model-value="value"
+      :min="0"
+      :max="100"
+      :show-button="false"
+      :get-percentage-class="brightnessPercentageClass"
+      @update:model-value="onInput"
+    />
+  </div>
 </template>

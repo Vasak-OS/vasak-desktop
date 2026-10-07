@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.49.0",
+	"version": "1.50.0",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -27,6 +27,7 @@
 		"@vasakgroup/plugin-config-manager": "^2.10.0",
 		"@vasakgroup/plugin-display-manager": "^2.0.0",
 		"@vasakgroup/plugin-network-manager": "^2.2.0",
+		"@vasakgroup/plugin-power-profiles": "^2.0.0",
 		"@vasakgroup/plugin-user-data": "^2.1.0",
 		"@vasakgroup/plugin-vicons": "^2.2.1",
 		"@vasakgroup/plugin-vsk-contextual-menu": "^2.0.2",
