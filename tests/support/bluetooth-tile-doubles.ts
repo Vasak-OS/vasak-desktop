@@ -13,3 +13,8 @@ export function useBluetoothState() {
 export function logError(...args: unknown[]): void {
 	logged.push(args);
 }
+
+/** Sin modo avión ni bloqueo de rfkill (vasak-desktop#180). */
+export function useAirplaneMode() {
+	return { bluetoothBlocked: ref(false), unblockRadios: async () => {} };
+}

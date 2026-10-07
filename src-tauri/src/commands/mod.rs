@@ -1,3 +1,4 @@
+mod airplane_mode;
 mod applets;
 mod audio;
 mod batch;
@@ -26,6 +27,7 @@ mod wallpaper_picker;
 mod weather;
 mod window_manager;
 
+pub use airplane_mode::{get_airplane_mode, set_airplane_mode, unblock_radios};
 pub use applets::{dismiss_applet, toggle_applet};
 pub use audio::{
     get_audio_devices, get_audio_volume, set_audio_device, set_audio_volume, toggle_audio_mute,
