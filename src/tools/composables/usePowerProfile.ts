@@ -33,8 +33,12 @@ export function usePowerProfile() {
 	let unlisten: (() => void) | null = null;
 	let disposed = false;
 
+	/** Cuántas veces cambió el estado: lo que llegó por la señal no se pisa. */
+	let version = 0;
+
 	function apply(next: PowerState): void {
 		state.value = next;
+		version += 1;
 	}
 
 	onMounted(async () => {
@@ -63,17 +67,20 @@ export function usePowerProfile() {
 
 	/**
 	 * Cambia el perfil. Si el demonio lo rechaza, vuelve a mostrar el que
-	 * estaba: el selector ya se había movido.
+	 * estaba —el selector ya se había movido—, salvo que en el medio haya
+	 * llegado la señal con un estado más nuevo.
 	 */
 	async function choose(profile: string): Promise<void> {
 		const previous = state.value;
 		if (!previous.available || profile === previous.activeProfile) return;
 		apply({ ...previous, activeProfile: profile });
+		const chosen = version;
 		try {
 			apply(await setPowerProfile(profile));
 		} catch (error) {
 			console.error('[power-profile] no se pudo cambiar el perfil:', error);
-			apply(previous);
+			// Si mientras tanto llegó la señal del demonio, ésa es la verdad.
+			if (version === chosen) apply(previous);
 		}
 	}
 

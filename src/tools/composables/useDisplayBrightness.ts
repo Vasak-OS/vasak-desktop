@@ -45,6 +45,12 @@ const drafts = ref<Record<string, number>>({});
 let users = 0;
 let stopListening: (() => void) | null = null;
 let stopShown: (() => void) | null = null;
+/**
+ * Cuál suscripción vale. Si el centro se desmonta y se vuelve a montar
+ * mientras una suscripción todavía espera al plugin, la vieja tiene que soltar
+ * su oyente al llegar: si no, quedarían dos.
+ */
+let generation = 0;
 
 function apply(next: BrightnessReport): void {
 	report.value = next;
@@ -86,12 +92,14 @@ function onShown(): void {
 }
 
 async function subscribe(): Promise<void> {
+	const mine = ++generation;
 	stopShown = eventBus.subscribe('window-shown', onShown);
 	await load();
 	try {
 		const unlisten = await onBrightnessChanged(apply);
-		// Si el último componente se fue mientras se registraba, se suelta ya.
-		if (users === 0) unlisten();
+		// Si el último componente se fue mientras se registraba, o ya hay otra
+		// suscripción más nueva, ésta se suelta ya.
+		if (users === 0 || mine !== generation) unlisten();
 		else stopListening = unlisten;
 	} catch (error) {
 		console.error('[brightness] no se pudo escuchar el brillo:', error);
@@ -99,6 +107,7 @@ async function subscribe(): Promise<void> {
 }
 
 function unsubscribe(): void {
+	generation += 1;
 	stopListening?.();
 	stopListening = null;
 	stopShown?.();

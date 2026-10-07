@@ -57,6 +57,8 @@ const desktop = {
 		performanceDegraded: null as string | null,
 	},
 	failPower: false,
+	/** Si está, las respuestas esperan a que la prueba la abra. */
+	gate: null as Promise<void> | null,
 	calls: [] as Array<{ cmd: string; args: Record<string, unknown> }>,
 	listeners: new Map<string, number[]>(),
 	callbacks: new Map<number, (event: unknown) => void>(),
@@ -98,12 +100,14 @@ beforeAll(() => {
 		desktop.calls.push({ cmd, args });
 		switch (cmd) {
 			case 'plugin:display-manager|get_brightness':
+				await desktop.gate;
 				return structuredClone(desktop.report);
 			case 'plugin:display-manager|set_brightness':
 				return null;
 			case 'plugin:power-profiles|get_power_state':
 				return { ...desktop.power };
 			case 'plugin:power-profiles|set_power_profile':
+				await desktop.gate;
 				if (desktop.failPower) throw new Error('el demonio dijo que no');
 				desktop.power.activeProfile = args.profile as string;
 				return { ...desktop.power };
@@ -122,6 +126,7 @@ beforeEach(() => {
 		performanceDegraded: null,
 	};
 	desktop.failPower = false;
+	desktop.gate = null;
 	desktop.calls = [];
 });
 
@@ -415,6 +420,25 @@ describe('el brillo del estado A: el monitor principal', () => {
 		expect(sliderValue(a, '[data-primary-brightness]')).toBe(20);
 	});
 
+	test('desmontar y volver a montar mientras se suscribe deja un solo oyente', async () => {
+		let open = () => {};
+		desktop.gate = new Promise<void>((resolve) => {
+			open = resolve;
+		});
+		const first = mount(Control, { attachTo: document.body });
+		await settle();
+		first.unmount();
+		const second = keep(mount(Control, { attachTo: document.body }));
+		await settle();
+		open();
+		await settle();
+		expect(desktop.listeners.get('display-brightness-changed')).toHaveLength(1);
+		second.unmount();
+		views.splice(0);
+		await settle();
+		expect(desktop.listeners.get('display-brightness-changed')).toHaveLength(0);
+	});
+
 	test('al irse el último componente, se suelta el oyente', async () => {
 		const view = mount(Control, { attachTo: document.body });
 		await settle();
@@ -478,6 +502,23 @@ describe('el perfil de energía', () => {
 		await view.findAll('[role="radio"]')[0]?.trigger('click');
 		await settle();
 		expect(checked(view)).toEqual([`${PROFILE}balanced`]);
+	});
+
+	test('si llega la señal mientras se cambia y el cambio falla, queda la señal', async () => {
+		desktop.failPower = true;
+		let open = () => {};
+		const view = keep(mount(Control, { attachTo: document.body }));
+		await settle();
+		desktop.gate = new Promise<void>((resolve) => {
+			open = resolve;
+		});
+		await view.findAll('[role="radio"]')[2]?.trigger('click');
+		await settle();
+		desktop.emit('power-profile-changed', { ...desktop.power, activeProfile: 'power-saver' });
+		await settle();
+		open();
+		await settle();
+		expect(checked(view)).toEqual([`${PROFILE}powerSaver`]);
 	});
 
 	test('sin power-profiles-daemon se ve no disponible y no pide nada', async () => {
