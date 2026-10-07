@@ -37,7 +37,6 @@
       },
       "deb": {
         "desktopTemplate": "./vasak-desktop-shell.desktop.hbs",
-        "recommends": ["gamemode"],
         "depends": [
           "vasak-desktop-settings",
           "libcairo2",
