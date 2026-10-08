@@ -38,7 +38,16 @@ const toggleWindow = async (): Promise<void> => {
 <template>
   <!-- El botón del panel de la librería, el mismo de la bandeja: el velo
        neutro al pasar y el anillo de foco por dentro, sin crecer ni girar.
-       Minimizada, la ventana se dibuja atenuada. -->
+       Minimizada, la ventana se dibuja atenuada.
+
+       `shrink-0` y un tamaño mínimo (vasak-desktop#209): la píldora de ventanas
+       cede su ancho a las vecinas (`min-w-0`) y desplaza adentro lo que no entra
+       (`overflow-x-auto`). Sin `shrink-0`, cuando faltaba lugar —barra compacta,
+       muchas ventanas o ventana angosta— lo que cedía eran los botones: se
+       encogían hasta el relleno (8 px) y el icono, con el `max-width:100%` del
+       preflight, se aplastaba a cero y quedaba ilegible. Fijándolos a su tamaño
+       (32 px, el blanco táctil mínimo) la fila se desborda y desplaza dentro de
+       la píldora en vez de machacar los iconos. -->
   <TrayIconButton
     :name="iconName"
     :alt="title"
@@ -47,6 +56,7 @@ const toggleWindow = async (): Promise<void> => {
     :progress="progress ?? null"
     :progress-label="t('components.tray.progress').replace('{0}', title)"
     :icon-class="{ 'opacity-50': Boolean(is_minimized) }"
+    custom-class="shrink-0 min-w-8 min-h-8"
     @click="toggleWindow"
   />
 </template>
