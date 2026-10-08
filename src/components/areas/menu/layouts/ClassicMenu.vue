@@ -35,7 +35,9 @@ const categories = computed(() => {
 const favoriteApps = computed(() =>
 	resolveFavorites(allApps(menuData.value), props.menu.favorites)
 );
-const showFavorites = computed(() => props.menu.showFavorites && favoriteApps.value.length > 0);
+// Activado pero vacío se muestra igual: `FavoritesArea` dibuja su estado vacío
+// con la guía para fijar aplicaciones (igual que en el compacto, CodeRabbit #204).
+const showFavorites = computed(() => props.menu.showFavorites);
 
 const select = (key: string) => {
 	categorySelected.value = key;
