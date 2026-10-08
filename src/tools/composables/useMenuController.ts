@@ -44,7 +44,9 @@ export function useMenuController() {
 	};
 
 	const openSessionPopup = (action: string) => {
-		toggleSessionPopup(action);
+		// `void`: el popup lo maneja el backend; acá no hay nada que esperar, y
+		// dejar la promesa suelta es lo que marcaba Sonar (S9383).
+		void toggleSessionPopup(action);
 	};
 
 	const openConfiguration = async () => {
