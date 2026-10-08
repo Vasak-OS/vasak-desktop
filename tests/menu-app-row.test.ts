@@ -79,7 +79,14 @@ beforeAll(async () => {
 	workdir = mkdtempSync(join(import.meta.dir, '..', 'src', '.menu-row-'));
 	writeFileSync(
 		join(workdir, 'doubles.ts'),
-		'export const openApp = async () => {};\nexport const dismissMenu = async () => {};\nexport const logError = () => {};\n'
+		[
+			'export const openApp = async () => {};',
+			'export const dismissMenu = async () => {};',
+			'export const logError = () => {};',
+			// Lanzar y fijar/desfijar salen del composable compartido (vasak-desktop#203).
+			'export const useAppLauncher = () => ({ launch: async () => {}, toggleFavoriteFor: async () => {} });',
+			'',
+		].join('\n')
 	);
 	const source = readFileSync(SOURCE, 'utf8');
 	current = await render(source, 'current');

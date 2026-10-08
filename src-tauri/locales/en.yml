@@ -56,6 +56,21 @@ views:
     applications: Applications
     results: Search results
     categories: Categories
+    places:
+      title: Places
+      home: Home
+      documents: Documents
+      downloads: Downloads
+      trash: Trash
+    favorites:
+      title: Favorites
+      empty: Pin applications from the list with a right click.
+      pin: Pin to favorites
+      unpin: Remove from favorites
+    greeting:
+      morning: Good morning
+      afternoon: Good afternoon
+      evening: Good evening
   connect:
     title: Phone
     chooseDevice: Choose the phone

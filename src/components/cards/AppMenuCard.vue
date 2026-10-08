@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { DropdownMenuItem, ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { openApp as sysOpenApp } from '@/services/app.service';
-import { dismissMenu } from '@/services/window.service';
-import { logError } from '@/utils/logger';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { useAppLauncher } from '@/tools/composables/useAppLauncher';
+import type { MenuApp } from '@/tools/menu-favorites';
 
 /**
  * Una aplicación en la lista de la categoría del menú.
@@ -15,24 +15,31 @@ import { logError } from '@/utils/logger';
  *
  * El icono a la izquierda y el nombre al lado, en fila. El nombre se parte en
  * dos líneas en vez de cortarse: no hay otro lugar donde leerlo entero.
+ *
+ * Lanzar y fijar/desfijar con el clic derecho salen de `useAppLauncher`, que lo
+ * comparte con el mosaico y la grilla de favoritos (vasak-desktop#203).
  */
-const props = defineProps({
-	app: {
-		type: Object,
-		required: true,
-	},
+const props = defineProps<{ app: MenuApp }>();
+
+const { launch, toggleFavoriteFor } = useAppLauncher();
+
+/**
+ * El clic derecho se engancha a mano sobre la raíz del ítem: `DropdownMenuItem`
+ * no declara el evento nativo y pasárselo por plantilla no pasa el tipado. Así
+ * el clic derecho sobre toda la fila fija o desfija la aplicación.
+ */
+const item = ref<{ $el?: HTMLElement } | null>(null);
+const onContextMenu = (event: Event) => {
+	void toggleFavoriteFor(props.app, event as MouseEvent);
+};
+
+onMounted(() => {
+	item.value?.$el?.addEventListener('contextmenu', onContextMenu);
 });
 
-const openApp = async () => {
-	try {
-		await sysOpenApp({ path: props.app.path } as any);
-	} catch (error) {
-		logError('Error al abrir aplicación:', error);
-	} finally {
-		// Esconder, no cerrar: ver `dismissMenu`.
-		void dismissMenu();
-	}
-};
+onBeforeUnmount(() => {
+	item.value?.$el?.removeEventListener('contextmenu', onContextMenu);
+});
 </script>
 
 <template>
@@ -41,7 +48,11 @@ const openApp = async () => {
        como era el menú antes de la migración. Puestos los dos en la ranura
        principal caían adentro de la columna del texto, y el nombre quedaba
        debajo del icono. -->
-  <DropdownMenuItem :title="app.description" class="w-full" @select="openApp">
+  <DropdownMenuItem
+    ref="item"
+    :title="app.description"
+    class="w-full"
+    @select="launch(app)">
     <template #prefix>
       <ThemeIcon :name="app.icon" :size="32" alt="" />
     </template>

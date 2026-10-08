@@ -56,6 +56,21 @@ views:
     applications: Aplicaciones
     results: Resultados de la búsqueda
     categories: Categorías
+    places:
+      title: Lugares
+      home: Inicio
+      documents: Documentos
+      downloads: Descargas
+      trash: Papelera
+    favorites:
+      title: Favoritos
+      empty: Fijá aplicaciones desde la lista con el clic derecho.
+      pin: Fijar a favoritos
+      unpin: Quitar de favoritos
+    greeting:
+      morning: Buenos días
+      afternoon: Buenas tardes
+      evening: Buenas noches
   connect:
     title: Teléfono
     chooseDevice: Elegir el teléfono
