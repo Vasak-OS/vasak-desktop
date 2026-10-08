@@ -164,9 +164,10 @@ describe('las cuatro variantes nuevas', () => {
 
 	test('AppTile lanza y fija/desfija con el clic derecho', () => {
 		const tile = read('src/components/areas/menu/AppTile.vue');
-		expect(tile).toMatch(/dismissMenu/);
-		expect(tile).toMatch(/toggleFavoritePath/);
-		expect(tile).toMatch(/favorites\.pin|favorites\.unpin/);
+		// Lanzar y fijar/desfijar salen del composable compartido (sin duplicar).
+		expect(tile).toMatch(/useAppLauncher/);
+		expect(tile).toMatch(/launch\(app\)/);
+		expect(tile).toMatch(/toggleFavoriteFor/);
 	});
 });
 
