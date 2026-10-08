@@ -28,11 +28,13 @@ import { listConnectDevices, toggleConnectMenu } from '@/services/connect.servic
 import { getAllNotifications } from '@/services/notification.service';
 import { reportMenuButton, toggleControlCenter, toggleMenu } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
+import { usePanelAutohide } from '@/tools/composables/usePanelAutohide';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { usePanelDensity, watchPanelDensity } from '@/tools/composables/usePanelDensity';
 import { usePanelInputRegion } from '@/tools/composables/usePanelInputRegion';
 import { useSharedEvent } from '@/tools/event.bus';
 import { containsNewNotifications } from '@/tools/notifications';
+import { panelHideClass, panelRegionMode } from '@/tools/panel-autohide';
 import { GROUP_CLASSES } from '@/tools/panel-position';
 import { logError } from '@/utils/logger';
 
@@ -58,16 +60,44 @@ const {
 	hasSurface,
 	animationClass,
 	sizeStyle,
+	autohide,
 } = usePanelConfig();
 
 /**
- * Lo que recibe el puntero. En píldoras son sólo las píldoras (vasak-desktop#151):
- * entre una y otra se ve el escritorio, y un clic ahí tiene que caer en él.
- * Con una superficie continua —flotante, barra o dock— es la barra entera, que
- * entonces no tiene huecos (`hasSurface`).
+ * Esconder y revelar la barra cuando `panel.autohide` está puesto. La máquina de
+ * estados vive aparte (`usePanelAutohide`); `panelHidden` desliza la barra y
+ * recorta la región de entrada. El puntero entrando y saliendo de la franja lo
+ * avisa el backend por `panel-pointer-entered` / `panel-pointer-left` —la página
+ * no recibe la salida del puntero en una superficie de capa— y se conectan a
+ * revelar y esconder.
  */
+const {
+	hidden: panelHidden,
+	reveal: revealPanel,
+	requestHide: hidePanel,
+} = usePanelAutohide(autohide, position);
+useSharedEvent('panel-pointer-entered', () => revealPanel());
+useSharedEvent('panel-pointer-left', () => hidePanel());
+
+/**
+ * Lo que recibe el puntero, según el estado (`panel-autohide.ts`): sólo las
+ * píldoras (lo de siempre), la barra entera (con superficie o ya revelada), o la
+ * línea del borde (escondida). Entre píldoras se ve el escritorio y un clic ahí
+ * tiene que caer en él; con superficie o revelada no hay huecos.
+ */
+const regionMode = computed(() =>
+	panelRegionMode({
+		autohide: autohide.value,
+		hidden: panelHidden.value,
+		hasSurface: hasSurface.value,
+	})
+);
+
 const bar = ref<HTMLElement | null>(null);
-usePanelInputRegion(bar, hasSurface);
+usePanelInputRegion(bar, regionMode, position);
+
+/** La clase que desliza la barra fuera de la pantalla mientras está escondida. */
+const hideClass = computed(() => panelHideClass(position.value, panelHidden.value));
 
 /**
  * Cuánto texto entra: en un panel angosto los nombres largos se pliegan al
@@ -292,8 +322,8 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 	<nav
 		ref="bar"
 		@contextmenu.prevent="openPanelContextMenu"
-		class="panel-bar z-20 grid items-center gap-2 bg-transparent"
-		:class="[barClasses, animationClass]"
+		class="panel-bar z-20 grid items-center gap-2 bg-transparent transition-transform duration-200"
+		:class="[barClasses, animationClass, hideClass]"
 		:style="sizeStyle"
 		data-panel-bar
 	>

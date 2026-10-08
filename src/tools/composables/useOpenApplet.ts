@@ -57,5 +57,17 @@ export function useOpenApplet(applet: AppletId): OpenAppletState {
 	return openAppletState(applet);
 }
 
+/**
+ * Si hay **algún** applet abierto, el que sea.
+ *
+ * Lo usa el auto-ocultar para no esconder la barra con un applet colgando de
+ * ella: el applet es su propia superficie, pero esconder el panel que lo abrió
+ * mientras se lo usa es desconcertante.
+ */
+export function useAnyAppletOpen(): ComputedRef<boolean> {
+	useSharedEvent<{ applet: string | null }>('applet-changed', applyAppletChanged);
+	return computed(() => openApplet.value !== null);
+}
+
 /** Para las pruebas: el valor compartido, sin suscribirse a nada. */
 export const openAppletForTests = openApplet;

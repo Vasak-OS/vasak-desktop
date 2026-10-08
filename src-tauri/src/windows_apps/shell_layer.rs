@@ -60,6 +60,15 @@ pub struct LayerSpec {
     /// al construirse: recortarla después deja un instante en que el margen se
     /// queda con los clics de lo que tiene debajo.
     pub input_region: Option<(i32, i32, i32, i32)>,
+    /// El puntero entró en la región de entrada de la superficie, y salió de
+    /// ella. Lo usa el auto-ocultar del panel: sobre una superficie de capa este
+    /// WebView no le entrega a la página ningún evento de salida del puntero
+    /// —sólo los `pointermove` mientras está encima—, así que el «salió» se toma
+    /// acá, del `leave-notify` de GTK sobre la ventana, que sí llega (como el
+    /// `focus-out` de los applets). Se descartan los cruces hacia el webview hijo
+    /// (`Inferior`), que no son salidas de verdad.
+    pub on_pointer_enter: Option<Box<dyn Fn()>>,
+    pub on_pointer_leave: Option<Box<dyn Fn()>>,
 }
 
 impl Default for LayerSpec {
@@ -76,6 +85,8 @@ impl Default for LayerSpec {
             on_dismiss: None,
             on_hide: None,
             input_region: None,
+            on_pointer_enter: None,
+            on_pointer_leave: None,
         }
     }
 }
@@ -211,6 +222,30 @@ pub fn spawn_layer_window(
 
         layer_win.connect_focus_out_event(move |window, _| {
             dismiss(window);
+            glib::Propagation::Proceed
+        });
+    }
+
+    // El puntero entrando y saliendo de la superficie, para el auto-ocultar del
+    // panel. Se filtra `Inferior` —el cruce hacia el webview hijo, que no es una
+    // salida de verdad— igual que lo haría cualquier panel en C. La página no
+    // recibe estos cruces en una superficie de capa; GTK sí.
+    if spec.on_pointer_enter.is_some() || spec.on_pointer_leave.is_some() {
+        layer_win.add_events(gdk::EventMask::ENTER_NOTIFY_MASK | gdk::EventMask::LEAVE_NOTIFY_MASK);
+    }
+    if let Some(on_pointer_enter) = spec.on_pointer_enter {
+        layer_win.connect_enter_notify_event(move |_window, event| {
+            if event.detail() != gdk::NotifyType::Inferior {
+                on_pointer_enter();
+            }
+            glib::Propagation::Proceed
+        });
+    }
+    if let Some(on_pointer_leave) = spec.on_pointer_leave {
+        layer_win.connect_leave_notify_event(move |_window, event| {
+            if event.detail() != gdk::NotifyType::Inferior {
+                on_pointer_leave();
+            }
             glib::Propagation::Proceed
         });
     }
