@@ -219,62 +219,69 @@ onBeforeUnmount(() => {
       :class="['bg-ui-shell h-screen w-screen rounded-corner-m flex flex-col justify-between p-1 border border-ui-line overflow-hidden', { 'leave-active': leaving }]"
       :data-mode="mode"
     >
-      <!-- `min-h-0` es lo que hace que el scroll sea de las notificaciones y no
-           del centro entero: sin él, un hijo flexible no se deja achicar por
-           debajo de su contenido, la lista empujaba y los controles de abajo
-           —música, brillo, volumen— se iban de la pantalla en cuanto había unas
-           cuantas notificaciones. La lista tiene además un mínimo de unas dos
-           tarjetas (`min-h-40`); en una pantalla tan baja que ese mínimo no
-           entra, este bloque se desplaza (`overflow-y-auto`) en vez de pisar a
-           los controles de abajo. -->
-      <div class="flex min-h-0 flex-1 flex-col w-full gap-2 overflow-y-auto p-2" data-top>
-        <UserControlCenterCard ref="userCard" :calendar-open="calendarOpen" @open-calendar="openCalendar" />
-        <!-- La sesión, debajo de quién sos: Bloquear, Cerrar sesión, Reiniciar,
-             Apagar. Bloquear no pregunta; las demás, con el diálogo de
-             sesión. -->
-        <SessionActionsRow class="shrink-0 justify-end" />
-        <PhoneControlCenterCard />
+      <!-- La cabecera —quién sos, la sesión y el teléfono— queda fija arriba:
+           no se desliza aunque la grilla de ajustes o las notificaciones no
+           entren. Lo que se desplaza es sólo el bloque de abajo, así nunca se
+           mueve la parte con tu foto. -->
+      <div class="flex min-h-0 flex-1 flex-col w-full gap-2 p-2" data-top>
+        <div class="flex shrink-0 flex-col gap-2" data-header>
+          <UserControlCenterCard ref="userCard" :calendar-open="calendarOpen" @open-calendar="openCalendar" />
+          <!-- La sesión, debajo de quién sos: Bloquear, Cerrar sesión, Reiniciar,
+               Apagar. Bloquear no pregunta; las demás, con el diálogo de
+               sesión. -->
+          <SessionActionsRow class="shrink-0 justify-end" />
+          <PhoneControlCenterCard />
+        </div>
 
-        <!-- El calendario del mes, abierto desde la fecha: una ficha con
-             «Volver» en lugar de lo de abajo. Lo de abajo sigue montado. -->
-        <CalendarSheet v-if="calendarOpen" @back="closeCalendar" />
+        <!-- Lo que se desliza: el calendario, las notificaciones (A) o la grilla
+             de ajustes (B). `min-h-0` deja que se achique por debajo de su
+             contenido y `overflow-y-auto` lo desplaza; la cabecera de arriba y
+             los controles de abajo quedan quietos. Sin él, un hijo flexible no
+             se deja achicar y la lista o la grilla empujaban a lo de abajo fuera
+             de la pantalla. La lista tiene además un mínimo de unas dos tarjetas
+             (`min-h-40`). -->
+        <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto" data-scroll>
+          <!-- El calendario del mes, abierto desde la fecha: una ficha con
+               «Volver» en lugar de lo de abajo. Lo de abajo sigue montado. -->
+          <CalendarSheet v-if="calendarOpen" @back="closeCalendar" />
 
-        <!-- A: la lista, con el alto entero que sobra y nunca menos que unas dos
-             tarjetas. Escondida con `v-show` en B: sigue montada, y es la que
-             cuenta para la línea resumen. -->
-        <NotificationArea
-          v-show="!showsSettings && !calendarOpen"
-          class="min-h-40 flex-1"
-          data-notifications
-          @summary="onSummary"
-        />
+          <!-- A: la lista, con el alto entero que sobra y nunca menos que unas dos
+               tarjetas. Escondida con `v-show` en B: sigue montada, y es la que
+               cuenta para la línea resumen. -->
+          <NotificationArea
+            v-show="!showsSettings && !calendarOpen"
+            class="min-h-40 flex-1"
+            data-notifications
+            @summary="onSummary"
+          />
 
-        <!-- B: las notificaciones en una línea que las vuelve a abrir. Nunca
-             desaparecen. -->
-        <ListRow
-          v-if="showsSettings && !calendarOpen"
-          class="shrink-0"
-          role="button"
-          icon="preferences-desktop-notification"
-          icon-type="symbol"
-          :title="summaryLabel"
-          aria-expanded="false"
-          truncate
-          data-notification-summary
-          @click="showNotifications"
-        >
-          <template #trailing>
-            <ThemeIcon name="go-down" type="symbol" :size="16" alt="" />
-          </template>
-        </ListRow>
+          <!-- B: las notificaciones en una línea que las vuelve a abrir. Nunca
+               desaparecen. -->
+          <ListRow
+            v-if="showsSettings && !calendarOpen"
+            class="shrink-0"
+            role="button"
+            icon="preferences-desktop-notification"
+            icon-type="symbol"
+            :title="summaryLabel"
+            aria-expanded="false"
+            truncate
+            data-notification-summary
+            @click="showNotifications"
+          >
+            <template #trailing>
+              <ThemeIcon name="go-down" type="symbol" :size="16" alt="" />
+            </template>
+          </ListRow>
 
-        <QuickSettingsPanel
-          v-if="tilesMounted"
-          v-show="showsSettings && !calendarOpen"
-          v-model:detail="detail"
-          class="flex-1"
-          :bluetooth="bluetoothInitialized"
-        />
+          <QuickSettingsPanel
+            v-if="tilesMounted"
+            v-show="showsSettings && !calendarOpen"
+            v-model:detail="detail"
+            class="flex-1"
+            :bluetooth="bluetoothInitialized"
+          />
+        </div>
       </div>
       <div class="flex shrink-0 flex-wrap w-full justify-around items-end p-2">
         <!-- La caja va afuera y no como clase del widget: por dentro es
