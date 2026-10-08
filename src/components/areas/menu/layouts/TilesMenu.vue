@@ -56,10 +56,13 @@ const isEmpty = computed(() => sections.value.length === 0);
 
       <section v-for="([key, value]) in sections" :key="key" :aria-label="t(value.description)">
         <SectionHeading :title="t(value.description)" :icon="value.icon" :count="value.apps.length" class="mb-3" />
+        <!-- Alto de fila definido: `AppTile` ocupa la celda con `h-full`, y un
+             `h-full` contra una fila `auto` queda indefinido —Chrome lo tolera,
+             WebKitGTK lo colapsa y deja barras que no andan (bug #206)—. -->
         <div
           role="menu"
           :aria-label="t(value.description)"
-          class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))]"
+          class="grid gap-3 grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] [grid-auto-rows:7rem]"
         >
           <AppTile v-for="app in value.apps" :key="app.path" :app="app" size="lg" />
         </div>

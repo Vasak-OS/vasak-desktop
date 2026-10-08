@@ -147,7 +147,16 @@ describe('las cuatro variantes nuevas', () => {
 		const grid = layout('GridMenu');
 		expect(grid).toMatch(/<PageDots/);
 		expect(grid).toMatch(/<AppTile/);
-		expect(grid).toMatch(/v-model:categorySelected="categorySelected"/);
+		// Las categorías son píldoras a contenido (no `CategoryMenuPill`, que se
+		// estira a su celda y rompía la fila, bug #206): botones que marcan la
+		// elegida con el velo de acento.
+		expect(grid).not.toMatch(/<CategoryMenuPill/);
+		expect(grid).not.toMatch(/import CategoryMenuPill/);
+		expect(grid).toMatch(/categorySelected = key/);
+		expect(grid).toMatch(/aria-pressed="key === categorySelected"/);
+		// Pagina midiendo el área con un ResizeObserver, no con scroll.
+		expect(grid).toMatch(/ResizeObserver/);
+		expect(grid).toMatch(/overflow-hidden/);
 	});
 
 	test('favoritos muestra la cuadrícula de favoritos y los lugares', () => {
@@ -176,5 +185,32 @@ describe('guardar la config del menú preserva lo ajeno', () => {
 		const source = read('src/tools/composables/useMenuConfig.ts');
 		expect(source).toMatch(/mergeMenuSection\(current, partial\)/);
 		expect(source).toMatch(/\.\.\.current/);
+	});
+});
+
+describe('arreglos de las variantes (bug #206)', () => {
+	test('se puede fijar a favoritos desde la búsqueda', () => {
+		// El resultado de búsqueda usa el composable y engancha el clic derecho,
+		// igual que la fila: fijar/desfijar también anda en la pantalla de
+		// resultados (antes sólo estaba en la lista de categorías).
+		const button = read('src/components/buttons/AppMenuButton.vue');
+		expect(button).toMatch(/useAppLauncher/);
+		expect(button).toMatch(/toggleFavoriteFor/);
+		expect(button).toMatch(/addEventListener\('contextmenu'/);
+		// Y la vista de resultados dibuja ese botón.
+		expect(read('src/components/areas/menu/FilterArea.vue')).toMatch(/<AppMenuButton/);
+	});
+
+	test('la hora y la fecha del centro de control van en la misma fila', () => {
+		// No apiladas (`space-y`), sino una fila con salto elegante.
+		const card = read('src/components/cards/UserControlCenterCard.vue');
+		const clock = card.slice(card.indexOf('data-user-clock') - 200, card.indexOf('data-user-clock') + 40);
+		expect(clock).toMatch(/flex/);
+		expect(clock).toMatch(/flex-wrap/);
+		expect(clock).not.toMatch(/space-y-1/);
+	});
+
+	test('los mosaicos tienen alto de fila definido (h-full no colapsa en WebKitGTK)', () => {
+		expect(read('src/components/areas/menu/layouts/TilesMenu.vue')).toMatch(/grid-auto-rows:/);
 	});
 });
