@@ -224,6 +224,42 @@ describe('la barra de ventanas', () => {
 		view.unmount();
 	});
 
+	test('en densidad compacta reserva su ancho con `shrink-0` (vasak-desktop#213)', async () => {
+		// En compacto la barra se encoge a su contenido (`w-fit`) y no le reservaba
+		// ancho a la píldora, que quedaba en su mínimo —una ventana con scroll
+		// adentro— aunque sobrara lugar. Con `shrink-0` reserva su ancho de
+		// contenido; el `max-w-full` de la píldora la acota y desplaza adentro
+		// cuando no entra. En distribuida no lleva `shrink-0` (cede a las vecinas,
+		// #161).
+		panel.panelLayout.value = 'compact';
+		const compact = await render(Windows);
+		const compactPill = compact.find('[data-windows-pill]');
+		expect(compactPill.classes()).toContain('shrink-0');
+		// Sin `max-w-[20rem]` en compacto: el tope es el `max-w-full` de la
+		// `PanelPill`, para que use el ancho que la barra le dé (hilo de CodeRabbit
+		// en #213). Con el tope fijo, con muchas ventanas quedaban en el scroll
+		// aunque sobrara lugar.
+		expect(compactPill.classes()).not.toContain('max-w-[20rem]');
+		compact.unmount();
+
+		panel.panelLayout.value = 'distributed';
+		const distributed = await render(Windows);
+		const distributedPill = distributed.find('[data-windows-pill]');
+		expect(distributedPill.classes()).not.toContain('shrink-0');
+		expect(distributedPill.classes()).toContain('max-w-[20rem]');
+		distributed.unmount();
+	});
+
+	test('de costado no reserva ancho aunque sea compacta: apila y desplaza en vertical', async () => {
+		// De costado la píldora toma el alto que sobra y desplaza hacia abajo; el
+		// `shrink-0` horizontal de compacto no aplica, que ahí el eje es el alto.
+		panel.panelLayout.value = 'compact';
+		panel.vertical.value = true;
+		const view = await render(Windows);
+		expect(view.find('[data-windows-pill]').classes()).not.toContain('shrink-0');
+		view.unmount();
+	});
+
 	test('de costado el scroll es vertical y toma el alto que sobra', async () => {
 		panel.vertical.value = true;
 		const view = await render(Windows);
