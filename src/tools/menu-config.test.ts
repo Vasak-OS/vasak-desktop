@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
 	DEFAULT_HEADER_STRENGTH,
+	DEFAULT_MENU_DISPLAY_MODE,
 	DEFAULT_MENU_VARIANT,
 	DEFAULT_MENU_WIDGET,
 	DEFAULT_SEARCH_POSITION,
@@ -30,6 +31,7 @@ describe('la configuración del menú', () => {
 		expect(config.headerStrength).toBe(DEFAULT_HEADER_STRENGTH);
 		expect(config.showGreeting).toBe(true);
 		expect(config.showWeather).toBe(true);
+		expect(config.displayMode).toBe(DEFAULT_MENU_DISPLAY_MODE);
 	});
 
 	test('lee los valores válidos tal cual', () => {
@@ -48,6 +50,7 @@ describe('la configuración del menú', () => {
 				headerStrength: 40,
 				showGreeting: false,
 				showWeather: false,
+				displayMode: 'full',
 			},
 		});
 		expect(config.variant).toBe('grid');

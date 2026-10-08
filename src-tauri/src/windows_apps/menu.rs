@@ -122,7 +122,14 @@ pub fn toggle_menu(app: &AppHandle, anchor: Option<AnchorRect>) -> Result<(), St
         remember_menu_button(MenuButton { side, rect });
     }
     let anchor = resolve_menu_anchor(anchor, side, last_menu_button());
-    toggle_anchored_applet(app, MENU_APPLET, Some(anchor))
+    // Con qué tamaño abre el menú sale de `menu.displayMode` (vasak-desktop#210):
+    // `normal` usa el del `AppletSpec` colgado del botón, `compact` uno chico, y
+    // `full` es un overlay a pantalla completa —anclado a los cuatro bordes, sin
+    // márgenes— que no cuelga de ningún botón (ver `menu_display::applet_sizing`
+    // y `anchored_applet::place_fullscreen`). El ancla se pasa igual: `full` la
+    // ignora, pero así `normal` y `compact` siguen colgando del botón.
+    let sizing = crate::menu_display::applet_sizing(crate::menu_display::read());
+    toggle_anchored_applet(app, MENU_APPLET, Some(anchor), sizing)
 }
 
 #[cfg(test)]

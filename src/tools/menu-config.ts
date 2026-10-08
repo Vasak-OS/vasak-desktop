@@ -78,6 +78,32 @@ export function isMenuHeader(value: unknown): value is MenuHeader {
 /** Visibilidad de la imagen del hero, de 0 a 100. */
 export const DEFAULT_HEADER_STRENGTH = 60;
 
+// ── Modo de tamaño ─────────────────────────────────────────────────────────────
+
+/**
+ * Con qué tamaño abre el menú (vasak-desktop#210):
+ *
+ * - `normal`: el de siempre, anclado a su botón (900×620).
+ * - `full`: un overlay a pantalla completa, al estilo de ChromeOS o Unity.
+ * - `compact`: un menú chico.
+ *
+ * **El tamaño de la superficie lo fija el backend** del applet (layer-shell):
+ * esta clave se lee en Rust (`windows_apps/menu.rs`) para dimensionar la
+ * superficie. El contenido ya se adapta solo al tamaño recibido con las
+ * consultas de contenedor (`@container`); acá sólo se declara el contrato para
+ * que `vasak-settings` lo escriba y el front lo conozca.
+ */
+export const MENU_DISPLAY_MODES = ['normal', 'full', 'compact'] as const;
+
+export type MenuDisplayMode = (typeof MENU_DISPLAY_MODES)[number];
+
+/** El de siempre: anclado al botón, 900×620. */
+export const DEFAULT_MENU_DISPLAY_MODE: MenuDisplayMode = 'normal';
+
+export function isMenuDisplayMode(value: unknown): value is MenuDisplayMode {
+	return typeof value === 'string' && (MENU_DISPLAY_MODES as readonly string[]).includes(value);
+}
+
 // ── La forma resuelta ────────────────────────────────────────────────────────
 
 export interface MenuConfig {
@@ -97,6 +123,8 @@ export interface MenuConfig {
 	headerStrength: number;
 	showGreeting: boolean;
 	showWeather: boolean;
+	/** Con qué tamaño abre el menú; la superficie la dimensiona el backend. */
+	displayMode: MenuDisplayMode;
 }
 
 /**
@@ -182,6 +210,7 @@ export function readMenuConfig(config: unknown): MenuConfig {
 	const widget = menuKey(config, 'widget');
 	const searchPosition = menuKey(config, 'searchPosition');
 	const header = menuKey(config, 'header');
+	const displayMode = menuKey(config, 'displayMode');
 
 	return {
 		variant: isMenuVariant(variant) ? variant : DEFAULT_MENU_VARIANT,
@@ -197,5 +226,6 @@ export function readMenuConfig(config: unknown): MenuConfig {
 		headerStrength: readStrength(menuKey(config, 'headerStrength'), DEFAULT_HEADER_STRENGTH),
 		showGreeting: readBoolean(menuKey(config, 'showGreeting'), true),
 		showWeather: readBoolean(menuKey(config, 'showWeather'), true),
+		displayMode: isMenuDisplayMode(displayMode) ? displayMode : DEFAULT_MENU_DISPLAY_MODE,
 	};
 }

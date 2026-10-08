@@ -1,7 +1,7 @@
 use tauri::AppHandle;
 
 use crate::windows_apps::anchored_applet::{
-    dismiss_anchored_applet, toggle_anchored_applet, AnchorRect,
+    dismiss_anchored_applet, toggle_anchored_applet, AnchorRect, AppletSizing,
 };
 
 /// Abre o cierra un applet del panel, colgado del botón que lo pidió.
@@ -15,7 +15,9 @@ pub fn toggle_applet(
     applet: String,
     anchor: Option<AnchorRect>,
 ) -> Result<(), String> {
-    toggle_anchored_applet(&app, &applet, anchor)
+    // Sin tamaño propio: cada applet usa el de su `AppletSpec`. El menú pasa el
+    // suyo por `toggle_menu`, según `menu.displayMode`.
+    toggle_anchored_applet(&app, &applet, anchor, AppletSizing::Default)
 }
 
 /// Cierra con su animación el applet `applet`, si es el que está abierto.

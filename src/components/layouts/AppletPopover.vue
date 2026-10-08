@@ -8,8 +8,10 @@ import {
 	type AppletShownEvent,
 	anchorFromQuery,
 	appletTransformOrigin,
+	fullFromQuery,
 	insetFromQuery,
 	insetStyle,
+	toFull,
 	toInset,
 } from '@/tools/applet-anchor';
 import { useSharedEvent } from '@/tools/event.bus';
@@ -73,6 +75,13 @@ defineOptions({ inheritAttrs: false });
 const route = useRoute();
 const anchor = ref<AppletAnchor | null>(anchorFromQuery(route.query));
 const inset = ref<AppletInset>(insetFromQuery(route.query));
+/**
+ * Si es el overlay a pantalla completa del menú (el modo `full` de
+ * `menu_display.rs`): sin borde, sin cantos redondeados ni sombra —no hay afuera
+ * donde se vean— y con un fundido en lugar de crecer desde el botón, que es cosa
+ * del applet anclado.
+ */
+const full = ref<boolean>(fullFromQuery(route.query));
 
 /**
  * En qué momento de la vida del applet estamos.
@@ -102,6 +111,7 @@ useSharedEvent<AppletShownEvent>('applet-shown', (payload) => {
 
 	anchor.value = { side: payload.side, origin: payload.origin };
 	inset.value = toInset(payload.inset);
+	full.value = toFull(payload.full);
 	// Invisible un cuadro y recién después la entrada: poner `enter` sobre
 	// `enter` no vuelve a correr la animación.
 	phase.value = 'hidden';
@@ -132,7 +142,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
     <div
       role="dialog"
       :class="[
-        'applet-popover absolute overflow-hidden rounded-corner-xl border border-ui-line bg-ui-shell shadow-surface-l',
+        'applet-popover absolute overflow-hidden bg-ui-shell',
+        // El overlay a pantalla completa no lleva borde, cantos redondeados ni
+        // sombra: no hay afuera donde se vean. El applet anclado sí, con la forma
+        // de lo que flota (vue-libvasak#74, §5.3).
+        full ? 'applet-popover-full' : 'rounded-corner-xl border border-ui-line shadow-surface-l',
         compact ? 'p-1' : 'p-4',
         `applet-popover-${phase}`,
       ]"
@@ -197,6 +211,17 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
 .applet-popover-hidden {
   opacity: 0;
+}
+
+/* El overlay a pantalla completa entra y sale con un fundido, no creciendo desde
+   el botón: crecer es del applet anclado. La duración y el easing los hereda de
+   las reglas de arriba; sólo cambia la animación. */
+.applet-popover-full.applet-popover-enter {
+  animation-name: applet-popover-fade-in;
+}
+
+.applet-popover-full.applet-popover-leave {
+  animation-name: applet-popover-fade-out;
 }
 
 /* Sin movimiento, sólo opacidad. Lo resuelve el CSS al dibujar: `matchMedia`

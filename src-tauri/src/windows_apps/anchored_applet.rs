@@ -168,6 +168,25 @@ pub struct AnchorRect {
     pub height: f64,
 }
 
+/// Con qué tamaño y anclaje se abre un applet.
+///
+/// Reemplaza al viejo `size: Option<(f64, f64)>`: un `None` era el del
+/// [`AppletSpec`] y un `Some` un tamaño fijo, pero el overlay a pantalla completa
+/// no es un tamaño más —tiene otro anclaje (los cuatro bordes), otros márgenes
+/// (ninguno) y no cuelga de ningún botón—, así que es un caso propio y no un
+/// número gigante que el cálculo recortaba (vasak-desktop#210).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AppletSizing {
+    /// El tamaño del [`AppletSpec`], colgado del botón.
+    Default,
+    /// Un tamaño fijo, colgado del botón: la bandeja (que lo conoce antes de
+    /// abrir) y el menú compacto.
+    Fixed(f64, f64),
+    /// Overlay a pantalla completa: cubre el monitor entero, anclado a los cuatro
+    /// bordes y sin colgar de ningún botón.
+    Fullscreen,
+}
+
 /// Dónde queda un applet.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Placement {
@@ -239,6 +258,10 @@ pub struct AppletShown {
     /// A cuánto de cada canto de la superficie dibujar el applet: el margen de
     /// sombra que quedó de cada lado.
     pub inset: Inset,
+    /// Overlay a pantalla completa: la página quita el borde, los cantos
+    /// redondeados y la sombra —no hay afuera donde se vean— y abre con un
+    /// fundido en lugar de crecer desde el botón.
+    pub full: bool,
 }
 
 /// [`Placement::inset`] con nombre para la página.
@@ -411,6 +434,55 @@ pub fn place_applet_with_bleed(
     }
 }
 
+/// El overlay a pantalla completa del menú (vasak-desktop#210).
+///
+/// Anclado a los **cuatro bordes** y sin márgenes, así que cubre el monitor
+/// entero: con las dos anclas de cada eje puestas, `apply_geometry` deja el
+/// tamaño en manos del compositor (`-1`), que estira la superficie de borde a
+/// borde. El tamaño que se guarda es el del monitor, para el registro y las
+/// pruebas.
+///
+/// No cuelga de ningún botón —`origin` da igual, 0— y no lleva margen de sombra:
+/// `inset` es cero, así que la página llena la superficie y recibe el puntero
+/// entera (sin franja que recortar, no hay panel que quede debajo del margen,
+/// está debajo del overlay entero). Sin la animación que crece desde el botón:
+/// eso lo decide la página con el indicador `full`, no este cálculo.
+///
+/// # Decisión: el overlay tapa el panel
+///
+/// La superficie va en [`Layer::Overlay`], encima de la barra (que está en
+/// `Layer::Top`), y con `exclusive_zone = -1` ignora la franja que el panel
+/// reserva en vez de esquivarla. Es lo que se espera de un lanzador a pantalla
+/// completa: cubre todo, barra incluida. El foco y el cierre no cambian —la
+/// superficie toma el teclado (`KeyboardMode::OnDemand`), Escape y la pérdida de
+/// foco la cierran como a cualquier applet, y la tecla Super por D-Bus la
+/// conmuta—; lo que cambia es que no hay «afuera» en la pantalla donde hacer
+/// clic, así que se cierra con Escape, con Super o al lanzar una aplicación.
+pub fn place_fullscreen(monitor: (f64, f64)) -> Placement {
+    Placement {
+        anchors: (true, true, true, true),
+        margins: (0, 0, 0, 0),
+        size: monitor,
+        origin: 0.0,
+        inset: (0, 0, 0, 0),
+    }
+}
+
+/// El lugar con que abrir `spec` según el tamaño pedido.
+fn place_for(
+    sizing: AppletSizing,
+    anchor: Option<&AnchorRect>,
+    side: PanelPosition,
+    spec: &AppletSpec,
+    monitor: (f64, f64),
+) -> Placement {
+    match sizing {
+        AppletSizing::Default => place_applet(anchor, side, spec.size, monitor),
+        AppletSizing::Fixed(width, height) => place_applet(anchor, side, (width, height), monitor),
+        AppletSizing::Fullscreen => place_fullscreen(monitor),
+    }
+}
+
 /// Si un clic en el botón de `id` tiene que cerrar el applet en vez de abrirlo,
 /// porque ese mismo applet se acaba de empezar a cerrar por Escape o por foco.
 fn closes_a_recent_dismissal(
@@ -499,34 +571,40 @@ pub fn toggle_anchored_applet(
     app: &AppHandle,
     id: &str,
     anchor: Option<AnchorRect>,
+    sizing: AppletSizing,
 ) -> Result<(), String> {
     let spec = applet_spec(id).ok_or_else(|| format!("no hay ningún applet «{id}»"))?;
     let handle = app.clone();
 
-    app.run_on_main_thread(move || toggle_on_main(&handle, spec, anchor))
+    app.run_on_main_thread(move || toggle_on_main(&handle, spec, anchor, sizing))
         .map_err(|error| format!("no se pudo llegar al hilo principal: {error}"))
 }
 
 /// Abre el applet `id`, esté o no abierto: si ya estaba, lo vuelve a ubicar.
 ///
 /// Es lo que usa la bandeja, donde el mismo applet muestra el menú de otro
-/// icono cada vez. `size` reemplaza al del [`AppletSpec`] cuando el contenido
+/// icono cada vez. `sizing` reemplaza al del [`AppletSpec`] cuando el contenido
 /// se conoce antes de abrir: un menú de tres entradas no ocupa lo mismo que
 /// uno de veinte.
 pub fn open_anchored_applet(
     app: &AppHandle,
     id: &str,
     anchor: Option<AnchorRect>,
-    size: Option<(f64, f64)>,
+    sizing: AppletSizing,
 ) -> Result<(), String> {
     let spec = applet_spec(id).ok_or_else(|| format!("no hay ningún applet «{id}»"))?;
     let handle = app.clone();
 
-    app.run_on_main_thread(move || open_on_main(&handle, spec, anchor.as_ref(), size))
+    app.run_on_main_thread(move || open_on_main(&handle, spec, anchor.as_ref(), sizing))
         .map_err(|error| format!("no se pudo llegar al hilo principal: {error}"))
 }
 
-fn toggle_on_main(app: &AppHandle, spec: &'static AppletSpec, anchor: Option<AnchorRect>) {
+fn toggle_on_main(
+    app: &AppHandle,
+    spec: &'static AppletSpec,
+    anchor: Option<AnchorRect>,
+    sizing: AppletSizing,
+) {
     let label = spec.label();
     let (open, dismissed) = STATE.with(|state| {
         let state = state.borrow();
@@ -541,7 +619,7 @@ fn toggle_on_main(app: &AppHandle, spec: &'static AppletSpec, anchor: Option<Anc
         }
         // El clic que lo cerró fue este mismo: ver `REOPEN_GUARD`.
         ToggleAction::Ignore => {}
-        ToggleAction::Open => open_on_main(app, spec, anchor.as_ref(), None),
+        ToggleAction::Open => open_on_main(app, spec, anchor.as_ref(), sizing),
     }
 }
 
@@ -549,7 +627,7 @@ fn open_on_main(
     app: &AppHandle,
     spec: &'static AppletSpec,
     anchor: Option<&AnchorRect>,
-    size: Option<(f64, f64)>,
+    sizing: AppletSizing,
 ) {
     // Uno por vez: el anterior se va sin animación, porque el nuevo aparece en
     // el mismo instante y dos superficies fundiéndose a la vez se ven sucias.
@@ -571,7 +649,7 @@ fn open_on_main(
         primary.size().height as f64 / scale,
     );
     let side = panel_position::read();
-    let placement = place_applet(anchor, side, size.unwrap_or(spec.size), monitor);
+    let placement = place_for(sizing, anchor, side, spec, monitor);
     let label = spec.label();
 
     STATE.with(|state| {
@@ -585,6 +663,7 @@ fn open_on_main(
         side: side.key(),
         origin: placement.origin,
         inset: placement.inset.into(),
+        full: matches!(sizing, AppletSizing::Fullscreen),
     };
 
     if show_plan(layer_window_exists(&label)) == ShowPlan::Reuse {
@@ -628,8 +707,11 @@ fn applet_route(spec: &AppletSpec, shown: &AppletShown) -> String {
         top,
         bottom,
     } = shown.inset;
+    // `full` sólo cuando lo es: así la ruta de los applets de siempre no cambia
+    // (y sus pruebas tampoco), y el overlay la pide explícita.
+    let full = if shown.full { "&full=1" } else { "" };
     format!(
-        "index.html#/applets/{}?side={}&origin={}&inset={left},{right},{top},{bottom}",
+        "index.html#/applets/{}?side={}&origin={}&inset={left},{right},{top},{bottom}{full}",
         spec.route, shown.side, shown.origin
     )
 }
@@ -1186,11 +1268,99 @@ mod tests {
             side: "left",
             origin: 33.0,
             inset: (24, 24, 10, 24).into(),
+            full: false,
         };
         assert_eq!(
             applet_route(spec, &shown),
             "index.html#/applets/menu?side=left&origin=33&inset=24,24,10,24"
         );
+    }
+
+    #[test]
+    fn el_overlay_cubre_el_monitor_entero() {
+        // Anclado a los cuatro bordes, sin márgenes y del tamaño del monitor: así
+        // la superficie se estira de borde a borde (ver `apply_geometry`).
+        let placement = place_fullscreen(MONITOR);
+        assert_eq!(placement.anchors, (true, true, true, true));
+        assert_eq!(placement.margins, (0, 0, 0, 0));
+        assert_eq!(placement.size, MONITOR);
+        // Sin margen de sombra: la página llena la superficie y la recibe entera.
+        assert_eq!(placement.inset, (0, 0, 0, 0));
+        assert_eq!(placement.input_rect(), (0, 0, 1920, 1080));
+        assert_eq!(placement.visible_rect(MONITOR), (0.0, 0.0, 1920.0, 1080.0));
+        // No cuelga de ningún botón: el origen de la animación da igual.
+        assert_eq!(placement.origin, 0.0);
+    }
+
+    #[test]
+    fn el_overlay_tapa_el_panel_desde_cualquier_lado() {
+        // A diferencia del applet anclado, que deja la franja del panel (ver
+        // `nunca_tapa_el_panel`), el overlay llega al borde en los cuatro lados.
+        for monitor in [MONITOR, (1366.0, 768.0), (1024.0, 600.0)] {
+            let placement = place_fullscreen(monitor);
+            let (x, y, width, height) = placement.visible_rect(monitor);
+            assert_eq!((x, y), (0.0, 0.0), "{monitor:?}");
+            assert_eq!((width, height), monitor, "{monitor:?}");
+        }
+    }
+
+    #[test]
+    fn el_tamano_elige_el_lugar() {
+        let spec = applet_spec("menu").expect("el menú está en la tabla");
+        let anchor = button(PanelPosition::Top, 900.0);
+
+        // Default usa el del AppletSpec; Fixed el pedido; ambos cuelgan del botón.
+        let default = place_for(
+            AppletSizing::Default,
+            Some(&anchor),
+            PanelPosition::Top,
+            spec,
+            MONITOR,
+        );
+        assert_eq!(default.visible_rect(MONITOR).2, spec.size.0);
+        let fixed = place_for(
+            AppletSizing::Fixed(680.0, 460.0),
+            Some(&anchor),
+            PanelPosition::Top,
+            spec,
+            MONITOR,
+        );
+        assert_eq!(
+            (fixed.visible_rect(MONITOR).2, fixed.visible_rect(MONITOR).3),
+            (680.0, 460.0)
+        );
+
+        // Fullscreen ignora el botón y cubre el monitor.
+        let full = place_for(
+            AppletSizing::Fullscreen,
+            Some(&anchor),
+            PanelPosition::Top,
+            spec,
+            MONITOR,
+        );
+        assert_eq!(full, place_fullscreen(MONITOR));
+    }
+
+    #[test]
+    fn el_overlay_pide_full_en_la_ruta_y_los_demas_no() {
+        let spec = applet_spec("menu").expect("el menú está en la tabla");
+        let full = AppletShown {
+            applet: spec.id,
+            side: "top",
+            origin: 0.0,
+            inset: (0, 0, 0, 0).into(),
+            full: true,
+        };
+        assert_eq!(
+            applet_route(spec, &full),
+            "index.html#/applets/menu?side=top&origin=0&inset=0,0,0,0&full=1"
+        );
+        // Sin `full`, la ruta de los applets de siempre no cambia.
+        let normal = AppletShown {
+            full: false,
+            ..full
+        };
+        assert!(!applet_route(spec, &normal).contains("full"));
     }
 
     #[test]
