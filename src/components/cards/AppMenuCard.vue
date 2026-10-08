@@ -1,7 +1,12 @@
 <script lang="ts" setup>
+import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { DropdownMenuItem, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { openApp as sysOpenApp } from '@/services/app.service';
 import { dismissMenu } from '@/services/window.service';
+import { useMenuConfig } from '@/tools/composables/useMenuConfig';
+import { isFavorite } from '@/tools/menu-favorites';
 import { logError } from '@/utils/logger';
 
 /**
@@ -15,6 +20,9 @@ import { logError } from '@/utils/logger';
  *
  * El icono a la izquierda y el nombre al lado, en fila. El nombre se parte en
  * dos líneas en vez de cortarse: no hay otro lugar donde leerlo entero.
+ *
+ * El clic derecho fija o desfija la aplicación como favorita (vasak-desktop#203):
+ * es la única forma de administrar `menu.favorites`, sin pasar por el backend.
  */
 const props = defineProps({
 	app: {
@@ -22,6 +30,9 @@ const props = defineProps({
 		required: true,
 	},
 });
+
+const { t } = useI18n();
+const { menu, toggleFavoritePath } = useMenuConfig();
 
 const openApp = async () => {
 	try {
@@ -33,6 +44,41 @@ const openApp = async () => {
 		void dismissMenu();
 	}
 };
+
+const onContextMenu = async (event: MouseEvent) => {
+	event.preventDefault();
+	const pinned = isFavorite(menu.value.favorites, props.app.path);
+	try {
+		const chosen = await showContextMenu(
+			[
+				{
+					id: 'toggle-favorite',
+					label: pinned ? t('views.menu.favorites.unpin') : t('views.menu.favorites.pin'),
+					icon: pinned ? 'edit-delete' : 'emblem-favorite',
+				},
+			],
+			event
+		);
+		if (chosen?.id === 'toggle-favorite') await toggleFavoritePath(props.app.path);
+	} catch (error) {
+		logError('No se pudo abrir el menú de la aplicación:', error);
+	}
+};
+
+/**
+ * El clic derecho se engancha a mano sobre la raíz del ítem: `DropdownMenuItem`
+ * no declara el evento nativo y pasárselo por plantilla no pasa el tipado. Así
+ * el clic derecho sobre toda la fila fija o desfija la aplicación.
+ */
+const item = ref<{ $el?: HTMLElement } | null>(null);
+
+onMounted(() => {
+	item.value?.$el?.addEventListener('contextmenu', onContextMenu);
+});
+
+onBeforeUnmount(() => {
+	item.value?.$el?.removeEventListener('contextmenu', onContextMenu);
+});
 </script>
 
 <template>
@@ -41,7 +87,11 @@ const openApp = async () => {
        como era el menú antes de la migración. Puestos los dos en la ranura
        principal caían adentro de la columna del texto, y el nombre quedaba
        debajo del icono. -->
-  <DropdownMenuItem :title="app.description" class="w-full" @select="openApp">
+  <DropdownMenuItem
+    ref="item"
+    :title="app.description"
+    class="w-full"
+    @select="openApp">
     <template #prefix>
       <ThemeIcon :name="app.icon" :size="32" alt="" />
     </template>

@@ -79,7 +79,15 @@ beforeAll(async () => {
 	workdir = mkdtempSync(join(import.meta.dir, '..', 'src', '.menu-row-'));
 	writeFileSync(
 		join(workdir, 'doubles.ts'),
-		'export const openApp = async () => {};\nexport const dismissMenu = async () => {};\nexport const logError = () => {};\n'
+		[
+			'export const openApp = async () => {};',
+			'export const dismissMenu = async () => {};',
+			'export const logError = () => {};',
+			// Favoritos (vasak-desktop#203): el menú contextual de la fila.
+			'export const useMenuConfig = () => ({ menu: { value: { favorites: [] } }, toggleFavoritePath: async () => {}, setMenuConfig: async () => {} });',
+			'export const isFavorite = () => false;',
+			'',
+		].join('\n')
 	);
 	const source = readFileSync(SOURCE, 'utf8');
 	current = await render(source, 'current');

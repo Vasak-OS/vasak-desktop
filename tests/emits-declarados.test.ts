@@ -49,13 +49,16 @@ describe('los eventos van declarados', () => {
 	});
 
 	test('los botones de sesión del menú escuchan el `click` del botón de la librería', () => {
-		// Si el menú dejara de pasar el manejador, los cinco botones quedarían
-		// mudos sin que nada avise.
-		const fuente = leer('src/views/MenuView.vue');
+		// Los botones se mudaron a `MenuSessionActions`, que comparten todas las
+		// variantes del menú (vasak-desktop#203). Si dejara de pasar el
+		// manejador, los cinco botones quedarían mudos sin que nada avise.
+		const fuente = leer('src/components/areas/menu/MenuSessionActions.vue');
 		const boton = fuente.slice(fuente.indexOf('<ActionButton'), fuente.indexOf('/>', fuente.indexOf('<ActionButton')));
 
-		expect(boton).toMatch(/v-for="action in sessionActions"/);
+		expect(boton).toMatch(/v-for="action in actions"/);
 		expect(boton).toMatch(/@click="action\.handler"/);
 		expect(fuente).not.toMatch(/SessionButton/);
+		// Y la vista le pasa las acciones del controlador.
+		expect(leer('src/views/MenuView.vue')).toMatch(/<MenuSessionActions[^>]*:actions="sessionActions"/);
 	});
 });
