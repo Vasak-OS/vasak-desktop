@@ -83,7 +83,7 @@ describe('las dos maneras de abrir el menú llegan al mismo lugar', () => {
 	});
 
 	test('y toggle_menu es el applet anclado `menu`, que avisa applet-shown al volver', () => {
-		expect(rust('windows_apps/menu.rs')).toMatch(/toggle_anchored_applet\(app, MENU_APPLET, Some\(anchor\)\)/);
+		expect(rust('windows_apps/menu.rs')).toMatch(/toggle_anchored_applet\(app, MENU_APPLET, Some\(anchor\), size\)/);
 		expect(rust('windows_apps/anchored_applet.rs')).toContain('emit("applet-shown"');
 	});
 });

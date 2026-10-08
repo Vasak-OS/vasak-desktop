@@ -15,7 +15,9 @@ pub fn toggle_applet(
     applet: String,
     anchor: Option<AnchorRect>,
 ) -> Result<(), String> {
-    toggle_anchored_applet(&app, &applet, anchor)
+    // Sin tamaño propio: cada applet usa el de su `AppletSpec`. El menú pasa el
+    // suyo por `toggle_menu`, según `menu.displayMode`.
+    toggle_anchored_applet(&app, &applet, anchor, None)
 }
 
 /// Cierra con su animación el applet `applet`, si es el que está abierto.

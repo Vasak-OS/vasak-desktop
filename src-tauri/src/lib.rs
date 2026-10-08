@@ -58,6 +58,7 @@ fn default_locale() -> String {
 mod desktop_watcher;
 mod gtk_utils;
 mod inotify_rafaga;
+mod menu_display;
 mod menu_manager;
 mod menu_watcher;
 mod monitor_manager;

@@ -122,7 +122,12 @@ pub fn toggle_menu(app: &AppHandle, anchor: Option<AnchorRect>) -> Result<(), St
         remember_menu_button(MenuButton { side, rect });
     }
     let anchor = resolve_menu_anchor(anchor, side, last_menu_button());
-    toggle_anchored_applet(app, MENU_APPLET, Some(anchor))
+    // El tamaño con que abre el menú sale de `menu.displayMode` (vasak-desktop#210):
+    // `normal` usa el del `AppletSpec`, `compact` uno chico, `full` uno grande
+    // que el cálculo de ubicación acota al monitor (el overlay propio lo agrega
+    // el backend, ver `menu_display::size_override`).
+    let size = crate::menu_display::size_override(crate::menu_display::read());
+    toggle_anchored_applet(app, MENU_APPLET, Some(anchor), size)
 }
 
 #[cfg(test)]

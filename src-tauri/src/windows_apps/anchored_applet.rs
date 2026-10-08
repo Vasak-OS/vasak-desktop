@@ -499,11 +499,12 @@ pub fn toggle_anchored_applet(
     app: &AppHandle,
     id: &str,
     anchor: Option<AnchorRect>,
+    size: Option<(f64, f64)>,
 ) -> Result<(), String> {
     let spec = applet_spec(id).ok_or_else(|| format!("no hay ningún applet «{id}»"))?;
     let handle = app.clone();
 
-    app.run_on_main_thread(move || toggle_on_main(&handle, spec, anchor))
+    app.run_on_main_thread(move || toggle_on_main(&handle, spec, anchor, size))
         .map_err(|error| format!("no se pudo llegar al hilo principal: {error}"))
 }
 
@@ -526,7 +527,12 @@ pub fn open_anchored_applet(
         .map_err(|error| format!("no se pudo llegar al hilo principal: {error}"))
 }
 
-fn toggle_on_main(app: &AppHandle, spec: &'static AppletSpec, anchor: Option<AnchorRect>) {
+fn toggle_on_main(
+    app: &AppHandle,
+    spec: &'static AppletSpec,
+    anchor: Option<AnchorRect>,
+    size: Option<(f64, f64)>,
+) {
     let label = spec.label();
     let (open, dismissed) = STATE.with(|state| {
         let state = state.borrow();
@@ -541,7 +547,7 @@ fn toggle_on_main(app: &AppHandle, spec: &'static AppletSpec, anchor: Option<Anc
         }
         // El clic que lo cerró fue este mismo: ver `REOPEN_GUARD`.
         ToggleAction::Ignore => {}
-        ToggleAction::Open => open_on_main(app, spec, anchor.as_ref(), None),
+        ToggleAction::Open => open_on_main(app, spec, anchor.as_ref(), size),
     }
 }
 
