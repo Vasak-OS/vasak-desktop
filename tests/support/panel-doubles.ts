@@ -33,6 +33,8 @@ export const panel = {
 	network: ref<NetworkInfo>(blankNetwork()),
 	volume: ref({ current: 50, min: 0, max: 100, is_muted: false }),
 	vertical: ref(false),
+	/** La densidad elegida del panel: distribuida o compacta (`panel-appearance.ts`). */
+	panelLayout: ref<'distributed' | 'compact'>('distributed'),
 	failSwitch: false,
 	handlers: new Map<string, Handler>(),
 	calls: [] as Array<{ name: string; args: unknown[] }>,
@@ -45,6 +47,7 @@ export const panel = {
 		this.network.value = blankNetwork();
 		this.volume.value = { current: 50, min: 0, max: 100, is_muted: false };
 		this.vertical.value = false;
+		this.panelLayout.value = 'distributed';
 		this.failSwitch = false;
 		density.value = 'full';
 		this.handlers.clear();
@@ -91,7 +94,7 @@ export function usePanelDensity() {
 }
 
 export function usePanelConfig() {
-	return { vertical: panel.vertical };
+	return { vertical: panel.vertical, layout: panel.panelLayout };
 }
 
 export function useSharedEvent(name: string, handler: Handler) {

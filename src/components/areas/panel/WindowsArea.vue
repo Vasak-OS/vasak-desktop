@@ -23,7 +23,11 @@ interface WindowDelta {
 
 // De costado las ventanas se apilan, y lo que sobra scrollea a lo largo de la
 // barra en vez de desbordarse fuera de la pantalla.
-const { vertical } = usePanelConfig();
+//
+// La densidad elegida decide además si la píldora reserva su ancho (compacta,
+// vasak-desktop#213) o si cede a las vecinas (distribuida, #161): ver la nota
+// del `<template>`.
+const { vertical, layout } = usePanelConfig();
 const { t } = useI18n();
 
 const windows = ref<WindowInfo[]>([]);
@@ -95,10 +99,19 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
        ancho (decisión del usuario, 03/10/2026): son sólo iconos, y lo que no
        entra se desplaza adentro de la píldora.
 
-       Acotada para no pisar a las vecinas (vasak-desktop#161): en horizontal un
-       ancho máximo (`max-w-[20rem]`) y, además, `min-w-0` sin `shrink-0`, así
-       cuando falta lugar la fila cede y lo que no entra se desplaza adentro
-       —`overflow` en el eje de la barra— en vez de empujar al resto; de costado
+       En densidad **distribuida** se acota para no pisar a las vecinas
+       (vasak-desktop#161): en horizontal, `min-w-0` sin `shrink-0`, así cuando
+       falta lugar la fila cede y lo que no entra se desplaza adentro —`overflow`
+       en el eje de la barra— en vez de empujar al resto. La barra, de borde a
+       borde, le reparte el hueco con pistas `1fr`, así que con lugar se ven
+       todas igual.
+
+       En densidad **compacta** la barra se encoge a su contenido (`w-fit`), y
+       ahí la píldora se quedaba en su mínimo —una sola ventana con scroll
+       adentro— aunque sobrara lugar: la barra no le reservaba ancho. Por eso en
+       compacto lleva `shrink-0` (vasak-desktop#213): reserva su ancho de
+       contenido y se ven todas; cuando no entran, el `max-w-full` de la píldora
+       la acota y lo que sobra se desplaza adentro —como siempre—. De costado
        toma el alto que sobra (`flex-1`) y desplaza hacia abajo. La barra de
        desplazamiento va oculta (`.windows-pill`, abajo): se ve una píldora
        limpia, se arrastra igual con la rueda o el gesto. -->
@@ -110,9 +123,12 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
     role="group"
     :accessible-label="t('views.panel.windowsAlt')"
     class="windows-pill min-w-0"
-    :class="vertical
-      ? 'min-h-0 flex-1 py-1 overflow-y-auto overflow-x-hidden'
-      : 'max-w-[20rem] px-1 overflow-x-auto overflow-y-hidden'"
+    :class="[
+      vertical
+        ? 'min-h-0 flex-1 py-1 overflow-y-auto overflow-x-hidden'
+        : 'max-w-[20rem] px-1 overflow-x-auto overflow-y-hidden',
+      !vertical && layout === 'compact' ? 'shrink-0' : '',
+    ]"
     data-windows-pill
   >
     <TransitionGroup
