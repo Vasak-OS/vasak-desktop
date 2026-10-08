@@ -6,11 +6,14 @@
          misma decisión que en los iconos de la bandeja: que no se resalte lo que
          no se puede tocar. La cara es `Avatar` de la librería (2.2.0): la foto
          recortada en círculo, o las iniciales si no hay foto o no carga. -->
-    <!-- Un contenedor: angosto (la ventana del centro por debajo de su ancho de
-         siempre), la hora y la fecha bajan debajo del nombre en vez de cortarse
-         contra el borde. En su ancho habitual se ve como siempre. -->
+    <!-- Un contenedor. En la ventana del centro (350 px → ~326 px de caja) va
+         apilado: la foto y el nombre arriba, la hora y la fecha debajo. El modo
+         fila —hora a la derecha— recién entra cuando hay ancho de verdad para
+         que el nombre y la fecha completa quepan en un renglón (~26 rem); por
+         debajo de eso se apila, que es lo que evita que un nombre caiga a dos
+         líneas apretado contra la fecha. -->
     <div
-      class="flex w-full min-w-0 flex-col gap-3 rounded-corner-l border border-ui-line bg-ui-surface/70 p-4 transition-[opacity,translate] duration-300 ease-ui-out @[19rem]:flex-row @[19rem]:items-center @[19rem]:gap-4"
+      class="flex w-full min-w-0 flex-col gap-3 rounded-corner-l border border-ui-line bg-ui-surface/70 p-4 transition-[opacity,translate] duration-300 ease-ui-out @[26rem]:flex-row @[26rem]:items-center @[26rem]:gap-4"
       :class="{
         'opacity-0 translate-y-4': !isLoaded,
         'opacity-100 translate-y-0': isLoaded,
@@ -19,18 +22,19 @@
     >
       <div class="flex min-w-0 flex-1 items-center gap-4">
         <Avatar :src="userInfo.avatar_data || null" :name="userInfo.full_name" size="xl" />
-        <!-- El nombre se parte entre palabras, nunca adentro de una: la columna
-             no baja de su palabra más larga, y la de la hora se acomoda. -->
-        <div class="flex flex-1 flex-col gap-1">
-          <h2 class="text-lg font-semibold">
+        <!-- El nombre en una sola línea: si no entra se recorta con «…» (el
+             nombre entero queda en el globo), en vez de partirse en dos
+             renglones. Apilado tiene ancho de sobra para la mayoría. -->
+        <div class="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 class="truncate text-lg font-semibold" :title="userInfo.full_name">
             {{ userInfo.full_name }}
           </h2>
-          <p class="text-label-m text-tx-muted">
+          <p class="truncate text-label-m text-tx-muted">
             {{ userInfo.username }}
           </p>
         </div>
       </div>
-      <div class="min-w-0 space-y-1 @[19rem]:text-right" data-user-clock>
+      <div class="min-w-0 space-y-1 @[26rem]:text-right" data-user-clock>
         <div
           class="text-2xl font-medium tabular-nums text-primary"
           :class="{ 'animate-pulse': isTimeUpdating }"
@@ -48,7 +52,7 @@
           icon-right
           variant="ghost"
           size="sm"
-          custom-class="-ms-2 @[19rem]:ms-0 @[19rem]:-me-2"
+          custom-class="-ms-2 @[26rem]:ms-0 @[26rem]:-me-2"
           :aria-label="openLabel"
           :title="openLabel"
           :aria-expanded="calendarOpen"
