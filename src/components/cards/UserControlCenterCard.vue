@@ -34,7 +34,14 @@
           </p>
         </div>
       </div>
-      <div class="min-w-0 space-y-1 @[26rem]:text-right" data-user-clock>
+      <!-- La hora y la fecha van en la misma fila —la hora grande, la fecha a su
+           derecha— y no apiladas (bug #206). Si no entran al lado, la fecha baja
+           con gracia (`flex-wrap`). En modo fila de la tarjeta se empujan al
+           borde derecho. -->
+      <div
+        class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 @[26rem]:justify-end"
+        data-user-clock
+      >
         <div
           class="text-2xl font-medium tabular-nums text-primary"
           :class="{ 'animate-pulse': isTimeUpdating }"
@@ -52,7 +59,7 @@
           icon-right
           variant="ghost"
           size="sm"
-          custom-class="-ms-2 @[26rem]:ms-0 @[26rem]:-me-2"
+          custom-class="-me-2"
           :aria-label="openLabel"
           :title="openLabel"
           :aria-expanded="calendarOpen"
