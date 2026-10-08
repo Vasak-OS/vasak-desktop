@@ -38,9 +38,9 @@ describe('el menú es un applet', () => {
 
 describe('lanzar una aplicación esconde el menú', () => {
 	for (const file of [
-		['components', 'buttons', 'AppMenuButton.vue'],
-		// La fila (`AppMenuCard`) y el mosaico (`AppTile`) lanzan por
-		// `useAppLauncher`, que es donde vive ahora el `dismissMenu` (vasak-desktop#203).
+		// La fila, el mosaico y el resultado de búsqueda lanzan por
+		// `useAppLauncher`, que es donde vive ahora el `dismissMenu`
+		// (vasak-desktop#203, #206).
 		['tools', 'composables', 'useAppLauncher.ts'],
 		['views', 'MenuView.vue'],
 	]) {
