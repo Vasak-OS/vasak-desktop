@@ -34,7 +34,10 @@ const { t } = useI18n();
 const favoriteApps = computed(() =>
 	resolveFavorites(allApps(menuData.value), props.menu.favorites)
 );
-const showFavorites = computed(() => props.menu.showFavorites && favoriteApps.value.length > 0);
+// Con favoritos activados pero vacíos se muestra igual: `FavoritesArea` dibuja su
+// estado vacío, que explica cómo fijar aplicaciones (coherente con la variante
+// de favoritos). Apagarlo por `length > 0` escondía esa guía (CodeRabbit, #204).
+const showFavorites = computed(() => props.menu.showFavorites);
 const showWidget = computed(() => props.menu.widget !== 'none');
 /** El tipo del widget, ya sin `'none'` (sólo se usa cuando hay widget). */
 const widgetType = computed(() => props.menu.widget as WidgetType);
