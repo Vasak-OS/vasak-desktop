@@ -25,6 +25,18 @@ describe('MenuView es un switch de esqueletos', () => {
 		expect(view).toMatch(/compact:\s*CompactMenu/);
 	});
 
+	test('las cinco variantes están mapeadas a su esqueleto', () => {
+		for (const [variant, component] of [
+			['compact', 'CompactMenu'],
+			['classic', 'ClassicMenu'],
+			['grid', 'GridMenu'],
+			['favorites', 'FavoritesMenu'],
+			['tiles', 'TilesMenu'],
+		]) {
+			expect(view).toMatch(new RegExp(`${variant}:\\s*${component}`));
+		}
+	});
+
 	test('la variante sin esqueleto propio cae al compacto', () => {
 		expect(view).toMatch(/LAYOUTS\[menu\.value\.variant\]\s*\?\?\s*CompactMenu/);
 	});
@@ -104,6 +116,58 @@ describe('las piezas nuevas respetan el diseño', () => {
 		expect(launcher).toMatch(/showContextMenu/);
 		expect(launcher).toMatch(/toggleFavoritePath/);
 		expect(launcher).toMatch(/favorites\.pin|favorites\.unpin/);
+	});
+});
+
+describe('las cuatro variantes nuevas', () => {
+	const layout = (name: string) =>
+		read(`src/components/areas/menu/layouts/${name}.vue`);
+
+	test('reciben el controlador y la config, como el compacto', () => {
+		for (const name of ['ClassicMenu', 'GridMenu', 'FavoritesMenu', 'TilesMenu']) {
+			expect(layout(name)).toMatch(/defineProps<\{\s*controller: MenuController;\s*menu: MenuConfig\s*\}>/);
+		}
+	});
+
+	test('son contenedores responsive, sin breakpoints de viewport', () => {
+		// La guardia general ya prohíbe `sm:`/`md:`; acá se exige que adapten por
+		// contenedor (`@container`) para la regla de una columna en angosto.
+		for (const name of ['ClassicMenu', 'GridMenu', 'FavoritesMenu', 'TilesMenu']) {
+			expect(layout(name)).toContain('@container');
+		}
+	});
+
+	test('la clásica usa la barra de categorías y reutiliza la lista de apps', () => {
+		const classic = layout('ClassicMenu');
+		expect(classic).toMatch(/<ListRow[\s\S]*role="option"/);
+		expect(classic).toMatch(/<MenuArea/);
+	});
+
+	test('la grilla pagina los mosaicos y marca la categoría elegida', () => {
+		const grid = layout('GridMenu');
+		expect(grid).toMatch(/<PageDots/);
+		expect(grid).toMatch(/<AppTile/);
+		expect(grid).toMatch(/v-model:categorySelected="categorySelected"/);
+	});
+
+	test('favoritos muestra la cuadrícula de favoritos y los lugares', () => {
+		const fav = layout('FavoritesMenu');
+		expect(fav).toMatch(/<FavoritesArea/);
+		expect(fav).toMatch(/<PlacesColumn/);
+	});
+
+	test('mosaicos agrupa por categoría con los mosaicos grandes', () => {
+		const tiles = layout('TilesMenu');
+		expect(tiles).toMatch(/<SectionHeading/);
+		expect(tiles).toMatch(/<AppTile[^>]*size="lg"/);
+	});
+
+	test('AppTile lanza y fija/desfija con el clic derecho', () => {
+		const tile = read('src/components/areas/menu/AppTile.vue');
+		// Lanzar y fijar/desfijar salen del composable compartido (sin duplicar).
+		expect(tile).toMatch(/useAppLauncher/);
+		expect(tile).toMatch(/launch\(app\)/);
+		expect(tile).toMatch(/toggleFavoriteFor/);
 	});
 });
 

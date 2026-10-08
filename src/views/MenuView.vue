@@ -6,7 +6,11 @@ import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { EmptyState, SearchField } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
+import ClassicMenu from '@/components/areas/menu/layouts/ClassicMenu.vue';
 import CompactMenu from '@/components/areas/menu/layouts/CompactMenu.vue';
+import FavoritesMenu from '@/components/areas/menu/layouts/FavoritesMenu.vue';
+import GridMenu from '@/components/areas/menu/layouts/GridMenu.vue';
+import TilesMenu from '@/components/areas/menu/layouts/TilesMenu.vue';
 import MenuHero from '@/components/areas/menu/MenuHero.vue';
 import MenuSessionActions from '@/components/areas/menu/MenuSessionActions.vue';
 import UserMenuCard from '@/components/cards/UserMenuCard.vue';
@@ -56,11 +60,15 @@ const controller: MenuController = useMenuController();
 const { filter, selectedIndex, isMenuEmpty, appsFiltred, sessionActions } = controller;
 
 /**
- * Qué componente dibuja la vista ociosa de cada variante. Las que todavía no
- * tienen esqueleto propio caen al compacto, que es el de siempre.
+ * Qué componente dibuja la vista ociosa de cada variante. Un valor desconocido
+ * cae al compacto, que es el de siempre.
  */
-const LAYOUTS: Partial<Record<MenuVariant, typeof CompactMenu>> = {
+const LAYOUTS: Record<MenuVariant, typeof CompactMenu> = {
 	compact: CompactMenu,
+	classic: ClassicMenu,
+	grid: GridMenu,
+	favorites: FavoritesMenu,
+	tiles: TilesMenu,
 };
 const layoutComponent = computed(() => LAYOUTS[menu.value.variant] ?? CompactMenu);
 
