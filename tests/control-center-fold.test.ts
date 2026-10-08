@@ -294,8 +294,16 @@ describe('la vista', () => {
 		expect(area).toMatch(/class="flex min-h-0 flex-1 flex-col gap-1\.5 overflow-y-auto/);
 	});
 
-	test('en una pantalla baja se desplaza el bloque de arriba, nunca se pisan', () => {
-		expect(VIEW).toMatch(/class="flex min-h-0 flex-1 flex-col w-full gap-2 overflow-y-auto p-2" data-top/);
+	test('la cabecera queda fija y sólo se desplaza lo de abajo', () => {
+		// La cabecera —usuario, sesión, teléfono— es `shrink-0`: no se mueve
+		// aunque la grilla o las notificaciones no entren (vasak-desktop#201).
+		expect(VIEW).toMatch(/class="flex shrink-0 flex-col gap-2" data-header/);
+		// Lo que se desliza es el bloque de abajo, no el contenedor entero.
+		expect(VIEW).toMatch(/class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto" data-scroll/);
+		expect(VIEW).toMatch(/class="flex min-h-0 flex-1 flex-col w-full gap-2 p-2" data-top/);
+		// La tarjeta de usuario vive en la cabecera fija, no en lo que se desliza.
+		const header = VIEW.slice(VIEW.indexOf('data-header'), VIEW.indexOf('data-scroll'));
+		expect(header).toContain('<UserControlCenterCard');
 	});
 
 	test('B: la línea resumen reabre las notificaciones, que nunca desaparecen', () => {
@@ -352,9 +360,19 @@ describe('la ficha de red se puede abrir y cerrar sin dejar nada corriendo', () 
 });
 
 describe('la tarjeta del usuario en un centro angosto', () => {
-	test('la hora baja debajo del nombre por consulta de contenedor, sin cortarse', () => {
+	test('en el centro (350 px) se apila: la hora baja debajo del nombre', () => {
 		const card = read('src/components/cards/UserControlCenterCard.vue');
 		expect(card).toContain('<div class="@container w-full min-w-0">');
-		expect(card).toMatch(/flex-col[^"]*@\[19rem\]:flex-row/);
+		// El modo fila recién entra a ~26 rem: por debajo —el centro mide 350 px,
+		// ~326 px de caja— se apila, así el nombre no compite con la fecha.
+		expect(card).toMatch(/flex-col[^"]*@\[26rem\]:flex-row/);
+		expect(card).not.toContain('@[19rem]:flex-row');
+	});
+
+	test('el nombre va en una sola línea: se recorta, no se parte en dos', () => {
+		const card = read('src/components/cards/UserControlCenterCard.vue');
+		// El `<h2>` del nombre es de una línea (`truncate`) con el nombre entero
+		// en el globo; antes se partía entre palabras a dos renglones.
+		expect(card).toMatch(/<h2 class="truncate[^"]*"[^>]*:title="userInfo\.full_name"/);
 	});
 });
