@@ -233,12 +233,20 @@ describe('la barra de ventanas', () => {
 		// #161).
 		panel.panelLayout.value = 'compact';
 		const compact = await render(Windows);
-		expect(compact.find('[data-windows-pill]').classes()).toContain('shrink-0');
+		const compactPill = compact.find('[data-windows-pill]');
+		expect(compactPill.classes()).toContain('shrink-0');
+		// Sin `max-w-[20rem]` en compacto: el tope es el `max-w-full` de la
+		// `PanelPill`, para que use el ancho que la barra le dé (hilo de CodeRabbit
+		// en #213). Con el tope fijo, con muchas ventanas quedaban en el scroll
+		// aunque sobrara lugar.
+		expect(compactPill.classes()).not.toContain('max-w-[20rem]');
 		compact.unmount();
 
 		panel.panelLayout.value = 'distributed';
 		const distributed = await render(Windows);
-		expect(distributed.find('[data-windows-pill]').classes()).not.toContain('shrink-0');
+		const distributedPill = distributed.find('[data-windows-pill]');
+		expect(distributedPill.classes()).not.toContain('shrink-0');
+		expect(distributedPill.classes()).toContain('max-w-[20rem]');
 		distributed.unmount();
 	});
 

@@ -100,21 +100,25 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
        entra se desplaza adentro de la píldora.
 
        En densidad **distribuida** se acota para no pisar a las vecinas
-       (vasak-desktop#161): en horizontal, `min-w-0` sin `shrink-0`, así cuando
-       falta lugar la fila cede y lo que no entra se desplaza adentro —`overflow`
-       en el eje de la barra— en vez de empujar al resto. La barra, de borde a
-       borde, le reparte el hueco con pistas `1fr`, así que con lugar se ven
-       todas igual.
+       (vasak-desktop#161): en horizontal, un ancho máximo (`max-w-[20rem]`) y
+       `min-w-0` sin `shrink-0`, así cuando falta lugar la fila cede y lo que no
+       entra se desplaza adentro —`overflow` en el eje de la barra— en vez de
+       empujar al resto. La barra, de borde a borde, le reparte el hueco con
+       pistas `1fr`, así que con lugar se ven todas igual.
 
        En densidad **compacta** la barra se encoge a su contenido (`w-fit`), y
        ahí la píldora se quedaba en su mínimo —una sola ventana con scroll
        adentro— aunque sobrara lugar: la barra no le reservaba ancho. Por eso en
-       compacto lleva `shrink-0` (vasak-desktop#213): reserva su ancho de
-       contenido y se ven todas; cuando no entran, el `max-w-full` de la píldora
-       la acota y lo que sobra se desplaza adentro —como siempre—. De costado
-       toma el alto que sobra (`flex-1`) y desplaza hacia abajo. La barra de
-       desplazamiento va oculta (`.windows-pill`, abajo): se ve una píldora
-       limpia, se arrastra igual con la rueda o el gesto. -->
+       compacto lleva `shrink-0` (vasak-desktop#213) **y no** el `max-w-[20rem]`:
+       reserva su ancho de contenido y usa el que la barra le dé, así que con
+       lugar se ven todas. El tope en compacto es el `max-w-full` de la propia
+       `PanelPill` —el 100 % de su hueco en la barra—: cuando no entran, acota y
+       desplaza adentro lo que sobra. Ese tope relativo es el que mantiene sano
+       el ancho angosto (240/360 px): sin él, la barra centrada recortaría la
+       píldora sin dejar desplazar (vasak-desktop#213, hilo de CodeRabbit en
+       #213). De costado toma el alto que sobra (`flex-1`) y desplaza hacia
+       abajo. La barra de desplazamiento va oculta (`.windows-pill`, abajo): se
+       ve una píldora limpia, se arrastra igual con la rueda o el gesto. -->
   <PanelPill
     v-if="windows.length > 0"
     :interactive="false"
@@ -126,7 +130,8 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
     :class="[
       vertical
         ? 'min-h-0 flex-1 py-1 overflow-y-auto overflow-x-hidden'
-        : 'max-w-[20rem] px-1 overflow-x-auto overflow-y-hidden',
+        : 'px-1 overflow-x-auto overflow-y-hidden',
+      !vertical && layout !== 'compact' ? 'max-w-[20rem]' : '',
       !vertical && layout === 'compact' ? 'shrink-0' : '',
     ]"
     data-windows-pill
