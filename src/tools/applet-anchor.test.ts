@@ -5,9 +5,11 @@ import {
 	anchorFromQuery,
 	anchorOf,
 	appletTransformOrigin,
+	fullFromQuery,
 	insetFromQuery,
 	insetStyle,
 	NO_INSET,
+	toFull,
 	toInset,
 } from './applet-anchor';
 import { applyAppletChanged, openAppletForTests } from './composables/useOpenApplet';
@@ -108,6 +110,29 @@ describe('el margen de sombra', () => {
 	});
 });
 
+describe('el overlay a pantalla completa', () => {
+	test('la ruta lo pide con `full=1`, y sin eso no es overlay', () => {
+		expect(fullFromQuery({ side: 'top', origin: '0', inset: '0,0,0,0', full: '1' })).toBe(true);
+		expect(fullFromQuery({ side: 'top', origin: '0', inset: '0,0,0,0' })).toBe(false);
+		// El applet anclado de siempre: nunca es overlay.
+		expect(fullFromQuery({ side: 'top', origin: '23' })).toBe(false);
+	});
+
+	test('el evento lo trae como booleano, y cualquier otra cosa es `false`', () => {
+		expect(toFull(true)).toBe(true);
+		expect(toFull('1')).toBe(true);
+		expect(toFull('true')).toBe(true);
+		expect(toFull(false)).toBe(false);
+		expect(toFull(undefined)).toBe(false);
+		expect(toFull('0')).toBe(false);
+		expect(toFull(0)).toBe(false);
+	});
+
+	test('si viene repetido en la ruta, vale el primero', () => {
+		expect(fullFromQuery({ full: ['1', '0'] })).toBe(true);
+	});
+});
+
 describe('el rectángulo del botón', () => {
 	const rect = { x: 10, y: 2, width: 30, height: 34 };
 	const element = { getBoundingClientRect: () => ({ ...rect, top: 2, toJSON: () => null }) };
@@ -160,7 +185,8 @@ describe('AppletPopover', () => {
 	});
 
 	test('la sombra sale de un token, nunca de un color escrito', () => {
-		expect(popover).toMatch(/'applet-popover [^']*\bshadow-surface-l\b/);
+		// En el applet anclado; el overlay a pantalla completa no lleva sombra.
+		expect(popover).toContain('shadow-surface-l');
 		expect(popover).not.toMatch(/rgba?\(|#[0-9a-f]{3,8}\b/i);
 	});
 
@@ -177,14 +203,29 @@ describe('AppletPopover', () => {
 	});
 
 	test('translúcido, del canto fino y con el radio de lo que flota', () => {
-		const classes = popover.match(/'applet-popover [^']*'/)?.[0] ?? '';
+		const base = popover.match(/'applet-popover [^']*'/)?.[0] ?? '';
 		// `ui-shell` y no `ui-float`: el desenfoque lo pone Wayfire detrás, y
-		// una superficie opaca lo tapa (corrección del 02/10/2026).
-		expect(classes).toContain('bg-ui-shell');
-		expect(classes).not.toContain('bg-ui-float');
-		expect(classes).toContain('border-ui-line');
-		expect(classes).toContain('rounded-corner-xl');
+		// una superficie opaca lo tapa (corrección del 02/10/2026). Es del fondo,
+		// que comparten el applet anclado y el overlay.
+		expect(base).toContain('bg-ui-shell');
+		expect(base).not.toContain('bg-ui-float');
 		expect(popover).not.toContain('backdrop-blur');
+		// El canto fino y el radio son del applet anclado, no del overlay: viven
+		// en la rama que elige `full`.
+		expect(popover).toMatch(/full\s*\?[\s\S]*rounded-corner-xl border border-ui-line/);
+	});
+
+	test('el overlay a pantalla completa no lleva borde, radio ni sombra', () => {
+		// No hay afuera donde se vean (vasak-desktop#210): la rama de `full` es la
+		// que se queda sin la forma de lo que flota.
+		expect(popover).toContain('full.value = toFull(payload.full)');
+		expect(popover).toContain('fullFromQuery(route.query)');
+		expect(popover).toMatch(/full\s*\?\s*'applet-popover-full'/);
+	});
+
+	test('el overlay entra con un fundido, sin crecer desde el botón', () => {
+		expect(popover).toMatch(/\.applet-popover-full\.applet-popover-enter\s*{[\s\S]*fade-in/);
+		expect(popover).toMatch(/\.applet-popover-full\.applet-popover-leave\s*{[\s\S]*fade-out/);
 	});
 
 	test('entra con opacidad y escala desde 0.96, en 200 ms y frenando', () => {

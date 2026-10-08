@@ -46,6 +46,25 @@ export const NO_INSET: AppletInset = { left: 0, right: 0, top: 0, bottom: 0 };
 export interface AppletShownEvent extends AppletAnchor {
 	applet: string;
 	inset?: unknown;
+	full?: unknown;
+}
+
+/**
+ * Si el applet es un overlay a pantalla completa (vasak-desktop#210).
+ *
+ * El backend lo manda como un booleano en `applet-shown` y como `full=1` en la
+ * ruta de la primera apertura; cualquier otra cosa es `false`. En ese modo la
+ * página quita el borde, los cantos redondeados y la sombra —no hay afuera donde
+ * se vean— y abre con un fundido en lugar de crecer desde el botón.
+ */
+export function toFull(value: unknown): boolean {
+	return value === true || value === '1' || value === 'true';
+}
+
+/** Si la ruta de la primera apertura pide el overlay: `full=1`. */
+export function fullFromQuery(query: Record<string, unknown>): boolean {
+	const raw = Array.isArray(query.full) ? query.full[0] : query.full;
+	return toFull(raw);
 }
 
 const INSET_EDGES = ['left', 'right', 'top', 'bottom'] as const;

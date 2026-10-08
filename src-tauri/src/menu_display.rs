@@ -12,13 +12,14 @@
 //! `read_config` del gestor es `async` y esto corre al abrir el menú, en el hilo
 //! de GTK), reusando `config_path` de `panel_position`.
 //!
-//! El tamaño de la superficie lo decide [`size_override`], que el conmutador del
-//! menú le pasa al applet. `full` todavía **no** tiene su anclaje de overlay
-//! propio (los cuatro bordes, sin márgenes, sin la animación desde el botón):
-//! por ahora cae en un tamaño grande que el cálculo de ubicación acota al
-//! monitor. El overlay de verdad lo agrega el backend (ver el TODO).
+//! Con qué tamaño y anclaje abre lo decide [`applet_sizing`], que el conmutador
+//! del menú le pasa al applet: `normal` cuelga del botón con el tamaño del
+//! `AppletSpec`, `compact` con uno chico, y `full` es un overlay a pantalla
+//! completa —los cuatro bordes, sin márgenes, sin la animación que crece desde el
+//! botón—, que resuelve `anchored_applet::place_fullscreen`.
 
 use crate::panel_position::config_path;
+use crate::windows_apps::anchored_applet::AppletSizing;
 
 /// Con qué tamaño abre el menú.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -47,11 +48,6 @@ impl MenuDisplayMode {
 /// Ancho y alto del menú compacto, en píxeles lógicos.
 pub const COMPACT_SIZE: (f64, f64) = (680.0, 460.0);
 
-/// Un tamaño deliberadamente grande para `full`: el cálculo de ubicación lo
-/// acota al monitor menos los márgenes, así que alcanza para un menú casi a
-/// pantalla completa mientras no exista el anclaje de overlay propio.
-const FULL_PLACEHOLDER: f64 = 10_000.0;
-
 /// El modo que declara una configuración ya leída.
 ///
 /// Se comprueba el valor en lugar de afirmarlo: el archivo se edita a mano. Sin
@@ -79,21 +75,17 @@ pub fn read() -> MenuDisplayMode {
     }
 }
 
-/// El tamaño con que abrir el menú, o `None` para el del [`AppletSpec`] (normal).
+/// Con qué tamaño y anclaje abrir el menú (vasak-desktop#210).
 ///
-/// - `Normal`: `None` —el tamaño de siempre, 900×620—.
-/// - `Compact`: el tamaño chico.
-/// - `Full`: un tamaño grande que el cálculo de ubicación acota al monitor.
-///
-/// TODO(vasak-desktop#210): `full` de verdad es un overlay a pantalla completa
-/// —anclaje layer-shell a los cuatro bordes, sin márgenes, tamaño = salida y sin
-/// la animación que crece desde el botón—, que lo agrega el backend. Hasta
-/// entonces cae en este tamaño grande acotado.
-pub fn size_override(mode: MenuDisplayMode) -> Option<(f64, f64)> {
+/// - `Normal`: el del [`AppletSpec`] (900×620), colgado del botón.
+/// - `Compact`: un tamaño fijo chico, colgado del botón.
+/// - `Full`: un overlay a pantalla completa —los cuatro bordes, sin márgenes—,
+///   que no cuelga de ningún botón (ver `anchored_applet::place_fullscreen`).
+pub fn applet_sizing(mode: MenuDisplayMode) -> AppletSizing {
     match mode {
-        MenuDisplayMode::Normal => None,
-        MenuDisplayMode::Compact => Some(COMPACT_SIZE),
-        MenuDisplayMode::Full => Some((FULL_PLACEHOLDER, FULL_PLACEHOLDER)),
+        MenuDisplayMode::Normal => AppletSizing::Default,
+        MenuDisplayMode::Compact => AppletSizing::Fixed(COMPACT_SIZE.0, COMPACT_SIZE.1),
+        MenuDisplayMode::Full => AppletSizing::Fullscreen,
     }
 }
 
@@ -131,11 +123,20 @@ mod tests {
     }
 
     #[test]
-    fn el_tamano_override_es_el_esperado() {
-        // Normal usa el del AppletSpec (None); compact el chico; full un grande.
-        assert_eq!(size_override(MenuDisplayMode::Normal), None);
-        assert_eq!(size_override(MenuDisplayMode::Compact), Some(COMPACT_SIZE));
-        let full = size_override(MenuDisplayMode::Full).expect("full tiene tamaño");
-        assert!(full.0 >= 2000.0 && full.1 >= 2000.0);
+    fn el_tamano_y_anclaje_es_el_esperado() {
+        // Normal usa el del AppletSpec colgado del botón; compact un tamaño fijo
+        // chico; full el overlay a pantalla completa.
+        assert_eq!(
+            applet_sizing(MenuDisplayMode::Normal),
+            AppletSizing::Default
+        );
+        assert_eq!(
+            applet_sizing(MenuDisplayMode::Compact),
+            AppletSizing::Fixed(COMPACT_SIZE.0, COMPACT_SIZE.1)
+        );
+        assert_eq!(
+            applet_sizing(MenuDisplayMode::Full),
+            AppletSizing::Fullscreen
+        );
     }
 }

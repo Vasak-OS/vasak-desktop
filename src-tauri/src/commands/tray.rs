@@ -7,7 +7,7 @@ use crate::tray::launcher_entry::{visible_entries, LauncherEntryStore, LauncherE
 use crate::tray::menu_props::parse_layout;
 use crate::tray::sni_item::SniItemProxy;
 use crate::tray::sni_watcher::SniWatcher;
-use crate::windows_apps::anchored_applet::{open_anchored_applet, AnchorRect};
+use crate::windows_apps::anchored_applet::{open_anchored_applet, AnchorRect, AppletSizing};
 use futures_util::future::BoxFuture;
 use zbus::zvariant::Value;
 use zbus::Connection;
@@ -466,7 +466,7 @@ pub async fn open_tray_popup(
     // Se abre siempre, aunque ya estuviera abierto: el mismo applet muestra
     // el menú de otro icono, y tiene que mudarse debajo de ése. La página vuelve
     // a pedir los datos al mostrarse.
-    open_anchored_applet(&app, "tray", anchor, Some(size))?;
+    open_anchored_applet(&app, "tray", anchor, AppletSizing::Fixed(size.0, size.1))?;
     log_info(&format!(
         "[open_tray_popup] applet de la bandeja abierto para {}",
         service_name
