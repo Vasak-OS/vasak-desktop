@@ -100,16 +100,22 @@ describe('las piezas nuevas respetan el diseño', () => {
 
 	test('los favoritos lanzan la app y el clic derecho la desfija', () => {
 		const fav = read('src/components/areas/menu/FavoritesArea.vue');
-		expect(fav).toMatch(/dismissMenu/);
-		expect(fav).toMatch(/toggleFavoritePath/);
+		// Lanzar y fijar/desfijar salen del composable compartido.
+		expect(fav).toMatch(/useAppLauncher/);
+		expect(fav).toMatch(/toggleFavoriteFor/);
 		expect(fav).toMatch(/data-fav-path/);
 	});
 
 	test('fijar se hace desde el menú contextual de la aplicación', () => {
+		// La fila usa el composable; el menú contextual (fijar/desfijar) vive ahí.
 		const card = read('src/components/cards/AppMenuCard.vue');
-		expect(card).toMatch(/showContextMenu/);
-		expect(card).toMatch(/toggleFavoritePath/);
-		expect(card).toMatch(/favorites\.pin|favorites\.unpin/);
+		expect(card).toMatch(/useAppLauncher/);
+		expect(card).toMatch(/toggleFavoriteFor/);
+
+		const launcher = read('src/tools/composables/useAppLauncher.ts');
+		expect(launcher).toMatch(/showContextMenu/);
+		expect(launcher).toMatch(/toggleFavoritePath/);
+		expect(launcher).toMatch(/favorites\.pin|favorites\.unpin/);
 	});
 });
 

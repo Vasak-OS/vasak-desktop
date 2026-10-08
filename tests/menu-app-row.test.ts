@@ -83,9 +83,8 @@ beforeAll(async () => {
 			'export const openApp = async () => {};',
 			'export const dismissMenu = async () => {};',
 			'export const logError = () => {};',
-			// Favoritos (vasak-desktop#203): el menú contextual de la fila.
-			'export const useMenuConfig = () => ({ menu: { value: { favorites: [] } }, toggleFavoritePath: async () => {}, setMenuConfig: async () => {} });',
-			'export const isFavorite = () => false;',
+			// Lanzar y fijar/desfijar salen del composable compartido (vasak-desktop#203).
+			'export const useAppLauncher = () => ({ launch: async () => {}, toggleFavoriteFor: async () => {} });',
 			'',
 		].join('\n')
 	);
