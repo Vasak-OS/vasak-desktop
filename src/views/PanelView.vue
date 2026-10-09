@@ -103,7 +103,7 @@ const hideClass = computed(() => panelHideClass(position.value, panelHidden.valu
  * Cuánto texto entra: en un panel angosto los nombres largos se pliegan al
  * icono (`panel-density.ts`), medido sobre la propia barra.
  */
-watchPanelDensity(bar, vertical);
+watchPanelDensity(vertical);
 const density = usePanelDensity();
 const windowsFirst = computed(() => density.value === 'tight');
 
