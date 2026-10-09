@@ -269,8 +269,9 @@ export function panelBarClasses(
  * `''` y la vista no dibuja la capa.
  *
  * El fondo es translúcido (`bg-ui-bg/80`): el desenfoque lo pone Wayfire detrás
- * de la franja, como en el resto de las superficies del escritorio. El canto va
- * en `ui-line`, el radio en la variable del sistema, y el dock redondea sólo el
+ * de la franja, como en el resto de las superficies del escritorio. El canto es
+ * el de afuera (`window-border`: el grosor y el color que eligió la persona en
+ * Configuración, `ui-line` de 1 px por omisión), el radio en la variable del sistema, y el dock redondea sólo el
  * lado de adentro —el opuesto al borde contra el que se apoya— con el mismo radio
  * que las ventanas (`corner-window`). El trapecio no redondea: el corte en
  * diagonal lo hace un `clip-path` según de qué lado va la barra (`main.css`).
@@ -278,7 +279,7 @@ export function panelBarClasses(
 export function panelSurfaceClass(style: PanelStyle, position: PanelPosition): string {
 	if (!hasSurface(style)) return '';
 
-	const base = 'bg-ui-bg/80 border border-ui-line';
+	const base = 'bg-ui-bg/80 window-border';
 	if (style === 'bar') return base;
 	if (style === 'floating') return `${base} rounded-corner-m`;
 

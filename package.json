@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.62.0",
+	"version": "1.63.0",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -19,12 +19,12 @@
 	},
 	"dependencies": {
 		"@tailwindcss/vite": "^4.3.3",
-		"@tauri-apps/api": "^2.12.1",
+		"@tauri-apps/api": "^2.12.2",
 		"@tauri-apps/plugin-fs": "^2.6.0",
 		"@tauri-apps/plugin-opener": "^2.7.0",
 		"@tauri-apps/plugin-shell": "^2.4.1",
 		"@vasakgroup/plugin-bluetooth-manager": "^2.2.1",
-		"@vasakgroup/plugin-config-manager": "^2.10.0",
+		"@vasakgroup/plugin-config-manager": "^2.11.0",
 		"@vasakgroup/plugin-display-manager": "^2.0.0",
 		"@vasakgroup/plugin-network-manager": "^2.2.0",
 		"@vasakgroup/plugin-power-profiles": "^2.0.0",
@@ -33,20 +33,20 @@
 		"@vasakgroup/plugin-vsk-contextual-menu": "^2.0.2",
 		"@vasakgroup/plugin-vsk-journal": "^2.0.0",
 		"@vasakgroup/tauri-plugin-i18n": "^2.3.0",
-		"@vasakgroup/vue-libvasak": "^2.15.0",
+		"@vasakgroup/vue-libvasak": "^2.16.0",
 		"pinia": "^3.0.4",
 		"vue": "^3.5.43",
 		"vue-router": "^5.4.0"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
-		"@happy-dom/global-registrator": "^20.14.5",
+		"@happy-dom/global-registrator": "^20.14.6",
 		"@tailwindcss/postcss": "^4.3.3",
 		"@tauri-apps/cli": "^2.12.1",
 		"@types/node": "^26.6.4",
 		"@vitejs/plugin-vue": "^6.0.9",
 		"@vue/test-utils": "^2.5.1",
-		"happy-dom": "^20.14.5",
+		"happy-dom": "^20.14.6",
 		"postcss": "^8.5.29",
 		"tailwindcss": "^4.3.3",
 		"terser": "^5.51.2",
