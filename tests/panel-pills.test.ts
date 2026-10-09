@@ -224,7 +224,7 @@ describe('la barra de ventanas', () => {
 		view.unmount();
 	});
 
-	test('en densidad compacta reserva su ancho con `shrink-0` (vasak-desktop#213)', async () => {
+	test('en densidad compacta reserva su ancho con `shrink-0` y lo tapa a 90vw (vasak-desktop#213)', async () => {
 		// En compacto la barra se encoge a su contenido (`w-fit`) y no le reservaba
 		// ancho a la píldora, que quedaba en su mínimo —una ventana con scroll
 		// adentro— aunque sobrara lugar. Con `shrink-0` reserva su ancho de
@@ -235,11 +235,14 @@ describe('la barra de ventanas', () => {
 		const compact = await render(Windows);
 		const compactPill = compact.find('[data-windows-pill]');
 		expect(compactPill.classes()).toContain('shrink-0');
-		// Sin `max-w-[20rem]` en compacto: el tope es el `max-w-full` de la
+		// Sin `max-w-[20rem]` en compacto: el tope relativo es el `max-w-full` de la
 		// `PanelPill`, para que use el ancho que la barra le dé (hilo de CodeRabbit
 		// en #213). Con el tope fijo, con muchas ventanas quedaban en el scroll
 		// aunque sobrara lugar.
 		expect(compactPill.classes()).not.toContain('max-w-[20rem]');
+		// Y un tope **absoluto** ligado al viewport: con `shrink-0` la barra
+		// centrada crecía más allá de la pantalla; a 90vw frena y desplaza adentro.
+		expect(compactPill.classes()).toContain('max-w-[90vw]');
 		compact.unmount();
 
 		panel.panelLayout.value = 'distributed';
@@ -247,6 +250,7 @@ describe('la barra de ventanas', () => {
 		const distributedPill = distributed.find('[data-windows-pill]');
 		expect(distributedPill.classes()).not.toContain('shrink-0');
 		expect(distributedPill.classes()).toContain('max-w-[20rem]');
+		expect(distributedPill.classes()).not.toContain('max-w-[90vw]');
 		distributed.unmount();
 	});
 
@@ -342,6 +346,38 @@ describe('el reloj', () => {
 
 		const call = panel.calls.find((entry) => entry.name === 'toggleApplet');
 		expect(call?.args[0]).toBe('date');
+		view.unmount();
+	});
+});
+
+describe('las píldoras se aplanan cuando hay superficie', () => {
+	test('con superficie la píldora va plana: sin su fondo propio (`flat`)', async () => {
+		// Flotante, barra, dock y trapecio dibujan una superficie detrás; la isla
+		// con fondo de cada píldora encima daba doble fondo. Con `hasSurface` la
+		// píldora recibe `flat` y queda transparente (vue-libvasak 2.15.0).
+		panel.hasSurface.value = true;
+		const view = await render(Clock);
+		const pill = view.find('[data-panel-pill]');
+		expect(pill.classes()).toContain('bg-transparent');
+		expect(pill.classes()).not.toContain('bg-ui-shell');
+		view.unmount();
+	});
+
+	test('en modo píldoras (sin superficie) conserva su isla con fondo', async () => {
+		panel.hasSurface.value = false;
+		const view = await render(Clock);
+		const pill = view.find('[data-panel-pill]');
+		expect(pill.classes()).toContain('bg-ui-shell');
+		expect(pill.classes()).not.toContain('bg-transparent');
+		view.unmount();
+	});
+
+	test('la píldora de ventanas también se aplana con superficie', async () => {
+		panel.hasSurface.value = true;
+		const view = await render(Windows);
+		const pill = view.find('[data-windows-pill]');
+		expect(pill.classes()).toContain('bg-transparent');
+		expect(pill.classes()).not.toContain('bg-ui-shell');
 		view.unmount();
 	});
 });

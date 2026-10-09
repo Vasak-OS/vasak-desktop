@@ -3,6 +3,7 @@
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { DropdownMenuItem, EmptyState, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import MarqueeText from '@/components/MarqueeText.vue';
 import { useAppLauncher } from '@/tools/composables/useAppLauncher';
 import type { MenuApp } from '@/tools/menu-favorites';
 
@@ -54,11 +55,11 @@ const onContextMenu = (event: MouseEvent) => {
       :key="app.path"
       :title="app.name"
       :data-fav-path="app.path"
-      class="flex-col gap-1 text-center"
+      class="min-w-0 flex-col items-center gap-1 text-center"
       @select="launch(app)"
     >
-      <ThemeIcon :name="app.icon" :size="40" alt="" />
-      <span class="w-full truncate text-label-xs text-tx-main">{{ app.name }}</span>
+      <ThemeIcon :name="app.icon" :size="48" alt="" />
+      <MarqueeText :text="app.name" class="text-label-xs text-tx-main" />
     </DropdownMenuItem>
   </div>
 </template>

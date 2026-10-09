@@ -20,7 +20,7 @@ import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 const density = usePanelDensity();
 
 const networkState = ref<NetworkInfo>({
@@ -124,6 +124,7 @@ const toggleNetworkApplet = async () => {
     :title="networkAlt"
     :accessible-label="networkAlt"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     class="max-w-48"
     data-network-pill
     @click="toggleNetworkApplet"

@@ -24,6 +24,20 @@ export interface ClockParts {
 const pad = (value: number) => value.toString().padStart(2, '0');
 
 /**
+ * Pone en mayúscula la primera letra del texto. En español `Intl` devuelve el
+ * día y el mes en minúscula («domingo», «22 de marzo»); en la píldora del reloj
+ * y en el globo se quieren empezados en mayúscula.
+ *
+ * Capitaliza sólo la primera letra real de la cadena, no cada palabra (eso haría
+ * «22 De Marzo»): es lo contrario de lo que haría el `text-transform: capitalize`
+ * del CSS. Respeta los alfabetos con mayúsculas y las cadenas vacías.
+ */
+export function capitalizeFirst(text: string): string {
+	if (text.length === 0) return text;
+	return text[0]?.toLocaleUpperCase() + text.slice(1);
+}
+
+/**
  * Un idioma que `Intl` acepta: el catálogo dice «es» o «en», pero si viniera
  * algo raro no puede tirar abajo el reloj.
  */
@@ -45,14 +59,18 @@ export function clockParts(date: Date, locale?: string): ClockParts {
 		time: `${hour}:${minute}`,
 		hour,
 		minute,
-		date: formatter(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(date),
-		weekday: formatter(locale, { weekday: 'long' }).format(date),
-		dayMonth: formatter(locale, { day: 'numeric', month: 'long' }).format(date),
-		longDate: formatter(locale, {
-			weekday: 'long',
-			day: 'numeric',
-			month: 'long',
-			year: 'numeric',
-		}).format(date),
+		date: capitalizeFirst(
+			formatter(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(date)
+		),
+		weekday: capitalizeFirst(formatter(locale, { weekday: 'long' }).format(date)),
+		dayMonth: capitalizeFirst(formatter(locale, { day: 'numeric', month: 'long' }).format(date)),
+		longDate: capitalizeFirst(
+			formatter(locale, {
+				weekday: 'long',
+				day: 'numeric',
+				month: 'long',
+				year: 'numeric',
+			}).format(date)
+		),
 	};
 }

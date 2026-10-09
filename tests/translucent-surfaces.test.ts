@@ -283,6 +283,19 @@ describe('las píldoras del panel dejan ver el escritorio entre ellas', () => {
 		}
 	});
 
+	test.each(PILL_FILES)('%s aplana sus PanelPill sobre una superficie (:flat="hasSurface")', (file) => {
+		// Con una superficie (flotante/barra/dock/trapecio) la isla con fondo de
+		// cada píldora quedaba encima de la superficie: doble fondo. Con el `flat`
+		// de vue-libvasak 2.15.0, atado a `hasSurface`, la píldora no dibuja su
+		// fondo cuando hay superficie, y en píldoras (sin superficie) sigue igual.
+		const view = template(file);
+		const pills = [...view.matchAll(/<PanelPill\b((?:[^<>"]|"[^"]*")*)>/g)];
+		expect(pills.length, `sin PanelPill en ${file}`).toBeGreaterThan(0);
+		for (const [, attributes] of pills) {
+			expect(attributes ?? '', file).toContain(':flat="hasSurface"');
+		}
+	});
+
 	test('la barra es transparente y recorta lo que recibe el puntero a las píldoras', () => {
 		const panel = read('src/views/PanelView.vue');
 		const nav = template('src/views/PanelView.vue').match(/<nav\b[\s\S]*?class="([^"]*)"/)?.[1] ?? '';

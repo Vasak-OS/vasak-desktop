@@ -25,7 +25,7 @@ import { logError } from '@/utils/logger';
  * Dos de dos dígitos sí, y la fecha entera queda en el globo.
  */
 const { t, locale } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 const density = usePanelDensity();
 
 const now = ref(new Date());
@@ -80,6 +80,7 @@ async function openBoard(): Promise<void> {
     :title="parts.longDate"
     :accessible-label="openLabel"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     aria-haspopup="dialog"
     class="shrink-0"
     data-clock-pill
@@ -91,7 +92,7 @@ async function openBoard(): Promise<void> {
     <template v-if="!vertical" #default>
       <span class="flex items-center gap-2 px-0.5">
         <span
-          class="font-semibold leading-none tabular-nums text-heading-l"
+          class="font-semibold leading-none tabular-nums text-heading-s"
           data-clock-time
         >
           {{ parts.time }}

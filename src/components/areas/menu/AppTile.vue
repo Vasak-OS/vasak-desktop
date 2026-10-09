@@ -2,6 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: usados en la plantilla */
 import { DropdownMenuItem, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { onBeforeUnmount, onMounted, ref } from 'vue';
+import MarqueeText from '@/components/MarqueeText.vue';
 import { useAppLauncher } from '@/tools/composables/useAppLauncher';
 import type { MenuApp } from '@/tools/menu-favorites';
 
@@ -33,9 +34,9 @@ onBeforeUnmount(() => item.value?.$el?.removeEventListener('contextmenu', onCont
   <DropdownMenuItem
     ref="item"
     :title="app.name"
-    class="h-full flex-col justify-center gap-1 text-center"
+    class="h-full min-w-0 flex-col items-center justify-center gap-1 text-center"
     @select="launch(app)">
-    <ThemeIcon :name="app.icon" :size="size === 'lg' ? 48 : 40" alt="" />
-    <span class="w-full truncate text-label-xs text-tx-main">{{ app.name }}</span>
+    <ThemeIcon :name="app.icon" :size="size === 'lg' ? 56 : 48" alt="" />
+    <MarqueeText :text="app.name" class="text-label-xs text-tx-main" />
   </DropdownMenuItem>
 </template>

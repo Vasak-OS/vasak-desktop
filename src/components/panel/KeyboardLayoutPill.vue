@@ -19,7 +19,7 @@ import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 
 const layout = ref<KeyboardLayout | null>(null);
 const switchable = computed(() => (layout.value?.count ?? 0) > 1);
@@ -61,6 +61,7 @@ useSharedEvent<KeyboardLayout | null>('keyboard-layout-changed', (payload) => {
     :title="description"
     :accessible-label="accessibleLabel"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     class="shrink-0"
     data-keyboard-layout
     @click="next"

@@ -15,7 +15,7 @@ import { PINNED_APPS, type PinnedApp } from '@/tools/pinned-apps';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 
 async function launch(app: PinnedApp): Promise<void> {
 	try {
@@ -30,6 +30,7 @@ async function launch(app: PinnedApp): Promise<void> {
   <PanelPill
     :interactive="false"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     flush
     role="group"
     :accessible-label="t('views.panel.pinnedAlt')"
