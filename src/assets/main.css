@@ -166,15 +166,19 @@
 }
 
 .config-status {
-  color: var(--use-text-muted, #666);
-  background-color: var(--use-ui-surface, #e8eaf0);
-  border-top: 1px solid var(--use-ui-border, #dce0e8);
+  color: var(--use-text-muted);
+  background-color: var(--use-ui-surface);
+  border-top: 1px solid var(--use-ui-border);
 }
 
 .error-banner {
-  color: var(--use-status-error, #d32f2f);
-  background-color: #ffebee;
-  border-top: 1px solid #f5c6cb;
+  color: var(--use-status-error);
+  /* El tinte sale del esquema: un lavado del error sobre la superficie, y un
+     borde a medio camino entre el error y el borde normal. Nada de hexadecimales
+     —el config-manager reescribe `--use-*` en tiempo de ejecución, y un literal
+     acá se quedaría clavado en el esquema por omisión. */
+  background-color: color-mix(in srgb, var(--use-status-error) 12%, var(--use-ui-surface));
+  border-top: 1px solid color-mix(in srgb, var(--use-status-error) 40%, var(--use-ui-border));
 }
 
 .dark {
