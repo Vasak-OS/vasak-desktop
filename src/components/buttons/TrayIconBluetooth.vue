@@ -20,7 +20,7 @@ import { logError } from '@/utils/logger';
  */
 
 const { t } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 const density = usePanelDensity();
 
 const { isBluetoothOn, connectedDevicesCount, defaultAdapter } = useBluetoothState({
@@ -89,6 +89,7 @@ const toggleBluetooth = async (): Promise<void> => {
     :title="description"
     :accessible-label="description"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     class="max-w-48"
     data-bluetooth-pill
     @click="toggleBluetooth"

@@ -31,7 +31,7 @@ import { formatDuration, playbackStateOf } from '@/utils/playback';
  */
 
 const { t } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 const density = usePanelDensity();
 
 const { musicInfo, imgSrc, position, progress, onImgError, initIcons, initMusicInfo } =
@@ -112,6 +112,7 @@ onMounted(async () => {
     :title="summary"
     :accessible-label="accessibleName"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     class="max-w-56"
     data-music-pill
     @click="openPlayer"

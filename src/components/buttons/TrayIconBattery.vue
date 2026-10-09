@@ -13,7 +13,7 @@ import { showsNumbers } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 const density = usePanelDensity();
 
 const batteryInfo = ref<BatteryInfo>({
@@ -106,6 +106,7 @@ useSharedEvent<BatteryInfo>('battery-update', (payload) => {
     :interactive="false"
     :title="batteryAltText"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     class="shrink-0"
     data-battery-pill
   />

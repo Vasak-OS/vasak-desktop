@@ -53,7 +53,7 @@ import { logError, logWarning } from '@/utils/logger';
 
 // Qué partes del panel están encendidas, y de qué lado va la barra: a los
 // costados los iconos se apilan en lugar de alinearse.
-const { showTransfer, showTray, showPrivacy, vertical } = usePanelConfig();
+const { showTransfer, showTray, showPrivacy, vertical, hasSurface } = usePanelConfig();
 
 const { t } = useI18n();
 
@@ -183,6 +183,7 @@ useSharedEvent('tray-update', refreshTrayItems);
   <PanelPill
     :interactive="false"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     flush
     role="group"
     :accessible-label="t('views.panel.trayAlt')"

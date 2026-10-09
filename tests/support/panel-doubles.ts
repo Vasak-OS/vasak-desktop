@@ -35,6 +35,8 @@ export const panel = {
 	vertical: ref(false),
 	/** La densidad elegida del panel: distribuida o compacta (`panel-appearance.ts`). */
 	panelLayout: ref<'distributed' | 'compact'>('distributed'),
+	/** `true` cuando el tipo dibuja una superficie detrás (flotante/barra/dock/trapecio). */
+	hasSurface: ref(false),
 	failSwitch: false,
 	handlers: new Map<string, Handler>(),
 	calls: [] as Array<{ name: string; args: unknown[] }>,
@@ -48,6 +50,7 @@ export const panel = {
 		this.volume.value = { current: 50, min: 0, max: 100, is_muted: false };
 		this.vertical.value = false;
 		this.panelLayout.value = 'distributed';
+		this.hasSurface.value = false;
 		this.failSwitch = false;
 		density.value = 'full';
 		this.handlers.clear();
@@ -94,7 +97,7 @@ export function usePanelDensity() {
 }
 
 export function usePanelConfig() {
-	return { vertical: panel.vertical, layout: panel.panelLayout };
+	return { vertical: panel.vertical, layout: panel.panelLayout, hasSurface: panel.hasSurface };
 }
 
 export function useSharedEvent(name: string, handler: Handler) {

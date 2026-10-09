@@ -12,7 +12,7 @@ import { showsNumbers } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 const density = usePanelDensity();
 
 // El mismo pronóstico que el widget del escritorio: el pedido lo hace una sola
@@ -71,6 +71,7 @@ async function openBoard(): Promise<void> {
     :accessible-label="openLabel"
     aria-haspopup="dialog"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     class="shrink-0"
     data-weather-pill
     @click="openBoard"

@@ -16,7 +16,7 @@ import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
 
 const { t } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 const density = usePanelDensity();
 
 const volumeInfo = ref<VolumeInfo>({
@@ -95,6 +95,7 @@ useSharedEvent<VolumeInfo>(
     :title="description"
     :accessible-label="description"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     class="shrink-0"
     data-volume-pill
     @click="toggleAudioApplet"
