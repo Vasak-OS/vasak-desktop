@@ -216,7 +216,7 @@ onBeforeUnmount(() => {
 <template>
   <Transition appear enter-active-class="enter-active">
     <main
-      :class="['bg-ui-shell h-screen w-screen rounded-corner-m flex flex-col justify-between p-1 border border-ui-line overflow-hidden', { 'leave-active': leaving }]"
+      :class="['bg-ui-shell h-screen w-screen rounded-corner-m flex flex-col justify-between p-1 window-border overflow-hidden', { 'leave-active': leaving }]"
       :data-mode="mode"
     >
       <!-- La cabecera —quién sos, la sesión y el teléfono— queda fija arriba:

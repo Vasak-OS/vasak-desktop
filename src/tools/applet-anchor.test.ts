@@ -210,9 +210,12 @@ describe('AppletPopover', () => {
 		expect(base).toContain('bg-ui-shell');
 		expect(base).not.toContain('bg-ui-float');
 		expect(popover).not.toContain('backdrop-blur');
-		// El canto fino y el radio son del applet anclado, no del overlay: viven
-		// en la rama que elige `full`.
-		expect(popover).toMatch(/full\s*\?[\s\S]*rounded-corner-xl border border-ui-line/);
+		// El canto y el radio son del applet anclado, no del overlay: viven en la
+		// rama que elige `full`. El canto es el de afuera (`window-border`, con
+		// el grosor y el color que eligió la persona), no el `ui-line` de las
+		// tarjetas de adentro.
+		expect(popover).toMatch(/full\s*\?[\s\S]*rounded-corner-xl window-border/);
+		expect(popover).not.toMatch(/full\s*\?[^\n]*border border-ui-line/);
 	});
 
 	test('el overlay a pantalla completa no lleva borde, radio ni sombra', () => {

@@ -142,6 +142,9 @@ async function declaredTokens() {
 		shadow: strip('shadow-'),
 		text: strip('text-'),
 		ease: strip('ease-'),
+		// Las utilidades con nombre propio (`@utility window-border { … }`):
+		// Tailwind no avisa si una no existe, igual que con los tokens.
+		utilities: new Set([...css.matchAll(/@utility\s+([a-z0-9-]+)\s*\{/g)].map((m) => m[1] as string)),
 	};
 }
 
@@ -209,6 +212,25 @@ describe('lo que se usa existe', () => {
 		expect(tokens.shadow).toContain('surface-l');
 		expect(tokens.text).toContain('label-m');
 		expect(tokens.ease).toContain('ui-out');
+		// El canto de afuera (vue-libvasak 2.16.0): la utilidad y su color.
+		expect(tokens.utilities, 'falta @utility window-border').toContain('window-border');
+		expect(tokens.colors, 'falta --color-ui-window-border').toContain('ui-window-border');
+	});
+
+	test('ninguna utilidad propia de la librería se usa sin estar declarada', async () => {
+		// `window-border` no es un color ni un radio: la regla general de arriba
+		// no la ve. Con una librería anterior a la 2.16.0 la clase no emite nada
+		// y el panel, el centro de control y los emergentes se quedan sin borde
+		// sin que nada avise.
+		const { utilities } = await declaredTokens();
+		const OWN_UTILITY = new RegExp(`(?<![\\w-])${VARIANTS}(window-border|overlay-fade-(?:up|down)|shell-blur)${END}`, 'g');
+
+		const dead = await findAll(sources('**/*.{vue,ts}'), OWN_UTILITY, (m) => !utilities.has(m[1] as string));
+
+		expect(dead).toEqual([]);
+		// Y la expresión ve la clase cuando está, también con variante; si no
+		// la viera, esta prueba pasaría siempre.
+		expect([...'p-1 window-border hover:window-border my-window-border'.matchAll(OWN_UTILITY)].length).toBe(2);
 	});
 
 	test('ninguna clase nombra un color del taller que no esté declarado', async () => {

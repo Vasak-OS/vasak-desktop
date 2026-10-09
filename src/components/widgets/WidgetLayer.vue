@@ -418,7 +418,7 @@ defineExpose({ openEditing });
 		<aside
 			v-if="editing && panelOpen"
 			data-widget-panel
-			class="@container pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner-xl border border-ui-line bg-ui-shell p-4 shadow-surface-xl"
+			class="@container pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner-xl window-border bg-ui-shell p-4 shadow-surface-xl"
 		>
 			<div class="mb-3 flex items-center justify-between">
 				<h2 class="text-label-m font-semibold uppercase tracking-wide text-tx-muted">

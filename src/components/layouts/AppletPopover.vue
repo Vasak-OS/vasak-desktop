@@ -25,7 +25,8 @@ import { logWarning } from '@/utils/logger';
  * abrió y la entrada **crece desde el botón**.
  *
  * La forma es la de algo que sale del panel en Once UI (vue-libvasak#74,
- * §5.3): `rounded-corner-xl`, el canto fino `ui-line`, la superficie translúcida
+ * §5.3): `rounded-corner-xl`, el canto de afuera `window-border` (el que eligió
+ * la persona en Configuración), la superficie translúcida
  * `ui-shell` y la sombra `surface-l`, todo de `tokens.css`. Translúcida y sin
  * desenfoque propio: el del escritorio lo pone Wayfire detrás de la superficie
  * de capa, y una superficie opaca lo taparía (corrección del 02/10/2026; el
@@ -146,7 +147,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
         // El overlay a pantalla completa no lleva borde, cantos redondeados ni
         // sombra: no hay afuera donde se vean. El applet anclado sí, con la forma
         // de lo que flota (vue-libvasak#74, §5.3).
-        full ? 'applet-popover-full' : 'rounded-corner-xl border border-ui-line shadow-surface-l',
+        full ? 'applet-popover-full' : 'rounded-corner-xl window-border shadow-surface-l',
         compact ? 'p-1' : 'p-4',
         `applet-popover-${phase}`,
       ]"

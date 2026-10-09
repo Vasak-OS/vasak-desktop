@@ -152,9 +152,24 @@ describe('la superficie detrás de las píldoras', () => {
 		for (const position of PANEL_POSITIONS) {
 			const classes = panelSurfaceClass('trapezoid', position);
 			expect(classes).toContain('bg-ui-bg/80');
-			expect(classes).toContain('border-ui-line');
+			expect(classes.split(' ')).toContain('window-border');
 			expect(classes).not.toContain('rounded');
 			expect(classes).not.toContain('panel-surface-trapezoid');
+		}
+	});
+
+	test('el canto de la superficie es el de afuera, con el grosor y el color que eligió la persona', () => {
+		// La franja del panel es borde de afuera del escritorio: lleva
+		// `window-border` (lo pintan `--window-border-width` y
+		// `--ui-window-border`), no el `border border-ui-line` fijo de las
+		// tarjetas de adentro, que no cambiaría con lo elegido en Configuración.
+		for (const style of PANEL_STYLES.filter(hasSurface)) {
+			for (const position of PANEL_POSITIONS) {
+				const classes = panelSurfaceClass(style, position).split(' ');
+				expect(classes, `${style} ${position}`).toContain('window-border');
+				expect(classes, `${style} ${position}`).not.toContain('border');
+				expect(classes, `${style} ${position}`).not.toContain('border-ui-line');
+			}
 		}
 	});
 
