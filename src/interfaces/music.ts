@@ -3,6 +3,12 @@ export interface MusicInfo {
 	player: string;
 	/** Cómo se llama para mostrar: «Spotify», «Chromium». */
 	playerIdentity: string;
+	/**
+	 * El `.desktop` del reproductor sin la extensión («firefox»,
+	 * «org.gnome.Rhythmbox3»), que es también el nombre de su icono. Vacío si el
+	 * reproductor no lo publica.
+	 */
+	desktopEntry: string;
 	status: string;
 	title: string;
 	artist: string;

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "wallpaper-colors",
+  "description": "«Seguir al fondo» (vasak-settings#134): sólo el fondo del monitor principal guarda el esquema Personalizado. Las demás ventanas del escritorio no escriben esquemas.",
+  "windows": ["desktop"],
+  "permissions": ["config-manager:allow-save-user-scheme"]
+}

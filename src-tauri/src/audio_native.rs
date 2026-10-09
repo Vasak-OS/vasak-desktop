@@ -104,10 +104,7 @@ impl PipeWireMonitor {
     ///
     /// This function subscribes to the PipeWire registry, finds the default
     /// audio sink, and listens for volume/mute param changes.
-    fn run_loop(
-        state_tx: watch::Sender<VolumeInfo>,
-        shutdown: Arc<std::sync::atomic::AtomicBool>,
-    ) {
+    fn run_loop(state_tx: watch::Sender<VolumeInfo>, shutdown: Arc<std::sync::atomic::AtomicBool>) {
         use pipewire::prelude::*;
 
         // Initialize PipeWire (must be called on the thread that runs the loop)
@@ -127,10 +124,7 @@ impl PipeWireMonitor {
         let context = match pipewire::context::Context::new(&mainloop) {
             Ok(ctx) => ctx,
             Err(e) => {
-                log_error(&format!(
-                    "PipeWireMonitor: failed to create context: {}",
-                    e
-                ));
+                log_error(&format!("PipeWireMonitor: failed to create context: {}", e));
                 return;
             }
         };
@@ -138,15 +132,14 @@ impl PipeWireMonitor {
         let core = match context.connect(None) {
             Ok(c) => c,
             Err(e) => {
-                log_error(&format!(
-                    "PipeWireMonitor: failed to connect core: {}",
-                    e
-                ));
+                log_error(&format!("PipeWireMonitor: failed to connect core: {}", e));
                 return;
             }
         };
 
-        let registry = core.get_registry().expect("PipeWire: failed to get registry");
+        let registry = core
+            .get_registry()
+            .expect("PipeWire: failed to get registry");
 
         let state_tx_clone = state_tx.clone();
 
@@ -176,7 +169,10 @@ impl PipeWireMonitor {
                         let registry = unsafe { &*registry_ptr };
 
                         if let Ok(node) = registry.bind::<pipewire::node::Node>(global) {
-                            use pipewire::spa::{param::ParamType, pod::Value, pod::deserialize::PodDeserializer, sys};
+                            use pipewire::spa::{
+                                param::ParamType, pod::deserialize::PodDeserializer, pod::Value,
+                                sys,
+                            };
 
                             let tx = state_tx_clone.clone();
 
@@ -200,9 +196,7 @@ impl PipeWireMonitor {
                                                 for prop in &obj.properties {
                                                     match prop.key {
                                                         sys::SPA_PROP_volume => {
-                                                            if let Value::Float(vol) =
-                                                                prop.value
-                                                            {
+                                                            if let Value::Float(vol) = prop.value {
                                                                 volume = Some(vol as f64);
                                                             }
                                                         }
@@ -365,8 +359,7 @@ impl PwDumpMonitor {
                     log_error(&format!("PwDumpMonitor: failed to spawn pw-dump: {}", e));
                     // Signal first spawn failure
                     if let Some(ready) = ready.take() {
-                        let _ =
-                            ready.send(Err(PipeWireError::PwDumpNotAvailable(e.to_string())));
+                        let _ = ready.send(Err(PipeWireError::PwDumpNotAvailable(e.to_string())));
                     }
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     continue;
@@ -386,6 +379,10 @@ impl PwDumpMonitor {
                     continue;
                 }
             };
+
+            // Un `pw-dump` nuevo vuelve a mandar el volcado entero: lo que se
+            // sabía del micrófono puede estar viejo.
+            crate::audio_input::reset();
 
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
@@ -409,8 +406,16 @@ impl PwDumpMonitor {
 
                 // When brackets are balanced, we have a complete JSON chunk
                 if bracket_depth == 0 && !json_buffer.trim().is_empty() {
-                    if let Some(volume_info) = Self::parse_volume_from_json(&json_buffer) {
-                        let _ = state_tx.send(volume_info);
+                    // Se lee una sola vez y lo usan el volumen y el perfil de
+                    // los dispositivos Bluetooth (`bluetooth_audio_profile`),
+                    // que sale del mismo flujo sin sumar procesos.
+                    if let Ok(batch) = serde_json::from_str::<serde_json::Value>(&json_buffer) {
+                        crate::bluetooth_audio_profile::ingest(&batch);
+                        // Y el micrófono (vasak-desktop#182), del mismo flujo.
+                        crate::audio_input::ingest(&batch);
+                        if let Some(volume_info) = Self::parse_volume_from_value(&batch) {
+                            let _ = state_tx.send(volume_info);
+                        }
                     }
                     json_buffer.clear();
                 }
@@ -428,10 +433,7 @@ impl PwDumpMonitor {
     /// pw-dump outputs arrays of PipeWire objects. We look for objects with
     /// type "PipeWire:Interface:Node" and media.class "Audio/Sink" that have
     /// volume parameters.
-    fn parse_volume_from_json(json_str: &str) -> Option<VolumeInfo> {
-        // Parse as a JSON value
-        let value: serde_json::Value = serde_json::from_str(json_str).ok()?;
-
+    fn parse_volume_from_value(value: &serde_json::Value) -> Option<VolumeInfo> {
         // pw-dump outputs an array of objects
         let objects = value.as_array()?;
 
@@ -472,7 +474,10 @@ impl PwDumpMonitor {
             if let Some(props_array) = params.get("Props").and_then(|v| v.as_array()) {
                 for prop_entry in props_array {
                     // Look for channelVolumes and mute in the props
-                    let mute = prop_entry.get("mute").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let mute = prop_entry
+                        .get("mute")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
 
                     if let Some(volumes) =
                         prop_entry.get("channelVolumes").and_then(|v| v.as_array())

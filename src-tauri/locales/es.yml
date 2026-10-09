@@ -29,9 +29,15 @@ common:
   loading: Cargando…
   noResults: Sin resultados
   retry: Reintentar
+  back: Volver
+
+# Lo que busca QuickSettingsTile de vue-libvasak en el catálogo.
+quickSettings:
+  details: Detalles
+  unavailable: No disponible
 
 views:
-  privacidadApplet:
+  privacyApplet:
     title: Cámara, micrófono y pantalla
     subtitle: Qué está usando cada cosa ahora mismo.
     nobody: Nadie está usando la cámara, el micrófono ni la pantalla.
@@ -47,8 +53,27 @@ views:
     logout: Cerrar sesión
     suspend: Suspender
     noApps: No hay aplicaciones disponibles
+    applications: Aplicaciones
+    results: Resultados de la búsqueda
+    categories: Categorías
+    places:
+      title: Lugares
+      home: Inicio
+      documents: Documentos
+      downloads: Descargas
+      trash: Papelera
+    favorites:
+      title: Favoritos
+      empty: Fijá aplicaciones desde la lista con el clic derecho.
+      pin: Fijar a favoritos
+      unpin: Quitar de favoritos
+    greeting:
+      morning: Buenos días
+      afternoon: Buenas tardes
+      evening: Buenas noches
   connect:
     title: Teléfono
+    chooseDevice: Elegir el teléfono
     menuAlt: Aplicaciones del teléfono
     noDevice: Sin teléfono
     plugIn: Conectá un teléfono Android con la depuración USB activada.
@@ -72,7 +97,14 @@ views:
     menuAlt: Menú
     settingsAlt: Configuración
     filesAlt: Archivos
+    pinnedAlt: Accesos fijos
     notificationsAlt: Notificaciones
+    workspaces: Espacios de trabajo
+    workspace: "Espacio de trabajo {0}"
+    keyboardLayout: "Distribución de teclado: {0}"
+    keyboardLayoutNext: "{0}. Tocar para pasar a la siguiente"
+    windowsAlt: Ventanas abiertas
+    trayAlt: Bandeja del sistema
   desktop:
     backgroundAlt: Fondo de pantalla
     videoWallpaperPowerTitle: El fondo en movimiento consume más
@@ -90,6 +122,152 @@ views:
     rebootDescription: El sistema se reiniciará. Asegúrate de guardar tu trabajo.
     logoutDescription: Se cerrará tu sesión actual.
     suspendDescription: El sistema entrará en estado de suspensión de bajo consumo.
+  musicApplet:
+    previous: Anterior
+    next: Siguiente
+    play: Reproducir
+    pause: Pausa
+    seek: Posición en la pista
+    byArtist: "de {0}"
+    nothingPlaying: No hay nada sonando
+    currentOutput: "Salida de audio: {0}"
+    chooseOutput: Elegir la salida de audio
+    noOutputs: No hay salidas de audio.
+    viaCaption: vía
+    players: Reproductores abiertos
+    equalizer:
+      title: Ecualizador
+      saved: Guardado
+      unsaved: Sin guardar
+      unavailable: El ecualizador no está disponible.
+      presets: Perfiles del ecualizador
+      presetNames:
+        flat: Plano
+        bass: Graves
+        treble: Agudos
+        vocal: Voz
+        pop: Pop
+        rock: Rock
+        jazz: Jazz
+        classic: Clásica
+        custom: Personalizado
+    back: Volver
+  screenTimeApplet:
+    title: Tiempo de pantalla
+    previousDay: Día anterior
+    nextDay: Día siguiente
+    today: Hoy
+    yesterday: Ayer
+    dailyAverage: Promedio diario
+    total: Total del día
+    noAverage: Sin datos
+    vsYesterday: "{0} frente a ayer"
+    sameAsYesterday: Igual que ayer
+    noYesterday: Sin datos de ayer
+    more: "más {0}"
+    less: "menos {0}"
+    week: Esta semana
+    weekOf: "Semana del {0}"
+    apps: Aplicaciones
+    empty: Todavía no hay tiempo registrado este día.
+    emptyNote: Se cuenta el tiempo con una aplicación enfocada, sin bloqueo ni inactividad.
+    disabled: El registro está apagado.
+    disabledNote: Prendelo para empezar a contar. Lo que ya había se conserva.
+    record: Registrar el tiempo de pantalla
+    clear: Borrar historial
+    confirmClear: Borrar todo
+    cancel: Cancelar
+    clearQuestion: Se borra todo el historial de esta computadora.
+    privacy: Se guarda sólo en esta computadora.
+    loadError: No se pudo leer el historial.
+    duration:
+      hoursMinutes: "{0} h {1} min"
+      hours: "{0} h"
+      minutes: "{0} min"
+      underMinute: menos de 1 min
+  wallpaperPicker:
+    title: Fondos de pantalla
+    more: Más fondos…
+    empty: No hay fondos disponibles
+    video: Fondo en movimiento
+    current: Fondo actual
+    hint: "Flechas o rueda para moverse · Enter para aplicar · Esc para cerrar"
+    applyError: "No se pudo aplicar el fondo: {0}"
+  dateBoard:
+    title: Tablero de fecha
+    calendar: Calendario del mes
+    now: Ahora
+    weather: Clima del día
+    events: Eventos del día
+    previousMonth: Mes anterior
+    nextMonth: Mes siguiente
+    hasEvents: con eventos
+    today: hoy
+    newEvent: Nuevo evento en Calendario
+    previousDay: Día anterior
+    nextDay: Día siguiente
+    hourly: Pronóstico de las próximas horas
+    max: "Máx. {0}"
+    min: "Mín. {0}"
+    wind: Viento
+    humidity: Humedad
+    rain: Lluvia
+    feelsLike: Sensación
+    noForecast: Sin pronóstico para esta fecha
+    weatherLoading: Cargando el clima…
+    weatherFailed: No se pudo obtener el clima
+    openCalendar: Abrir en Calendario
+    loadingEvents: Leyendo el calendario…
+    noEvents: Nada agendado para este día
+    allDay: Todo el día
+    ongoing: En curso
+    unavailable: El calendario no está disponible
+    unavailableNote: Hace falta el servicio de cuentas de VasakOS, que guarda la copia local de los calendarios.
+    denied: Sin permiso para leer el calendario
+    deniedNote: Se puede dar desde Configuración, en los permisos de las aplicaciones.
+    failed: No se pudieron leer los eventos
+    truncated: Hay más eventos de los que se muestran.
+    conditions:
+      "0": Despejado
+      "1": Mayormente despejado
+      "2": Parcialmente nublado
+      "3": Nublado
+      "45": Niebla
+      "48": Niebla con escarcha
+      "51": Llovizna leve
+      "53": Llovizna
+      "55": Llovizna intensa
+      "56": Llovizna helada leve
+      "57": Llovizna helada intensa
+      "61": Lluvia leve
+      "63": Lluvia
+      "65": Lluvia intensa
+      "66": Lluvia helada leve
+      "67": Lluvia helada intensa
+      "71": Nevada leve
+      "73": Nevada
+      "75": Nevada intensa
+      "77": Granos de nieve
+      "80": Chaparrones leves
+      "81": Chaparrones
+      "82": Chaparrones violentos
+      "85": Chaparrones de nieve leves
+      "86": Chaparrones de nieve intensos
+      "95": Tormenta
+      "96": Tormenta con granizo leve
+      "99": Tormenta con granizo intenso
+  controlCenter:
+    calendar: Calendario del mes
+    openCalendar: "Abrir el calendario: {0}"
+    quickSettings: Ajustes rápidos
+    more: Más ajustes
+    session: Sesión
+    summaryNone: Sin notificaciones
+    summaryOneOne: 1 notificación de 1 app
+    summaryOtherOne: "{0} notificaciones de 1 app"
+    summaryOtherOther: "{0} notificaciones de {1} apps"
+    lock: Bloquear
+    lockUnavailable: "Bloquear (no disponible: no hay sesión de logind)"
   applets:
     panelMenu:
       title: Opciones del panel
@@ -97,17 +275,19 @@ views:
       notifications: Centro de notificaciones
       systemSettings: Configuración del sistema
     tray:
-      fallbackTitle: Tray
-      iconAlt: Icono del tray
-      itemCount: "{0} elementos"
-      statusFallback: Tray activo
-      actionsTitle: Acciones del tray
-      actionsHint: Click derecho del tray
-      noItems: No hay elementos disponibles para este tray.
-      submenu: Submenú
-      disabled: Deshabilitado
+      fallbackTitle: Programa
+      menuLabel: "Menú de {0}"
+      noItems: Este programa no tiene acciones.
+      disposition:
+        informative: Información
+        warning: Advertencia
+        alert: Alerta
 
 components:
+  PanelClock:
+    open: "Abrir el tablero de fecha: {0}"
+  tray:
+    progress: "Progreso de {0}"
   AudioDeviceSelector:
     title: Dispositivo de audio
     speakerAlt: Altavoz
@@ -115,6 +295,8 @@ components:
     default: Predeterminado
     loadingDevices: Cargando dispositivos...
     noDevices: No hay dispositivos disponibles
+    inputTitle: Dispositivo de entrada
+    microphoneAlt: Micrófono
   BluetoothControl:
     iconAlt: Icono de Bluetooth
     toggle: Alternar Bluetooth
@@ -128,6 +310,80 @@ components:
     disconnect: Desconectar
   BrightnessControl:
     brightness: "Brillo: {0}%"
+  MonitorBrightness:
+    title: Brillo de las pantallas
+    builtIn: Integrada
+    brightnessOf: "Brillo de {0}: {1}%"
+    none: "Brillo: no disponible"
+    ddcDetecting: Buscando monitores externos…
+    ddcNotInstalled: "Monitores externos: no disponible (falta ddcutil)"
+    ddcNoI2cDev: "Monitores externos: no disponible (falta el módulo i2c-dev)"
+    ddcNoPermission: "Monitores externos: no disponible (sin permiso para usar i2c)"
+    ddcUnsupported: "{0}: no disponible (no contesta DDC/CI)"
+  PowerProfileControl:
+    title: Perfil de energía
+    powerSaver: Ahorro
+    balanced: Equilibrado
+    performance: Rendimiento
+    unavailable: No disponible
+    degraded: Rendimiento limitado
+  ControlCenterTiles:
+    nightLight: Luz nocturna
+    nightLightFailed: No se pudo cambiar
+    doNotDisturb: No molestar
+    doNotDisturbOn: Sólo urgentes
+    gameMode: Juegos
+    gameModeFailed: No se pudo cambiar
+    airplaneMode: Modo avión
+    airplaneModeHardware: Bloqueado por el equipo
+    airplaneModeFailed: No se pudo cambiar
+    keepAwake: Mantener despierto
+    keepAwakeFailed: "No se pudo cambiar"
+    keepAwakeReason: "Mantener despierto está activado: ni bloqueo ni suspensión por inactividad"
+    unavailable: No disponible
+    network: Red
+    bluetooth: Bluetooth
+    theme: Tema
+    screenTime: Tiempo de pantalla
+    search: Buscar
+    disconnected: Sin conexión
+    enabled: Encendido
+    disabled: Apagado
+    devicesOne: 1 dispositivo conectado
+    devicesOther: "{0} dispositivos conectados"
+    dark: Oscuro
+    light: Claro
+  ConnectionsArea:
+    connected: Conectado
+    scan: Buscar dispositivos
+    scanning: Buscando...
+    switchView: Ver la lista
+    battery: Batería
+    audioProfile: Perfil de audio
+    macAddress: Dirección MAC
+    profileA2dp: A2DP
+    profileHeadset: Manos libres
+    profileLeAudio: LE Audio
+    securityOpen: Abierta
+    securityWpaPersonal: WPA personal
+    securityWpaEnterprise: WPA empresarial
+    securityWpa2Personal: WPA2 personal
+    securityWpa3Personal: WPA3 personal
+    showNetworks: Ver redes
+    signal: Señal
+    security: Seguridad
+    ipAddress: Dirección IP
+    wifi: Wi-Fi
+    bluetooth: Bluetooth
+    tabs: Tipo de conexión
+    noDevice: Ningún dispositivo conectado
+    bluetoothOff: Bluetooth apagado
+    wifiUnavailable: Wi-Fi no disponible
+    noNetwork: Sin red conectada
+    wifiOff: Wi-Fi apagado
+    bluetoothRadio: Bluetooth
+    wifiRadio: Wi-Fi
+    back: Volver
   DeviceCard:
     connecting: Conectando...
     connect: Conectar
@@ -148,6 +404,19 @@ components:
     loopTrack: Repetir la pista
     raise: Ir al reproductor
     choosePlayer: Elegir reproductor
+    viaCaption: vía
+    byArtist: de {0}
+    players: Reproductores
+  MicrophoneControl:
+    microphone: Micrófono
+    mute: Silenciar el micrófono
+    unmute: Activar el micrófono
+    unavailable: No hay micrófono
+    devices: Elegir el micrófono
+  NetworkControl:
+    connected: Conectado
+    vpn: Conectado por VPN
+    disconnected: Sin conexión
   NetworkControlArea:
     title: Redes
     wifiUnavailable: Wi-Fi no disponible en este dispositivo
@@ -192,15 +461,32 @@ components:
     unreadMany: "{0} nuevas"
     empty: Sin notificaciones
     now: ahora
-  SearchButtonControl:
-    openSearch: Abrir el lanzador
-    searchAlt: Buscar
   SearchMenuComponent:
     placeholder: Buscar
   SystemAudioArea:
     title: Configuración de audio
     volumeControl: Control de volumen
     deviceSelector: Selector de dispositivo de audio
+  DoNotDisturbToggle:
+    label: No molestar
+  NightLightToggle:
+    label: Luz nocturna
+  NightLightDetail:
+    temperature: Calidez de noche
+    kelvin: "{0} K"
+    schedule: Cuándo
+    atSunset: Al atardecer
+    manual: Horario fijo
+    from: Desde
+    until: Hasta
+    latitude: Latitud
+    longitude: Longitud
+    locationHint: Se enciende al atardecer y se apaga al amanecer de esta ubicación.
+    missing: Falta wlsunset. Instalalo para usar la luz nocturna.
+    loadFailed: No se pudo leer la configuración de la luz nocturna.
+    saveFailed: No se pudo guardar la luz nocturna.
+    invalidCoordinates: La latitud va de -90 a 90 y la longitud de -180 a 180.
+    saving: Guardando…
   ThemeToggle:
     toLight: Cambiar a tema claro
     toDark: Cambiar a tema oscuro
@@ -210,9 +496,12 @@ components:
   TrayIconBluetooth:
     statusOn: Bluetooth activado
     statusOff: Bluetooth desactivado
+    connectedTo: "Bluetooth conectado a {0}"
     iconAlt: Icono de Bluetooth
   TrayIconCapsLock:
     capsLock: Bloq Mayús
+  TrayIconDoNotDisturb:
+    label: "No molestar: sólo avisan las urgentes"
   TrayIconMicrophone:
     muted: Micrófono silenciado
   TrayIconNetwork:
@@ -226,22 +515,21 @@ components:
     screen: Pantalla compartida
     usedBy: "{0} — {1}"
   TrayIconSound:
-    mute: Silenciar
-    unmute: Activar sonido
+    level: "Volumen: {0} %"
+    muted: Sonido silenciado
   TrayIconTwingate:
     connected: "Twingate: {0} recursos"
     disconnected: "Twingate: sin conexión"
     pending: "Twingate: {0} recursos por autorizar"
   TrayMusicControl:
+    progress: Avance de la pista
+    openPlayer: Abrir el reproductor
     nothingPlaying: No hay nada sonando
-    previous: Anterior
-    play: Reproducir
-    pause: Pausa
-    next: Siguiente
   VolumeControl:
     volume: Volumen
     mute: Silenciar
     unmute: Activar sonido
+    devices: Elegir la salida de audio
   TwingateArea:
     resourceCount: "{0} recursos"
     disconnected: Sin conexión
@@ -258,18 +546,28 @@ components:
   TrayNetworkRateControl:
     title: "Transferencia de red: lo que baja y lo que sube"
   TrayWeatherControl:
+    open: Abrir el tablero de fecha
     summary: "Máxima {0}° y mínima {1}°"
   WeatherIcon:
     unknown: Condición meteorológica desconocida
   WeatherWidget:
     failed: No se pudo obtener el clima
     loading: Cargando el clima…
+    wind: Viento
+    humidity: Humedad
+    rain: Lluvia
+    feelsLike: Sensación
+    previousDay: Día anterior
+    nextDay: Día siguiente
+    max: "Máx. {0}"
+    min: "Mín. {0}"
   useNetworkState:
     connectedTo: Conectado a {0} {1}
     disconnected: Desconectado
     vpnOn: activa
     vpnOff: VPN inactiva
 widgets:
+  remove: Quitar el widget
   menu:
     edit: Editar los widgets
     wallpaper: Cambiar el fondo de pantalla

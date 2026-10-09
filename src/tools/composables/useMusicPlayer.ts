@@ -12,6 +12,7 @@ function emptyInfo(): MusicInfo {
 	return {
 		player: '',
 		playerIdentity: '',
+		desktopEntry: '',
 		status: '',
 		title: '',
 		artist: '',
@@ -191,14 +192,53 @@ export function useMusicPlayer() {
 		}
 	}
 
-	async function showFallbackCover(): Promise<void> {
+	/**
+	 * Pone el respaldo en lugar de la carátula.
+	 *
+	 * `request` es el pedido que lo pidió: si entre que se resolvió el icono del
+	 * respaldo —un `await` que cruza el IPC— y acá entró un pedido más nuevo, este
+	 * respaldo ya no es el que va y no se aplica. Sin esto, el disparo inicial con
+	 * `artUrl` vacío terminaba **después** de que se pusiera la carátula de verdad
+	 * y la borraba: el disco del applet quedaba sin carátula aunque el widget, con
+	 * otros tiempos, la mostrara (vasak-desktop#165). Sin `request` —el error del
+	 * `<img>`— se aplica siempre, que es un respaldo pedido a mano.
+	 */
+	async function showFallbackCover(request?: number): Promise<void> {
 		await resolveFallbackCover();
+		if (disposed || (request !== undefined && request !== coverRequest)) return;
 		releaseCover();
 		hasCover.value = false;
 		imgSrc.value = fallbackCover.value;
 	}
 
+	/**
+	 * Qué carátula ya se reintentó, para no entrar en bucle.
+	 *
+	 * Vale por `artUrl`: al cambiar de pista vuelve a haber un reintento. Si lo
+	 * que no cargó eran los bytes de verdad —un archivo corrupto—, el segundo
+	 * intento falla igual y ahí sí se cae al respaldo.
+	 */
+	let coverErrorArt = '';
+
+	/**
+	 * Cuando el `<img>` no pudo cargar la carátula que tenía puesta.
+	 *
+	 * Una carátula local se arma como un `blob:` **de este mismo webview**. Si lo
+	 * que quedó en `imgSrc` no carga —el caso del disco del applet, que es otra
+	 * superficie: un `blob:` creado en otra ventana no resuelve acá
+	 * (vasak-desktop#165)—, se vuelve a resolver desde `artUrl`. Para un archivo
+	 * eso trae los bytes por el IPC y arma un `blob:` propio, que sí carga; una
+	 * sola vez por carátula. Para una URL remota que falló no hay nada que
+	 * reintentar —es la red—, así que ahí va directo al respaldo.
+	 */
 	async function onImgError(): Promise<void> {
+		const art = (musicInfo.value?.artUrl || '').trim();
+		const local = Boolean(art) && !/^(https?|data):/.test(art);
+		if (local && art !== coverErrorArt) {
+			coverErrorArt = art;
+			await resolveCover(art);
+			return;
+		}
 		await showFallbackCover();
 	}
 
@@ -215,7 +255,7 @@ export function useMusicPlayer() {
 		const request = ++coverRequest;
 		const clean = (url || '').trim();
 		if (!clean) {
-			await showFallbackCover();
+			await showFallbackCover(request);
 			return;
 		}
 
@@ -239,7 +279,7 @@ export function useMusicPlayer() {
 		} catch (e) {
 			if (disposed || request !== coverRequest) return;
 			logError('[music] La carátula no se pudo leer:', e);
-			await showFallbackCover();
+			await showFallbackCover(request);
 		}
 	}
 

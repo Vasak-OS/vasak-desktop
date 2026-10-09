@@ -27,13 +27,13 @@ import {
 /**
  * Un campo de juguete que cuenta los intentos y decide cuándo acepta el foco.
  *
- * `enfocar()` devuelve si el foco llegó, que es lo que distingue «pedí el foco»
+ * `focus()` devuelve si el foco llegó, que es lo que distingue «pedí el foco»
  * de «el campo lo tiene».
  */
 function fieldThatAcceptsAfter(attemptsToRefuse: number) {
 	let attempts = 0;
 	const field: FocusableSearchField & { attempts(): number } = {
-		enfocar() {
+		focus() {
 			attempts += 1;
 			return attempts > attemptsToRefuse;
 		},
@@ -94,10 +94,10 @@ describe('prepareMenuSearch', () => {
 		// con foco. Se abre dos veces con el mismo campo, sin montar nada en el
 		// medio.
 		const field = fieldThatAcceptsAfter(0);
-		const abrir = () => prepareMenuSearch({ field: () => field, clear: () => {} });
+		const open = () => prepareMenuSearch({ field: () => field, clear: () => {} });
 
-		abrir();
-		abrir();
+		open();
+		open();
 
 		expect(field.attempts()).toBe(2);
 	});
@@ -236,7 +236,7 @@ describe('focusMenuSearch', () => {
 		let enabled = false;
 		let focusedTimes = 0;
 		const field: FocusableSearchField = {
-			enfocar: () => {
+			focus: () => {
 				if (!enabled) return false;
 				focusedTimes += 1;
 				return true;
@@ -261,24 +261,32 @@ describe('focusMenuSearch', () => {
 describe('el cable en la vista', () => {
 	const source = readFileSync(join(import.meta.dir, '..', 'views', 'MenuView.vue'), 'utf8');
 
-	test('el menú prepara la búsqueda al ganar el foco la ventana', () => {
-		// Y no en `onMounted`, que corre una sola vez porque la ventana se
+	test('el menú prepara la búsqueda cada vez que el applet vuelve a la vista', () => {
+		// Y no en `onMounted`, que corre una sola vez porque la superficie se
 		// esconde en vez de destruirse.
-		const handler = source.slice(source.indexOf('onFocusChanged'));
+		expect(source).toMatch(/<AppletPopover\s[^>]*applet="menu"[^>]*@shown="onShown"/);
+		const handler = source.slice(source.indexOf('const onShown'));
+		expect(handler.slice(0, handler.indexOf('};'))).toMatch(/prepareMenuSearch\(/);
+	});
 
-		expect(handler).toMatch(/prepareMenuSearch\(/);
+	test('no escucha el foco de la ventana de Tauri, que dentro de la capa no llega', () => {
+		// Dentro de una superficie de capa `getCurrentWindow()` es la ventana
+		// vacía de Tauri: no gana el foco nunca, y esconderla o cerrarla no
+		// toca lo que se ve — cerrarla se lleva puesto el webview.
+		expect(source).not.toMatch(/getCurrentWindow/);
+		expect(source).not.toMatch(/onFocusChanged/);
 	});
 
 	test('el campo lleva el `ref` que permite enfocarlo', () => {
 		expect(source).toMatch(/<SearchField\s[^>]*ref="searchField"/);
 	});
 
-	test('el campo de la librería sigue exponiendo `enfocar`', () => {
+	test('el campo de la librería expone `focus`', () => {
 		// Todo el arreglo se apoya en esto. Si una versión de `vue-libvasak`
 		// renombra o saca el método, el `ref` queda apuntando a algo que no
 		// enfoca y el menú vuelve a abrir mudo — sin que nada falle, porque el
 		// `?.` se lo traga igual que se tragaba el id.
-		const contrato = readFileSync(
+		const contract = readFileSync(
 			join(
 				import.meta.dir,
 				'..',
@@ -294,33 +302,35 @@ describe('el cable en la vista', () => {
 			'utf8'
 		);
 
-		expect(contrato).toMatch(/enfocar:\s*typeof\s+enfocar/);
-		expect(contrato).toMatch(/declare\s+function\s+enfocar\(\):\s*boolean/);
+		expect(contract).toMatch(/\bfocus:\s*typeof\s+focus/);
+		expect(contract).toMatch(/declare\s+function\s+focus\(\):\s*boolean/);
 	});
 
 	test('el menú reenfoca cuando el campo deja de estar desactivado', () => {
 		// Y sin vaciar el filtro: para cuando el menú termina de cargar, lo que
 		// hay escrito lo escribió el usuario.
-		const observador = source.slice(source.indexOf('watch(\n\tisMenuEmpty'));
+		const watcher = source.slice(source.indexOf('watch(\n\tisMenuEmpty'));
 
-		expect(observador).toMatch(/focusMenuSearch\(/);
-		expect(observador.slice(0, observador.indexOf('\n);'))).not.toMatch(/clear:/);
+		expect(watcher).toMatch(/focusMenuSearch\(/);
+		expect(watcher.slice(0, watcher.indexOf('\n);'))).not.toMatch(/clear:/);
 	});
 
 	test('los reintentos se cortan al cerrar y al desmontar', () => {
 		// Quedan hasta 150 ms de reintentos vivos: uno que llegue tarde le
-		// robaría el foco a donde el usuario ya esté.
-		const alCerrar = source.slice(
-			source.indexOf('const closeAfterAnimation'),
+		// robaría el foco a donde el usuario ya esté. Cerrar es el aviso
+		// `leave` del applet.
+		expect(source).toMatch(/<AppletPopover\s[^>]*@leave="onLeave"/);
+		const onClose = source.slice(
+			source.indexOf('const onLeave'),
 			source.indexOf('const appsOfCategory')
 		);
-		const alDesmontar = source.slice(
+		const onUnmount = source.slice(
 			source.indexOf('onBeforeUnmount('),
 			source.indexOf('watch(\n\tisMenuEmpty')
 		);
 
-		expect(alCerrar).toMatch(/searchFocus\?\.cancel\(\)/);
-		expect(alDesmontar).toMatch(/searchFocus\?\.cancel\(\)/);
+		expect(onClose).toMatch(/searchFocus\?\.cancel\(\)/);
+		expect(onUnmount).toMatch(/searchFocus\?\.cancel\(\)/);
 	});
 
 	test('el campo no se vuelve a buscar por `id` en el documento', () => {

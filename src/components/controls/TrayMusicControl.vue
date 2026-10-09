@@ -1,175 +1,132 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { PanelPill, SpinningCover } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref } from 'vue';
+import { toggleApplet } from '@/services/window.service';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
-import { formatDuration } from '@/utils/playback';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
+import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
+import { showsNames } from '@/tools/panel-density';
+import { logError } from '@/utils/logger';
+import { formatDuration, playbackStateOf } from '@/utils/playback';
+
+/**
+ * El control de música del panel: un indicador que abre el reproductor.
+ *
+ * La píldora entera es un botón —la portada que gira con su aro de avance y el
+ * título corto al lado— y tocarla despliega el reproductor anclado debajo
+ * (`MusicAppletView`, el applet `music` de `APPLETS`), con el mismo mecanismo
+ * que los demás applets del panel (#134). Los comandos —anterior, reproducir,
+ * siguiente, la barra, la salida— viven **en el reproductor**, no acá: hasta
+ * 1.23 aparecían en el panel al pasar el puntero, y lo único que abría el
+ * reproductor era la portada de 22 píxeles (vasak-desktop#131).
+ *
+ * Con el panel a un costado no hay lugar para el título: queda la portada.
+ *
+ * En el panel en píldoras (vasak-desktop#151) es una `PanelPill` como las
+ * demás: la portada mini, el título cortado y, chico debajo, por dónde va
+ * —«01:42 / 04:19»—, como en el video de referencia. Sigue sin comandos.
+ */
 
 const { t } = useI18n();
+const { vertical, hasSurface } = usePanelConfig();
+const density = usePanelDensity();
 
-const {
-	musicInfo,
-	imgSrc,
-	position,
-	progress,
-	prevIcon,
-	nextIcon,
-	playIcon,
-	pauseIcon,
-	isPlaying,
-	onPrev,
-	onNext,
-	onPlayPause,
-	onImgError,
-	initIcons,
-	initMusicInfo,
-} = useMusicPlayer();
-
-const visible = ref(false);
-const isHiding = ref(false);
-let hideTimer: ReturnType<typeof setTimeout> | null = null;
-const ANIM_MS = 180;
+const { musicInfo, imgSrc, position, progress, onImgError, initIcons, initMusicInfo } =
+	useMusicPlayer();
 
 /**
  * Lo que dice el globo: qué suena, de quién, de qué disco y por dónde va.
- *
- * Es la única parte de la bandeja donde entra texto: la fila del panel mide 22
- * píxeles y el resto son iconos. Antes decía sólo el título.
  */
-const resumen = computed(() => {
+const summary = computed(() => {
 	const info = musicInfo.value;
 	if (!info.title) return t('components.TrayMusicControl.nothingPlaying');
 
-	const lineas = [info.title];
-	if (info.artist) lineas.push(info.artist);
-	if (info.album) lineas.push(info.album);
+	const lines = [info.title];
+	if (info.artist) lines.push(info.artist);
+	if (info.album) lines.push(info.album);
 	if (info.length > 0) {
-		lineas.push(`${formatDuration(position.value)} / ${formatDuration(info.length)}`);
+		lines.push(`${formatDuration(position.value)} / ${formatDuration(info.length)}`);
 	}
-	return lineas.join('\n');
+	return lines.join('\n');
 });
 
-function onEnter(): void {
-	if (hideTimer) {
-		clearTimeout(hideTimer);
-		hideTimer = null;
-	}
-	isHiding.value = false;
-	visible.value = true;
-}
+/** El nombre del botón: qué hace y qué suena, para quien no ve la portada. */
+const accessibleName = computed(() => {
+	const open = t('components.TrayMusicControl.openPlayer');
+	const info = musicInfo.value;
+	if (!info.title) return open;
+	return [open, info.artist ? `${info.title} — ${info.artist}` : info.title].join(': ');
+});
 
-function onLeave(): void {
-	if (!visible.value) return;
-	isHiding.value = true;
-	if (hideTimer) clearTimeout(hideTimer);
-	hideTimer = setTimeout(() => {
-		visible.value = false;
-		isHiding.value = false;
-		hideTimer = null;
-	}, ANIM_MS);
+/** Si suena, está en pausa o no hay nada: el disco gira, se congela o se queda quieto. */
+const state = computed(() => playbackStateOf(musicInfo.value.status));
+
+// En un panel angosto queda la portada sola: el título entero sigue en el globo.
+const showTitle = computed(
+	() => !vertical.value && showsNames(density.value) && Boolean(musicInfo.value.title)
+);
+
+/**
+ * «01:42 / 04:19», con los minutos en dos cifras como en el video de
+ * referencia; con horas queda como viene («1:02:03»). Sin largo conocido (una
+ * radio en vivo), nada.
+ */
+const clock = (micros: number) => formatDuration(micros).padStart(5, '0');
+const timing = computed(() => {
+	const info = musicInfo.value;
+	if (!showTitle.value || info.length <= 0) return '';
+	return `${clock(position.value)} / ${clock(info.length)}`;
+});
+
+const opener = ref<unknown>(null);
+const { isOpen } = useOpenApplet('music');
+
+async function openPlayer(): Promise<void> {
+	try {
+		await toggleApplet('music', opener.value);
+	} catch (error) {
+		logError('[TrayMusicControl] no se pudo abrir el reproductor:', error);
+	}
 }
 
 onMounted(async () => {
 	await initIcons();
 	await initMusicInfo();
 });
-
-onUnmounted(() => {
-	if (hideTimer) clearTimeout(hideTimer);
-});
 </script>
 
 <template>
-  <!-- contenedor con handlers para controlar la visibilidad -->
-  <div
-    class="p-1 rounded-corner hover:bg-primary flex items-center"
-    @mouseenter="onEnter"
-    @mouseleave="onLeave"
+  <!-- La píldora es un botón entero: se apunta entera, se realza mientras el
+       reproductor está abierto y es el ancla de dónde se despliega. Adentro,
+       la portada (`SpinningCover`, que se congela en pausa en vez de volver a
+       cero y se queda quieta con menos movimiento) con el aro de avance, el
+       título cortado y la posición. -->
+  <PanelPill
+    ref="opener"
+    :label="showTitle ? musicInfo.title : ''"
+    :caption="timing"
+    :expanded="isOpen"
+    :title="summary"
+    :accessible-label="accessibleName"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
+    class="max-w-56"
+    data-music-pill
+    @click="openPlayer"
   >
-    <!-- La portada, que gira mientras suena. `motion-reduce` la deja quieta:
-         quien pidió que el escritorio no se mueva no pidió una excepción para
-         la bandeja. Debajo, el aro de progreso dice por dónde va sin ocupar
-         una fila más, que en 22 píxeles de panel no existe. -->
-    <div class="relative w-5.5 h-5.5 shrink-0">
-      <img
+    <template #leading>
+      <SpinningCover
+        class="size-6 shrink-0"
         :src="imgSrc"
         :alt="musicInfo.title"
-        :title="resumen"
-        class="w-full h-full rounded-full origin-center object-cover"
-        :class="{ 'animate-spin motion-reduce:animate-none': isPlaying }"
+        :state="state"
+        :progress="musicInfo.length > 0 ? progress * 100 : null"
+        :progress-label="t('components.TrayMusicControl.progress')"
         @error="onImgError"
       />
-      <div
-        v-if="musicInfo.length > 0"
-        class="pointer-events-none absolute inset-0 rounded-full"
-        :style="{
-          background: `conic-gradient(var(--color-primary) ${progress * 360}deg, transparent 0deg)`,
-          mask: 'radial-gradient(circle, transparent 72%, black 74%)',
-          WebkitMask: 'radial-gradient(circle, transparent 72%, black 74%)',
-        }"
-        aria-hidden="true"
-      ></div>
-    </div>
-
-    <div
-      v-show="visible || isHiding"
-      :class="[
-        ' ml-2 flex items-center pr-1 space-x-1 transition-all duration-150',
-        visible && !isHiding ? 'controls-anim-in' : '',
-        isHiding ? 'controls-anim-out' : '',
-      ]"
-      :style="{
-        pointerEvents: visible || isHiding ? 'auto' : 'none',
-        display: visible || isHiding ? 'flex' : 'none',
-      }"
-      aria-hidden="false"
-    >
-      <!-- Qué está sonando, que hasta ahora sólo estaba en el globo. -->
-      <span
-        v-if="musicInfo.title"
-        class="max-w-40 truncate text-xs text-tx-main"
-        :title="resumen"
-      >
-        {{ musicInfo.title }}<span v-if="musicInfo.artist" class="text-tx-muted"> — {{ musicInfo.artist }}</span>
-      </span>
-
-      <button
-        type="button"
-        @click.prevent="onPrev"
-        :disabled="!musicInfo.canGoPrevious"
-        class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs disabled:cursor-default disabled:opacity-40"
-        :title="t('components.TrayMusicControl.previous')" :aria-label="t('components.TrayMusicControl.previous')">
-        <ThemeIcon :name="prevIcon" type="symbol" :size="16" :alt="t('components.TrayMusicControl.previous')" />
-      </button>
-
-      <button
-        type="button"
-        @click.prevent="onPlayPause"
-        class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs"
-        :title="isPlaying
-          ? t('components.TrayMusicControl.pause')
-          : t('components.TrayMusicControl.play')" :aria-label="isPlaying
-          ? t('components.TrayMusicControl.pause')
-          : t('components.TrayMusicControl.play')">
-        <ThemeIcon
-          :name="isPlaying ? pauseIcon : playIcon"
-          type="symbol"
-          :size="16"
-          :alt="isPlaying
-            ? t('components.TrayMusicControl.pause')
-            : t('components.TrayMusicControl.play')"
-        />
-      </button>
-
-      <button
-        type="button"
-        @click.prevent="onNext"
-        :disabled="!musicInfo.canGoNext"
-        class="w-6 h-6 flex items-center justify-center rounded-corner bg-ui-bg/80 text-xs disabled:cursor-default disabled:opacity-40"
-        :title="t('components.TrayMusicControl.next')" :aria-label="t('components.TrayMusicControl.next')">
-        <ThemeIcon :name="nextIcon" type="symbol" :size="16" :alt="t('components.TrayMusicControl.next')" />
-      </button>
-    </div>
-  </div>
+    </template>
+  </PanelPill>
 </template>

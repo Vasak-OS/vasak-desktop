@@ -1,14 +1,16 @@
 <script lang="ts" setup>
 import { invoke } from '@tauri-apps/api/core';
-import { writeConfig } from '@vasakgroup/plugin-config-manager';
+import { type VSKConfig, writeConfig } from '@vasakgroup/plugin-config-manager';
 import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { ActionButton, ListCard } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import FilesWidget from '@/components/widgets/FilesWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import WidgetHost from '@/components/widgets/WidgetHost.vue';
+import { toggleWallpaperPicker } from '@/services/wallpaper.service';
 import {
 	CELL_GAP,
 	CELL_SIZE,
@@ -22,6 +24,12 @@ import {
 	type WidgetPlacement,
 	type WidgetType,
 } from '@/tools/widgets/catalog';
+import {
+	isPrimaryMonitor,
+	monitorLabel,
+	readMonitorWidgets,
+	withMonitorWidgets,
+} from '@/tools/widgets/storage';
 import { logError } from '@/utils/logger';
 
 /**
@@ -31,9 +39,19 @@ import { logError } from '@/utils/logger';
  * nada guardado, así que no había nada que mover. Ahora viven en una cuadrícula
  * de celdas fijas, cada uno con su lugar y su tamaño en la configuración.
  */
-const props = defineProps<{ config: any }>();
+/**
+ * `monitorId` es la salida en la que se dibuja esta capa (el `?monitor=` de la
+ * ventana). Decide dónde se guarda y se lee el layout: la principal en
+ * `desktop.widgets`, cada secundaria en `desktop.widgetsByMonitor[<salida>]`.
+ * Así cada pantalla tiene su propio layout sin pisar ni duplicar al resto.
+ */
+const props = defineProps<{ config: any; monitorId?: string }>();
 
 const { t } = useI18n();
+
+const monitor = computed(() => monitorLabel(props.monitorId));
+/** El principal arranca con la disposición de siempre; el secundario, vacío. */
+const allowDefault = computed(() => isPrimaryMonitor(monitor.value));
 
 const widgetComponents: Record<WidgetType, unknown> = {
 	clock: DesktopClockWidget,
@@ -132,10 +150,11 @@ function applyConfig() {
 	if (!measured.value) return;
 
 	const result = resolveLayout(
-		props.config?.desktop?.widgets,
+		readMonitorWidgets(props.config, monitor.value),
 		Boolean(props.config?.desktop?.showfiles),
 		grid.value.columns,
-		grid.value.rows
+		grid.value.rows,
+		allowDefault.value
 	);
 
 	placements.value = result.placements;
@@ -152,11 +171,11 @@ function applyConfig() {
  */
 async function save() {
 	try {
-		const current = props.config ?? {};
-		await writeConfig({
-			...current,
-			desktop: { ...(current.desktop ?? {}), widgets: placements.value },
-		});
+		// El ayudante devuelve el config entero con la clave de esta salida puesta;
+		// `writeConfig` pide `VSKConfig` y el resto de las claves vienen intactas.
+		await writeConfig(
+			withMonitorWidgets(props.config, monitor.value, placements.value) as VSKConfig
+		);
 		// Desde acá la disposición es de la persona: aunque sea la de siempre
 		// tal cual, ya no se recalcula al cambiar la pantalla.
 		fromDefault.value = false;
@@ -292,13 +311,13 @@ async function openEditing(event: MouseEvent) {
 				icon: 'preferences-desktop',
 			},
 			{
-				id: 'fondo',
+				id: 'wallpaper',
 				label: t('widgets.menu.wallpaper'),
 				icon: 'preferences-desktop-wallpaper',
 			},
 			{ type: 'separator' },
 			{
-				id: 'sistema',
+				id: 'settings',
 				label: t('widgets.menu.settings'),
 				icon: 'preferences-system',
 			},
@@ -311,10 +330,13 @@ async function openEditing(event: MouseEvent) {
 			editing.value = true;
 			panelOpen.value = true;
 			break;
-		case 'fondo':
-			await invoke('open_settings_section', { section: 'appearance-wallpaper' });
+		case 'wallpaper':
+			// El selector rápido, sobre el escritorio (vasak-desktop#133). Su
+			// última tarjeta lleva a Configuración → Fondo, que era lo que hacía
+			// esto antes.
+			await toggleWallpaperPicker();
 			break;
-		case 'sistema':
+		case 'settings':
 			await invoke('open_settings');
 			break;
 	}
@@ -343,7 +365,7 @@ onUnmounted(() => {
 // Los archivos también: la configuración llega después de montar, y sin mirar
 // `showfiles` la disposición de siempre se quedaba sin ellos.
 watch(
-	() => [props.config?.desktop?.widgets, props.config?.desktop?.showfiles],
+	() => [readMonitorWidgets(props.config, monitor.value), props.config?.desktop?.showfiles],
 	() => {
 		if (!editing.value) applyConfig();
 	}
@@ -356,7 +378,7 @@ defineExpose({ openEditing });
 	<div
 		ref="container"
 		class="absolute inset-0 z-20"
-		:class="editing ? 'pointer-events-auto bg-black/20' : 'pointer-events-none'"
+		:class="editing ? 'pointer-events-auto bg-ui-scrim' : 'pointer-events-none'"
 	>
 		<div
 			class="grid h-full w-full"
@@ -386,40 +408,41 @@ defineExpose({ openEditing });
 			</WidgetHost>
 		</div>
 
-		<!-- Panel de widgets disponibles, sólo mientras se edita. -->
+		<!-- Panel de widgets disponibles, sólo mientras se edita.
+
+		     Flota sobre el escritorio como un diálogo: la superficie translúcida
+		     del escritorio `ui-shell`, el canto fino, el radio `xl` y la sombra
+		     `surface-xl`.
+		     Es un contenedor: las columnas de la lista salen de su ancho y no
+		     del de la pantalla. -->
 		<aside
 			v-if="editing && panelOpen"
 			data-widget-panel
-			class="pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner border border-ui-border bg-ui-bg/90 p-4 shadow-2xl backdrop-blur-lg"
+			class="@container pointer-events-auto absolute bottom-6 left-1/2 max-h-[40vh] w-[min(90vw,760px)] -translate-x-1/2 overflow-auto rounded-corner-xl window-border bg-ui-shell p-4 shadow-surface-xl"
 		>
 			<div class="mb-3 flex items-center justify-between">
-				<h2 class="text-sm font-semibold uppercase tracking-wide text-tx-muted">
+				<h2 class="text-label-m font-semibold uppercase tracking-wide text-tx-muted">
 					{{ t('widgets.panelTitle') }}
 				</h2>
-				<button
-					type="button"
-					class="rounded-corner bg-primary px-3 py-1 text-sm font-semibold text-tx-on-primary"
-					@click="finishEditing"
-				>
-					{{ t('widgets.done') }}
-				</button>
+				<ActionButton :label="t('widgets.done')" @click="finishEditing" />
 			</div>
 
-			<p v-if="options.length === 0" class="text-sm text-tx-muted">
+			<p v-if="options.length === 0" class="text-label-m text-tx-muted">
 				{{ t('widgets.allPlaced') }}
 			</p>
 
-			<div v-else class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-				<button
+			<div v-else class="grid gap-2 @lg:grid-cols-2 @2xl:grid-cols-3">
+				<ListCard
 					v-for="option in options"
 					:key="option.key"
-					type="button"
-					class="rounded-corner border border-ui-border bg-ui-surface/40 p-3 text-left transition-colors hover:bg-ui-surface"
+					clickable
 					@click="add(option.type, option.variant, option.size)"
 				>
-					<span class="block text-sm font-medium text-tx-main">{{ option.label }}</span>
-					<span class="block text-xs text-tx-muted">{{ option.description }}</span>
-				</button>
+					<span class="min-w-0 flex-1 text-left">
+						<span class="block text-label-m font-medium text-tx-main">{{ option.label }}</span>
+						<span class="block text-label-xs text-tx-muted">{{ option.description }}</span>
+					</span>
+				</ListCard>
 			</div>
 		</aside>
 	</div>

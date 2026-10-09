@@ -4,7 +4,7 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ActionButton, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import {
@@ -149,38 +149,37 @@ onUnmounted(() => {
 <template>
   <Transition appear enter-active-class="enter-active">
     <div
-      :class="['h-screen w-screen flex items-center justify-center bg-ui-bg/80 border border-ui-border rounded-corner-window overflow-hidden', { 'leave-active': leaving }]"
+      :class="['h-screen w-screen flex items-center justify-center bg-ui-shell window-border rounded-corner-window overflow-hidden', { 'leave-active': leaving }]"
     >
-      <div
-        class="flex flex-col w-[380px]"
-      >
+      <div class="flex w-full max-w-[380px] min-w-0 flex-col">
         <div class="flex flex-col items-center gap-4 px-8 pt-8 pb-4">
-          <div class="w-20 h-20 rounded-full bg-primary/15 flex items-center justify-center">
+          <!-- 80 px a propósito: el `IconTile` de la librería llega a 48, y
+               achicarlo cambiaría el formato de la ventana. -->
+          <div class="w-20 h-20 rounded-corner-full border border-ui-line bg-ui-selected-accent flex items-center justify-center">
             <ThemeIcon :name="actionImg ?? ''" :size="48" :alt="titleText" />
           </div>
           <h2 class="text-xl font-bold text-tx-main text-center">{{ titleText }}</h2>
-          <p class="text-sm text-tx-main/70 text-center leading-relaxed">{{ descriptionText }}</p>
+          <p class="text-label-m text-tx-muted text-center leading-relaxed">{{ descriptionText }}</p>
         </div>
 
         <div class="flex gap-3 px-8 pb-8 pt-2">
-          <button
-            class="flex-1 px-5 py-3 rounded-corner border border-ui-border bg-ui-surface/50 hover:bg-ui-surface transition-colors text-sm font-medium text-tx-main"
+          <ActionButton
+            class="flex-1"
+            :label="t('common.cancel')"
+            variant="secondary"
+            size="lg"
+            full-width
+            :disabled="confirming"
             @click="closeAfterAnimation"
-            :disabled="confirming"
-          >
-            {{ t('common.cancel') }}
-          </button>
-          <button
-            class="flex-1 px-5 py-3 rounded-corner bg-primary hover:bg-primary/90 transition-colors text-sm font-bold text-tx-on-primary flex items-center justify-center gap-2"
+          />
+          <ActionButton
+            class="flex-1"
+            :label="confirmText"
+            size="lg"
+            full-width
+            :loading="confirming"
             @click="executeAction"
-            :disabled="confirming"
-          >
-            <div
-              v-if="confirming"
-              class="w-4 h-4 border-2 border-tx-on-primary/30 border-t-tx-on-primary rounded-full animate-spin"
-            />
-            {{ confirmText }}
-          </button>
+          />
         </div>
       </div>
     </div>

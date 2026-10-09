@@ -13,7 +13,7 @@ import {
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SwitchToggle, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ActionButton, SwitchToggle, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
@@ -21,6 +21,14 @@ import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
+
+const props = defineProps<{
+	/**
+	 * Buscar apenas se abre: la vista radial pasa a la lista con «Buscar
+	 * dispositivos» (`ConnectionsArea`).
+	 */
+	scanOnMount?: boolean;
+}>();
 
 const connectedDevices = ref<any[]>([]);
 const availableDevices = ref<any[]>([]);
@@ -88,6 +96,7 @@ const bluetoothIcon = computed(() => {
 onMounted(async () => {
 	defaultAdapter.value = await getDefaultAdapter();
 	await refreshDevices();
+	if (props.scanOnMount && defaultAdapter.value?.powered) await scanDevices();
 });
 
 useSharedEvent('bluetooth-change', handleBluetoothChange);
@@ -123,7 +132,7 @@ const disconnect = async (device: any) => {
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex items-center mb-4">
+    <div class="flex flex-wrap items-center gap-y-2 mb-4">
       <SwitchToggle :label="t('components.BluetoothControl.toggle')"
         :model-value="isBluetoothOn || false"
         :disabled="isTogglingBluetooth"
@@ -132,19 +141,21 @@ const disconnect = async (device: any) => {
         @update:model-value="toggleBT"
       />
       <ThemeIcon :name="bluetoothIcon" :size="32" alt="Bluetooth" class="mr-3" />
-      <span class="font-bold text-2xl flex-1">Bluetooth</span>
-      <button
-        class="bg-primary text-white rounded-corner px-1 py-0.5 active:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
+      <span class="min-w-0 flex-1 break-words font-bold text-2xl">Bluetooth</span>
+      <!-- El botón de la librería: mientras busca, la rueda ocupa el lugar
+           del icono y el ancho no cambia. `view-refresh` y no
+           `refreshstructure`, que no es un nombre del estándar de freedesktop
+           y no lo trae cualquier tema. -->
+      <ActionButton
+        label=""
+        icon="view-refresh"
+        :icon-alt="t('components.BluetoothControlArea.scanAlt')"
+        :title="t('components.BluetoothControlArea.scanAlt')"
+        variant="secondary"
+        :loading="isScanning"
+        :disabled="!isBluetoothOn"
         @click="scanDevices"
-        :disabled="!isBluetoothOn || isScanning" :aria-label="t('components.BluetoothControlArea.scanAlt')">
-        <ThemeIcon
-          name="refreshstructure"
-          type="symbol"
-          :size="24"
-          :alt="t('components.BluetoothControlArea.scanAlt')"
-          :class="{ 'animate-spin': isScanning }"
-        />
-      </button>
+      />
     </div>
     <div v-if="loading" class="text-center px-6 flex-1">{{ t('common.loading') }}</div>
     <div v-else class="flex-1 flex gap-4 flex-col">
@@ -153,7 +164,7 @@ const disconnect = async (device: any) => {
         <div class="flex-1 overflow-y-auto">
           <div
             v-if="availableDevices.length === 0"
-            class="text-tx-muted text-sm px-1.5 text-center"
+            class="text-tx-muted text-label-m px-1.5 text-center"
           >
             {{ t('components.BluetoothControlArea.noneAvailable') }}
           </div>
@@ -174,7 +185,7 @@ const disconnect = async (device: any) => {
         <div class="flex-1 overflow-y-auto">
           <div
             v-if="connectedDevices.length === 0"
-            class="text-tx-muted text-sm px-1.5 text-center"
+            class="text-tx-muted text-label-m px-1.5 text-center"
           >
             {{ t('components.BluetoothControlArea.noneConnected') }}
           </div>

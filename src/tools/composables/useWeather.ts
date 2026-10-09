@@ -9,32 +9,37 @@ import {
 	weatherRelease,
 	weatherStore,
 } from '@/services/weather.service';
-import { crearEscuchaDeVisibilidad } from '@/tools/composables/escucha-de-visibilidad';
-import { logError } from '@/utils/logger';
+import { createVisibilityListener } from '@/tools/composables/visibility-listener';
+import { forecastUrl } from '@/tools/forecast-url';
 
 /**
  * El clima de todo el escritorio, pedido una sola vez.
  *
- * El estado es del módulo, no del componente: el widget del escritorio y el del
- * panel viven en ventanas distintas, y dentro de cada ventana puede haber más
- * de uno mirando lo mismo. Acá se comparte entre los de la misma ventana; entre
- * ventanas lo comparte el cache de Rust, que es quien decide cuál sale a pedir.
+ * Los errores van por `console`, que el logger del escritorio ya recoge:
+ * importar el logger acá ataba el clima a una ventana (`window`) y no dejaba
+ * probarlo.
+ *
+ * El estado es del módulo, no del componente: el widget del escritorio, el del
+ * panel y el tablero de fecha viven en ventanas distintas, y dentro de cada
+ * ventana puede haber más de uno mirando lo mismo. Acá se comparte entre los de
+ * la misma ventana; entre ventanas lo comparte el cache de Rust, que es quien
+ * decide cuál sale a pedir.
  */
-const datos = ref<any>(null);
-const fallo = ref(false);
-const cargando = ref(false);
+const data = ref<any>(null);
+const failed = ref(false);
+const loading = ref(false);
 
 /**
  * Cuánto se espera a cada pedido.
  *
  * Sin esto, un pedido que se cuelga —una red que acepta la conexión y después
- * no contesta— deja `cargando` en verdadero para siempre: el turno queda tomado
+ * no contesta— deja `loading` en verdadero para siempre: el turno queda tomado
  * y el clima no se vuelve a pedir en toda la sesión.
  */
-const LIMITE = 10_000;
+const REQUEST_TIMEOUT = 10_000;
 
 /** Cada cuánto se revisa si lo guardado venció. No toca la red. */
-const REVISION = 60_000;
+const CHECK_INTERVAL = 60_000;
 
 /**
  * Si esta ventana está a la vista.
@@ -44,24 +49,24 @@ const REVISION = 60_000;
  * cerrado, el menú sin abrir— es preguntar por un dato que nadie está mirando: el
  * clima no cambia en un minuto, y al volver a mostrarse se revisa igual.
  */
-function aLaVista(): boolean {
+function isVisible(): boolean {
 	return typeof document === 'undefined' || !document.hidden;
 }
 
-let arrancado = false;
-let reloj: ReturnType<typeof setInterval> | undefined;
-let consumidores = 0;
+let started = false;
+let timer: ReturnType<typeof setInterval> | undefined;
+let consumers = 0;
 /**
  * El escucha que refresca al volver la ventana a la vista.
  *
  * Se suelta cuando se desmonta el último consumidor. Con un booleano marcando
  * «ya enganché» no había forma de soltarlo: quedaba vivo para siempre, y un ciclo
  * de esconder y mostrar seguía disparando un IPC —y a veces un pedido a la red—
- * sin que hubiera nadie mirando el clima. Ver `escucha-de-visibilidad.ts`.
+ * sin que hubiera nadie mirando el clima. Ver `visibility-listener.ts`.
  */
-const escuchaDeVisibilidad = crearEscuchaDeVisibilidad(
+const visibility = createVisibilityListener(
 	typeof document === 'undefined' ? undefined : document,
-	() => void refrescar()
+	() => void refresh()
 );
 
 /**
@@ -73,147 +78,146 @@ const escuchaDeVisibilidad = crearEscuchaDeVisibilidad(
  * proveedor del pronóstico no agrega ningún tercero y no manda la IP a ninguna
  * parte.
  */
-async function deducirLugar(): Promise<WeatherPlace> {
-	const guardado = await weatherPlace();
-	if (guardado) return guardado;
+async function guessPlace(): Promise<WeatherPlace> {
+	const saved = await weatherPlace();
+	if (saved) return saved;
 
-	const zona = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const ciudad = zona?.split('/').pop()?.replace(/_/g, ' ');
+	const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const city = zone?.split('/').pop()?.replaceAll('_', ' ');
 
-	if (!ciudad) throw new Error(`No se pudo deducir la ciudad de la zona horaria: ${zona}`);
+	if (!city) throw new Error(`No se pudo deducir la ciudad de la zona horaria: ${zone}`);
 
-	const respuesta = await fetch(
-		`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(ciudad)}&count=1&format=json`,
-		{ signal: AbortSignal.timeout(LIMITE) }
+	const response = await fetch(
+		`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&format=json`,
+		{ signal: AbortSignal.timeout(REQUEST_TIMEOUT) }
 	);
-	const lugares = await respuesta.json();
-	const lugar = lugares?.results?.[0];
+	const places = await response.json();
+	const place = places?.results?.[0];
 
-	if (!lugar) throw new Error(`Sin coordenadas para ${ciudad}`);
+	if (!place) throw new Error(`Sin coordenadas para ${city}`);
 
-	return { lat: lugar.latitude, lon: lugar.longitude };
+	return { lat: place.latitude, lon: place.longitude };
 }
 
-async function pedirPronostico(lugar: WeatherPlace) {
-	const respuesta = await fetch(
-		`https://api.open-meteo.com/v1/forecast?latitude=${lugar.lat}&longitude=${lugar.lon}&current=temperature_2m,is_day,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`,
-		{ signal: AbortSignal.timeout(LIMITE) }
-	);
+async function fetchForecast(place: WeatherPlace) {
+	const response = await fetch(forecastUrl(place), {
+		signal: AbortSignal.timeout(REQUEST_TIMEOUT),
+	});
 
-	if (!respuesta.ok) throw new Error(`El servicio del clima contestó ${respuesta.status}`);
+	if (!response.ok) throw new Error(`El servicio del clima contestó ${response.status}`);
 
-	return await respuesta.json();
+	return await response.json();
 }
 
 /**
  * Pide el pronóstico sólo si a esta ventana le toca. Si le toca a otra, lo que
  * traiga llega por el evento `weather-updated`.
  */
-async function refrescar() {
-	if (cargando.value) return;
+async function refresh() {
+	if (loading.value) return;
 
 	try {
 		if (!(await weatherClaim())) return;
 	} catch (error) {
 		// Sin el puente con Rust no hay coordinación posible; pedir igual sería
 		// multiplicar los pedidos por la cantidad de ventanas abiertas.
-		logError('[clima] No se pudo consultar el turno:', error);
+		console.error('[clima] No se pudo consultar el turno:', error);
 		return;
 	}
 
-	cargando.value = true;
+	loading.value = true;
 
 	try {
-		const lugar = await deducirLugar();
-		const pronostico = await pedirPronostico(lugar);
+		const place = await guessPlace();
+		const forecast = await fetchForecast(place);
 
-		datos.value = pronostico;
-		fallo.value = false;
-		await weatherStore(pronostico, lugar);
+		data.value = forecast;
+		failed.value = false;
+		await weatherStore(forecast, place);
 	} catch (error) {
 		// Estar sin red es lo normal acá, no una excepción para gritar.
-		if (!datos.value) fallo.value = true;
+		if (!data.value) failed.value = true;
 		console.warn('No se pudo obtener el clima:', error);
 		await weatherRelease().catch(() => {});
 	} finally {
-		cargando.value = false;
+		loading.value = false;
 	}
 }
 
-async function arrancar() {
-	if (arrancado) return;
-	arrancado = true;
+async function start() {
+	if (started) return;
+	started = true;
 
 	// Lo guardado primero: si otra ventana ya lo trajo, esta muestra el clima
 	// sin pedir nada.
 	try {
-		const guardado = await weatherCached();
-		if (guardado) datos.value = guardado.datos;
+		const saved = await weatherCached();
+		if (saved) data.value = saved.datos;
 	} catch (error) {
-		logError('[clima] No se pudo leer el cache:', error);
+		console.error('[clima] No se pudo leer el cache:', error);
 	}
 
 	// El evento no se desengancha: mientras la ventana viva, lo que traiga
 	// cualquier otra tiene que llegar acá.
-	listen<WeatherSnapshot>('weather-updated', (evento) => {
-		datos.value = evento.payload.datos;
-		fallo.value = false;
-	}).catch((error) => logError('[clima] No se pudo escuchar las actualizaciones:', error));
+	listen<WeatherSnapshot>('weather-updated', (event) => {
+		data.value = event.payload.datos;
+		failed.value = false;
+	}).catch((error) => console.error('[clima] No se pudo escuchar las actualizaciones:', error));
 
-	void refrescar();
+	void refresh();
 }
 
 export function useWeather() {
-	consumidores += 1;
-	void arrancar();
+	consumers += 1;
+	void start();
 
-	if (!reloj) {
-		reloj = setInterval(() => {
-			if (aLaVista()) void refrescar();
-		}, REVISION);
+	if (!timer) {
+		timer = setInterval(() => {
+			if (isVisible()) void refresh();
+		}, CHECK_INTERVAL);
 	}
 
 	// Al volver a la vista se revisa enseguida, sin esperar hasta un minuto: si
 	// estuvo escondida un rato largo, lo guardado puede haber vencido hace mucho.
-	escuchaDeVisibilidad.enganchar();
+	visibility.attach();
 
 	onUnmounted(() => {
-		consumidores -= 1;
-		if (consumidores > 0) return;
+		consumers -= 1;
+		if (consumers > 0) return;
 
-		if (reloj) {
-			clearInterval(reloj);
-			reloj = undefined;
+		if (timer) {
+			clearInterval(timer);
+			timer = undefined;
 		}
 		// Y el escucha con él: sin nadie mirando, esconder y mostrar la ventana no
 		// tiene que disparar ningún trabajo.
-		escuchaDeVisibilidad.soltar();
+		visibility.detach();
 	});
 
-	const actual = computed(() => datos.value?.current ?? null);
-	const dayOrNight = computed<'day' | 'night'>(() => (actual.value?.is_day ? 'day' : 'night'));
+	const current = computed(() => data.value?.current ?? null);
+	const dayOrNight = computed<'day' | 'night'>(() => (current.value?.is_day ? 'day' : 'night'));
 
 	/** El pronóstico de mañana en adelante, aplanado: así la plantilla no
 	 * indexa cuatro arreglos paralelos a mano. */
-	const proximos = computed(() => {
-		const diario = datos.value?.daily;
-		if (!diario) return [];
+	const upcoming = computed(() => {
+		const daily = data.value?.daily;
+		if (!daily) return [];
 
-		return diario.time.slice(1).map((fecha: string, i: number) => ({
-			date: fecha,
-			min: diario.temperature_2m_min[i + 1],
-			max: diario.temperature_2m_max[i + 1],
-			code: diario.weather_code[i + 1],
+		return daily.time.slice(1).map((date: string, i: number) => ({
+			date,
+			min: daily.temperature_2m_min[i + 1],
+			max: daily.temperature_2m_max[i + 1],
+			code: daily.weather_code[i + 1],
 		}));
 	});
 
 	return {
-		weather: datos,
-		current: actual,
-		failed: computed(() => fallo.value && !datos.value),
-		loading: computed(() => cargando.value && !datos.value),
+		weather: data,
+		current,
+		failed: computed(() => failed.value && !data.value),
+		loading: computed(() => loading.value && !data.value),
 		dayOrNight,
-		upcoming: proximos,
-		refresh: refrescar,
+		upcoming,
+		refresh,
 	};
 }

@@ -2,6 +2,7 @@ use gtk::prelude::*;
 use gtk_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 use crate::logger::log_error;
@@ -39,6 +40,35 @@ pub struct LayerSpec {
     /// what makes a popup behave like a popup — it used to stay open until it
     /// was toggled again, over whatever the person clicked next.
     pub dismiss_on_unfocus: bool,
+    /// Qué hacer en lugar de esconderla en el acto, cuando `dismiss_on_unfocus`
+    /// pide cerrarla.
+    ///
+    /// Los applets lo usan para salir con su animación: avisan a la página, que
+    /// se desvanece, y recién después se esconde la superficie. Sin esto la
+    /// salida es un corte seco.
+    pub on_dismiss: Option<Rc<dyn Fn()>>,
+    /// Se llama cada vez que la superficie se esconde, la esconda quien la
+    /// esconda: Escape, la pérdida de foco, el panel o la propia página.
+    ///
+    /// Es lo que le permite al panel saber que un applet se cerró sin tener que
+    /// adivinarlo.
+    pub on_hide: Option<Box<dyn Fn()>>,
+    /// La parte de la superficie que recibe el puntero, (x, y, ancho, alto)
+    /// relativo a ella; `None` la deja entera. Ver [`set_layer_input_region`].
+    ///
+    /// Va acá y no sólo después de construirla porque la superficie se muestra
+    /// al construirse: recortarla después deja un instante en que el margen se
+    /// queda con los clics de lo que tiene debajo.
+    pub input_region: Option<(i32, i32, i32, i32)>,
+    /// El puntero entró en la región de entrada de la superficie, y salió de
+    /// ella. Lo usa el auto-ocultar del panel: sobre una superficie de capa este
+    /// WebView no le entrega a la página ningún evento de salida del puntero
+    /// —sólo los `pointermove` mientras está encima—, así que el «salió» se toma
+    /// acá, del `leave-notify` de GTK sobre la ventana, que sí llega (como el
+    /// `focus-out` de los applets). Se descartan los cruces hacia el webview hijo
+    /// (`Inferior`), que no son salidas de verdad.
+    pub on_pointer_enter: Option<Box<dyn Fn()>>,
+    pub on_pointer_leave: Option<Box<dyn Fn()>>,
 }
 
 impl Default for LayerSpec {
@@ -52,6 +82,11 @@ impl Default for LayerSpec {
             keyboard: KeyboardMode::None,
             start_hidden: false,
             dismiss_on_unfocus: false,
+            on_dismiss: None,
+            on_hide: None,
+            input_region: None,
+            on_pointer_enter: None,
+            on_pointer_leave: None,
         }
     }
 }
@@ -62,7 +97,7 @@ impl Default for LayerSpec {
 /// se mueve de un lado a otro de la pantalla sin volver a crearse, y el centro
 /// de control se corre para no quedar debajo. Lo demás —la capa, el espacio de
 /// nombres, el teclado— se decide una vez y no vuelve a tocarse.
-pub struct Geometria {
+pub struct Geometry {
     /// Bordes anclados: (izquierda, derecha, arriba, abajo).
     pub anchors: (bool, bool, bool, bool),
     /// Lo que mide, en píxeles lógicos.
@@ -77,7 +112,7 @@ pub struct Geometria {
 ///
 /// Se aplica igual al crearla y al moverla: `gtk-layer-shell` acepta los cuatro
 /// cambios en caliente, así que cambiar de lado es esto y nada más.
-fn aplicar_geometria(layer_win: &gtk::Window, geo: &Geometria) {
+fn apply_geometry(layer_win: &gtk::Window, geo: &Geometry) {
     let (left, right, top, bottom) = geo.anchors;
     let (width, height) = geo.size;
 
@@ -151,9 +186,9 @@ pub fn spawn_layer_window(
     layer_win.set_namespace(spec.namespace);
     layer_win.set_layer(spec.layer);
 
-    aplicar_geometria(
+    apply_geometry(
         &layer_win,
-        &Geometria {
+        &Geometry {
             anchors: spec.anchors,
             size,
             margins: spec.margins,
@@ -161,6 +196,7 @@ pub fn spawn_layer_window(
         },
     );
     layer_win.set_keyboard_mode(spec.keyboard);
+    apply_input_region(&layer_win, spec.input_region);
 
     reparent_webview(&gtk_window, &layer_win)?;
     apply_transparency(&layer_win);
@@ -170,16 +206,46 @@ pub fn spawn_layer_window(
         // Escape and focus loss are handled here rather than in the page: the
         // surface owns the keyboard, and a click that lands on another window
         // never reaches the webview at all.
-        layer_win.connect_key_press_event(|window, event| {
+        let dismiss: Rc<dyn Fn(&gtk::Window)> = match spec.on_dismiss {
+            Some(on_dismiss) => Rc::new(move |_| on_dismiss()),
+            None => Rc::new(|window: &gtk::Window| window.hide()),
+        };
+
+        let on_escape = dismiss.clone();
+        layer_win.connect_key_press_event(move |window, event| {
             if event.keyval() == gdk::keys::constants::Escape {
-                window.hide();
+                on_escape(window);
                 return glib::Propagation::Stop;
             }
             glib::Propagation::Proceed
         });
 
-        layer_win.connect_focus_out_event(|window, _| {
-            window.hide();
+        layer_win.connect_focus_out_event(move |window, _| {
+            dismiss(window);
+            glib::Propagation::Proceed
+        });
+    }
+
+    // El puntero entrando y saliendo de la superficie, para el auto-ocultar del
+    // panel. Se filtra `Inferior` —el cruce hacia el webview hijo, que no es una
+    // salida de verdad— igual que lo haría cualquier panel en C. La página no
+    // recibe estos cruces en una superficie de capa; GTK sí.
+    if spec.on_pointer_enter.is_some() || spec.on_pointer_leave.is_some() {
+        layer_win.add_events(gdk::EventMask::ENTER_NOTIFY_MASK | gdk::EventMask::LEAVE_NOTIFY_MASK);
+    }
+    if let Some(on_pointer_enter) = spec.on_pointer_enter {
+        layer_win.connect_enter_notify_event(move |_window, event| {
+            if event.detail() != gdk::NotifyType::Inferior {
+                on_pointer_enter();
+            }
+            glib::Propagation::Proceed
+        });
+    }
+    if let Some(on_pointer_leave) = spec.on_pointer_leave {
+        layer_win.connect_leave_notify_event(move |_window, event| {
+            if event.detail() != gdk::NotifyType::Inferior {
+                on_pointer_leave();
+            }
             glib::Propagation::Proceed
         });
     }
@@ -187,6 +253,12 @@ pub fn spawn_layer_window(
     layer_win.show_all();
     if spec.start_hidden {
         layer_win.hide();
+    }
+
+    // Después de la primera vez que se esconde, que es parte de construirla y
+    // no algo que haya que anunciar.
+    if let Some(on_hide) = spec.on_hide {
+        layer_win.connect_hide(move |_| on_hide());
     }
     gtk_window.hide();
 
@@ -255,17 +327,92 @@ fn apply_transparency(layer_win: &gtk::Window) {
 /// el hilo principal de GTK, que es donde vive el registro: desde cualquier
 /// otro hilo el registro se ve vacío y la respuesta sería `false` esté o no la
 /// ventana en pantalla.
-pub fn reubicar_layer_window(label: &str, geo: &Geometria) -> bool {
+pub fn relocate_layer_window(label: &str, geo: &Geometry) -> bool {
     LAYER_WINDOWS
         .try_with(|windows| {
             let windows = windows.borrow();
             let Some(window) = windows.get(label) else {
                 return false;
             };
-            aplicar_geometria(window, geo);
+            apply_geometry(window, geo);
             true
         })
         .unwrap_or(false)
+}
+
+/// Recorta la parte de la superficie que recibe el puntero.
+///
+/// `rect` es (x, y, ancho, alto) en píxeles lógicos, relativo a la superficie;
+/// `None` la deja entera. Fuera de ese rectángulo los clics **atraviesan** la
+/// superficie y caen en lo que haya debajo, que es lo que necesita una
+/// superficie más grande que lo que dibuja: el margen de sombra de los applets
+/// se mete encima del panel, y sin esto se quedaría con los clics de esa franja
+/// de la barra. En Wayland GDK lo manda como la región de entrada de la
+/// superficie.
+///
+/// Devuelve `false` si esa superficie no está construida. Sólo en el hilo
+/// principal de GTK, como [`relocate_layer_window`].
+pub fn set_layer_input_region(label: &str, rect: Option<(i32, i32, i32, i32)>) -> bool {
+    LAYER_WINDOWS
+        .try_with(|windows| {
+            let windows = windows.borrow();
+            let Some(window) = windows.get(label) else {
+                return false;
+            };
+            apply_input_region(window, rect);
+            true
+        })
+        .unwrap_or(false)
+}
+
+/// Como [`set_layer_input_region`], pero con varios rectángulos.
+///
+/// Es la del panel en píldoras (vasak-desktop#151): la superficie sigue siendo
+/// la franja entera —es la que reserva el lugar—, pero lo que recibe el puntero
+/// son sólo las píldoras. Entre una y otra los clics caen en el escritorio,
+/// que se ve por ahí. Sin rectángulos la superficie queda entera, que es lo
+/// seguro: una lista vacía por un error de medición no puede dejar al panel
+/// sin poder tocarse.
+pub fn set_layer_input_rects(label: &str, rects: &[(i32, i32, i32, i32)]) -> bool {
+    LAYER_WINDOWS
+        .try_with(|windows| {
+            let windows = windows.borrow();
+            let Some(window) = windows.get(label) else {
+                return false;
+            };
+            match input_rects(rects) {
+                Some(rects) => {
+                    let region = gtk::cairo::Region::create_rectangles(&rects);
+                    window.input_shape_combine_region(Some(&region));
+                }
+                None => window.input_shape_combine_region(None),
+            }
+            true
+        })
+        .unwrap_or(false)
+}
+
+/// Los rectángulos que valen: sin los de ancho o alto cero, que no suman nada.
+/// `None` si no queda ninguno, y entonces la superficie va entera.
+fn input_rects(rects: &[(i32, i32, i32, i32)]) -> Option<Vec<gtk::cairo::RectangleInt>> {
+    let valid: Vec<_> = rects
+        .iter()
+        .filter(|(_, _, width, height)| *width > 0 && *height > 0)
+        .map(|&(x, y, width, height)| gtk::cairo::RectangleInt::new(x, y, width, height))
+        .collect();
+    (!valid.is_empty()).then_some(valid)
+}
+
+fn apply_input_region(window: &gtk::Window, rect: Option<(i32, i32, i32, i32)>) {
+    match rect {
+        Some((x, y, width, height)) => {
+            let region = gtk::cairo::Region::create_rectangle(&gtk::cairo::RectangleInt::new(
+                x, y, width, height,
+            ));
+            window.input_shape_combine_region(Some(&region));
+        }
+        None => window.input_shape_combine_region(None),
+    }
 }
 
 /// Tears down every shell surface whose label starts with one of `prefixes`,
@@ -365,4 +512,29 @@ pub fn layer_window_exists(label: &str) -> bool {
     LAYER_WINDOWS
         .try_with(|windows| windows.borrow().contains_key(label))
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod input_rects_tests {
+    use super::input_rects;
+
+    #[test]
+    fn cada_pildora_es_un_rectangulo_de_la_region() {
+        let rects = input_rects(&[(4, 2, 32, 32), (40, 2, 120, 32)]).expect("dos píldoras");
+        assert_eq!(rects.len(), 2);
+        assert_eq!((rects[1].x(), rects[1].width()), (40, 120));
+    }
+
+    #[test]
+    fn los_rectangulos_vacios_no_suman() {
+        let rects = input_rects(&[(0, 0, 0, 32), (10, 0, 20, 0), (50, 2, 32, 32)]).unwrap();
+        assert_eq!(rects.len(), 1);
+    }
+
+    #[test]
+    fn sin_ninguno_la_superficie_queda_entera() {
+        // Una medición que falla no puede dejar al panel sin poder tocarse.
+        assert!(input_rects(&[]).is_none());
+        assert!(input_rects(&[(0, 0, 0, 0)]).is_none());
+    }
 }

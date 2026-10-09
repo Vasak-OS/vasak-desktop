@@ -29,9 +29,15 @@ common:
   loading: Loading…
   noResults: No results
   retry: Retry
+  back: Back
+
+# Lo que busca QuickSettingsTile de vue-libvasak en el catálogo.
+quickSettings:
+  details: Details
+  unavailable: Not available
 
 views:
-  privacidadApplet:
+  privacyApplet:
     title: Camera, microphone and screen
     subtitle: What is using each one right now.
     nobody: Nothing is using the camera, the microphone or the screen.
@@ -47,8 +53,27 @@ views:
     logout: Log out
     suspend: Suspend
     noApps: No applications available
+    applications: Applications
+    results: Search results
+    categories: Categories
+    places:
+      title: Places
+      home: Home
+      documents: Documents
+      downloads: Downloads
+      trash: Trash
+    favorites:
+      title: Favorites
+      empty: Pin applications from the list with a right click.
+      pin: Pin to favorites
+      unpin: Remove from favorites
+    greeting:
+      morning: Good morning
+      afternoon: Good afternoon
+      evening: Good evening
   connect:
     title: Phone
+    chooseDevice: Choose the phone
     menuAlt: Phone applications
     noDevice: No phone
     plugIn: Plug in an Android phone with USB debugging enabled.
@@ -72,7 +97,14 @@ views:
     menuAlt: Menu
     settingsAlt: Settings
     filesAlt: Files
+    pinnedAlt: Pinned apps
     notificationsAlt: Notifications
+    workspaces: Workspaces
+    workspace: "Workspace {0}"
+    keyboardLayout: "Keyboard layout: {0}"
+    keyboardLayoutNext: "{0}. Press to switch to the next one"
+    windowsAlt: Open windows
+    trayAlt: System tray
   desktop:
     backgroundAlt: Wallpaper
     videoWallpaperPowerTitle: A moving wallpaper uses more power
@@ -90,6 +122,152 @@ views:
     rebootDescription: The system will restart. Make sure to save your work.
     logoutDescription: Your current session will be closed.
     suspendDescription: The system will enter a low-power suspend state.
+  musicApplet:
+    previous: Previous
+    next: Next
+    play: Play
+    pause: Pause
+    seek: Track position
+    byArtist: "by {0}"
+    nothingPlaying: Nothing playing
+    currentOutput: "Audio output: {0}"
+    chooseOutput: Choose audio output
+    noOutputs: No audio outputs.
+    viaCaption: via
+    players: Open players
+    equalizer:
+      title: Equalizer
+      saved: Saved
+      unsaved: Not saved
+      unavailable: The equalizer is not available.
+      presets: Equalizer presets
+      presetNames:
+        flat: Flat
+        bass: Bass
+        treble: Treble
+        vocal: Vocal
+        pop: Pop
+        rock: Rock
+        jazz: Jazz
+        classic: Classic
+        custom: Custom
+    back: Back
+  screenTimeApplet:
+    title: Screen time
+    previousDay: Previous day
+    nextDay: Next day
+    today: Today
+    yesterday: Yesterday
+    dailyAverage: Daily average
+    total: Total for the day
+    noAverage: No data
+    vsYesterday: "{0} vs yesterday"
+    sameAsYesterday: Same as yesterday
+    noYesterday: No data for yesterday
+    more: "{0} more"
+    less: "{0} less"
+    week: This week
+    weekOf: "Week of {0}"
+    apps: Applications
+    empty: No screen time recorded for this day yet.
+    emptyNote: Time counts while an application has focus, with the screen unlocked and someone using it.
+    disabled: Recording is off.
+    disabledNote: Turn it on to start counting. What was already recorded is kept.
+    record: Record screen time
+    clear: Clear history
+    confirmClear: Clear everything
+    cancel: Cancel
+    clearQuestion: All history on this computer will be deleted.
+    privacy: Stored only on this computer.
+    loadError: Could not read the history.
+    duration:
+      hoursMinutes: "{0}h {1}m"
+      hours: "{0}h"
+      minutes: "{0}m"
+      underMinute: under 1m
+  wallpaperPicker:
+    title: Wallpapers
+    more: More wallpapers…
+    empty: No wallpapers available
+    video: Moving wallpaper
+    current: Current wallpaper
+    hint: "Arrows or wheel to move · Enter to apply · Esc to close"
+    applyError: "The wallpaper could not be applied: {0}"
+  dateBoard:
+    title: Date board
+    calendar: Month calendar
+    now: Now
+    weather: Weather for the day
+    events: Events of the day
+    previousMonth: Previous month
+    nextMonth: Next month
+    hasEvents: has events
+    today: today
+    newEvent: New event in Calendar
+    previousDay: Previous day
+    nextDay: Next day
+    hourly: Forecast for the next hours
+    max: "High {0}"
+    min: "Low {0}"
+    wind: Wind
+    humidity: Humidity
+    rain: Rain
+    feelsLike: Feels like
+    noForecast: No forecast for this date
+    weatherLoading: Loading the weather…
+    weatherFailed: Could not get the weather
+    openCalendar: Open in Calendar
+    loadingEvents: Reading the calendar…
+    noEvents: Nothing scheduled for this day
+    allDay: All day
+    ongoing: Ongoing
+    unavailable: The calendar is not available
+    unavailableNote: It needs the VasakOS accounts service, which keeps the local copy of the calendars.
+    denied: No permission to read the calendar
+    deniedNote: It can be granted in Settings, under application permissions.
+    failed: Could not read the events
+    truncated: There are more events than shown.
+    conditions:
+      "0": Clear sky
+      "1": Mainly clear
+      "2": Partly cloudy
+      "3": Overcast
+      "45": Fog
+      "48": Rime fog
+      "51": Light drizzle
+      "53": Drizzle
+      "55": Dense drizzle
+      "56": Light freezing drizzle
+      "57": Dense freezing drizzle
+      "61": Light rain
+      "63": Rain
+      "65": Heavy rain
+      "66": Light freezing rain
+      "67": Heavy freezing rain
+      "71": Light snow
+      "73": Snow
+      "75": Heavy snow
+      "77": Snow grains
+      "80": Light showers
+      "81": Showers
+      "82": Violent showers
+      "85": Light snow showers
+      "86": Heavy snow showers
+      "95": Thunderstorm
+      "96": Thunderstorm with light hail
+      "99": Thunderstorm with heavy hail
+  controlCenter:
+    calendar: Month calendar
+    openCalendar: "Open the calendar: {0}"
+    quickSettings: Quick settings
+    more: More settings
+    session: Session
+    summaryNone: No notifications
+    summaryOneOne: 1 notification from 1 app
+    summaryOtherOne: "{0} notifications from 1 app"
+    summaryOtherOther: "{0} notifications from {1} apps"
+    lock: Lock
+    lockUnavailable: "Lock (unavailable: no logind session)"
   applets:
     panelMenu:
       title: Panel options
@@ -97,17 +275,19 @@ views:
       notifications: Notification centre
       systemSettings: System settings
     tray:
-      fallbackTitle: Tray
-      iconAlt: Tray icon
-      itemCount: "{0} items"
-      statusFallback: Tray active
-      actionsTitle: Tray actions
-      actionsHint: Tray right click
-      noItems: No items available for this tray.
-      submenu: Submenu
-      disabled: Disabled
+      fallbackTitle: Application
+      menuLabel: "{0} menu"
+      noItems: This application has no actions.
+      disposition:
+        informative: Information
+        warning: Warning
+        alert: Alert
 
 components:
+  PanelClock:
+    open: "Open the date board: {0}"
+  tray:
+    progress: "{0} progress"
   AudioDeviceSelector:
     title: Audio device
     speakerAlt: Speaker
@@ -115,6 +295,8 @@ components:
     default: Default
     loadingDevices: Loading devices...
     noDevices: No devices available
+    inputTitle: Input device
+    microphoneAlt: Microphone
   BluetoothControl:
     iconAlt: Bluetooth icon
     toggle: Toggle Bluetooth
@@ -128,6 +310,80 @@ components:
     disconnect: Disconnect
   BrightnessControl:
     brightness: "Brightness: {0}%"
+  MonitorBrightness:
+    title: Screen brightness
+    builtIn: Built-in
+    brightnessOf: "{0} brightness: {1}%"
+    none: "Brightness: unavailable"
+    ddcDetecting: Looking for external monitors…
+    ddcNotInstalled: "External monitors: unavailable (ddcutil is missing)"
+    ddcNoI2cDev: "External monitors: unavailable (the i2c-dev module is missing)"
+    ddcNoPermission: "External monitors: unavailable (no permission to use i2c)"
+    ddcUnsupported: "{0}: unavailable (doesn't answer DDC/CI)"
+  PowerProfileControl:
+    title: Power profile
+    powerSaver: Power saver
+    balanced: Balanced
+    performance: Performance
+    unavailable: Unavailable
+    degraded: Performance limited
+  ControlCenterTiles:
+    nightLight: Night light
+    nightLightFailed: Couldn't change it
+    doNotDisturb: Do not disturb
+    doNotDisturbOn: Urgent only
+    gameMode: Games
+    gameModeFailed: Couldn't change it
+    airplaneMode: Airplane mode
+    airplaneModeHardware: Blocked by the device
+    airplaneModeFailed: Couldn't change it
+    keepAwake: Keep awake
+    keepAwakeFailed: "Couldn't change it"
+    keepAwakeReason: "Keep awake is on: no lock or suspend on idle"
+    unavailable: Unavailable
+    network: Network
+    bluetooth: Bluetooth
+    theme: Theme
+    screenTime: Screen time
+    search: Search
+    disconnected: Disconnected
+    enabled: "On"
+    disabled: "Off"
+    devicesOne: 1 device connected
+    devicesOther: "{0} devices connected"
+    dark: Dark
+    light: Light
+  ConnectionsArea:
+    connected: Connected
+    scan: Scan devices
+    scanning: Scanning...
+    switchView: Show the list
+    battery: Battery
+    audioProfile: Audio profile
+    macAddress: MAC address
+    profileA2dp: A2DP
+    profileHeadset: Hands-free
+    profileLeAudio: LE Audio
+    securityOpen: Open
+    securityWpaPersonal: WPA Personal
+    securityWpaEnterprise: WPA Enterprise
+    securityWpa2Personal: WPA2 Personal
+    securityWpa3Personal: WPA3 Personal
+    showNetworks: Show networks
+    signal: Signal
+    security: Security
+    ipAddress: IP address
+    wifi: Wi-Fi
+    bluetooth: Bluetooth
+    tabs: Connection type
+    noDevice: No device connected
+    bluetoothOff: Bluetooth is off
+    wifiUnavailable: Wi-Fi not available
+    noNetwork: No network connected
+    wifiOff: Wi-Fi is off
+    bluetoothRadio: Bluetooth
+    wifiRadio: Wi-Fi
+    back: Back
   DeviceCard:
     connecting: Connecting...
     connect: Connect
@@ -148,6 +404,19 @@ components:
     loopTrack: Repeat track
     raise: Go to the player
     choosePlayer: Choose player
+    viaCaption: via
+    byArtist: by {0}
+    players: Players
+  MicrophoneControl:
+    microphone: Microphone
+    mute: Mute the microphone
+    unmute: Unmute the microphone
+    unavailable: No microphone
+    devices: Choose the microphone
+  NetworkControl:
+    connected: Connected
+    vpn: Connected through VPN
+    disconnected: Disconnected
   NetworkControlArea:
     title: Networks
     wifiUnavailable: Wi-Fi not available on this device
@@ -192,15 +461,32 @@ components:
     unreadMany: "{0} new"
     empty: No notifications
     now: now
-  SearchButtonControl:
-    openSearch: Open the launcher
-    searchAlt: Search
   SearchMenuComponent:
     placeholder: Search
   SystemAudioArea:
     title: Audio settings
     volumeControl: Volume control
     deviceSelector: Audio device selector
+  DoNotDisturbToggle:
+    label: Do not disturb
+  NightLightToggle:
+    label: Night light
+  NightLightDetail:
+    temperature: Night warmth
+    kelvin: "{0} K"
+    schedule: When
+    atSunset: At sunset
+    manual: Fixed schedule
+    from: From
+    until: Until
+    latitude: Latitude
+    longitude: Longitude
+    locationHint: Turns on at sunset and off at sunrise for this location.
+    missing: wlsunset is missing. Install it to use night light.
+    loadFailed: Couldn't read the night light settings.
+    saveFailed: Couldn't save the night light.
+    invalidCoordinates: Latitude goes from -90 to 90 and longitude from -180 to 180.
+    saving: Saving…
   ThemeToggle:
     toLight: Switch to light theme
     toDark: Switch to dark theme
@@ -210,9 +496,12 @@ components:
   TrayIconBluetooth:
     statusOn: Bluetooth on
     statusOff: Bluetooth off
+    connectedTo: "Bluetooth connected to {0}"
     iconAlt: Bluetooth icon
   TrayIconCapsLock:
     capsLock: Caps Lock
+  TrayIconDoNotDisturb:
+    label: "Do not disturb: only urgent notifications pop up"
   TrayIconMicrophone:
     muted: Microphone muted
   TrayIconNetwork:
@@ -226,22 +515,21 @@ components:
     screen: Screen shared
     usedBy: "{0} — {1}"
   TrayIconSound:
-    mute: Mute
-    unmute: Unmute
+    level: "Volume: {0} %"
+    muted: Sound muted
   TrayIconTwingate:
     connected: "Twingate: {0} resources"
     disconnected: "Twingate: disconnected"
     pending: "Twingate: {0} resources to authorize"
   TrayMusicControl:
+    progress: Track progress
+    openPlayer: Open the player
     nothingPlaying: Nothing is playing
-    previous: Previous
-    play: Play
-    pause: Pause
-    next: Next
   VolumeControl:
     volume: Volume
     mute: Mute
     unmute: Unmute
+    devices: Choose the audio output
   TwingateArea:
     resourceCount: "{0} resources"
     disconnected: Disconnected
@@ -258,18 +546,28 @@ components:
   TrayNetworkRateControl:
     title: "Network transfer: download and upload"
   TrayWeatherControl:
+    open: Open the date board
     summary: "High {0}° and low {1}°"
   WeatherIcon:
     unknown: Unknown weather condition
   WeatherWidget:
     failed: Could not get the weather
     loading: Loading weather…
+    wind: Wind
+    humidity: Humidity
+    rain: Rain
+    feelsLike: Feels like
+    previousDay: Previous day
+    nextDay: Next day
+    max: "High {0}"
+    min: "Low {0}"
   useNetworkState:
     connectedTo: Connected to {0} {1}
     disconnected: Disconnected
     vpnOn: active
     vpnOff: VPN inactive
 widgets:
+  remove: Remove widget
   menu:
     edit: Edit the widgets
     wallpaper: Change the wallpaper

@@ -1,49 +1,61 @@
-import { openApp } from '@/services/app.service';
-
 <script lang="ts" setup>
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { openApp as sysOpenApp } from '@/services/app.service';
-import { logError } from '@/utils/logger';
+import { DropdownMenuItem, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { useAppLauncher } from '@/tools/composables/useAppLauncher';
+import type { MenuApp } from '@/tools/menu-favorites';
 
-const props = defineProps({
-	app: {
-		type: Object,
-		required: true,
-	},
+/**
+ * Una aplicación en la lista de la categoría del menú.
+ *
+ * Es el ítem de menú de la librería (`DropdownMenuItem`): la lista del menú es
+ * literalmente un desplegable largo, y así toma la forma de Once UI —radio `m`,
+ * el velo neutro `ui-hover` al pasar en lugar del relleno del primario, el
+ * anillo de foco por dentro— sin que el menú se dibuje la suya. Antes era un
+ * botón propio que crecía, se corría y se pintaba de rosa al pasar por encima.
+ *
+ * El icono a la izquierda y el nombre al lado, en fila. El nombre se parte en
+ * dos líneas en vez de cortarse: no hay otro lugar donde leerlo entero.
+ *
+ * Lanzar y fijar/desfijar con el clic derecho salen de `useAppLauncher`, que lo
+ * comparte con el mosaico y la grilla de favoritos (vasak-desktop#203).
+ */
+const props = defineProps<{ app: MenuApp }>();
+
+const { launch, toggleFavoriteFor } = useAppLauncher();
+
+/**
+ * El clic derecho se engancha a mano sobre la raíz del ítem: `DropdownMenuItem`
+ * no declara el evento nativo y pasárselo por plantilla no pasa el tipado. Así
+ * el clic derecho sobre toda la fila fija o desfija la aplicación.
+ */
+const item = ref<{ $el?: HTMLElement } | null>(null);
+const onContextMenu = (event: Event) => {
+	void toggleFavoriteFor(props.app, event as MouseEvent);
+};
+
+onMounted(() => {
+	item.value?.$el?.addEventListener('contextmenu', onContextMenu);
 });
 
-const appWindow = getCurrentWindow();
-
-const openApp = async (path: string) => {
-	try {
-		await sysOpenApp({ path } as any);
-	} catch (error) {
-		logError('Error al abrir aplicación:', error);
-	} finally {
-		appWindow.close();
-	}
-};
+onBeforeUnmount(() => {
+	item.value?.$el?.removeEventListener('contextmenu', onContextMenu);
+});
 </script>
 
 <template>
-  <button
-    class="flex flex-row w-full p-2 rounded-corner items-center transform hover:translate-x-1 hover:scale-110 hover:bg-primary hover:border hover:border-secondary transition-transform"
-    @click="openApp(app.path)"
+  <!-- El icono va en la ranura `prefix` y el nombre en la principal: el ítem
+       de la librería los pone en fila, icono a la izquierda y nombre al lado,
+       como era el menú antes de la migración. Puestos los dos en la ranura
+       principal caían adentro de la columna del texto, y el nombre quedaba
+       debajo del icono. -->
+  <DropdownMenuItem
+    ref="item"
     :title="app.description"
-  >
-    <ThemeIcon
-      :name="app.icon"
-      :size="40"
-      :alt="app.name"
-      class="img-fluid"
-    />
-    <div class="col-10 app-card-info ps-2 text-left">
-      {{ app.name }}
-      <span class="text-ui-surface" style="display: none">{{
-        app.description
-      }}</span>
-      <span style="display: none">{{ app.keywords }}</span>
-    </div>
-  </button>
+    class="w-full"
+    @select="launch(app)">
+    <template #prefix>
+      <ThemeIcon :name="app.icon" :size="32" alt="" />
+    </template>
+    <span class="break-words text-left" data-app-name>{{ app.name }}</span>
+  </DropdownMenuItem>
 </template>

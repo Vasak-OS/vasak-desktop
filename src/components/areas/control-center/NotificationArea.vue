@@ -7,14 +7,14 @@
       class="flex shrink-0 items-center justify-between gap-2 px-1 pb-2"
       v-if="groupedNotifications.length > 0"
     >
-      <span class="text-sm text-tx-main font-medium">
+      <span class="text-label-m text-tx-main font-medium">
         {{ notifications.length }}
         {{
           notifications.length === 1
             ? t('components.NotificationArea.notificationOne')
             : t('components.NotificationArea.notificationMany')
         }}
-        <span class="text-xs opacity-75">
+        <span class="text-label-xs opacity-75">
           ({{ groupedNotifications.length }}
           {{
             groupedNotifications.length === 1
@@ -23,23 +23,23 @@
           }})
         </span>
       </span>
-      <button
+      <ActionButton
+        :label="t('components.NotificationArea.clearAll')"
+        size="sm"
+        custom-class="shrink-0"
         @click="clearAllNotifications"
-        class="shrink-0 text-xs px-3 py-1 bg-primary text-tx-on-primary rounded-corner hover:bg-primary/80 transition-colors"
-      >
-        {{ t('components.NotificationArea.clearAll') }}
-      </button>
+      />
     </div>
 
-    <div
+    <EmptyState
       v-if="groupedNotifications.length === 0"
-      class="text-center transition-opacity duration-300 ease-in-out text-tx-muted py-6"
-    >
-      <ThemeIcon name="preferences-desktop-notification" type="symbol" :size="24" class="opacity-60 mx-auto" />
-      <p class="mt-1 text-sm">{{ t('components.NotificationArea.empty') }}</p>
-    </div>
+      :title="t('components.NotificationArea.empty')"
+      icon="preferences-desktop-notification"
+      icon-type="symbol"
+      size="sm"
+    />
 
-    <TransitionGroup move-class="transition-transform duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-active-class="transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)]" leave-active-class="transition-all duration-300 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" enter-from-class="opacity-0 translate-x-full scale-90" leave-to-class="opacity-0 translate-x-[-30%] scale-95" tag="div" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-1">
+    <TransitionGroup move-class="transition-transform duration-300 ease-ui" enter-active-class="transition-[opacity,translate] duration-300 ease-ui-out" leave-active-class="transition-[opacity,translate] duration-200 ease-ui" enter-from-class="opacity-0 translate-x-4" leave-to-class="opacity-0 -translate-x-4" tag="div" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-1">
       <NotificationGroupCard
         v-for="group in groupedNotifications"
         :key="group.app_name"
@@ -55,8 +55,8 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, ref } from 'vue';
+import { ActionButton, EmptyState } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref, watch } from 'vue';
 import NotificationGroupCard from '@/components/cards/NotificationGroupCard.vue';
 import type {
 	Notification,
@@ -69,14 +69,32 @@ import {
 	getAllNotifications,
 } from '@/services/notification.service';
 import { useSharedEvent } from '@/tools/event.bus';
-import { agruparNotificaciones } from '@/tools/notificaciones';
+import { groupNotifications } from '@/tools/notifications';
 
 const { t } = useI18n();
 
+/**
+ * Cuántas hay y de cuántas aplicaciones, para quien la aloja.
+ *
+ * El centro de control decide con esto si abre en las notificaciones o en los
+ * ajustes, y arma la línea resumen del estado B (vasak-desktop#175). `loaded`
+ * dice si la cuenta ya es la de verdad o el cero de antes de la primera carga.
+ */
+const emit = defineEmits<{
+	summary: [summary: { count: number; apps: number; loaded: boolean }];
+}>();
+
 const notifications = ref<Notification[]>([]);
+const loaded = ref(false);
 
 const groupedNotifications = computed<NotificationGroupData[]>(() =>
-	agruparNotificaciones(notifications.value)
+	groupNotifications(notifications.value)
+);
+
+watch(
+	[() => notifications.value.length, () => groupedNotifications.value.length, loaded],
+	([count, apps, isLoaded]) => emit('summary', { count, apps, loaded: isLoaded }),
+	{ immediate: true }
 );
 
 async function loadNotifications() {
@@ -84,6 +102,8 @@ async function loadNotifications() {
 		notifications.value = await getAllNotifications();
 	} catch (error) {
 		console.error('Error loading notifications:', error);
+	} finally {
+		loaded.value = true;
 	}
 }
 

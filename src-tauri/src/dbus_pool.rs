@@ -1,5 +1,8 @@
+use serde::Deserialize;
 use std::sync::Arc;
+use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
+use zbus::zvariant::Type;
 use zbus::Connection;
 
 use crate::logger;
@@ -52,5 +55,72 @@ impl DbusPool {
     pub async fn system(&self) -> Option<Connection> {
         self.system.read().await.clone()
     }
+}
 
+/// Llama un método en un servicio del bus de **sesión** y devuelve la respuesta
+/// cruda.
+///
+/// El ayudante que comparten los clientes de los servicios propios de VasakOS
+/// —`connect.rs` (vasak-connect) y `screen_time/health.rs`
+/// (vasak-health-service)—: todos piden la conexión al pool compartido y llaman
+/// igual, y una copia del mismo bloque por cliente es una copia que se separa.
+/// Devuelve `Err` con un mensaje legible cuando no hay bus, que es lo que cada
+/// cliente decide tragarse o no.
+pub async fn session_call_raw<A>(
+    app: &AppHandle,
+    service: &str,
+    path: &str,
+    method: &str,
+    args: &A,
+) -> Result<zbus::Message, String>
+where
+    A: serde::ser::Serialize + Type,
+{
+    let Some(pool) = app.try_state::<DbusPool>() else {
+        return Err("no hay conexión con el bus de sesión".to_string());
+    };
+    let Some(connection) = pool.session().await else {
+        return Err("no hay conexión con el bus de sesión".to_string());
+    };
+    connection
+        .call_method(Some(service), path, Some(service), method, args)
+        .await
+        .map_err(|err| err.to_string())
+}
+
+/// Como [`session_call_raw`], pero deserializa la respuesta al tipo esperado.
+pub async fn session_call<A, R>(
+    app: &AppHandle,
+    service: &str,
+    path: &str,
+    method: &str,
+    args: &A,
+) -> Result<R, String>
+where
+    A: serde::ser::Serialize + Type,
+    R: for<'d> Deserialize<'d> + Type,
+{
+    let reply = session_call_raw(app, service, path, method, args).await?;
+    reply.body().deserialize().map_err(|err| err.to_string())
+}
+
+/// Si `name` tiene dueño en el bus de `conn` o se puede activar.
+///
+/// Lo comparten el modo juego (`gamemoded`, en el de sesión) y «Mantener
+/// despierto» (logind, en el del sistema). Cualquier error cuenta como que no
+/// está: el ajuste se ve no disponible, nunca roto.
+pub async fn name_on_bus(conn: &Connection, name: &str) -> bool {
+    let Ok(dbus) = zbus::fdo::DBusProxy::new(conn).await else {
+        return false;
+    };
+    let Ok(bus_name) = zbus::names::BusName::try_from(name) else {
+        return false;
+    };
+    if dbus.name_has_owner(bus_name).await.unwrap_or(false) {
+        return true;
+    }
+    dbus.list_activatable_names()
+        .await
+        .map(|names| names.iter().any(|n| n.as_str() == name))
+        .unwrap_or(false)
 }

@@ -1,11 +1,18 @@
+#[cfg(test)]
+pub(crate) mod bus_tests;
+pub mod dbus_menu;
+pub mod item_props;
+pub mod launcher_entry;
+pub mod menu_props;
+pub mod pixmap;
+pub mod signals;
 pub mod sni_item;
 pub mod sni_watcher;
-pub mod dbus_menu;
 
+use crate::logger::log_error;
 use crate::structs::TrayManager;
 use std::collections::HashMap;
 use std::sync::Arc;
-use crate::logger::log_error;
 use tauri::{async_runtime::RwLock, AppHandle, Emitter};
 
 pub fn create_tray_manager() -> TrayManager {

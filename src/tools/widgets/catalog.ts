@@ -61,9 +61,10 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
 		labelKey: 'widgets.music.name',
 		descriptionKey: 'widgets.music.description',
 		icon: 'multimedia-player-symbolic',
-		// Una sola fila alcanza: portada, título y los tres botones entran de
-		// lado. Antes el mínimo era de dos filas y por eso no se podía achicar
-		// —y el ancho mínimo de dos celdas dejaba los botones sin lugar—.
+		// Una sola fila alcanza: la portada al costado, y el título, el artista
+		// y los tres botones apilados al lado (vasak-desktop#176). Antes el
+		// mínimo era de dos filas y por eso no se podía achicar —y el ancho
+		// mínimo de dos celdas dejaba los botones sin lugar—.
 		default: { w: 4, h: 1 },
 		min: { w: 3, h: 1 },
 		max: { w: 8, h: 3 },
@@ -154,14 +155,21 @@ export function defaultLayout(
  * `fromDefault` dice cuál de las dos fue: la de siempre se recalcula cuando
  * cambia la pantalla, porque no es de nadie; la guardada se acomoda y se
  * respeta.
+ *
+ * `allowDefault` decide qué es «nada guardado». El monitor principal arranca con
+ * la disposición de siempre (`true`); un monitor secundario arranca **vacío**
+ * (`false`), para no duplicar en cada pantalla el reloj y la música del
+ * principal: cada salida empieza limpia y la persona agrega lo que quiera.
  */
 export function resolveLayout(
 	saved: unknown,
 	showFiles: boolean,
 	columns: number,
-	rows: number
+	rows: number,
+	allowDefault = true
 ): { placements: WidgetPlacement[]; fromDefault: boolean } {
 	if (!Array.isArray(saved)) {
+		if (!allowDefault) return { placements: [], fromDefault: false };
 		return { placements: defaultLayout(showFiles, columns, rows), fromDefault: true };
 	}
 

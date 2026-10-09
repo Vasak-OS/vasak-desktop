@@ -1,14 +1,30 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed } from 'vue';
 import type { WindowPanelButtonProps } from '@/interfaces/window';
 import { toggleWindow as sysToggleWindow } from '@/services/window.service';
+import { countLabel, progressPercent } from '@/tools/tray-item';
 import { logError } from '@/utils/logger';
 
 const props = defineProps<WindowPanelButtonProps>();
+const { t } = useI18n();
 const iconName = computed(() => props.icon?.trim() || 'application-x-executable');
+
+/** El contador de la aplicación, sólo si lo hace visible y es mayor que cero. */
+const badge = computed(() =>
+	countLabel(props.launcher?.count) ? (props.launcher?.count ?? null) : null
+);
+/**
+ * El progreso, en porcentaje, sólo con `progress-visible`. Lo dibuja la propia
+ * `TrayIconButton` desde vue-libvasak 2.2.0 —la línea fina al pie, la de
+ * `ProgressBar size="xs"`— y lo suma al nombre del botón: lo de adentro de un
+ * botón no se anuncia aparte, así que una barra metida en la ranura no la oía
+ * nadie. Sin progreso no hay línea.
+ */
+const progress = computed(() => progressPercent(props.launcher?.progress));
 
 const toggleWindow = async (): Promise<void> => {
 	try {
@@ -20,24 +36,27 @@ const toggleWindow = async (): Promise<void> => {
 </script>
 
 <template>
-  <button
-    type="button"
-    class="theme-transition flex items-center justify-center w-7 h-7 cursor-pointer transform rounded-corner hover:bg-primary/30 hover:scale-110 active:scale-95 relative"
-    :class="{ 'opacity-50 hover:opacity-90': is_minimized }"
-    :title="title"
-    :aria-label="title"
-    @click="toggleWindow"
-  >
-    <!-- El latido de antes se va: `ThemeIcon` ya reserva el hueco del mismo
-         tamaño mientras resuelve, que es para lo que servía, y aquel también
-         aparecía cuando el tema **no tiene** el icono —un estado permanente
-         pulsando como si algo estuviera por llegar—. -->
-    <ThemeIcon
-      :name="iconName"
-      :size="24"
-      :alt="title"
-      class="transition-all duration-300 group-hover:rotate-3 group-hover:brightness-110"
-    />
-  </button>
-</template>
+  <!-- El botón del panel de la librería, el mismo de la bandeja: el velo
+       neutro al pasar y el anillo de foco por dentro, sin crecer ni girar.
+       Minimizada, la ventana se dibuja atenuada.
 
+       `shrink-0` y un tamaño mínimo (vasak-desktop#209): la píldora de ventanas
+       cede su ancho a las vecinas (`min-w-0`) y desplaza adentro lo que no entra
+       (`overflow-x-auto`). Sin `shrink-0`, cuando faltaba lugar —barra compacta,
+       muchas ventanas o ventana angosta— lo que cedía eran los botones: se
+       encogían hasta el relleno (8 px) y el icono, con el `max-width:100%` del
+       preflight, se aplastaba a cero y quedaba ilegible. Fijándolos a su tamaño
+       (32 px, el blanco táctil mínimo) la fila se desborda y desplaza dentro de
+       la píldora en vez de machacar los iconos. -->
+  <TrayIconButton
+    :name="iconName"
+    :alt="title"
+    :tooltip="title"
+    :badge="badge"
+    :progress="progress ?? null"
+    :progress-label="t('components.tray.progress').replace('{0}', title)"
+    :icon-class="{ 'opacity-50': Boolean(is_minimized) }"
+    custom-class="shrink-0 min-w-8 min-h-8"
+    @click="toggleWindow"
+  />
+</template>

@@ -80,7 +80,8 @@ fn map(f: FlareNotification) -> Notification {
     }
 }
 
-async fn connection() -> Result<Connection, String> {
+/// La conexión al bus de sesión que comparten el historial y «No molestar».
+pub(crate) async fn connection() -> Result<Connection, String> {
     if let Some(c) = CONNECTION.read().await.as_ref() {
         return Ok(c.clone());
     }
@@ -94,7 +95,13 @@ async fn connection() -> Result<Connection, String> {
 async fn fetch_all() -> Result<Vec<Notification>, String> {
     let conn = connection().await?;
     let reply = conn
-        .call_method(Some(FLARE_DEST), FLARE_PATH, Some(FLARE_IFACE), "GetAll", &(0i64,))
+        .call_method(
+            Some(FLARE_DEST),
+            FLARE_PATH,
+            Some(FLARE_IFACE),
+            "GetAll",
+            &(0i64,),
+        )
         .await
         .map_err(|e| format!("flare GetAll falló: {e}"))?;
     let body = reply.body();
@@ -109,18 +116,30 @@ pub async fn get_notifications() -> Result<Vec<Notification>, String> {
 
 pub async fn remove_notification(id: u32) -> Result<bool, String> {
     let conn = connection().await?;
-    conn.call_method(Some(FLARE_DEST), FLARE_PATH, Some(FLARE_IFACE), "Clear", &(id as i64,))
-        .await
-        .map_err(|e| e.to_string())?;
+    conn.call_method(
+        Some(FLARE_DEST),
+        FLARE_PATH,
+        Some(FLARE_IFACE),
+        "Clear",
+        &(id as i64,),
+    )
+    .await
+    .map_err(|e| e.to_string())?;
     Ok(true)
 }
 
 pub async fn clear_all_notifications() -> Result<u32, String> {
     let count = fetch_all().await.map(|v| v.len() as u32).unwrap_or(0);
     let conn = connection().await?;
-    conn.call_method(Some(FLARE_DEST), FLARE_PATH, Some(FLARE_IFACE), "ClearAll", &())
-        .await
-        .map_err(|e| e.to_string())?;
+    conn.call_method(
+        Some(FLARE_DEST),
+        FLARE_PATH,
+        Some(FLARE_IFACE),
+        "ClearAll",
+        &(),
+    )
+    .await
+    .map_err(|e| e.to_string())?;
     Ok(count)
 }
 

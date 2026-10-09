@@ -5,7 +5,7 @@
        costado, en el color de acento. El nombre de la aplicación no se repite
        acá: ya está en el encabezado del grupo. -->
   <div
-    class="theme-transition group/nc flex items-start gap-2 px-2 py-1.5 border-l-2 border-transparent transition-colors duration-200 hover:bg-ui-surface/60"
+    class="theme-transition group/nc flex items-start gap-2 px-2 py-1.5 border-l-2 border-transparent transition-colors duration-200 hover:bg-ui-hover"
     :class="{
       'opacity-60': notification.seen,
       'border-l-primary': !notification.seen,
@@ -25,17 +25,23 @@
     <ThemeIcon :name="notification.app_icon" :size="16" :alt="notification.app_name" class="mt-0.5 object-contain" />
     <div class="flex-1 min-w-0">
       <div class="flex items-start justify-between gap-2">
-        <h3 class="text-sm font-medium text-tx-main truncate">{{ notification.summary }}</h3>
+        <h3 class="text-label-m font-medium text-tx-main truncate">{{ notification.summary }}</h3>
         <div class="flex items-center gap-1 shrink-0">
-          <span class="text-[11px] text-tx-muted">{{ formatTime(notification.timestamp) }}</span>
-          <button @click.stop="$emit('seen', notification.id)"
+          <span class="text-label-xs text-tx-muted">{{ formatTime(notification.timestamp) }}</span>
+          <ActionButton
+            label=""
+            icon="window-close-symbolic"
+            :icon-alt="t('common.close')"
             :title="t('common.close')"
-            class="flex items-center justify-center w-4 h-4 rounded-full text-tx-muted opacity-0 transition-opacity duration-200 group-hover/nc:opacity-100 focus-visible:opacity-100 hover:text-status-error" :aria-label="t('common.close')">
-            <ThemeIcon name="window-close-symbolic" type="symbol" :size="10" :alt="t('common.close')" />
-          </button>
+            variant="ghost"
+            size="sm"
+            stop-propagation
+            custom-class="opacity-0 group-hover/nc:opacity-100 focus-visible:opacity-100"
+            @click="$emit('seen', notification.id)"
+          />
         </div>
       </div>
-      <p v-if="notification.body" class="text-xs text-tx-muted line-clamp-2">
+      <p v-if="notification.body" class="text-label-xs text-tx-muted line-clamp-2">
         {{ notification.body }}
       </p>
 
@@ -46,7 +52,7 @@
           :key="action.key"
           :label="action.label"
           variant="secondary"
-          custom-class="text-xs"
+          size="sm"
           @click="() => handleAction(action.key)"
         />
       </div>

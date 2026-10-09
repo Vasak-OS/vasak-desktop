@@ -3,19 +3,25 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { TrayIconButton } from '@vasakgroup/vue-libvasak';
+import { PanelPill, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import {
 	getCurrentNetworkState,
 	getVpnStatus,
 	type NetworkInfo,
-	toggleNetworkApplet,
 	type VpnStatus,
 } from '@/services/network.service';
+import { toggleApplet } from '@/services/window.service';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
+import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { useSharedEvent } from '@/tools/event.bus';
+import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
+const { vertical, hasSurface } = usePanelConfig();
+const density = usePanelDensity();
 
 const networkState = ref<NetworkInfo>({
 	name: 'Unknown',
@@ -49,6 +55,18 @@ const networkAlt = computed(() => {
 	return `${networkLabel} · ${vpnLabel.value}`;
 });
 
+/**
+ * Lo que dice la píldora: el nombre de la red, como en el video de referencia
+ * (vasak-desktop#151). Por cable, el de la conexión. Desconectada, nada: el
+ * icono ya lo dice, y la píldora queda redonda.
+ */
+const networkLabel = computed(() => {
+	if (vertical.value || !showsNames(density.value) || !networkState.value.is_connected) return '';
+	const { ssid, name } = networkState.value;
+	const known = (value: string) => Boolean(value) && value !== 'Unknown';
+	return known(ssid) ? ssid : known(name) ? name : '';
+});
+
 const getCurrentNetwork = async () => {
 	try {
 		networkState.value = await getCurrentNetworkState();
@@ -78,24 +96,47 @@ useSharedEvent<NetworkInfo>('network-changed', (payload) => {
 });
 
 useSharedEvent('vpn-changed', refreshVpnStatus);
+
+const button = ref<unknown>(null);
+const { isOpen } = useOpenApplet('network');
+
+const toggleNetworkApplet = async () => {
+	try {
+		await toggleApplet('network', button.value);
+	} catch (error) {
+		logError('Error toggling network applet:', error);
+	}
+};
 </script>
 
 <template>
-  <div class="flex items-center gap-1">
-	<TrayIconButton
-	  :name="networkIconName"
-	  :alt="networkAlt"
-	  :tooltip="networkAlt"
-	  :custom-class="{ 'relative': true }"
-		:icon-class="{ 'filter brightness-90': !networkState.is_connected, 'drop-shadow-[0_0_6px_rgba(59,130,246,0.5)]': vpnConnected }"
-	  @click="toggleNetworkApplet"
-	>
-	  <div
-			class="absolute top-3 right-0.5 w-2.5 h-2.5 rounded-full transition-all duration-300 ring-1 ring-ui-bg"
-			:class="networkState.is_connected ? 'bg-status-success animate-pulse' : 'bg-status-error'"
-	  ></div>
-
-	</TrayIconButton>
-
-  </div>
+  <!-- La píldora de la red (vasak-desktop#151): rellena en el primario
+       mientras hay conexión, con el nombre de la red; translúcida y redonda
+       sin ella. Abre la vista de la red, colgada de acá. La VPN puesta suma
+       su candado adentro. -->
+  <PanelPill
+    ref="button"
+    :icon="networkIconName"
+    icon-type="icon"
+    :label="networkLabel"
+    :active="networkState.is_connected"
+    :expanded="isOpen"
+    :title="networkAlt"
+    :accessible-label="networkAlt"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
+    class="max-w-48"
+    data-network-pill
+    @click="toggleNetworkApplet"
+  >
+    <ThemeIcon
+      v-if="vpnConnected"
+      name="network-vpn-symbolic"
+      type="symbol"
+      :size="14"
+      alt=""
+      class="shrink-0"
+      data-vpn-mark
+    />
+  </PanelPill>
 </template>

@@ -1,21 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 import type { ConnectCamera, ConnectCameraFacing, ConnectWebcamState } from '@/interfaces/connect';
-import {
-	camaraPorDefecto,
-	diagnosticoWebcam,
-	encendidaEn,
-	interruptorHabilitado,
-	tamanioPorDefecto,
-} from './webcam';
+import { defaultCamera, defaultSize, isActiveOn, switchEnabled, webcamDiagnosis } from './webcam';
 
-const camara = (id: string, facing: ConnectCameraFacing): ConnectCamera => ({
+const camera = (id: string, facing: ConnectCameraFacing): ConnectCamera => ({
 	id,
 	facing,
 	sizes: ['1280x720'],
 	fps: [30],
 });
 
-const apagada = (device = '/dev/video42'): ConnectWebcamState => ({
+const idle = (device = '/dev/video42'): ConnectWebcamState => ({
 	active: false,
 	device,
 	serial: '',
@@ -23,7 +17,7 @@ const apagada = (device = '/dev/video42'): ConnectWebcamState => ({
 	size: '',
 });
 
-const transmitiendo = (serial: string): ConnectWebcamState => ({
+const streaming = (serial: string): ConnectWebcamState => ({
 	active: true,
 	device: '/dev/video42',
 	serial,
@@ -35,60 +29,60 @@ describe('la cámara por defecto', () => {
 	test('es la trasera cuando el teléfono tiene las dos', () => {
 		// Es la que apunta a la persona con el teléfono apoyado contra el
 		// monitor, y el mejor sensor de los dos.
-		expect(camaraPorDefecto([camara('1', 'front'), camara('0', 'back')])?.id).toBe('0');
+		expect(defaultCamera([camera('1', 'front'), camera('0', 'back')])?.id).toBe('0');
 	});
 
 	test('no depende del orden en que las liste el teléfono', () => {
-		expect(camaraPorDefecto([camara('0', 'back'), camara('1', 'front')])?.id).toBe('0');
+		expect(defaultCamera([camera('0', 'back'), camera('1', 'front')])?.id).toBe('0');
 	});
 
 	test('sin trasera se usa la primera que haya', () => {
 		// Negarse dejaría sin webcam a un teléfono que puede transmitir.
-		expect(camaraPorDefecto([camara('9', 'external'), camara('1', 'front')])?.id).toBe('9');
+		expect(defaultCamera([camera('9', 'external'), camera('1', 'front')])?.id).toBe('9');
 	});
 
 	test('sin cámaras no hay ninguna', () => {
 		// El interruptor tiene que quedar deshabilitado, no llamar al demonio
 		// con un id vacío: `StartWebcam` con una cámara que no existe abre el
 		// stream y lo mata medio segundo después.
-		expect(camaraPorDefecto([])).toBeUndefined();
+		expect(defaultCamera([])).toBeUndefined();
 	});
 });
 
 describe('de quién es la cámara encendida', () => {
 	test('del teléfono cuyo serial coincide', () => {
-		expect(encendidaEn(transmitiendo('ABC123'), 'ABC123')).toBe(true);
+		expect(isActiveOn(streaming('ABC123'), 'ABC123')).toBe(true);
 	});
 
 	test('con dos teléfonos, el otro no la muestra como encendida', () => {
 		// El dispositivo de vídeo admite un productor. La tarjeta del teléfono
 		// que no está transmitiendo no puede decir que sí.
-		expect(encendidaEn(transmitiendo('ABC123'), 'XYZ789')).toBe(false);
+		expect(isActiveOn(streaming('ABC123'), 'XYZ789')).toBe(false);
 	});
 
 	test('sin nada transmitiendo, no', () => {
-		expect(encendidaEn(apagada(), 'ABC123')).toBe(false);
+		expect(isActiveOn(idle(), 'ABC123')).toBe(false);
 	});
 
 	test('sin estado todavía leído, no', () => {
-		expect(encendidaEn(null, 'ABC123')).toBe(false);
+		expect(isActiveOn(null, 'ABC123')).toBe(false);
 	});
 
 	test('sin teléfono, no', () => {
 		// Si no hay serial no hay a quién atribuirla, y `estado.serial === undefined`
 		// sería `true` para un estado con serial vacío.
-		expect(encendidaEn(apagada(), undefined)).toBe(false);
+		expect(isActiveOn(idle(), undefined)).toBe(false);
 	});
 });
 
 describe('cuándo se puede tocar el interruptor', () => {
 	test('prender, con el teléfono listo y el módulo cargado', () => {
 		expect(
-			interruptorHabilitado({
-				estado: apagada(),
+			switchEnabled({
+				state: idle(),
 				serial: 'ABC123',
-				telefonoListo: true,
-				enCurso: false,
+				phoneReady: true,
+				inProgress: false,
 			})
 		).toBe(true);
 	});
@@ -98,11 +92,11 @@ describe('cuándo se puede tocar el interruptor', () => {
 		// mientras la cámara transmite. Si esto devolviera `false`, quedaría una
 		// cámara encendida y el interruptor gris.
 		expect(
-			interruptorHabilitado({
-				estado: transmitiendo('ABC123'),
+			switchEnabled({
+				state: streaming('ABC123'),
 				serial: 'ABC123',
-				telefonoListo: false,
-				enCurso: false,
+				phoneReady: false,
+				inProgress: false,
 			})
 		).toBe(true);
 	});
@@ -112,11 +106,11 @@ describe('cuándo se puede tocar el interruptor', () => {
 		// cómo lo informa el demonio, y llega incluso con `active` en falso
 		// justamente para poder decirlo antes de que alguien apriete.
 		expect(
-			interruptorHabilitado({
-				estado: apagada(''),
+			switchEnabled({
+				state: idle(''),
 				serial: 'ABC123',
-				telefonoListo: true,
-				enCurso: false,
+				phoneReady: true,
+				inProgress: false,
 			})
 		).toBe(false);
 	});
@@ -124,22 +118,22 @@ describe('cuándo se puede tocar el interruptor', () => {
 	test('no se puede prender si la está usando otro teléfono', () => {
 		// El demonio contestaría `WebcamBusy`; mejor no ofrecerlo.
 		expect(
-			interruptorHabilitado({
-				estado: transmitiendo('XYZ789'),
+			switchEnabled({
+				state: streaming('XYZ789'),
 				serial: 'ABC123',
-				telefonoListo: true,
-				enCurso: false,
+				phoneReady: true,
+				inProgress: false,
 			})
 		).toBe(false);
 	});
 
 	test('no se puede prender con el teléfono a medio autorizar', () => {
 		expect(
-			interruptorHabilitado({
-				estado: apagada(),
+			switchEnabled({
+				state: idle(),
 				serial: 'ABC123',
-				telefonoListo: false,
-				enCurso: false,
+				phoneReady: false,
+				inProgress: false,
 			})
 		).toBe(false);
 	});
@@ -148,30 +142,30 @@ describe('cuándo se puede tocar el interruptor', () => {
 		// Sin esto, dos clics seguidos mandan dos llamadas y la segunda decide
 		// el estado final, que puede ser el contrario del último clic.
 		expect(
-			interruptorHabilitado({
-				estado: transmitiendo('ABC123'),
+			switchEnabled({
+				state: streaming('ABC123'),
 				serial: 'ABC123',
-				telefonoListo: true,
-				enCurso: true,
+				phoneReady: true,
+				inProgress: true,
 			})
 		).toBe(false);
 		expect(
-			interruptorHabilitado({
-				estado: apagada(),
+			switchEnabled({
+				state: idle(),
 				serial: 'ABC123',
-				telefonoListo: true,
-				enCurso: true,
+				phoneReady: true,
+				inProgress: true,
 			})
 		).toBe(false);
 	});
 
 	test('sin estado leído todavía no se ofrece nada', () => {
 		expect(
-			interruptorHabilitado({
-				estado: null,
+			switchEnabled({
+				state: null,
 				serial: 'ABC123',
-				telefonoListo: true,
-				enCurso: false,
+				phoneReady: true,
+				inProgress: false,
 			})
 		).toBe(false);
 	});
@@ -183,29 +177,29 @@ describe('el diagnóstico de la cámara', () => {
 		// esto, la tarjeta anunciaba que falta el módulo del kernel mientras la
 		// respuesta venía en camino, o cuando la consulta al demonio falló, y el
 		// arreglo que ofrecía era reiniciar el equipo.
-		expect(diagnosticoWebcam(null, 'ABC123')).toBe('desconocido');
+		expect(webcamDiagnosis(null, 'ABC123')).toBe('unknown');
 	});
 
 	test('sin dispositivo, falta el módulo del kernel', () => {
-		expect(diagnosticoWebcam(apagada(''), 'ABC123')).toBe('sin-modulo');
+		expect(webcamDiagnosis(idle(''), 'ABC123')).toBe('no-module');
 	});
 
 	test('lista cuando hay módulo y nada transmitiendo', () => {
-		expect(diagnosticoWebcam(apagada(), 'ABC123')).toBe('lista');
+		expect(webcamDiagnosis(idle(), 'ABC123')).toBe('ready');
 	});
 
 	test('encendida cuando la alimenta este teléfono', () => {
-		expect(diagnosticoWebcam(transmitiendo('ABC123'), 'ABC123')).toBe('encendida');
+		expect(webcamDiagnosis(streaming('ABC123'), 'ABC123')).toBe('active');
 	});
 
 	test('ocupada cuando la alimenta otro', () => {
-		expect(diagnosticoWebcam(transmitiendo('XYZ789'), 'ABC123')).toBe('ocupada');
+		expect(webcamDiagnosis(streaming('XYZ789'), 'ABC123')).toBe('busy');
 	});
 });
 
 describe('el tamaño por defecto', () => {
 	/** Una cámara con los tamaños que contestó un motorola edge 40. */
-	const conTamanios = (sizes: string[]): ConnectCamera => ({
+	const withSizes = (sizes: string[]): ConnectCamera => ({
 		id: '0',
 		facing: 'back',
 		sizes,
@@ -216,31 +210,29 @@ describe('el tamaño por defecto', () => {
 		// Es el fallo que esto viene a arreglar: sin pedir tamaño, el teléfono
 		// elegía 4096x3072 y su propio codificador no podía configurarse con
 		// eso. El interruptor no prendía nunca.
-		const elegido = tamanioPorDefecto(
-			conTamanios(['4096x3072', '3840x2160', '1920x1080', '1280x720'])
-		);
+		const chosen = defaultSize(withSizes(['4096x3072', '3840x2160', '1920x1080', '1280x720']));
 
-		expect(elegido).not.toBe('4096x3072');
-		expect(elegido).toBe('1920x1080');
+		expect(chosen).not.toBe('4096x3072');
+		expect(chosen).toBe('1920x1080');
 	});
 
 	test('es el mayor que entra en el tope, no el primero que entra', () => {
 		// La lista viene de mayor a menor, así que tomar el primero que entra
 		// funcionaría por casualidad. Se la da desordenada para que no.
-		expect(tamanioPorDefecto(conTamanios(['640x480', '1920x1080', '1280x720']))).toBe('1920x1080');
+		expect(defaultSize(withSizes(['640x480', '1920x1080', '1280x720']))).toBe('1920x1080');
 	});
 
 	test('un modo más alto que el tope no entra aunque sea angosto', () => {
 		// 1080x1920 es vertical: el ancho entra y el alto no. Mirar sólo el
 		// ancho lo dejaría pasar, y son los mismos píxeles que el codificador
 		// rechaza.
-		expect(tamanioPorDefecto(conTamanios(['1080x1920', '1280x720']))).toBe('1280x720');
+		expect(defaultSize(withSizes(['1080x1920', '1280x720']))).toBe('1280x720');
 	});
 
 	test('si ninguno entra se pide el más chico, que es lo único que queda', () => {
 		// Rendirse antes de probar sería peor: el tope es una preferencia
 		// nuestra, no un límite del teléfono.
-		expect(tamanioPorDefecto(conTamanios(['4096x3072', '2560x1920']))).toBe('2560x1920');
+		expect(defaultSize(withSizes(['4096x3072', '2560x1920']))).toBe('2560x1920');
 	});
 
 	test('sin cámara o sin tamaños se deja elegir al teléfono', () => {
@@ -251,14 +243,14 @@ describe('el tamaño por defecto', () => {
 		// acepta—, y negarse a arrancar convertiría un intento que quizá
 		// funciona en uno que seguro no. El caso es el único en el que esto
 		// queda igual que antes del arreglo, no peor.
-		expect(tamanioPorDefecto(undefined)).toBe('');
-		expect(tamanioPorDefecto(conTamanios([]))).toBe('');
+		expect(defaultSize(undefined)).toBe('');
+		expect(defaultSize(withSizes([]))).toBe('');
 	});
 
 	test('un tamaño con forma rara no se pasa como argumento', () => {
 		// Los tamaños salen de parsear la salida de scrcpy, y de ahí va derecho
 		// a una opción de línea de comandos.
-		expect(tamanioPorDefecto(conTamanios(['grande', '1280x720']))).toBe('1280x720');
-		expect(tamanioPorDefecto(conTamanios(['x720', '-1x-1']))).toBe('');
+		expect(defaultSize(withSizes(['grande', '1280x720']))).toBe('1280x720');
+		expect(defaultSize(withSizes(['x720', '-1x-1']))).toBe('');
 	});
 });

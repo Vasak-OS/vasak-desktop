@@ -8,15 +8,21 @@ mod logger;
 mod structs;
 
 // Feature modules
+mod airplane_mode;
 mod applets;
 mod artwork;
 mod audio;
+mod audio_input;
 mod audio_native;
-mod brightness;
+mod bluetooth_audio_profile;
 mod commands;
 mod connect;
 mod dbus_service;
+pub mod do_not_disturb;
 mod eventloops;
+pub mod game_mode;
+pub mod keep_awake;
+pub mod night_light;
 /// Where the translations live.
 ///
 /// The i18n plugin resolves them at runtime and only probes paths relative to
@@ -52,11 +58,15 @@ fn default_locale() -> String {
 mod desktop_watcher;
 mod gtk_utils;
 mod inotify_rafaga;
+mod menu_display;
 mod menu_manager;
 mod menu_watcher;
 mod monitor_manager;
 mod notifications;
-mod posicion_del_panel;
+mod panel_autohide;
+mod panel_position;
+mod screen_time;
+mod session_lock;
 mod tray;
 mod utils;
 mod window_manager;
@@ -89,7 +99,9 @@ use applets::{
     battery::BatteryApplet,
     bluetooth::BluetoothApplet,
     brightness::BrightnessApplet,
+    compositor::CompositorApplet,
     connect::ConnectApplet,
+    equalizer::EqualizerApplet,
     keyboard_leds::KeyboardLedsApplet,
     manager::{AppletManager, AppletPriority},
     music::MusicApplet,
@@ -126,6 +138,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(wm_state)
         .manage(tray_manager)
+        .manage(tray::launcher_entry::create_launcher_entry_store())
         .manage(SystrayPopupState(std::sync::Mutex::new(None)))
         .manage(WeatherCache::default())
         .plugin(tauri_plugin_positioner::init())
@@ -134,6 +147,21 @@ pub fn run() {
         .plugin(tauri_plugin_user_data::init())
         .plugin(tauri_plugin_network_manager::init())
         .plugin(tauri_plugin_bluetooth_manager::init())
+        // Brillo por monitor y configuración de la luz nocturna
+        // (vasak-desktop#178, #189). Con `prefetch_ddc`: los monitores externos
+        // se buscan una vez al iniciar la sesión, en segundo plano, y quedan
+        // guardados hasta que el kernel avisa que se conectó o desconectó uno.
+        // Así abrir el centro nunca espera a `ddcutil`: lee lo guardado. Sin
+        // monitores externos no se llama a `ddcutil` en absoluto.
+        .plugin(
+            tauri_plugin_display_manager::Builder::new()
+                .prefetch_ddc(true)
+                .build(),
+        )
+        // El perfil de energía de power-profiles-daemon (vasak-desktop#189). El
+        // plugin guarda una copia que mantienen las señales de D-Bus: leerlo no
+        // va al bus, y nada sondea. Sin el demonio queda «no disponible».
+        .plugin(tauri_plugin_power_profiles::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_vicons::init())
         .plugin(tauri_plugin_i18n_vsk::init_with_path(
@@ -149,9 +177,10 @@ pub fn run() {
         .plugin(tauri_plugin_vsk_contextual_menu::init())
         .invoke_handler(tauri::generate_handler![
             batch_invoke,
-            privacidad_en_uso,
-            privacidad_cortar,
-            toggle_privacidad_applet,
+            privacy_in_use,
+            privacy_stop_screen,
+            toggle_applet,
+            dismiss_applet,
             weather_cached,
             weather_claim,
             weather_place,
@@ -162,37 +191,68 @@ pub fn run() {
             open_app,
             open_settings,
             open_settings_section,
+            open_calendar,
+            calendar_occurrences,
+            calendar_locations,
             twingate_info,
-            toggle_twingate_applet,
             twingate_authorize,
+            wallpaper_pixels,
             show_osd,
             toggle_session_popup,
             logout,
             shutdown,
             reboot,
             suspend,
+            session_lock::lock_screen,
+            session_lock::lock_screen_available,
             detect_display_server,
             get_menu_items,
             toggle_menu,
+            set_menu_button,
             show_panel,
+            set_panel_input_region,
+            get_workspaces,
+            switch_workspace,
+            get_keyboard_layout,
+            next_keyboard_layout,
             get_audio_volume,
+            bluetooth_audio_profile::get_bluetooth_audio_profile,
             set_audio_volume,
             toggle_audio_mute,
             get_audio_devices,
             set_audio_device,
-            toggle_audio_applet,
-            get_brightness_info,
-            set_brightness_info,
+            get_microphone,
+            set_microphone_volume,
+            toggle_microphone_mute,
+            get_audio_input_devices,
+            set_audio_input_device,
             send_notify,
             clear_notifications,
             get_all_notifications,
             delete_notification,
             invoke_notification_action,
+            get_do_not_disturb,
+            set_do_not_disturb,
+            get_game_mode,
+            set_game_mode,
+            night_light::get_night_light_state,
+            night_light::set_night_light_enabled,
+            night_light::apply_night_light,
+            get_airplane_mode,
+            set_airplane_mode,
+            unblock_radios,
+            get_keep_awake,
+            set_keep_awake,
             toggle_control_center,
             hide_control_center,
-            toggle_network_applet,
+            toggle_wallpaper_picker,
+            hide_wallpaper_picker,
+            wallpaper_catalog,
+            prepare_wallpaper,
+            allow_wallpaper_asset,
             init_sni_watcher,
             get_tray_items,
+            get_launcher_entries,
             tray_item_activate,
             tray_item_secondary_activate,
             get_tray_menu,
@@ -200,7 +260,6 @@ pub fn run() {
             open_tray_popup,
             get_tray_popup_data,
             tray_popup_click,
-            toggle_bluetooth_applet,
             music_play_pause,
             music_next_track,
             music_previous_track,
@@ -214,6 +273,10 @@ pub fn run() {
             music_players,
             music_select_player,
             music_artwork,
+            equalizer_state,
+            equalizer_set_gain,
+            equalizer_set_preset,
+            equalizer_set_enabled,
             battery_exists,
             battery_fetch_info,
             get_battery_info,
@@ -230,7 +293,9 @@ pub fn run() {
             connect_start_webcam,
             connect_stop_webcam,
             connect_webcam_state,
-            toggle_connect_menu
+            toggle_connect_menu,
+            screen_time::screen_time_range,
+            screen_time::screen_time_clear
         ])
         .setup(move |app| {
             // El puente de `log` se instala **acá**, después de los plugins, y
@@ -336,7 +401,16 @@ pub fn run() {
                 crate::logger::log_error(&format!("[control_center] no se pudo crear: {error}"));
             }
             watch_monitor_changes(&handle);
-            seguir_la_posicion_del_panel(app.handle().clone());
+            // El modo juego no se recuerda; si el escritorio anterior se cayó con
+            // él puesto, se deshace lo que dejó.
+            game_mode::start(handle.clone());
+            // El modo avión sigue los eventos de /dev/rfkill: sólo despierta
+            // cuando una radio cambia.
+            airplane_mode::start(handle.clone());
+            follow_panel_position(app.handle().clone());
+            // El tiempo de pantalla por aplicación (`screen_time/`): un hilo que
+            // mira el foco cada dos segundos y guarda por día.
+            screen_time::start(app.handle());
             menu_watcher::watch_application_dirs(&handle);
             // La carpeta del escritorio, para que el widget de archivos deje de
             // releerla cada diez segundos sin motivo.
@@ -378,7 +452,7 @@ pub fn run() {
                 }
             }
             setup_dbus_service(app.handle().clone());
-            
+
             // Initialize AppletManager with priority-based phased startup
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
@@ -391,11 +465,15 @@ pub fn run() {
                 // Normal: Spawned after critical are ready, without awaiting
                 manager.register(BatteryApplet, AppletPriority::Normal).await;
                 manager.register(KeyboardLedsApplet, AppletPriority::Normal).await;
+                // Los espacios de trabajo y la distribución de teclado del panel.
+                manager.register(CompositorApplet, AppletPriority::Normal).await;
                 manager.register(MusicApplet, AppletPriority::Normal).await;
                 manager.register(TrayApplet, AppletPriority::Normal).await;
                 manager.register(NotificationApplet, AppletPriority::Normal).await;
 
                 // Deferred: Started after panel-ready event from frontend
+                // El ecualizador de sistema sólo lo mira el reproductor desplegable.
+                manager.register(EqualizerApplet, AppletPriority::Deferred).await;
                 manager.register(BluetoothApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkRateApplet, AppletPriority::Deferred).await;
@@ -406,7 +484,7 @@ pub fn run() {
                 // primer segundo de sesión, y recorrer /proc no tiene por qué
                 // competir con lo que dibuja el panel.
                 manager.register(PrivacidadApplet, AppletPriority::Deferred).await;
-                
+
                 manager.start_phased(app_handle).await;
                 logger::log_info("Todos los applets iniciados correctamente");
             });
@@ -435,17 +513,24 @@ pub fn run() {
 /// Sigue a `panel.position`: mover el panel en Configuración lo mueve en el acto.
 ///
 /// El gestor de configuración vigila el archivo y emite `config-changed` cuando
-/// cambia, así que acá sólo hay que volver a leer de qué lado va y acomodar las
-/// dos superficies que dependen de eso: el panel, que se ancla al borde nuevo, y
-/// el centro de control, que se aparta del panel a mano porque le pasa por
-/// encima.
+/// cambia, así que acá sólo hay que volver a leer de qué lado va y acomodar lo
+/// que depende de eso: el panel, que se ancla al borde nuevo; el centro de
+/// control, que se aparta del panel a mano porque le pasa por encima; y el applet
+/// que estuviera abierto, que se cierra porque el botón del que colgaba ya no
+/// está donde estaba.
 ///
 /// # Por qué se compara con la anterior
 ///
 /// `config-changed` se emite por **cualquier** cambio del archivo —el tema, la
 /// fuente, un interruptor del panel—, y son muchos más que los cambios de
-/// posición. Sin la comparación, cada uno reacomodaría las dos superficies para
-/// dejarlas donde ya estaban.
+/// posición. Sin la comparación, cada uno reacomodaría las superficies para
+/// dejarlas donde ya estaban, y cerraría el applet abierto sin motivo.
+///
+/// Se sigue también el auto-ocultar (`panel.autohide`), porque prenderlo o
+/// apagarlo cambia cuánto reserva la franja (la zona exclusiva) sin mover el
+/// panel de lado. Eso se vuelve a aplicar con `relocate_panel`; lo demás —cerrar
+/// el applet abierto, apartar el centro de control— sólo hace falta cuando
+/// además cambió la posición.
 ///
 /// # Y por qué el trabajo se marshalla al hilo principal
 ///
@@ -453,34 +538,49 @@ pub fn run() {
 /// de GTK: el registro de superficies es un `thread_local` del hilo principal, y
 /// desde cualquier otro se ve vacío. Hacerlo en el hilo equivocado no falla con
 /// un error, no hace nada.
-fn seguir_la_posicion_del_panel(app: tauri::AppHandle) {
-    let ultima = Arc::new(std::sync::Mutex::new(posicion_del_panel::leer()));
-    let para_el_oyente = app.clone();
+fn follow_panel_position(app: tauri::AppHandle) {
+    let last = Arc::new(std::sync::Mutex::new((
+        panel_position::read(),
+        panel_autohide::read(),
+    )));
+    let listener_app = app.clone();
 
     app.listen("config-changed", move |_| {
-        let nueva = posicion_del_panel::leer();
+        let current = panel_position::read();
+        let current_autohide = panel_autohide::read();
 
+        let position_changed;
         {
-            let Ok(mut ultima) = ultima.lock() else {
+            let Ok(mut last) = last.lock() else {
                 logger::log_error("[panel] el candado de la posición quedó envenenado");
                 return;
             };
-            if *ultima == nueva {
+            if last.0 == current && last.1 == current_autohide {
                 return;
             }
-            *ultima = nueva;
+            position_changed = last.0 != current;
+            *last = (current, current_autohide);
         }
 
         logger::log_info(&format!(
-            "[panel] la configuración lo manda a {}",
-            nueva.clave()
+            "[panel] la configuración: {}, auto-ocultar {}",
+            current.key(),
+            current_autohide
         ));
 
-        let app = para_el_oyente.clone();
+        let app = listener_app.clone();
         unsafe {
             gtk_utils::invoke_on_main(move || {
-                reubicar_panel(&app, nueva);
-                reubicar_control_center(&app, nueva);
+                // Cerrar el applet y apartar el centro de control sólo hacen falta
+                // cuando el panel cambió de lado; el auto-ocultar no mueve nada,
+                // sólo cambia lo que reserva, que `relocate_panel` reaplica.
+                if position_changed {
+                    windows_apps::anchored_applet::close_open_applet(&app);
+                }
+                relocate_panel(&app, current);
+                if position_changed {
+                    relocate_control_center(&app, current);
+                }
             });
         }
     });

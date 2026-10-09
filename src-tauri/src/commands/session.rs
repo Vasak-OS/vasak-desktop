@@ -1,5 +1,6 @@
+use crate::logger::{log_error, log_info};
+use tauri::AppHandle;
 use zbus::Connection;
-use crate::logger::{log_info, log_error};
 
 extern "C" {
     fn getuid() -> u32;
@@ -7,12 +8,15 @@ extern "C" {
 
 #[tauri::command]
 pub fn detect_display_server() -> String {
-    if std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("wayland") {
+    if std::env::var("WAYLAND_DISPLAY").is_ok()
+        || std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("wayland")
+    {
         log_info("Servidor de display detectado: wayland");
         return "wayland".to_string();
     }
 
-    if std::env::var("DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("x11") {
+    if std::env::var("DISPLAY").is_ok() || std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("x11")
+    {
         log_info("Servidor de display detectado: x11");
         return "x11".to_string();
     }
@@ -22,8 +26,12 @@ pub fn detect_display_server() -> String {
 }
 
 #[tauri::command]
-pub async fn logout(_display_server: String) -> Result<(), String> {
+pub async fn logout(app: AppHandle, _display_server: String) -> Result<(), String> {
     log_info("Cerrando sesión de usuario");
+    // Lo que el tiempo de pantalla todavía no guardó (los últimos minutos, que
+    // esperan por si llega un aviso de inactividad): que el servicio lo guarde,
+    // antes de que la sesión se lleve el proceso.
+    crate::screen_time::flush(&app).await;
 
     // The graphical session is managed by uwsm as a systemd user unit hierarchy.
     // `uwsm stop` tears down graphical-session.target and its daemons in order.
@@ -42,12 +50,10 @@ pub async fn logout(_display_server: String) -> Result<(), String> {
     }
 
     // Fallback (sin uwsm, p. ej. en dev): terminar la sesión vía logind.
-    let connection = Connection::system()
-        .await
-        .map_err(|e| {
-            log_error(&format!("No se pudo conectar a D-Bus para logout: {}", e));
-            format!("No se pudo conectar a D-Bus: {}", e)
-        })?;
+    let connection = Connection::system().await.map_err(|e| {
+        log_error(&format!("No se pudo conectar a D-Bus para logout: {}", e));
+        format!("No se pudo conectar a D-Bus: {}", e)
+    })?;
 
     let uid = unsafe { getuid() };
 
@@ -70,14 +76,13 @@ pub async fn logout(_display_server: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn shutdown() -> Result<(), String> {
+pub async fn shutdown(app: AppHandle) -> Result<(), String> {
     log_info("Apagando el sistema");
-    let connection = Connection::system()
-        .await
-        .map_err(|e| {
-            log_error(&format!("No se pudo conectar a D-Bus para shutdown: {}", e));
-            format!("No se pudo conectar a D-Bus: {}", e)
-        })?;
+    crate::screen_time::flush(&app).await;
+    let connection = Connection::system().await.map_err(|e| {
+        log_error(&format!("No se pudo conectar a D-Bus para shutdown: {}", e));
+        format!("No se pudo conectar a D-Bus: {}", e)
+    })?;
 
     connection
         .call_method(
@@ -94,14 +99,13 @@ pub async fn shutdown() -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn reboot() -> Result<(), String> {
+pub async fn reboot(app: AppHandle) -> Result<(), String> {
     log_info("Reiniciando el sistema");
-    let connection = Connection::system()
-        .await
-        .map_err(|e| {
-            log_error(&format!("No se pudo conectar a D-Bus para reboot: {}", e));
-            format!("No se pudo conectar a D-Bus: {}", e)
-        })?;
+    crate::screen_time::flush(&app).await;
+    let connection = Connection::system().await.map_err(|e| {
+        log_error(&format!("No se pudo conectar a D-Bus para reboot: {}", e));
+        format!("No se pudo conectar a D-Bus: {}", e)
+    })?;
 
     connection
         .call_method(
@@ -120,12 +124,10 @@ pub async fn reboot() -> Result<(), String> {
 #[tauri::command]
 pub async fn suspend(_display_server: String) -> Result<(), String> {
     log_info("Suspendiendo el sistema");
-    let connection = Connection::system()
-        .await
-        .map_err(|e| {
-            log_error(&format!("No se pudo conectar a D-Bus para suspend: {}", e));
-            format!("No se pudo conectar a D-Bus: {}", e)
-        })?;
+    let connection = Connection::system().await.map_err(|e| {
+        log_error(&format!("No se pudo conectar a D-Bus para suspend: {}", e));
+        format!("No se pudo conectar a D-Bus: {}", e)
+    })?;
 
     connection
         .call_method(

@@ -77,10 +77,9 @@ onMounted(async () => {
 
 <template>
   <!--
-    `name` y no `icon`: el de la librería tiene las dos, y `icon` es la ruta ya
-    resuelta —está obsoleta y avisa por consola—. Lo que viaja desde acá es el
-    **nombre** del icono del tema, que es lo que hace que siga al tema sin que
-    este componente tenga que resolver nada.
+    `name`: el **nombre** del icono del tema, que es lo que hace que siga al
+    tema sin que este componente tenga que resolver nada. La propiedad `icon`,
+    con la ruta ya resuelta, se fue de la librería en la 2.0.0.
 
     `connecting-label` se resuelve acá y no adentro del componente: la librería
     la usan seis aplicaciones y no puede depender de que todas tengan la misma

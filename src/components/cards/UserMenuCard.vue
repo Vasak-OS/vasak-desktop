@@ -22,15 +22,19 @@ onMounted(loadUserInfo);
 </script>
 
 <template>
-  <div v-if="userInfo" class="flex items-center space-x-3">
+  <!-- El avatar va en `rounded-corner-full`, que sale del radio que eligió la
+       persona (con radio 0 es cuadrado, igual que el resto), y con el canto
+       fino del esquema: el acento queda para lo que actúa. El nombre no se
+       corta: se parte. -->
+  <div v-if="userInfo" class="flex min-w-0 items-center gap-3">
     <img
       :src="avatarSrc"
       :alt="userInfo.username"
-      class="w-10 h-10 rounded-full object-cover border border-primary"
+      class="size-10 shrink-0 rounded-corner-full border border-ui-line object-cover"
     />
-    <div class="flex flex-col">
-      <span class="text-sm font-bold text-primary">{{ userInfo.full_name }}</span>
-      <span class="text-xs text-tx-muted">@{{ userInfo.username }}</span>
+    <div class="flex min-w-0 flex-col">
+      <span class="break-words font-semibold text-label-m text-tx-main">{{ userInfo.full_name }}</span>
+      <span class="break-words text-label-xs text-tx-muted">@{{ userInfo.username }}</span>
     </div>
   </div>
 </template>

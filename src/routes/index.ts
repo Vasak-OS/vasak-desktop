@@ -10,7 +10,6 @@ const routes = [
 		path: '/vsk-context-menu',
 		component: () => import('@/views/ContextMenuView.vue'),
 	},
-	{ path: '/menu', component: () => import('@/views/MenuView.vue') },
 	{
 		path: '/connect',
 		component: () => import('@/views/ConnectMenuView.vue'),
@@ -39,13 +38,28 @@ const routes = [
 				component: () => import('@/views/applets/TrayPopupView.vue'),
 			},
 			{
-				path: 'privacidad',
-				component: () => import('@/views/applets/PrivacidadAppletView.vue'),
+				path: 'privacy',
+				component: () => import('@/views/applets/PrivacyAppletView.vue'),
 			},
 			{
 				path: 'twingate',
 				component: () => import('@/views/applets/TwingateAppletView.vue'),
 			},
+			{
+				path: 'music',
+				component: () => import('@/views/applets/MusicAppletView.vue'),
+			},
+			{
+				path: 'screen-time',
+				component: () => import('@/views/applets/ScreenTimeAppletView.vue'),
+			},
+			// El tablero de fecha, colgado del reloj del panel.
+			{
+				path: 'date',
+				component: () => import('@/views/applets/DateBoardAppletView.vue'),
+			},
+			// El menú de aplicaciones es un applet más: ver `windows_apps/menu.rs`.
+			{ path: 'menu', component: () => import('@/views/MenuView.vue') },
 		],
 	},
 	{
@@ -59,6 +73,11 @@ const routes = [
 			{
 				path: 'session-popup',
 				component: () => import('@/views/apps/SessionPopupView.vue'),
+			},
+			// El selector rápido de fondos: ver `windows_apps/wallpaper_picker.rs`.
+			{
+				path: 'wallpaper-picker',
+				component: () => import('@/views/apps/WallpaperPickerView.vue'),
 			},
 		],
 	},

@@ -1,22 +1,18 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
-import { computed, onMounted, type Ref, ref } from 'vue';
-import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
-import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
+import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
+import { PanelPill, ProgressBar } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, ref } from 'vue';
 import TrayIconCapsLock from '@/components/buttons/TrayIconCapsLock.vue';
+import TrayIconDoNotDisturb from '@/components/buttons/TrayIconDoNotDisturb.vue';
 import TrayIconMicrophone from '@/components/buttons/TrayIconMicrophone.vue';
-import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
 import TrayIconPrivacy from '@/components/buttons/TrayIconPrivacy.vue';
-import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import TrayIconTwingate from '@/components/buttons/TrayIconTwingate.vue';
 import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
-import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
 import TrayNetworkRateControl from '@/components/controls/TrayNetworkRateControl.vue';
-import TrayWeatherControl from '@/components/controls/TrayWeatherControl.vue';
+import TrayCountBadge from '@/components/indicators/TrayCountBadge.vue';
 import type { TrayItem } from '@/interfaces/tray';
-import { batteryExists } from '@/services/core.service';
 import {
 	getTrayItems,
 	initSniWatcher,
@@ -25,16 +21,42 @@ import {
 	trayItemSecondaryActivate,
 } from '@/services/tray.service';
 import { animationBudget } from '@/tools/animation.budget';
+import { anchorOf } from '@/tools/applet-anchor';
+import { OPEN_APPLET_CLASSES, useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
+import { createSerialQueue } from '@/tools/serial-queue';
+import {
+	countLabel,
+	itemName,
+	needsAttention,
+	progressPercent,
+	tooltipText,
+} from '@/tools/tray-item';
 import { logError, logWarning } from '@/utils/logger';
+
+/**
+ * La píldora de la bandeja (vasak-desktop#151): los iconos de las
+ * aplicaciones (StatusNotifierItem) y los indicadores chicos que sólo aparecen
+ * cuando hay algo que decir —la tasa de la red, la cámara o el micrófono en
+ * uso, Bloq Mayús, el micrófono silenciado, Twingate—, juntos en una sola
+ * píldora como en el video de referencia.
+ *
+ * La red, el Bluetooth, el volumen y la batería tienen cada uno su píldora
+ * (`PanelView`); el clima y la música también, en otro lugar del panel.
+ *
+ * Sin nada adentro la píldora no se dibuja: cada entrada lleva
+ * `data-tray-entry`, y la píldora se esconde si no tiene ninguna. Así no hace
+ * falta que la bandeja sepa cuándo se muestra cada indicador, que lo decide
+ * cada uno.
+ */
 
 // Qué partes del panel están encendidas, y de qué lado va la barra: a los
 // costados los iconos se apilan en lugar de alinearse.
-const { showWeather, showMusic, showTransfer, showTray, showPrivacy, vertical } = usePanelConfig();
+const { showTransfer, showTray, showPrivacy, vertical, hasSurface } = usePanelConfig();
 
-const bluetoothInitialized: Ref<boolean> = ref(false);
-const existBattery: Ref<boolean> = ref(false);
+const { t } = useI18n();
+
 const trayItems = ref<TrayItem[]>([]);
 
 /**
@@ -75,12 +97,41 @@ const refreshTrayItems = async (): Promise<void> => {
 	}
 };
 
+/**
+ * De qué icono es el menú abierto.
+ *
+ * El applet de la bandeja es uno solo para todos los iconos: el backend dice
+ * que está abierto, y esto dice cuál de los iconos lo abrió, para realzar ése.
+ */
+const trayPopupOwner = ref<string | null>(null);
+const { isOpen: trayPopupOpen } = useOpenApplet('tray');
+
+/** Un menú por vez: ver `serial-queue.ts`. */
+const trayPopupQueue = createSerialQueue();
+
+const isTrayPopupOwner = (item: TrayItem) =>
+	trayPopupOpen.value && trayPopupOwner.value === item.service_name;
+
+/**
+ * `ItemIsMenu`: el elemento sólo tiene menú, y la especificación pide abrirlo
+ * también con el clic principal en vez de mandarle `Activate`.
+ */
+const opensMenu = (item: TrayItem, event: MouseEvent) =>
+	event.button === 2 || (event.button === 0 && item.item_is_menu === true);
+
+/** La barra de progreso nombra a quién progresa, para un lector de pantalla. */
+const progressLabel = (item: TrayItem) =>
+	t('components.tray.progress').replace('{0}', itemName(item));
+
 const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
-	console.log('[TrayPanel] handleTrayClick', event.button, item.service_name, item.menu_path);
 	try {
-		if (event.button === 2) {
+		if (opensMenu(item, event)) {
 			event.preventDefault();
-			await openTrayPopup({ serviceName: item.service_name });
+			trayPopupOwner.value = item.service_name;
+			// El rectángulo se mide ahora: `currentTarget` sólo vale mientras
+			// dura el evento, y el pedido puede esperar en la fila.
+			const anchor = anchorOf(event.currentTarget) ?? null;
+			await trayPopupQueue(() => openTrayPopup({ serviceName: item.service_name, anchor }));
 		} else if (event.button === 0) {
 			await trayItemActivate({
 				serviceName: item.service_name,
@@ -100,9 +151,7 @@ const handleTrayClick = async (item: TrayItem, event: MouseEvent) => {
 };
 
 const getItemPulseClass = (item: TrayItem) => {
-	return item.status === 'NeedsAttention'
-		? 'animate-[pulse-attention_2s_infinite_ease-in-out]'
-		: '';
+	return needsAttention(item) ? 'animate-[pulse-attention_2s_infinite_ease-in-out]' : '';
 };
 
 const getItemStatusClass = (item: TrayItem) => {
@@ -120,13 +169,6 @@ const getItemStatusClass = (item: TrayItem) => {
 
 onMounted(async () => {
 	await refreshTrayItems();
-	bluetoothInitialized.value = await isBluetoothPluginInitialized();
-	try {
-		existBattery.value = await batteryExists();
-	} catch (e) {
-		logWarning('[TrayPanel] batteryExists failed:', e);
-		existBattery.value = false;
-	}
 	try {
 		await initSniWatcher();
 	} catch (error) {
@@ -135,39 +177,39 @@ onMounted(async () => {
 });
 
 useSharedEvent('tray-update', refreshTrayItems);
-
-useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
-	if (typeof payload?.has_battery === 'boolean') {
-		existBattery.value = payload.has_battery;
-	}
-});
 </script>
 
 <template>
-  <div
-    class="flex items-center gap-1"
-    :class="vertical ? 'flex-col py-2 w-full' : 'px-2 h-full'"
+  <PanelPill
+    :interactive="false"
+    :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
+    flush
+    role="group"
+    :accessible-label="t('views.panel.trayAlt')"
+    class="shrink-0 [&:not(:has([data-tray-entry]))]:hidden"
+    :class="vertical ? 'py-1' : 'px-1'"
+    data-tray-pill
   >
     <TransitionGroup
-      :move-class="shouldAnimate ? 'transition-transform duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
-      :enter-active-class="shouldAnimate ? 'transition-all duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
+      :move-class="shouldAnimate ? 'transition-transform duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
+      :enter-active-class="shouldAnimate ? 'transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
       :leave-active-class="shouldAnimate ? 'transition-all duration-300 ease-[cubic-bezier(0.55,0,0.45,1)]' : ''"
       :enter-from-class="shouldAnimate ? 'opacity-0 -translate-x-5 scale-80 -rotate-12' : ''"
       :leave-to-class="shouldAnimate ? 'opacity-0 translate-x-5 scale-80 rotate-12' : ''"
       tag="div"
-      class="flex items-center gap-1"
-      :class="vertical ? 'flex-col' : ''"
+      class="flex items-center gap-0.5"
+      :class="vertical ? 'flex-col' : 'h-full'"
     >
-      <TrayNetworkRateControl v-if="showTransfer" key="network-rate" />
-      <TrayWeatherControl v-if="showWeather" key="weather" />
-      <TrayMusicControl v-if="showMusic" key="music-control" />
+      <TrayNetworkRateControl v-if="showTransfer" key="network-rate" data-tray-entry />
       <div
         v-for="item in (showTray ? trayItems : [])"
         :key="item.service_name"
         :class="[
-          'relative flex items-center justify-center w-7 h-7 rounded-corner cursor-pointer transform transition-all duration-300 ease-out hover:bg-white/15 hover:scale-110 hover:rotate-3 active:scale-95 active:rotate-0 group',
+          'relative flex items-center justify-center size-7 rounded-corner-full cursor-pointer transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed group',
           getItemStatusClass(item),
           getItemPulseClass(item),
+          { [OPEN_APPLET_CLASSES]: isTrayPopupOwner(item) },
         ]"
         @mousedown.prevent="(e) => handleTrayClick(item, e)"
         @contextmenu.prevent.stop
@@ -175,25 +217,46 @@ useSharedEvent<{ has_battery?: boolean }>('battery-update', (payload) => {
         @animationend="onAnimationEnd"
         @transitionstart="onTransitionStart"
         @transitionend="onTransitionEnd"
-        :title="item.tooltip || item.title"
+        :title="tooltipText(item)"
+        data-tray-entry
       >
-        <!-- Icon: own pixmap, then the theme, then the initial -->
-        <div class="relative w-4 h-4 flex items-center justify-center">
-          <TrayItemButton :item="item" />
-        </div>
+        <!-- Icono: el mapa de bits propio, el tema o la inicial; y la insignia
+             superpuesta si la manda -->
+        <TrayItemButton :item="item" />
 
-        <!-- Status indicator -->
-        <div v-if="item.status === 'NeedsAttention'" class="absolute -top-1 -right-1 w-2 h-2 bg-status-error rounded-full animate-pulse shadow-lg shadow-red-500/50" />
+        <!-- El contador de LauncherEntry, sólo si la aplicación lo hace visible:
+             el mismo de las ventanas del panel (ver TrayCountBadge.vue). -->
+        <TrayCountBadge
+          v-if="countLabel(item.launcher?.count)"
+          class="pointer-events-none absolute -top-1 -right-1"
+          :label="countLabel(item.launcher?.count) ?? ''"
+        />
+        <!-- Pide atención y no hay contador que ya lo diga: el punto. -->
+        <div
+          v-else-if="needsAttention(item)"
+          data-tray-attention
+          class="absolute -top-1 -right-1 size-2 rounded-corner-full bg-status-error animate-pulse"
+        />
+
+        <!-- El progreso de LauncherEntry, sólo con progress-visible. -->
+        <div
+          v-if="progressPercent(item.launcher?.progress) !== undefined"
+          data-tray-progress
+          class="pointer-events-none absolute inset-x-0.5 -bottom-1"
+        >
+          <ProgressBar
+            :value="progressPercent(item.launcher?.progress) ?? 0"
+            :label="progressLabel(item)"
+            size="xs"
+          />
+        </div>
       </div>
-      <TrayIconPrivacy v-if="showPrivacy" key="icon-privacy" />
-      <TrayIconSound key="icon-sound" />
-      <TrayIconBattery v-if="existBattery" key="icon-battery" />
-      <TrayIconCapsLock key="icon-capslock" />
-      <TrayIconMicrophone key="icon-micmute" />
-      <TrayIconBluetooth key="icon-bluetooth" />
-      <TrayIconTwingate key="icon-twingate" />
-      <TrayIconNetwork key="icon-network" />
+      <TrayIconPrivacy v-if="showPrivacy" key="icon-privacy" data-tray-entry />
+      <TrayIconCapsLock key="icon-capslock" data-tray-entry />
+      <TrayIconDoNotDisturb key="icon-do-not-disturb" data-tray-entry />
+      <TrayIconMicrophone key="icon-micmute" data-tray-entry />
+      <TrayIconTwingate key="icon-twingate" data-tray-entry />
     </TransitionGroup>
-  </div>
+  </PanelPill>
 </template>
 

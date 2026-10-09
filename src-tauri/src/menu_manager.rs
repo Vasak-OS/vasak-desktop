@@ -119,7 +119,7 @@ fn get_applications_dirs() -> Vec<PathBuf> {
 }
 
 /// Session locale, most specific first: `es_AR.UTF-8` yields `es_AR` and `es`.
-fn locale_keys() -> Vec<String> {
+pub(crate) fn locale_keys() -> Vec<String> {
     let raw = std::env::var("LC_ALL")
         .or_else(|_| std::env::var("LC_MESSAGES"))
         .or_else(|_| std::env::var("LANG"))
@@ -144,7 +144,7 @@ fn locale_keys() -> Vec<String> {
 /// one. Applications ship their translations in the same file, as `Name[es]`,
 /// and reading only `Name` left the menu in English on a Spanish system even
 /// for the applications that do translate themselves.
-fn localized_attr(section: &Section, key: &str, locales: &[String]) -> String {
+pub(crate) fn localized_attr(section: &Section, key: &str, locales: &[String]) -> String {
     for locale in locales {
         if let Some(value) = section.attr_with_param(key, locale).first() {
             return value.clone();

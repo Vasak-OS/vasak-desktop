@@ -1,6 +1,16 @@
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { computed } from 'vue';
-import { esVertical, posicionDelPanel } from '@/tools/posicion-del-panel';
+import {
+	hasSurface,
+	panelAnimation,
+	panelAnimationClass,
+	panelBarClasses,
+	panelLayout,
+	panelStyle,
+	panelSurfaceClass,
+} from '@/tools/panel-appearance';
+import { readPanelAutohide } from '@/tools/panel-autohide';
+import { isVertical, panelPosition } from '@/tools/panel-position';
 
 /**
  * Qué muestra el panel y de qué lado va.
@@ -19,17 +29,40 @@ import { esVertical, posicionDelPanel } from '@/tools/posicion-del-panel';
 export function usePanelConfig() {
 	const configStore = useConfigStore();
 
-	const seccion = computed(() => (configStore as any).config?.panel ?? {});
-	const posicion = computed(() => posicionDelPanel((configStore as any).config));
+	const config = computed(() => (configStore as any).config);
+	const section = computed(() => config.value?.panel ?? {});
+	const position = computed(() => panelPosition(config.value));
+
+	/**
+	 * El aspecto de la barra: su tipo, su densidad, su animación y su tamaño.
+	 * Todo sale de la misma sección `panel` y se lee tolerante (`panel-appearance.ts`).
+	 * Es reactivo como el resto: `App.vue` recarga con cada `config-changed`, así
+	 * que cambiar el aspecto en Configuración reacomoda la barra sin reiniciar.
+	 */
+	const style = computed(() => panelStyle(config.value));
+	const layout = computed(() => panelLayout(config.value));
+	const animation = computed(() => panelAnimation(config.value));
 
 	return {
-		showWeather: computed(() => seccion.value.weather !== false),
-		showMusic: computed(() => seccion.value.music !== false),
-		showTransfer: computed(() => seccion.value.transfer !== false),
-		showTray: computed(() => seccion.value.tray !== false),
-		showPrivacy: computed(() => seccion.value.privacy !== false),
-		posicion,
+		showWeather: computed(() => section.value.weather !== false),
+		showMusic: computed(() => section.value.music !== false),
+		showTransfer: computed(() => section.value.transfer !== false),
+		showTray: computed(() => section.value.tray !== false),
+		showPrivacy: computed(() => section.value.privacy !== false),
+		position,
 		/** `true` cuando el panel es una columna, que es lo que más se pregunta. */
-		vertical: computed(() => esVertical(posicion.value)),
+		vertical: computed(() => isVertical(position.value)),
+		style,
+		layout,
+		/** Las clases de la `<nav>` según el tipo y la densidad. */
+		barClasses: computed(() => panelBarClasses(position.value, style.value, layout.value)),
+		/** Las clases de la superficie, o `''` en píldoras (que no dibuja ninguna). */
+		surfaceClass: computed(() => panelSurfaceClass(style.value, position.value)),
+		/** `true` cuando hay una superficie continua: la región de entrada es la barra entera. */
+		hasSurface: computed(() => hasSurface(style.value)),
+		/** La clase que enciende la animación elegida, o `''` si está apagada. */
+		animationClass: computed(() => panelAnimationClass(animation.value)),
+		/** `true` cuando el panel se esconde solo y se revela al rozar el borde. */
+		autohide: computed(() => readPanelAutohide(config.value)),
 	};
 }

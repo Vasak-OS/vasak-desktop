@@ -1,14 +1,16 @@
-
 <script lang="ts" setup>
+/**
+ * La vista radial y la lista (vasak-desktop#132): abre en la órbita de la
+ * red, con el selector para pasar a Bluetooth.
+ */
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 
-import NetworkControlArea from '@/components/areas/network/NetworkControlArea.vue';
-import AppletFrame from '@/components/layouts/AppletFrame.vue';
-import { toggleNetworkApplet } from '@/services/window.service';
+import ConnectionsArea from '@/components/areas/connections/ConnectionsArea.vue';
+import AppletPopover from '@/components/layouts/AppletPopover.vue';
 </script>
 
 <template>
-  <AppletFrame :close-fn="toggleNetworkApplet">
-    <NetworkControlArea />
-  </AppletFrame>
+  <AppletPopover applet="network">
+    <ConnectionsArea initial-tab="wifi" applet="network" />
+  </AppletPopover>
 </template>

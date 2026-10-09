@@ -58,6 +58,12 @@ const savedConsole = {
 const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
 
 let logger: (typeof import('@/utils/logger'))['default'];
+/**
+ * El `window` que había antes, para devolverlo: con el DOM del `preload`
+ * (`tests/support/dom.ts`) es el de happy-dom, y dejarlo en `undefined` se
+ * lleva puestas las pruebas que montan componentes después.
+ */
+const previousWindow = (globalThis as any).window;
 
 beforeAll(async () => {
 	// El aviso de fallo sólo se da en desarrollo, que es donde el bucle se
@@ -82,7 +88,7 @@ afterAll(() => {
 	// El logger reemplaza la consola del proceso entero; sin esto se lleva
 	// puestos los demás archivos de prueba.
 	Object.assign(console, savedConsole);
-	(globalThis as any).window = undefined;
+	(globalThis as any).window = previousWindow;
 	// Borrar y no asignar `undefined`: en `process.env` eso deja la cadena
 	// "undefined", que es verdadera, y el resto de los archivos correría en
 	// modo desarrollo sin haberlo pedido.

@@ -3,14 +3,22 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { invoke } from '@tauri-apps/api/core';
 import { emit } from '@tauri-apps/api/event';
-import { Command } from '@tauri-apps/plugin-shell';
 import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, ref } from 'vue';
+import { Badge, PanelPill, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
 import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
-import PanelClockwidget from '@/components/widgets/PanelClockwidget.vue';
+import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
+import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
+import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
+import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
+import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
+import TrayWeatherControl from '@/components/controls/TrayWeatherControl.vue';
+import KeyboardLayoutPill from '@/components/panel/KeyboardLayoutPill.vue';
+import PinnedAppsPill from '@/components/panel/PinnedAppsPill.vue';
+import WorkspacesPill from '@/components/panel/WorkspacesPill.vue';
+import PanelClockWidget from '@/components/widgets/PanelClockWidget.vue';
 import type { ConnectDevice } from '@/interfaces/connect';
 import type {
 	Notification as AppNotification,
@@ -18,11 +26,17 @@ import type {
 } from '@/interfaces/notifications';
 import { listConnectDevices, toggleConnectMenu } from '@/services/connect.service';
 import { getAllNotifications } from '@/services/notification.service';
-import { toggleControlCenter, toggleMenu } from '@/services/window.service';
+import { reportMenuButton, toggleControlCenter, toggleMenu } from '@/services/window.service';
+import { useOpenApplet } from '@/tools/composables/useOpenApplet';
+import { usePanelAutohide } from '@/tools/composables/usePanelAutohide';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
+import { usePanelDensity, watchPanelDensity } from '@/tools/composables/usePanelDensity';
+import { usePanelInputRegion } from '@/tools/composables/usePanelInputRegion';
+import { usePanelTrapezoidClip } from '@/tools/composables/usePanelTrapezoidClip';
 import { useSharedEvent } from '@/tools/event.bus';
-import { hayNotificacionesNuevas } from '@/tools/notificaciones';
-import { CLASES_DE_LA_BARRA } from '@/tools/posicion-del-panel';
+import { containsNewNotifications } from '@/tools/notifications';
+import { panelHideClass, panelRegionMode } from '@/tools/panel-autohide';
+import { GROUP_CLASSES } from '@/tools/panel-position';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
@@ -37,7 +51,74 @@ const { t } = useI18n();
  * Es reactivo, así que mover el panel en Configuración lo acomoda en el acto,
  * al mismo tiempo que la superficie se reancla.
  */
-const { posicion, vertical } = usePanelConfig();
+const {
+	position,
+	vertical,
+	style,
+	showWeather,
+	showMusic,
+	barClasses,
+	surfaceClass,
+	hasSurface,
+	animationClass,
+	autohide,
+} = usePanelConfig();
+
+/**
+ * Esconder y revelar la barra cuando `panel.autohide` está puesto. La máquina de
+ * estados vive aparte (`usePanelAutohide`); `panelHidden` desliza la barra y
+ * recorta la región de entrada. El puntero entrando y saliendo de la franja lo
+ * avisa el backend por `panel-pointer-entered` / `panel-pointer-left` —la página
+ * no recibe la salida del puntero en una superficie de capa— y se conectan a
+ * revelar y esconder.
+ */
+const {
+	hidden: panelHidden,
+	reveal: revealPanel,
+	requestHide: hidePanel,
+} = usePanelAutohide(autohide, position);
+useSharedEvent('panel-pointer-entered', () => revealPanel());
+useSharedEvent('panel-pointer-left', () => hidePanel());
+
+/**
+ * Lo que recibe el puntero, según el estado (`panel-autohide.ts`): sólo las
+ * píldoras (lo de siempre), la barra entera (con superficie o ya revelada), o la
+ * línea del borde (escondida). Entre píldoras se ve el escritorio y un clic ahí
+ * tiene que caer en él; con superficie o revelada no hay huecos.
+ */
+const regionMode = computed(() =>
+	panelRegionMode({
+		autohide: autohide.value,
+		hidden: panelHidden.value,
+		hasSurface: hasSurface.value,
+	})
+);
+
+const bar = ref<HTMLElement | null>(null);
+usePanelInputRegion(bar, regionMode, position);
+
+/**
+ * El recorte en trapecio de la superficie, con cantos redondeados (scoop cóncavo
+ * en la parte ancha, convexo en la angosta). Va por `clip-path: path()` recalculado
+ * al tamaño, no por una clase, porque la forma lleva arcos.
+ */
+const surface = ref<HTMLElement | null>(null);
+usePanelTrapezoidClip(
+	surface,
+	position,
+	computed(() => style.value === 'trapezoid')
+);
+
+/** La clase que desliza la barra fuera de la pantalla mientras está escondida. */
+const hideClass = computed(() => panelHideClass(position.value, panelHidden.value));
+
+/**
+ * Cuánto texto entra: en un panel angosto los nombres largos se pliegan al
+ * icono (`panel-density.ts`), medido sobre la propia barra.
+ */
+watchPanelDensity(vertical);
+const density = usePanelDensity();
+const windowsFirst = computed(() => density.value === 'tight');
 
 /**
  * El clic derecho del panel: sólo cosas del panel.
@@ -51,9 +132,9 @@ const { posicion, vertical } = usePanelConfig();
  * el teclado, el tema, cerrarse al perder el foco— es del plugin, que es el
  * mismo menú que usan todas las aplicaciones de VasakOS.
  */
-const abrirMenuDelPanel = async (evento: MouseEvent) => {
+const openPanelContextMenu = async (event: MouseEvent) => {
 	try {
-		const elegido = await showContextMenu(
+		const chosen = await showContextMenu(
 			[
 				{
 					id: 'panel',
@@ -61,29 +142,29 @@ const abrirMenuDelPanel = async (evento: MouseEvent) => {
 					icon: 'preferences-system-windows',
 				},
 				{
-					id: 'notificaciones',
+					id: 'notifications',
 					label: t('views.applets.panelMenu.notifications'),
 					icon: 'preferences-desktop-notification',
 				},
 				{ type: 'separator' },
 				{
-					id: 'sistema',
+					id: 'system',
 					label: t('views.applets.panelMenu.systemSettings'),
 					icon: 'preferences-system',
 				},
 			],
-			evento,
+			event,
 			{ window: true }
 		);
 
-		switch (elegido?.id) {
+		switch (chosen?.id) {
 			case 'panel':
 				await invoke('open_settings_section', { section: 'appearance-panel' });
 				break;
-			case 'notificaciones':
+			case 'notifications':
 				await toggleControlCenter();
 				break;
-			case 'sistema':
+			case 'system':
 				await invoke('open_settings');
 				break;
 		}
@@ -128,31 +209,56 @@ const openPhoneMenu = async () => {
 	}
 };
 
+/**
+ * El botón del menú, el lince: de él cuelga el menú, lo abra un clic o la
+ * tecla Super. Es una píldora de la librería, así que el `ref` es la
+ * instancia: `anchorOf` sabe leerle el `$el`, y el observador necesita el
+ * elemento.
+ */
+const menuButton = ref<{ $el?: Element } | null>(null);
+const { isOpen: menuIsOpen } = useOpenApplet('menu');
+
 const openMenu = async () => {
 	try {
-		await toggleMenu();
+		await toggleMenu(menuButton.value);
 	} catch (error) {
 		logError('Error al abrir el menu:', error);
 	}
 };
 
-const openConfig = async () => {
+/**
+ * Le cuenta al backend dónde quedó el botón del menú, para que abrirlo sin clic
+ * —la tecla Super, por D-Bus— lo cuelgue de acá y no del centro.
+ *
+ * Al montarse, cuando el panel cambia de lado y cuando el botón cambia de
+ * tamaño. Con `ResizeObserver` y no con `resize`: en este WebView `resize` no
+ * llega.
+ */
+const sendMenuButton = async () => {
 	try {
-		const cmd = Command.create('vasak-settings', []);
-		await cmd.spawn();
+		await reportMenuButton(position.value, menuButton.value);
 	} catch (error) {
-		logError('Error al abrir config:', error);
+		logError('No se pudo informar el botón del menú:', error);
 	}
 };
 
-const openFileManager = async () => {
-	try {
-		const cmd = Command.create('vasak-file-manager', []);
-		await cmd.spawn();
-	} catch (error) {
-		logError('Error al abrir file manager:', error);
+let menuButtonObserver: ResizeObserver | undefined;
+
+watch(position, async () => {
+	await nextTick();
+	await sendMenuButton();
+});
+
+onMounted(() => {
+	void sendMenuButton();
+	const element = menuButton.value?.$el;
+	if (typeof ResizeObserver !== 'undefined' && element instanceof Element) {
+		menuButtonObserver = new ResizeObserver(() => void sendMenuButton());
+		menuButtonObserver.observe(element);
 	}
-};
+});
+
+onBeforeUnmount(() => menuButtonObserver?.disconnect());
 
 const openNotificationCenter = async () => {
 	try {
@@ -198,10 +304,10 @@ useSharedEvent('connect-device-removed', refreshConnectDevices);
 // no estaba. Antes bastaba con que la lista trajera algo, y como toda foto trae
 // lo que quedó, la campanita se sacudía también al borrar una.
 useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
-	const nuevas = hayNotificacionesNuevas(notifications.value, delta.items);
+	const hasNew = containsNewNotifications(notifications.value, delta.items);
 	notifications.value = delta.items;
 
-	if (!nuevas) return;
+	if (!hasNew) return;
 
 	hasNewNotifications.value = true;
 	clearTimeout(notificationResetTimer);
@@ -212,88 +318,132 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 </script>
 
 <template>
+	<!-- El panel en píldoras flotantes (vasak-desktop#151), como el video de
+	     referencia: la barra ya no es una franja continua sino píldoras sueltas
+	     sobre el escritorio. La `<nav>` es transparente y sólo reparte: a la
+	     izquierda el menú, los accesos fijos, las notificaciones, los espacios
+	     de trabajo, la música y las ventanas; al centro el reloj y el clima; a la derecha la
+	     bandeja, el teclado, la red, el Bluetooth, el volumen y la batería.
+	     Cada píldora es una `PanelPill` de la librería en `ui-shell`, sin
+	     `backdrop-blur`: el desenfoque lo pone Wayfire detrás de cada una.
+
+	     El tipo, la densidad, la animación y el tamaño salen de la configuración
+	     (`panel-appearance.ts`): en píldoras la `<nav>` queda transparente y la
+	     región de entrada se recorta a las píldoras; en flotante, barra y dock se
+	     dibuja una superficie detrás y la región pasa a ser la barra entera
+	     (`usePanelInputRegion`). -->
 	<nav
-		@contextmenu.prevent="abrirMenuDelPanel"
-		class="relative z-20 flex justify-between items-center overflow-hidden p-1 rounded-corner bg-ui-bg/80 border border-ui-border/80"
-		:class="CLASES_DE_LA_BARRA[posicion]"
+		ref="bar"
+		@contextmenu.prevent="openPanelContextMenu"
+		class="panel-bar z-20 grid items-center gap-2 bg-transparent transition-transform duration-200"
+		:class="[barClasses, animationClass, hideClass]"
+		data-panel-bar
 	>
-    <div class="flex items-center gap-1" :class="vertical ? 'flex-col' : ''">
-      <!-- Un botón y no una imagen con `@click`: así se alcanza con el teclado
-           y se anuncia como lo que es. Antes eran `img` clicables, que no
-           reciben foco ni salen en la lista de controles. -->
-      <button
-        type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
+    <!-- La superficie continua de flotante, barra y dock, detrás de las
+         píldoras. En píldoras no existe: la `<nav>` es transparente y entre una
+         píldora y otra se ve el escritorio. Es translúcida y sin `backdrop-blur`:
+         el desenfoque lo pone Wayfire detrás de la franja. Su forma —el fondo, el
+         canto y el redondeo— sale de `panelSurfaceClass`. -->
+    <div
+      v-if="hasSurface"
+      ref="surface"
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-0 -z-10"
+      :class="surfaceClass"
+      data-panel-surface
+    ></div>
+    <div class="flex min-w-0 items-center gap-1.5 overflow-x-clip" :class="GROUP_CLASSES[position].start" data-panel-start>
+      <!-- El botón del menú: el lince de VasakOS (`start-here` del tema), como
+           siempre. Abre el menú con la búsqueda enfocada, lo abra este botón o
+           la tecla Super (tests/menu-search-focus.test.ts). -->
+      <PanelPill
+        ref="menuButton"
+        icon="start-here"
+        icon-type="icon"
+        :accessible-label="t('views.panel.menuAlt')"
         :title="t('views.panel.menuAlt')"
-        :aria-label="t('views.panel.menuAlt')"
+        :expanded="menuIsOpen"
+        :orientation="vertical ? 'vertical' : 'horizontal'"
+        :flat="hasSurface"
+        class="shrink-0"
+        data-menu-pill
         @click="openMenu"
-      >
-        <ThemeIcon name="start-here" :size="28" />
-      </button>
-			<!-- El separador gira con la barra: de costado, una raya vertical de
-			     un píxel de ancho entre dos iconos apilados no separa nada. -->
-			<div class="bg-ui-bg/80" :class="vertical ? 'h-1 w-7' : 'w-1 h-7'"></div>
-      <button
-        type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-        :title="t('views.panel.settingsAlt')"
-        :aria-label="t('views.panel.settingsAlt')"
-        @click="openConfig"
-      >
-        <ThemeIcon name="preferences-system" :size="24" />
-      </button>
-      <button
-        type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-        :title="t('views.panel.filesAlt')"
-        :aria-label="t('views.panel.filesAlt')"
-        @click="openFileManager"
-      >
-        <ThemeIcon name="system-file-manager" :size="24" />
-      </button>
+      />
+      <!-- Configuración y Archivos: la zona de los accesos fijos, donde después
+           van las aplicaciones ancladas. -->
+      <PinnedAppsPill />
+      <!-- En el panel más angosto las ventanas suben al lado de los accesos
+           fijos: así, si lo de la izquierda no entra, lo que se recorta es la
+           música o los espacios de trabajo y no la barra de ventanas, que no
+           sale nunca (decisión del usuario, 03/10/2026). -->
+      <WindowsArea v-if="windowsFirst" />
       <!-- Only while a phone is connected: a permanent button for hardware
            most people never plug in is clutter in the one strip of screen that
            is always on top of everything else. -->
-      <div v-if="hasPhone" class="relative">
-        <button
-        type="button"
-        class="cursor-pointer p-0.5 rounded-corner hover:bg-primary transform hover:scale-110 active:scale-95 ease-in-out"
-        :title="t('views.connect.menuAlt')"
-        :aria-label="t('views.connect.menuAlt')"
+      <PanelPill
+        v-if="hasPhone"
+        icon="smartphone"
+        icon-type="icon"
+        :accessible-label="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
+        :title="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
+        :orientation="vertical ? 'vertical' : 'horizontal'"
+        :flat="hasSurface"
+        class="shrink-0"
+        data-phone-pill
         @click="openPhoneMenu"
       >
-        <ThemeIcon name="smartphone" :size="24" />
-      </button>
-        <div
+        <span
           v-if="phoneNeedsAuth"
-          :title="t('views.connect.unauthorized')"
-          class="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-status-warning"
-        ></div>
-      </div>
+          class="absolute top-0.5 right-0.5 size-2 rounded-corner-full bg-status-warning"
+        ></span>
+      </PanelPill>
+      <WorkspacesPill />
+      <TrayMusicControl v-if="showMusic" />
+      <WindowsArea v-if="!windowsFirst" />
     </div>
-    <WindowsArea />
-    <div class="flex content-center items-center" :class="vertical ? 'flex-col' : ''">
+    <div class="flex items-center gap-1.5" :class="GROUP_CLASSES[position].center" data-panel-center>
+      <PanelClockWidget />
+      <TrayWeatherControl v-if="showWeather" />
+    </div>
+    <div class="flex min-w-0 items-center gap-1.5 overflow-x-clip" :class="GROUP_CLASSES[position].end" data-panel-end>
       <TrayBarArea />
-      <PanelClockwidget />
-      <button
-        type="button"
-        class="relative cursor-pointer"
+      <KeyboardLayoutPill />
+      <TrayIconNetwork />
+      <TrayIconBluetooth />
+      <TrayIconSound />
+      <TrayIconBattery />
+      <!-- La campanita vuelve al extremo del panel, junto a la bandeja, como
+           antes del pasaje a píldoras (vasak-desktop#160): es el último grupo,
+           así que queda en el final de la barra sin importar de qué lado esté.
+           El número no pasa de 99 para que entre en la píldora. -->
+      <PanelPill
+        :accessible-label="t('views.panel.notificationsAlt')"
         :title="t('views.panel.notificationsAlt')"
-        :aria-label="t('views.panel.notificationsAlt')"
+        :orientation="vertical ? 'vertical' : 'horizontal'"
+        :flat="hasSurface"
+        class="shrink-0"
+        data-notifications-pill
         @click="openNotificationCenter"
       >
-        <ThemeIcon
-          name="preferences-desktop-notification"
-          :size="24"
-          :alt="t('views.panel.notificationsAlt')"
-          class="p-0.5"
-          :class="{ 'animate-bell-shake': hasNewNotifications }"
+        <template #leading>
+          <ThemeIcon
+            name="preferences-desktop-notification"
+            type="symbol"
+            :size="18"
+            alt=""
+            class="shrink-0"
+            :class="{ 'animate-bell-shake': hasNewNotifications }"
+          />
+        </template>
+        <Badge
+          v-if="notifications.length > 0 && !vertical"
+          tone="accent"
+          variant="solid"
+          counter
+          :label="notifications.length"
+          :max="99"
         />
-        <div v-if="notifications.length > 0" class="absolute -top-0.5 -right-0.5 bg-primary text-tx-on-primary rounded-full min-w-3 h-3 flex items-center justify-center text-[8px] font-semibold leading-none px-0.5">
-          {{ notifications.length > 99 ? "99+" : notifications.length }}
-        </div>
-      </button>
+      </PanelPill>
     </div>
   </nav>
 </template>
-

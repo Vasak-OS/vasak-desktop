@@ -32,8 +32,8 @@ const PREFETCH_MAP: Record<string, string[]> = {
 		'get_audio_volume',
 		'battery_exists',
 	],
-	'/menu': ['get_menu_items'],
-	'/control_center': ['get_all_notifications', 'get_audio_volume', 'get_brightness_info'],
+	'/applets/menu': ['get_menu_items'],
+	'/control_center': ['get_all_notifications', 'get_audio_volume'],
 };
 
 class IPCBatchLayer {

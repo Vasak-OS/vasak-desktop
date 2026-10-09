@@ -1,236 +1,249 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import AppletFrame from '@/components/layouts/AppletFrame.vue';
+import {
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	Kbd,
+	ThemeIcon,
+	TOAST_TONE_CLASSES,
+} from '@vasakgroup/vue-libvasak';
+import { computed, nextTick, onMounted, ref } from 'vue';
+import TrayPixmap from '@/components/buttons/TrayPixmap.vue';
+import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import type { SystrayPopupPayload, TrayMenu } from '@/interfaces/tray';
 import { getTrayPopupData, trayPopupClick } from '@/services/tray.service';
+import { dismissApplet } from '@/services/window.service';
+import { useSharedEvent } from '@/tools/event.bus';
+import { iconSource } from '@/tools/tray-item';
+import {
+	DISPOSITION_STYLE,
+	entryCheck,
+	entryRole,
+	hasActions,
+	menuFocusTarget,
+	shortcutChords,
+	shortcutLabel,
+	trayMenuRows,
+} from '@/tools/tray-menu';
 import { logError } from '@/utils/logger';
+
+/**
+ * El menú del clic derecho sobre un icono de la bandeja.
+ *
+ * Es un menú contextual y nada más: las entradas que publica el programa, del
+ * tamaño de un menú. Hasta la 1.18 era una ficha de 700×620 con el icono, el
+ * título, el estado y el nombre de servicio arriba, y las acciones abajo como
+ * tarjetas: quien buscaba «Salir» encontraba la información del programa.
+ *
+ * El alto lo calcula el backend antes de abrir (`tray_menu_size`), con las
+ * mismas medidas que las clases de acá: ver `tools/tray-menu.ts`.
+ *
+ * Cada entrada es un `DropdownMenuItem` de la librería y dibuja **sólo lo que
+ * manda**: el icono (por nombre o el PNG de la aplicación), la etiqueta, el
+ * atajo, la casilla o la opción de radio con su estado —indeterminado
+ * incluido—, y la disposición con su tono. Una entrada sin icono no tiene un
+ * hueco para el icono.
+ *
+ * Desde vue-libvasak 2.2.0 la marca es `checked` del ítem (la tilde o el
+ * punto en su columna), la sangría es `inset` —una columna de icono por nivel
+ * de submenú, y una más para alinear con las que tienen icono— y el atajo es
+ * `Kbd`, una tecla por recuadro. Lo único que la librería no modela es el
+ * indeterminado de dbusmenu: ver `entryCheck`.
+ */
 
 const { t } = useI18n();
 
-const currentWindow = getCurrentWindow();
 const data = ref<SystrayPopupPayload | null>(null);
-const leaving = ref(false);
+const menu = ref<HTMLElement | null>(null);
 
-const popupIcon = computed(() => {
-	if (!data.value?.icon_data) return null;
-	return `data:image/png;base64,${data.value.icon_data}`;
-});
+const rows = computed(() => trayMenuRows(data.value?.items));
+const empty = computed(() => !hasActions(rows.value));
 
-const popupSubtitle = computed(() => {
-	return data.value?.tooltip || data.value?.service_name || t('views.applets.tray.fallbackTitle');
-});
+/** Si alguna entrada tiene icono o casilla: entonces todas reservan el lugar,
+ * para que las etiquetas queden alineadas. Si ninguna tiene, nadie reserva. */
+const hasLeadingColumn = computed(() =>
+	rows.value.some((row) => row.kind === 'item' && (iconSource(row.item.icon) || row.item.toggle))
+);
 
-const itemCount = computed(() => data.value?.items?.length ?? 0);
+/** Si la entrada dibuja algo en la columna del icono: la marca, el indeterminado o su icono. */
+const ownsLeadingColumn = (item: TrayMenu) => Boolean(item.toggle || iconSource(item.icon));
 
-type RenderedTrayItem = TrayMenu & { depth: number };
+/**
+ * Cuántas columnas de icono se corre la entrada: una por nivel de submenú, y
+ * una más si no tiene nada que poner en la columna que reservan las demás.
+ */
+const entryInset = (item: TrayMenu, depth: number) =>
+	depth + (hasLeadingColumn.value && !ownsLeadingColumn(item) ? 1 : 0);
 
-const renderItems = computed<RenderedTrayItem[]>(() => {
-	const output: RenderedTrayItem[] = [];
+/** El título de un submenú, con la misma sangría por nivel que sus entradas. */
+const captionStyle = (depth: number) => ({ paddingLeft: `calc(0.75rem + ${depth * 1.75}rem)` });
 
-	const appendItems = (items: TrayMenu[] | undefined, depth: number) => {
-		for (const item of items ?? []) {
-			output.push({ ...item, depth });
-			if (item.children?.length) {
-				appendItems(item.children, depth + 1);
-			}
-		}
-	};
-
-	appendItems(data.value?.items, 0);
-	return output;
-});
-
-const closeAfterAnimation = () => {
-	leaving.value = true;
-	setTimeout(() => {
-		try {
-			currentWindow.close();
-		} catch {
-			/* window already closed */
-		}
-	}, 200);
+/**
+ * El `role` y el `aria-checked` sólo del indeterminado: el resto lo pone el
+ * ítem de la librería a partir de `checked`. Van como atributos, que la raíz
+ * del ítem recibe por encima de los suyos.
+ */
+const mixedAttrs = (item: TrayMenu): Record<string, string> => {
+	if (!entryCheck(item).mixedIcon) return {};
+	const { role, checked } = entryRole(item);
+	return checked === undefined ? { role } : { role, 'aria-checked': checked };
 };
 
+const dispositionLabel = (item: TrayMenu) =>
+	item.disposition ? t(`views.applets.tray.disposition.${item.disposition}`) : '';
+
+const menuLabel = computed(() =>
+	t('views.applets.tray.menuLabel').replace(
+		'{0}',
+		data.value?.title || data.value?.tooltip?.title || t('views.applets.tray.fallbackTitle')
+	)
+);
+
+const close = () => dismissApplet('tray').catch(() => undefined);
+
 const handleItemClick = async (item: TrayMenu) => {
-	if (!item.enabled || item.type === 'separator') return;
+	if (!item.enabled) return;
 	try {
 		await trayPopupClick({ menuId: item.id });
 	} catch (error) {
 		logError('[TrayPopup] Error executing menu action:', error);
 	}
-	closeAfterAnimation();
+	void close();
 };
+
+const entries = (): HTMLElement[] => [
+	...(menu.value?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? []),
+];
 
 const onKeydown = (event: KeyboardEvent) => {
-	if (event.key === 'Escape') {
-		closeAfterAnimation();
-	}
+	const buttons = entries();
+	const from = buttons.indexOf(document.activeElement as HTMLElement);
+	const target = menuFocusTarget(
+		buttons.map((button) => button.getAttribute('aria-disabled') !== 'true'),
+		from,
+		event.key
+	);
+	if (target === null) return;
+	event.preventDefault();
+	buttons[target]?.focus();
 };
 
-const onBlur = () => {
-	closeAfterAnimation();
-};
-
-onMounted(async () => {
+/**
+ * Los datos del icono que se tocó.
+ *
+ * Se piden al montarse y cada vez que el applet vuelve a la vista: es el mismo
+ * applet para todos los iconos de la bandeja, y esconderlo no lo desmonta.
+ */
+const loadData = async () => {
 	try {
-		const payload = await getTrayPopupData();
-		data.value = payload;
-		if (!payload?.items || payload.items.length === 0) {
-			console.warn('[TrayPopup] No menu items available');
-		}
+		data.value = await getTrayPopupData();
+		// El foco adentro, como cualquier menú: así las flechas funcionan de una.
+		await nextTick();
+		menu.value?.focus();
 	} catch (error) {
 		logError('[TrayPopup] Error loading popup data:', error);
-		await currentWindow.close();
-		return;
+		void close();
 	}
-	document.addEventListener('keydown', onKeydown);
-	window.addEventListener('blur', onBlur);
-});
+};
 
-onBeforeUnmount(() => {
-	document.removeEventListener('keydown', onKeydown);
-	window.removeEventListener('blur', onBlur);
+onMounted(loadData);
+
+// El programa cambió su menú con el menú abierto (`ItemsPropertiesUpdated` o
+// `LayoutUpdated`): se vuelve a pedir sin mover el foco.
+useSharedEvent('tray-popup-update', async () => {
+	try {
+		data.value = await getTrayPopupData();
+	} catch (error) {
+		logError('[TrayPopup] Error refreshing popup data:', error);
+	}
 });
 </script>
 
 <template>
-  <AppletFrame :close-fn="closeAfterAnimation">
-    <div class="flex h-full flex-col gap-4">
-      <section class="rounded-corner border border-ui-border bg-ui-surface/45 p-4 shadow-sm">
-        <div class="flex items-start gap-4 min-w-0">
-          <div class="w-14 h-14 rounded-corner border border-ui-border/70 bg-ui-surface/70 flex items-center justify-center overflow-hidden shrink-0">
-            <img
-              v-if="popupIcon"
-              :src="popupIcon"
-              class="w-full h-full object-contain p-2"
-              :alt="t('views.applets.tray.iconAlt')"
+  <AppletPopover applet="tray" compact @shown="loadData">
+    <div
+      ref="menu"
+      role="menu"
+      tabindex="-1"
+      :aria-label="menuLabel"
+      class="h-full overflow-y-auto outline-none"
+      @keydown="onKeydown"
+    >
+      <p
+        v-if="empty"
+        class="flex h-8 items-center px-3 text-label-m text-tx-muted"
+      >
+        {{ t('views.applets.tray.noItems') }}
+      </p>
+
+      <template v-for="row in empty ? [] : rows" :key="row.kind === 'separator' ? row.key : `${row.kind}-${row.item.id}`">
+        <DropdownMenuSeparator v-if="row.kind === 'separator'" />
+
+        <DropdownMenuLabel
+          v-else-if="row.kind === 'caption'"
+          class="truncate"
+          :style="captionStyle(row.depth)"
+        >
+          {{ row.item.label }}
+        </DropdownMenuLabel>
+
+        <DropdownMenuItem
+          v-else
+          v-bind="mixedAttrs(row.item)"
+          :checked="entryCheck(row.item).checked"
+          :toggle="entryCheck(row.item).toggle"
+          :inset="entryInset(row.item, row.depth)"
+          :disabled="!row.item.enabled"
+          :class="row.item.disposition ? TOAST_TONE_CLASSES[DISPOSITION_STYLE[row.item.disposition].tone] : ''"
+          @select="handleItemClick(row.item)"
+        >
+          <!-- La columna del icono: el indeterminado, que la librería no
+               dibuja, o el icono que manda el programa (por nombre o en PNG).
+               Una entrada con marca no lleva además su icono, como antes. -->
+          <template v-if="entryCheck(row.item).mixedIcon || (!row.item.toggle && iconSource(row.item.icon))" #prefix>
+            <ThemeIcon
+              v-if="entryCheck(row.item).mixedIcon"
+              :name="entryCheck(row.item).mixedIcon ?? ''"
+              type="symbol"
+              :size="16"
+              alt=""
+            />
+            <TrayPixmap
+              v-else-if="iconSource(row.item.icon)?.kind === 'pixmap'"
+              :data="row.item.icon?.data"
+              :size="16"
             />
             <ThemeIcon
               v-else
-              name="applications-other"
-              :size="48"
-              class="object-contain p-2"
-              :alt="t('views.applets.tray.iconAlt')"
+              :name="row.item.icon?.name ?? ''"
+              :size="16"
+              alt=""
             />
-          </div>
-
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2 min-w-0">
-              <h2 class="text-lg font-semibold text-tx-main truncate">
-                {{ data?.title || t('views.applets.tray.fallbackTitle') }}
-              </h2>
-              <span class="text-[10px] uppercase tracking-[0.18em] text-tx-main/45 whitespace-nowrap">
-                {{ t('views.applets.tray.itemCount').replace('{0}', String(itemCount)) }}
-              </span>
-            </div>
-            <p class="text-sm text-tx-main/70 truncate mt-1">
-              {{ popupSubtitle }}
-            </p>
-            <div class="mt-3 flex flex-wrap gap-2 text-xs">
-              <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-tx-main/75">
-                {{ data?.status || t('views.applets.tray.statusFallback') }}
-              </span>
-              <span class="px-2.5 py-1 rounded-full border border-ui-border bg-ui-surface/55 text-tx-main/65 truncate max-w-[280px]">
-                {{ data?.service_name || 'service' }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="flex-1 min-h-0 rounded-corner border border-ui-border bg-ui-surface/35 p-4 overflow-hidden">
-        <div class="flex items-center justify-between gap-2 mb-3">
-          <h3 class="text-sm font-semibold text-tx-main">{{ t('views.applets.tray.actionsTitle') }}</h3>
-          <span class="text-xs text-tx-main/50">{{ t('views.applets.tray.actionsHint') }}</span>
-        </div>
-
-        <div class="h-full overflow-y-auto pr-1 space-y-2">
-          <div
-            v-if="!data?.items?.length"
-            class="rounded-corner border border-ui-border bg-ui-surface/50 px-4 py-6 text-center text-sm text-tx-main/60"
-          >
-            {{ t('views.applets.tray.noItems') }}
-          </div>
-
-          <template v-for="item in renderItems" :key="item.id">
-            <div
-              v-if="item.type === 'separator'"
-              class="mx-1 my-3 h-px bg-ui-border/70"
-            />
-
-            <button
-              v-else
-              type="button"
-              :disabled="!item.enabled"
-              :class="[
-                'w-full rounded-corner border px-4 py-3 text-left transition-all duration-150',
-                item.depth > 0 ? 'ml-6 w-[calc(100%-1.5rem)]' : '',
-                item.enabled
-                  ? 'border-ui-border bg-ui-surface/50 hover:bg-primary/12 hover:border-primary/40'
-                  : 'border-ui-border/60 bg-ui-surface/30 cursor-default opacity-40',
-                item.checked ? 'ring-1 ring-primary/35' : '',
-              ]"
-              @click="handleItemClick(item)"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2 min-w-0" :style="item.depth > 0 ? { paddingLeft: '0.25rem' } : undefined">
-                    <span class="text-sm font-medium text-tx-main truncate">{{ item.label }}</span>
-                    <ThemeIcon v-if="item.checked" name="object-select-symbolic" type="symbol" :size="14" alt="✓" />
-                  </div>
-                  <p class="mt-1 text-xs text-tx-main/55 truncate">
-                    <span v-if="item.icon">{{ item.icon }}</span>
-                  </p>
-                </div>
-
-                <div class="shrink-0 flex items-center gap-2 text-[10px] text-tx-main/55 uppercase tracking-[0.14em]">
-                  <span v-if="item.children?.length">{{ t('views.applets.tray.submenu') }}</span>
-                  <span v-if="!item.enabled">{{ t('views.applets.tray.disabled') }}</span>
-                </div>
-              </div>
-            </button>
           </template>
-        </div>
-      </section>
+          <span class="flex min-w-0 items-center gap-2">
+            <span class="min-w-0 flex-1 truncate">{{ row.item.label }}</span>
+            <ThemeIcon
+              v-if="row.item.disposition"
+              :name="DISPOSITION_STYLE[row.item.disposition].icon"
+              type="symbol"
+              :size="14"
+              :alt="dispositionLabel(row.item)"
+            />
+          </span>
+          <template v-if="shortcutLabel(row.item.shortcut)" #shortcut>
+            <span data-tray-shortcut class="flex items-center gap-1">
+              <span class="sr-only">{{ shortcutLabel(row.item.shortcut) }}</span>
+              <template v-for="(chord, index) in shortcutChords(row.item.shortcut)" :key="index">
+                <span v-if="index > 0" aria-hidden="true" class="text-label-xs">,</span>
+                <Kbd :keys="chord" aria-hidden="true" />
+              </template>
+            </span>
+          </template>
+        </DropdownMenuItem>
+      </template>
     </div>
-  </AppletFrame>
+  </AppletPopover>
 </template>
-
-<style scoped>
-@keyframes scale-in {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes scale-out {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  to {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-}
-
-.enter-active {
-  animation: scale-in 200ms ease-out;
-}
-
-.leave-active {
-  animation: scale-out 200ms ease-in;
-}
-</style>

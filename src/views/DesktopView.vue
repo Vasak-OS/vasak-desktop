@@ -10,15 +10,29 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import WidgetLayer from '@/components/widgets/WidgetLayer.vue';
 import { getBatteryInfo } from '@/services/core.service';
+import { wallpaperAssetUrl } from '@/services/wallpaper.service';
+import { createWallpaperFollower } from '@/services/wallpaper-colors.service';
 import { useSharedEvent } from '@/tools/event.bus';
-import { logError } from '@/utils/logger';
+import { logError, logInfo, logWarning } from '@/utils/logger';
+import { fetchVideoBlob, VideoTooLargeError } from '@/utils/video-blob';
 
 const route = useRoute();
 const { t } = useI18n();
 
 /**
- * Secondary monitors get a lightweight view: wallpaper only, no widgets or file grid.
- * The backend passes ?monitor=desktop_N for secondary monitors.
+ * La salida en la que se dibuja este escritorio. El backend abre una ventana por
+ * monitor y le pasa `?monitor=<salida>`: la principal es `desktop` y las demás
+ * `desktop_1`, `desktop_2`… Se usa para que la capa de widgets guarde y lea su
+ * layout por salida (ver `WidgetLayer`).
+ */
+const monitorId = computed(() => (route.query.monitor as string) || 'desktop');
+
+/**
+ * Todos los monitores tienen clic derecho y edición de widgets; cada uno con su
+ * propio layout. Lo que sigue siendo sólo del principal son los efectos de los
+ * que alcanza con uno en todo el escritorio: el seguidor de colores del fondo y
+ * el aviso de consumo del fondo en movimiento (si no, llegan duplicados por cada
+ * pantalla).
  */
 const isSecondaryMonitor = computed(() => {
 	const monitorParam = route.query.monitor as string | undefined;
@@ -34,26 +48,14 @@ const backgroundPath = computed(() => {
 	return (configStore as any).config?.desktop?.wallpaper?.[0] || DEFAULT_WALLPAPER;
 });
 
-const background = computed(() => convertFileSrc(backgroundPath.value));
-
 /**
  * Fondos en movimiento.
  *
- * Un `<video src>` apuntando al protocolo de assets de Tauri no funciona, y no
- * por los codecs: el elemento multimedia de WebKit no se sirve del cargador de
- * recursos de la página sino de GStreamer, que no sabe leer de un esquema
- * propio. El handler recibe el pedido, entrega los bytes, y el video igual
- * termina en error 4 (SRC_NOT_SUPPORTED). Con `file://` pasa lo mismo, porque
- * la página no es de ese origen.
- *
- * Lo que sí funciona es traer los bytes nosotros y reproducirlos desde memoria:
- * `fetch` sobre el mismo protocolo —que para datos funciona bien— y un blob.
- * El costo es tener el archivo en memoria, así que hay un límite de tamaño: un
- * fondo en bucle son unas decenas de megas, y si alguien apunta a una película
- * es mejor decírselo que quedarse sin RAM.
+ * Se reproducen desde un blob, no desde el protocolo de assets: el porqué y el
+ * tope de tamaño están en `utils/video-blob.ts`, que comparte con la
+ * previsualización del selector de fondos.
  */
 const VIDEO_EXTENSIONS = ['mp4', 'webm', 'ogv'] as const;
-const MAX_VIDEO_BYTES = 128 * 1024 * 1024;
 
 /**
  * Qué le preguntamos a WebKit para saber si puede con el archivo.
@@ -77,8 +79,81 @@ const backgroundIsVideo = computed(() =>
 	(VIDEO_EXTENSIONS as readonly string[]).includes(backgroundExtension.value)
 );
 
-const videoUrl = ref<string | null>(null);
+/**
+ * Lo que se dibuja de fondo, en capas.
+ *
+ * Al cambiar el fondo (desde el selector rápido o desde Configuración) el
+ * nuevo **entra con un fundido sobre el anterior**, no con un corte: se suma
+ * una capa encima, transparente, que pasa a opaca; cuando terminó, las de abajo
+ * se sacan y sus blobs se sueltan. Casi siempre hay una sola capa.
+ */
+interface BackgroundLayer {
+	id: number;
+	kind: 'image' | 'video';
+	src: string;
+	/** Si `src` es un blob nuestro, que hay que soltar al sacar la capa. */
+	ownsBlob: boolean;
+	visible: boolean;
+}
+
+/** Lo que dura el fundido; la guardia del diseño sólo acepta los pasos de la escala. */
+const FADE_MS = 300;
+
+const layers = ref<BackgroundLayer[]>([]);
+let nextLayerId = 0;
 const videoElement = ref<HTMLVideoElement | null>(null);
+
+/** Los `<video>` de cada capa, para poder congelar los de abajo. */
+const videoElements = new Map<number, HTMLVideoElement>();
+
+function dropLayer(layer: BackgroundLayer): void {
+	videoElements.delete(layer.id);
+	if (layer.ownsBlob) URL.revokeObjectURL(layer.src);
+}
+
+/** Suma una capa encima y, cuando terminó de entrar, saca las de abajo. */
+function showLayer(kind: BackgroundLayer['kind'], src: string, ownsBlob = false): void {
+	const first = layers.value.length === 0;
+	// El de abajo se congela en su último cuadro mientras el nuevo entra: así
+	// nunca hay dos videos decodificándose, ni durante el fundido.
+	for (const element of videoElements.values()) element.pause();
+	const layer: BackgroundLayer = { id: nextLayerId++, kind, src, ownsBlob, visible: first };
+	layers.value = [...layers.value, layer];
+	if (first) return;
+
+	requestAnimationFrame(() => {
+		layers.value = layers.value.map((item) =>
+			item.id === layer.id ? { ...item, visible: true } : item
+		);
+	});
+	setTimeout(() => {
+		const index = layers.value.findIndex((item) => item.id === layer.id);
+		if (index <= 0) return;
+		layers.value.slice(0, index).forEach(dropLayer);
+		layers.value = layers.value.slice(index);
+	}, FADE_MS + 50);
+}
+
+function releaseLayers(): void {
+	layers.value.forEach(dropLayer);
+	layers.value = [];
+}
+
+/** La capa de arriba, que es la que manda sobre el video. */
+const topLayer = computed(() => layers.value.at(-1) ?? null);
+
+// Si arriba quedó una imagen, no hay video que reanudar: el de abajo se va con
+// el fundido y no tiene que volver a arrancar si vuelve el cable.
+watch(topLayer, (layer) => {
+	videoElement.value = layer?.kind === 'video' ? (videoElements.get(layer.id) ?? null) : null;
+});
+
+function setVideoElement(layer: BackgroundLayer, element: unknown): void {
+	const video = (element as HTMLVideoElement | null) ?? null;
+	if (video) videoElements.set(layer.id, video);
+	else videoElements.delete(layer.id);
+	if (layer.id === topLayer.value?.id) videoElement.value = video;
+}
 
 /**
  * Un fondo en movimiento cuesta plata en batería.
@@ -108,28 +183,28 @@ const shouldPlay = computed(
 /** Ya avisamos en esta sesión: el aviso es útil una vez, no cada vez. */
 let warnedAboutPower = false;
 
-/** El fondo fijo: el configurado, o el de siempre si el video no se puede usar. */
-const imageBackground = computed(() =>
-	backgroundIsVideo.value ? convertFileSrc(DEFAULT_WALLPAPER) : background.value
-);
-
 function canDecode(extension: string): boolean {
 	const probe = document.createElement('video');
 	const tipos = CODEC_PROBES[extension] ?? [`video/${extension}`];
 	return tipos.some((tipo) => probe.canPlayType(tipo) !== '');
 }
 
-function releaseVideo() {
-	if (videoUrl.value) {
-		URL.revokeObjectURL(videoUrl.value);
-		videoUrl.value = null;
-	}
+/** El fondo fijo de siempre, para cuando el video no se puede usar. */
+function showDefaultImage(): void {
+	showLayer('image', convertFileSrc(DEFAULT_WALLPAPER));
 }
 
-async function loadVideoBackground() {
-	releaseVideo();
-
-	if (!backgroundIsVideo.value) return;
+async function loadBackground() {
+	if (!backgroundIsVideo.value) {
+		// Autorizar el fondo es asíncrono: mientras tanto se pudo elegir otro
+		// (desde el selector o Configuración). Si cambió, este resultado viejo no
+		// se aplica, para que no pise al nuevo.
+		const requested = backgroundPath.value;
+		const url = await wallpaperAssetUrl(requested);
+		if (requested !== backgroundPath.value) return;
+		showLayer('image', url);
+		return;
+	}
 
 	if (!canDecode(backgroundExtension.value)) {
 		logError(
@@ -137,36 +212,28 @@ async function loadVideoBackground() {
 				`para ${backgroundExtension.value}. Se muestra el fondo por omisión. ` +
 				'En VasakOS lo instala gst-libav.'
 		);
+		showDefaultImage();
 		return;
 	}
 
+	const requested = backgroundPath.value;
 	try {
-		const respuesta = await fetch(background.value);
-
-		if (!respuesta.ok) throw new Error(`respuesta ${respuesta.status}`);
-
-		const largo = Number(respuesta.headers.get('content-length') ?? 0);
-
-		if (largo > MAX_VIDEO_BYTES) {
-			logError(
-				`El fondo ${backgroundPath.value} pesa ${Math.round(largo / 1024 / 1024)} MB y el ` +
-					`límite es ${MAX_VIDEO_BYTES / 1024 / 1024} MB: se reproduce desde memoria, así que ` +
-					'un archivo así dejaría al escritorio ocupando esa RAM todo el tiempo.'
-			);
+		const url = await fetchVideoBlob(await wallpaperAssetUrl(requested));
+		// Mientras se leía, se eligió otro fondo: éste ya no va.
+		if (requested !== backgroundPath.value) {
+			URL.revokeObjectURL(url);
 			return;
 		}
-
-		const bytes = await respuesta.blob();
-
-		if (bytes.size > MAX_VIDEO_BYTES) {
-			logError(`El fondo ${backgroundPath.value} superó el límite de tamaño al descargarlo.`);
-			return;
-		}
-
-		videoUrl.value = URL.createObjectURL(bytes);
+		showLayer('video', url, true);
 		void warnAboutPowerUse();
 	} catch (error) {
-		logError(`No se pudo leer el fondo ${backgroundPath.value}: ${error}`);
+		const reason =
+			error instanceof VideoTooLargeError
+				? `${error.message}: se reproduce desde memoria, así que un archivo así dejaría al ` +
+					'escritorio ocupando esa RAM todo el tiempo'
+				: String(error);
+		logError(`No se pudo leer el fondo ${backgroundPath.value}: ${reason}`);
+		showDefaultImage();
 	}
 }
 
@@ -187,7 +254,7 @@ function applyPlaybackState() {
 	}
 }
 
-watch([shouldPlay, videoUrl], applyPlaybackState);
+watch([shouldPlay, videoElement], applyPlaybackState);
 
 /**
  * Avisa, una vez, que el fondo en movimiento consume más.
@@ -217,11 +284,11 @@ function onVideoError() {
 	logError(
 		`El fondo ${backgroundPath.value} no se pudo reproducir. Se muestra el fondo por omisión.`
 	);
-	releaseVideo();
+	showDefaultImage();
 }
 
-watch(backgroundPath, loadVideoBackground, { immediate: true });
-onUnmounted(releaseVideo);
+watch(backgroundPath, loadBackground, { immediate: true });
+onUnmounted(releaseLayers);
 
 /**
  * Las tres señales que deciden si vale la pena seguir decodificando.
@@ -275,14 +342,35 @@ watch(showHiddenFiles, () => {
 	}
 });
 
+/**
+ * «Seguir al fondo»: sólo desde el fondo del monitor principal, para que haya
+ * un solo seguidor en todo el escritorio. Ver `wallpaper-colors.service.ts`.
+ */
+const wallpaperFollower = createWallpaperFollower(undefined, (outcome) => {
+	if (outcome === 'applied') logInfo('[wallpaper-colors] colores sacados del fondo nuevo');
+	else if (outcome === 'unreadable' || outcome === 'save-failed')
+		logWarning(`[wallpaper-colors] no se cambiaron los colores: ${outcome}`);
+});
+const followWallpaper = () => {
+	if (isSecondaryMonitor.value) return;
+	wallpaperFollower.sync().catch((error) => {
+		logError('[wallpaper-colors] error al seguir el fondo', { error: String(error) });
+	});
+};
+
 let isMounted = false;
 
 onMounted(async () => {
 	isMounted = true;
 	await (configStore as any).loadConfig();
 	if (!isMounted) return;
+	// El fondo pudo cambiar mientras el escritorio no estaba (otra sesión, un
+	// arranque): se pone al día al abrir.
+	followWallpaper();
 
-	// El escritorio secundario sólo necesita el fondo: ni widgets ni escuchas.
+	// El seguidor de colores corre sólo en el principal (ver `followWallpaper`):
+	// alcanza con uno en todo el escritorio. Los widgets, en cambio, los dibuja
+	// ahora cada monitor con su propio layout (ver `WidgetLayer`).
 	//
 	// El aviso de cambio de tema de los iconos ya no se escucha acá: servía para
 	// redibujar los iconos de los archivos del escritorio, que ahora son un
@@ -295,6 +383,7 @@ onUnmounted(() => {
 
 useSharedEvent('config-changed', async () => {
 	await (configStore as any).loadConfig();
+	followWallpaper();
 });
 </script>
 
@@ -303,16 +392,28 @@ useSharedEvent('config-changed', async () => {
        cuadro obliga a WebKit a repintar la página entera, con los iconos y los
        widgets adentro. Y sin la maquinaria de PiP ni de reproducción remota,
        que en un fondo de escritorio no significan nada. -->
-  <video v-if="videoUrl" ref="videoElement" :src="videoUrl"
-    style="border-radius: 0px; will-change: transform"
-    class="w-screen h-screen object-cover absolute z-10" loop autoplay muted playsinline
-    preload="auto" disablePictureInPicture disableRemotePlayback
-    @error="onVideoError"></video>
-  <img v-else :src="imageBackground" :alt="t('views.desktop.backgroundAlt')" class="w-screen h-screen object-cover absolute z-10"
-    style="border-radius: 0px" />
+  <!-- Las capas del fondo: casi siempre una; dos mientras el nuevo entra con
+       el fundido sobre el anterior. -->
+  <template v-for="layer in layers" :key="layer.id">
+    <video v-if="layer.kind === 'video'" :ref="(element) => setVideoElement(layer, element)" :src="layer.src"
+      style="will-change: transform"
+      class="w-screen h-screen object-cover absolute z-10 transition-opacity duration-300 ease-ui motion-reduce:transition-none"
+      :class="layer.visible ? 'opacity-100' : 'opacity-0'"
+      loop autoplay muted playsinline
+      preload="auto" disablePictureInPicture disableRemotePlayback
+      data-background-layer
+      @error="onVideoError"></video>
+    <img v-else :src="layer.src" :alt="t('views.desktop.backgroundAlt')"
+      class="w-screen h-screen object-cover absolute z-10 transition-opacity duration-300 ease-ui motion-reduce:transition-none"
+      :class="layer.visible ? 'opacity-100' : 'opacity-0'"
+      data-background-layer />
+  </template>
 
   <!-- Widgets: ahora viven en una cuadrícula con su posición guardada, y se
        mueven, se agregan y se sacan desde el modo edición. Antes estaban
-       apilados en un flex centrado, sin posición ni nada que se pudiera tocar. -->
-  <WidgetLayer v-if="!isSecondaryMonitor" :config="(configStore as any).config" />
+       apilados en un flex centrado, sin posición ni nada que se pudiera tocar.
+       En todos los monitores, no sólo el principal: cada salida tiene su propio
+       layout (`monitorId`), así el secundario también ofrece el clic derecho
+       —cambiar el fondo, abrir Configuración— y la edición de widgets. -->
+  <WidgetLayer :config="(configStore as any).config" :monitor-id="monitorId" />
 </template>

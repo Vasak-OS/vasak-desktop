@@ -1,200 +1,137 @@
 <script setup lang="ts">
-/** biome-ignore-all lint/correctness/noUnusedImports: <Use in template> */
-/** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
-
+/** biome-ignore-all lint/correctness/noUnusedImports: usados en la plantilla */
+/** biome-ignore-all lint/correctness/noUnusedVariables: usados en la plantilla */
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { SearchField } from '@vasakgroup/vue-libvasak';
-import { computed, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
+import { EmptyState, SearchField } from '@vasakgroup/vue-libvasak';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
-import MenuArea from '@/components/areas/menu/MenuArea.vue';
-import CategoryMenuPill from '@/components/buttons/CategoryMenuPill.vue';
-import SessionButton from '@/components/buttons/SessionButton.vue';
+import ClassicMenu from '@/components/areas/menu/layouts/ClassicMenu.vue';
+import CompactMenu from '@/components/areas/menu/layouts/CompactMenu.vue';
+import FavoritesMenu from '@/components/areas/menu/layouts/FavoritesMenu.vue';
+import GridMenu from '@/components/areas/menu/layouts/GridMenu.vue';
+import TilesMenu from '@/components/areas/menu/layouts/TilesMenu.vue';
+import MenuHero from '@/components/areas/menu/MenuHero.vue';
+import MenuSessionActions from '@/components/areas/menu/MenuSessionActions.vue';
 import UserMenuCard from '@/components/cards/UserMenuCard.vue';
-import WidgetSlot from '@/components/widgets/WidgetSlot.vue';
-import { getMenuItems, openApp } from '@/services/app.service';
-import { openSettings, toggleSessionPopup } from '@/services/window.service';
+import AppletPopover from '@/components/layouts/AppletPopover.vue';
+import { openApp } from '@/services/app.service';
+import { dismissMenu } from '@/services/window.service';
+import { useMenuConfig } from '@/tools/composables/useMenuConfig';
+import { type MenuController, useMenuController } from '@/tools/composables/useMenuController';
+import type { MenuVariant } from '@/tools/menu-config';
+import { resolveMenuKey } from '@/tools/menu-keyboard';
 import {
 	type FocusableSearchField,
 	focusMenuSearch,
 	prepareMenuSearch,
 	type SearchFocusAttempt,
 } from '@/tools/menu-search-focus';
-import { logError } from '@/utils/logger';
 
-const { t } = useI18n();
-
-const menuData: Ref<Record<string, any>> = ref({});
-const categorySelected: Ref<any> = ref('all');
-const filter: Ref<string> = ref('');
-const leaving = ref(false);
-const selectedIndex = ref(0);
-const menuLoadFailed = ref(false);
-const searchField = ref<FocusableSearchField | null>(null);
 /**
- * Si el menú está a la vista.
+ * El menú de aplicaciones.
  *
- * Arranca en `true` porque la vista se monta cuando la ventana se está
- * abriendo, y en esa primera vez puede no haber ningún cambio de foco que oír.
+ * Es un applet (`windows_apps/menu.rs`): cuelga del botón del panel y lo
+ * envuelve `AppletPopover`, que pone el borde, la entrada que crece desde el
+ * botón y la salida. Quien lo esconde es el backend —Escape y la pérdida de
+ * foco los atrapa la superficie de capa—, y la página sólo pide cerrarlo cuando
+ * termina lo suyo: lanzar una aplicación.
+ *
+ * # Switch de esqueletos (vasak-desktop#203)
+ *
+ * El menú es configurable. Esta vista es el marco común a todas las variantes:
+ * el encabezado (hero opcional, usuario, buscador y acciones de sesión), los
+ * estados de búsqueda y de menú vacío, el teclado sobre los resultados y el
+ * foco de la búsqueda. Lo que cambia entre variantes es **la vista ociosa** —la
+ * disposición de las aplicaciones cuando no se está buscando—, que se resuelve a
+ * un componente de `layouts/` con `<component :is>` según `menu.variant`. El
+ * estado que comparten todas (`useMenuController`) se les pasa como propiedad.
+ *
+ * Como `App.vue` recarga la configuración en cada `config-changed`, cambiar la
+ * variante o una opción en Configuración rehace el menú sin reiniciar nada.
+ *
+ * El foco: la superficie se **esconde** en vez de destruirse, así que el
+ * `autofocus` del campo sólo cubre el primer montaje; las siguientes aperturas
+ * las cubre `prepareMenuSearch` desde el aviso `shown` del applet.
+ */
+const { t } = useI18n();
+const { menu } = useMenuConfig();
+const controller: MenuController = useMenuController();
+const { filter, selectedIndex, isMenuEmpty, appsFiltred, sessionActions } = controller;
+
+/**
+ * Qué componente dibuja la vista ociosa de cada variante. Un valor desconocido
+ * cae al compacto, que es el de siempre.
+ */
+const LAYOUTS: Record<MenuVariant, typeof CompactMenu> = {
+	compact: CompactMenu,
+	classic: ClassicMenu,
+	grid: GridMenu,
+	favorites: FavoritesMenu,
+	tiles: TilesMenu,
+};
+const layoutComponent = computed(() => LAYOUTS[menu.value.variant] ?? CompactMenu);
+
+const searchField = ref<FocusableSearchField | null>(null);
+
+/**
+ * Si el menú está a la vista. Arranca en `true` porque la vista se monta cuando
+ * la superficie se está abriendo por primera vez, y esa vez no llega
+ * `applet-shown`.
  */
 const menuIsOpen = ref(true);
 /** El intento de foco en curso, para poder cortarlo antes de empezar otro. */
 let searchFocus: SearchFocusAttempt | null = null;
-const menuWindow = getCurrentWindow();
-let unlistenFocus: (() => void) | null = null;
 
-const setMenu = async () => {
-	try {
-		const data = await getMenuItems();
-		if (!data || Object.keys(data).length === 0) {
-			menuLoadFailed.value = true;
-			menuData.value = {};
-			return;
-		}
-		// Ya vienen ordenadas: el backend las ordena al armar la caché del menú,
-		// que sólo se rearma cuando cambia un .desktop. Ordenarlas acá era
-		// repetir novecientas comparaciones de colación en cada apertura.
-		menuData.value = data;
-		menuLoadFailed.value = false;
-	} catch (error) {
-		logError('Error al cargar el menú:', error);
-		menuLoadFailed.value = true;
-		menuData.value = {};
-	}
-};
-
-const openSessionPopup = (action: string) => {
-	toggleSessionPopup(action);
-};
-
-const openConfiguration = async () => {
-	try {
-		await openSettings();
-	} catch (error) {
-		logError('Error al abrir configuración:', error);
-	}
+/**
+ * El menú volvió a la vista: vacía la búsqueda anterior y enfoca el campo. Es lo
+ * único que corre en cada apertura (la superficie se esconde, no se destruye).
+ */
+const onShown = () => {
+	menuIsOpen.value = true;
+	searchFocus?.cancel();
+	searchFocus = prepareMenuSearch({
+		field: () => searchField.value,
+		clear: () => {
+			filter.value = '';
+		},
+	});
 };
 
 /**
- * Plays the leave animation and hides the window.
- *
- * Hides rather than toggles. It used to call the toggle, and hiding raises a
- * blur, and the blur handler called it again — by then the window was hidden,
- * so the second call *opened* it. Escape appeared to close the menu and
- * immediately bring it back.
- *
- * The guard is the other half: Escape and losing focus can both fire for the
- * same dismissal, and two overlapping animations left the window half faded.
+ * El menú se empieza a ir: corta los reintentos de foco pendientes, para que uno
+ * tardío no le robe el foco a donde el usuario haya ido.
  */
-const closeAfterAnimation = () => {
-	if (leaving.value) return;
-	leaving.value = true;
+const onLeave = () => {
 	menuIsOpen.value = false;
-	// Quedan hasta 150 ms de reintentos de foco: uno que llegue con el menú ya
-	// escondido le robaría el foco a donde el usuario haya ido.
 	searchFocus?.cancel();
 	searchFocus = null;
-	setTimeout(() => {
-		menuWindow.hide().catch(() => {
-			/* already gone */
-		});
-	}, 200);
 };
-
-const appsOfCategory = computed(
-	() => (menuData.value as any)?.[categorySelected.value]?.apps ?? []
-);
-
-const appsFiltred = computed(() => {
-	const allApps = (menuData.value as any)?.all?.apps ?? [];
-	const query = filter.value.toLowerCase();
-	if (!query) return [];
-	// Data is pre-sorted on fetch, no re-sorting needed per keystroke
-	return allApps.filter(
-		(app: any) =>
-			app.name.toLowerCase().includes(query) || app.description.toLowerCase().includes(query)
-	);
-});
-
-const categoryEntries = computed(() => {
-	const entries = Object.entries(menuData.value as Record<string, any>);
-	const allIdx = entries.findIndex(([k]) => k === 'all');
-	const all = allIdx >= 0 ? entries.splice(allIdx, 1)[0] : entries.shift();
-	return { all, others: entries };
-});
-
-const isMenuEmpty = computed(() => {
-	return menuLoadFailed.value || Object.keys(menuData.value).length === 0;
-});
 
 let unlistenMenuChanged: UnlistenFn | undefined;
 
 onMounted(() => {
-	setMenu();
-	// The window is hidden rather than destroyed now, so it is no longer
-	// rebuilt — and re-fetched — on every open. The backend watches the
-	// application directories and tells us when an app is installed or removed.
-	listen('menu-items-changed', () => setMenu()).then((fn) => {
+	controller.setMenu();
+	// La superficie se esconde en vez de destruirse, así que no se rearma —ni se
+	// vuelve a pedir— en cada apertura. El backend avisa cuando se instala o se
+	// quita una aplicación.
+	listen('menu-items-changed', () => controller.setMenu()).then((fn) => {
 		unlistenMenuChanged = fn;
 	});
 	document.addEventListener('keydown', onKeydown);
-	window.addEventListener('blur', onBlur);
-	menuWindow
-		.onFocusChanged(({ payload: focused }) => {
-			if (focused) {
-				// Shown again after being hidden: the animation state has to be
-				// reset or the menu comes back mid-fade and never becomes solid.
-				leaving.value = false;
-				// Y acá, no en un gancho de montaje: la ventana se esconde en vez
-				// de destruirse, así que esto es lo único que corre en cada
-				// apertura. Antes se buscaba el campo por un `id` que dejó de
-				// existir al pasar al campo de la librería, y el `autofocus` del
-				// campo sólo cubre el primer montaje: ver `vasak-desktop#122`.
-				menuIsOpen.value = true;
-				searchFocus?.cancel();
-				searchFocus = prepareMenuSearch({
-					field: () => searchField.value,
-					clear: () => {
-						filter.value = '';
-					},
-				});
-				return;
-			}
-			// Losing focus was never handled — only gaining it — so clicking
-			// somewhere else left the menu open over whatever you clicked. The DOM
-			// `blur` event does not stand in for this: the webview keeps its own
-			// focus when another window takes the compositor's.
-			closeAfterAnimation();
-		})
-		.then((fn) => {
-			unlistenFocus = fn;
-		});
 });
 
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', onKeydown);
-	window.removeEventListener('blur', onBlur);
-	unlistenFocus?.();
 	unlistenMenuChanged?.();
 	searchFocus?.cancel();
 	searchFocus = null;
 });
 
 /**
- * El campo se habilita tarde, y un campo desactivado no toma el foco.
- *
- * `isMenuEmpty` arranca en verdadero —`menuData` está vacío hasta que conteste
- * `getMenuItems`, que es un comando asíncrono justamente porque con la caché
- * fría lee todos los `.desktop`—, así que el campo nace desactivado. Si esa
- * lectura tarda más que los reintentos, se agotan contra un campo que no puede
- * tomar el foco y el menú queda abierto y mudo.
- *
- * Acá **no** se vacía el filtro: para cuando el menú termina de cargar, lo que
- * haya escrito lo escribió el usuario.
- *
- * `flush: 'post'` porque lo que hace falta es que el `disabled` ya no esté en el
- * DOM, no que haya cambiado el estado.
+ * El campo se habilita tarde, y un campo desactivado no toma el foco: cuando el
+ * menú termina de cargar con el menú ya abierto, se vuelve a enfocar. Acá no se
+ * vacía el filtro: lo que haya escrito lo escribió el usuario.
  */
 watch(
 	isMenuEmpty,
@@ -206,191 +143,79 @@ watch(
 	{ flush: 'post' }
 );
 
-watch(filter, () => {
-	selectedIndex.value = 0;
-});
-
-watch(appsFiltred, (list) => {
-	if (selectedIndex.value >= list.length) {
-		selectedIndex.value = Math.max(0, list.length - 1);
-	}
-});
-
+/**
+ * Las flechas y Enter sobre los resultados de la búsqueda. Escape no va acá: lo
+ * atrapa la superficie. Un Enter que ya atendió el resultado enfocado tampoco:
+ * ver `resolveMenuKey`.
+ */
 const onKeydown = (event: KeyboardEvent) => {
-	if (event.key === 'Escape') {
-		closeAfterAnimation();
-		return;
-	}
-
 	if (!filter.value) return;
 
 	const list = appsFiltred.value;
-	if (list.length === 0) return;
+	const action = resolveMenuKey(event, list.length, selectedIndex.value);
+	if (action.kind === 'none') return;
 
-	if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
-		event.preventDefault();
-		selectedIndex.value = (selectedIndex.value + 1) % list.length;
-	} else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
-		event.preventDefault();
-		selectedIndex.value = (selectedIndex.value - 1 + list.length) % list.length;
-	} else if (event.key === 'Enter') {
-		event.preventDefault();
-		const app = list[selectedIndex.value];
-		if (app?.path) {
-			openApp({ path: app.path });
-			menuWindow.close();
-		}
+	event.preventDefault();
+	if (action.kind === 'move') {
+		selectedIndex.value = action.index;
+		return;
 	}
-};
 
-const onBlur = () => {
-	closeAfterAnimation();
+	const app = list[action.index];
+	if (app?.path) {
+		openApp({ path: app.path });
+		void dismissMenu();
+	}
 };
 </script>
 
 <template>
-  <Transition appear enter-active-class="enter-active">
-    <div :class="['h-screen p-4 rounded-corner bg-ui-bg/80 border border-ui-border', { 'leave-active': leaving }]">
-    <div
-      class="flex items-center justify-between gap-4 mb-4 header-section"
-    >
-      <UserMenuCard />
+  <AppletPopover applet="menu" @shown="onShown" @leave="onLeave">
+    <!-- El marco común a todas las variantes. Es un contenedor (`@container`)
+         para poder achicarse sin salirse cuando el backend le da menos lugar que
+         900×620: por el ancho del menú y no de la pantalla (en WebKitGTK
+         `matchMedia` no avisa). -->
+    <div class="@container flex h-full min-h-0 flex-col">
+      <MenuHero v-if="menu.header === 'hero'" :menu="menu" />
 
-      <!-- `grow` acá y no `search-component`, que no estaba definida en ningún
-           lado: lo que el campo necesitaba de esa clase era ocupar la fila, y
-           eso lo traía en sus propias clases.
-
-           `autofocus` cubre el primer montaje, que es el único que hay: la
-           ventana se esconde en vez de destruirse. Las aperturas siguientes las
-           cubre `prepareMenuSearch` desde el evento de foco de la ventana, y
-           por eso el `ref` — el campo expone `enfocar()`, que dice si el foco
-           llegó. -->
-      <SearchField
-        ref="searchField"
-        v-model="filter"
-        :label="t('components.SearchMenuComponent.placeholder')"
-        :disabled="isMenuEmpty"
-        autofocus
-        class="grow" />
-
-      <div class="flex items-center gap-2">
-        <SessionButton
-          v-for="(action, index) in [
-            {
-              title: t('views.menu.configuration'),
-              icono: 'settings',
-              handler: openConfiguration,
-            },
-            { title: t('views.menu.shutdown'), icono: 'system-shutdown', handler: () => openSessionPopup('shutdown') },
-            { title: t('views.menu.reboot'), icono: 'system-reboot', handler: () => openSessionPopup('reboot') },
-            { title: t('views.menu.logout'), icono: 'system-log-out', handler: () => openSessionPopup('logout') },
-            { title: t('views.menu.suspend'), icono: 'system-suspend', handler: () => openSessionPopup('suspend') },
-          ]"
-          :key="index"
-          :title="action.title"
-          :icono="action.icono"
-          @click="action.handler"
-          class="w-10 h-10 hover:bg-primary rounded-corner p-1 transform transition-all duration-200 ease-out hover:scale-110 hover:rotate-3"
-        />
-      </div>
-    </div>
-
-    <transition enter-active-class="transition-opacity duration-300 ease-out" leave-active-class="transition-opacity duration-300 ease-out" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
-      <div v-if="isMenuEmpty" key="empty-state" class="flex items-center justify-center h-[calc(100vh-88px)]">
-        <p class="text-tx-main/60 text-lg">{{ t('views.menu.noApps') }}</p>
-      </div>
-      <div v-else-if="filter !== ''" key="filter-view">
-        <FilterArea :apps="appsFiltred" :selected-index="selectedIndex" />
-      </div>
       <div
-        v-else
-        key="main-view"
-        class="grid grid-cols-3 gap-4 h-[calc(100vh-88px)]"
+        v-if="menu.searchPosition === 'top' || menu.showUser || menu.showSessionActions"
+        class="mb-4 flex flex-wrap items-center justify-between gap-4"
       >
-        <div
-          class="bg-ui-bg/80 border border-ui-border rounded-corner p-4 h-full overflow-y-auto"
-        >
-          <MenuArea :apps="appsOfCategory" />
-        </div>
+        <UserMenuCard v-if="menu.showUser" />
 
-        <div
-          class="col-span-2 grid gap-4 h-full min-h-0"
-          style="grid-template-rows: 1fr 2fr"
-        >
-          <div class="rounded-corner bg-ui-bg/80 border border-ui-border p-4 overflow-y-auto min-h-0">
-            <div class="h-full grid gap-3 min-h-0" style="grid-template-columns: 1fr 2fr">
-              <div v-if="categoryEntries.all" class="flex items-center justify-center">
-                <CategoryMenuPill
-                  :category="categoryEntries.all[0]"
-                  :image="categoryEntries.all[1].icon"
-                  :label="t(categoryEntries.all[1].description)"
-                  v-model:categorySelected="categorySelected"
-                  large
-                  class="w-full h-full"
-                />
-              </div>
+        <!-- `autofocus` cubre el primer montaje, que es el único que hay. -->
+        <SearchField
+          v-if="menu.searchPosition === 'top'"
+          ref="searchField"
+          v-model="filter"
+          :label="t('components.SearchMenuComponent.placeholder')"
+          :disabled="isMenuEmpty"
+          autofocus
+          class="min-w-48 grow" />
 
-              <transition-group
-                tag="div"
-                move-class="transition-transform duration-400 ease-out" enter-active-class="transition-all duration-400 ease-out" leave-active-class="transition-all duration-400 ease-out" enter-from-class="opacity-0 translate-y-[20px] scale-90" leave-to-class="opacity-0 translate-y-[20px] scale-90"
-                appear
-                class="grid grid-cols-3 grid-rows-2 gap-3 min-h-0"
-              >
-                <CategoryMenuPill
-                  v-for="([key, value]) in categoryEntries.others.slice(0, 6)"
-                  :key="key"
-                  :category="key"
-                  :image="value.icon"
-                  :label="t(value.description)"
-                  v-model:categorySelected="categorySelected"
-                />
-              </transition-group>
-            </div>
-          </div>
-
-          <!-- El hueco de la derecha acepta cualquiera de los widgets del
-               escritorio: cambiar `type` alcanza. El marco y el contenedor los
-               pone WidgetSlot, que es lo que hace que las medidas de adentro se
-               resuelvan contra este hueco y no contra la ventana entera. -->
-          <div class="min-h-0">
-            <WidgetSlot type="weather" />
-          </div>
-        </div>
+        <MenuSessionActions v-if="menu.showSessionActions" :actions="sessionActions" />
       </div>
-    </transition>
+
+      <transition enter-active-class="transition-opacity duration-200 ease-ui" leave-active-class="transition-opacity duration-150 ease-ui" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
+        <div v-if="isMenuEmpty" key="empty-state" class="flex flex-1 min-h-0 items-center justify-center">
+          <EmptyState :title="t('views.menu.noApps')" icon="application-x-executable" />
+        </div>
+        <div v-else-if="filter !== ''" key="filter-view" class="flex-1 min-h-0 overflow-y-auto">
+          <FilterArea :apps="appsFiltred" :selected-index="selectedIndex" />
+        </div>
+        <component :is="layoutComponent" v-else key="main-view" :controller="controller" :menu="menu" />
+      </transition>
+
+      <div v-if="menu.searchPosition === 'bottom'" class="mt-4 shrink-0">
+        <SearchField
+          ref="searchField"
+          v-model="filter"
+          :label="t('components.SearchMenuComponent.placeholder')"
+          :disabled="isMenuEmpty"
+          autofocus
+          class="w-full" />
+      </div>
     </div>
-  </Transition>
+  </AppletPopover>
 </template>
-
-<style scoped>
-@keyframes scale-in {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes scale-out {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-  to {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-}
-
-.enter-active {
-  animation: scale-in 200ms ease-out;
-}
-
-.leave-active {
-  animation: scale-out 200ms ease-in;
-}
-</style>
-
