@@ -9,8 +9,10 @@
  * ventanas no se pliega nunca: ya son sólo iconos. Así ninguna píldora se
  * monta sobre otra.
  *
- * Se decide por el largo de la propia barra, no por el de la pantalla:
- * `ResizeObserver` sobre la `<nav>`, nunca un punto de corte del viewport.
+ * Se decide por el espacio disponible —el viewport, que la capa ancla de borde a
+ * borde— medido con `ResizeObserver` sobre `documentElement`. Medir la `<nav>`
+ * no sirve: en compacto es `w-fit` y su ancho es el del contenido, con lo que
+ * medirla realimenta el plegado (ver `watchPanelDensity`).
  */
 export type PanelDensity = 'full' | 'compact' | 'tight';
 
