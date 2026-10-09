@@ -283,9 +283,11 @@ export function panelSurfaceClass(style: PanelStyle, position: PanelPosition): s
 	if (style === 'floating') return `${base} rounded-corner-m`;
 
 	if (style === 'trapezoid') {
-		// El corte depende de contra qué borde se apoya: la clase por posición
-		// elige el `clip-path` (`main.css`). Sin radio: la forma la da el recorte.
-		return `${base} panel-surface-trapezoid panel-surface-trapezoid-${position}`;
+		// El recorte en trapecio —con sus cantos redondeados (scoop cóncavo en la
+		// parte ancha, convexo en la angosta)— lo pone `usePanelTrapezoidClip` por
+		// `clip-path: path()`, recalculado al tamaño, porque la forma lleva arcos y
+		// un `polygon()` de CSS no redondea. Acá sólo van el fondo y el canto.
+		return base;
 	}
 
 	// Dock: el borde opuesto al que toca es el que se redondea, con el radio de

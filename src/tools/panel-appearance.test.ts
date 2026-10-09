@@ -143,16 +143,18 @@ describe('la superficie detrás de las píldoras', () => {
 		expect(panelSurfaceClass('dock', 'right')).toContain('rounded-l-corner-window');
 	});
 
-	test('el trapecio está entre los tipos y corta con un clip-path por posición', () => {
-		// La forma «\=====/» la da el `clip-path` de `main.css`; acá se exige que
-		// el tipo exista y que la superficie traiga la clase del trapecio con su
-		// variante por posición, sin redondeo propio.
+	test('el trapecio está entre los tipos y su superficie es sólo fondo y canto', () => {
+		// La forma «\=====/» con cantos redondeados la pone `usePanelTrapezoidClip`
+		// por `clip-path: path()` (lleva arcos, no sale de un polygon de CSS), así
+		// que la clase de la superficie es sólo el fondo y el canto, sin redondeo ni
+		// clase de recorte.
 		expect(PANEL_STYLES).toContain('trapezoid');
 		for (const position of PANEL_POSITIONS) {
 			const classes = panelSurfaceClass('trapezoid', position);
-			expect(classes).toContain('panel-surface-trapezoid');
-			expect(classes).toContain(`panel-surface-trapezoid-${position}`);
+			expect(classes).toContain('bg-ui-bg/80');
+			expect(classes).toContain('border-ui-line');
 			expect(classes).not.toContain('rounded');
+			expect(classes).not.toContain('panel-surface-trapezoid');
 		}
 	});
 
