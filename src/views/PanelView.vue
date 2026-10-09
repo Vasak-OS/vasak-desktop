@@ -59,7 +59,6 @@ const {
 	surfaceClass,
 	hasSurface,
 	animationClass,
-	sizeStyle,
 	autohide,
 } = usePanelConfig();
 
@@ -324,7 +323,6 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
 		@contextmenu.prevent="openPanelContextMenu"
 		class="panel-bar z-20 grid items-center gap-2 bg-transparent transition-transform duration-200"
 		:class="[barClasses, animationClass, hideClass]"
-		:style="sizeStyle"
 		data-panel-bar
 	>
     <!-- La superficie continua de flotante, barra y dock, detrás de las
@@ -351,6 +349,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         :title="t('views.panel.menuAlt')"
         :expanded="menuIsOpen"
         :orientation="vertical ? 'vertical' : 'horizontal'"
+        :flat="hasSurface"
         class="shrink-0"
         data-menu-pill
         @click="openMenu"
@@ -373,6 +372,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         :accessible-label="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
         :title="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
         :orientation="vertical ? 'vertical' : 'horizontal'"
+        :flat="hasSurface"
         class="shrink-0"
         data-phone-pill
         @click="openPhoneMenu"
@@ -405,6 +405,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         :accessible-label="t('views.panel.notificationsAlt')"
         :title="t('views.panel.notificationsAlt')"
         :orientation="vertical ? 'vertical' : 'horizontal'"
+        :flat="hasSurface"
         class="shrink-0"
         data-notifications-pill
         @click="openNotificationCenter"

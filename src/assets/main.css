@@ -318,6 +318,54 @@
   animation: panel-beat 1.5s ease-in-out infinite;
 }
 
+/* ── Superficie en trapecio (`panel-appearance.ts`) ─────────────────────────
+   El tipo `trapezoid` recorta la superficie del panel con un `clip-path` en
+   forma de «\=====/»: el borde contra la pantalla a lo ancho y la base opuesta
+   más angosta, con los costados cortados en diagonal hacia adentro. El recorte
+   depende de contra qué borde se apoya la barra, así que hay una variante por
+   posición; `panelSurfaceClass` pone la clase base y la de su lado. El bisel
+   `--panel-chamfer` es cuánto se come cada costado. No lleva color: es sólo
+   forma, así que convive con el fondo y el canto translúcidos de la superficie. */
+.panel-surface-trapezoid {
+  --panel-chamfer: 16px;
+}
+/* Arriba: ancho contra el borde de arriba, angosto abajo. */
+.panel-surface-trapezoid-top {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(100% - var(--panel-chamfer)) 100%,
+    var(--panel-chamfer) 100%
+  );
+}
+/* Abajo: el espejo vertical —ancho contra el borde de abajo, angosto arriba. */
+.panel-surface-trapezoid-bottom {
+  clip-path: polygon(
+    var(--panel-chamfer) 0,
+    calc(100% - var(--panel-chamfer)) 0,
+    100% 100%,
+    0 100%
+  );
+}
+/* Izquierda: ancho contra el borde izquierdo, angosto hacia adentro (derecha). */
+.panel-surface-trapezoid-left {
+  clip-path: polygon(
+    0 0,
+    100% var(--panel-chamfer),
+    100% calc(100% - var(--panel-chamfer)),
+    0 100%
+  );
+}
+/* Derecha: ancho contra el borde derecho, angosto hacia adentro (izquierda). */
+.panel-surface-trapezoid-right {
+  clip-path: polygon(
+    0 var(--panel-chamfer),
+    100% 0,
+    100% 100%,
+    0 calc(100% - var(--panel-chamfer))
+  );
+}
+
 html,
 body {
   margin: 0;

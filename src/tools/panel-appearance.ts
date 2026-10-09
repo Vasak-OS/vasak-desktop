@@ -31,14 +31,17 @@ function panelKey(config: unknown, key: string): unknown {
 // ── Tipo de panel ───────────────────────────────────────────────────────────
 
 /**
- * Los cuatro tipos de barra:
+ * Los cinco tipos de barra:
  *
  * - `pills`: píldoras sueltas sobre el escritorio, sin fondo (lo de hoy).
  * - `floating`: una barra redondeada despegada de los bordes.
  * - `bar`: de borde a borde, sin redondear (al estilo Windows).
  * - `dock`: pegada al borde dominante y redondeada sólo del lado de adentro.
+ * - `trapezoid`: la superficie entera con los costados cortados en diagonal
+ *   hacia adentro («\=====/»): el borde contra la pantalla a lo ancho y la base
+ *   opuesta más angosta. El corte lo hace un `clip-path` (`main.css`).
  */
-export const PANEL_STYLES = ['pills', 'floating', 'bar', 'dock'] as const;
+export const PANEL_STYLES = ['pills', 'floating', 'bar', 'dock', 'trapezoid'] as const;
 
 export type PanelStyle = (typeof PANEL_STYLES)[number];
 
@@ -124,29 +127,6 @@ export const PANEL_ANIMATION_CLASS: Record<PanelAnimation, string> = {
 
 export function panelAnimationClass(animation: PanelAnimation): string {
 	return PANEL_ANIMATION_CLASS[animation];
-}
-
-// ── Tamaño ──────────────────────────────────────────────────────────────────
-
-/** Entre el 80 y el 120 %: más abajo no se lee, más arriba no entra en la franja. */
-export const MIN_PANEL_SIZE = 80;
-export const MAX_PANEL_SIZE = 120;
-export const DEFAULT_PANEL_SIZE = 100;
-
-/**
- * El tamaño en porciento, acotado al rango que entra. El archivo se edita a
- * mano: un `150` o un `"grande"` no pueden estirar la barra fuera de su franja,
- * así que todo se recorta a [80, 120] y lo que no es un número vale 100.
- */
-export function panelSize(config: unknown): number {
-	const value = panelKey(config, 'size');
-	if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_PANEL_SIZE;
-	return Math.min(MAX_PANEL_SIZE, Math.max(MIN_PANEL_SIZE, Math.round(value)));
-}
-
-/** El factor que escala la barra, para la variable CSS `--panel-scale`. */
-export function panelScaleStyle(size: number): Record<string, string> {
-	return { '--panel-scale': String(size / 100) };
 }
 
 // ── Clases de la barra ────────────────────────────────────────────────────
@@ -266,9 +246,10 @@ export function panelBarClasses(
  *
  * El fondo es translúcido (`bg-ui-bg/80`): el desenfoque lo pone Wayfire detrás
  * de la franja, como en el resto de las superficies del escritorio. El canto va
- * en `ui-line`, el radio en la variable del sistema (`rounded-corner-m`), y el
- * dock redondea sólo el lado de adentro —el opuesto al borde contra el que se
- * apoya—.
+ * en `ui-line`, el radio en la variable del sistema, y el dock redondea sólo el
+ * lado de adentro —el opuesto al borde contra el que se apoya— con el mismo radio
+ * que las ventanas (`corner-window`). El trapecio no redondea: el corte en
+ * diagonal lo hace un `clip-path` según de qué lado va la barra (`main.css`).
  */
 export function panelSurfaceClass(style: PanelStyle, position: PanelPosition): string {
 	if (!hasSurface(style)) return '';
@@ -277,12 +258,19 @@ export function panelSurfaceClass(style: PanelStyle, position: PanelPosition): s
 	if (style === 'bar') return base;
 	if (style === 'floating') return `${base} rounded-corner-m`;
 
-	// Dock: el borde opuesto al que toca es el que se redondea.
+	if (style === 'trapezoid') {
+		// El corte depende de contra qué borde se apoya: la clase por posición
+		// elige el `clip-path` (`main.css`). Sin radio: la forma la da el recorte.
+		return `${base} panel-surface-trapezoid panel-surface-trapezoid-${position}`;
+	}
+
+	// Dock: el borde opuesto al que toca es el que se redondea, con el radio de
+	// las ventanas.
 	const innerRound: Record<PanelPosition, string> = {
-		top: 'rounded-b-corner-m',
-		bottom: 'rounded-t-corner-m',
-		left: 'rounded-r-corner-m',
-		right: 'rounded-l-corner-m',
+		top: 'rounded-b-corner-window',
+		bottom: 'rounded-t-corner-window',
+		left: 'rounded-r-corner-window',
+		right: 'rounded-l-corner-window',
 	};
 	return `${base} ${innerRound[position]}`;
 }

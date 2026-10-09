@@ -6,8 +6,6 @@ import {
 	panelAnimationClass,
 	panelBarClasses,
 	panelLayout,
-	panelScaleStyle,
-	panelSize,
 	panelStyle,
 	panelSurfaceClass,
 } from '@/tools/panel-appearance';
@@ -44,7 +42,6 @@ export function usePanelConfig() {
 	const style = computed(() => panelStyle(config.value));
 	const layout = computed(() => panelLayout(config.value));
 	const animation = computed(() => panelAnimation(config.value));
-	const size = computed(() => panelSize(config.value));
 
 	return {
 		showWeather: computed(() => section.value.weather !== false),
@@ -65,8 +62,6 @@ export function usePanelConfig() {
 		hasSurface: computed(() => hasSurface(style.value)),
 		/** La clase que enciende la animación elegida, o `''` si está apagada. */
 		animationClass: computed(() => panelAnimationClass(animation.value)),
-		/** El factor de escala para `--panel-scale`. */
-		sizeStyle: computed(() => panelScaleStyle(size.value)),
 		/** `true` cuando el panel se esconde solo y se revela al rozar el borde. */
 		autohide: computed(() => readPanelAutohide(config.value)),
 	};

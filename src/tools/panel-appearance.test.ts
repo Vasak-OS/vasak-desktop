@@ -2,10 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import {
 	DEFAULT_PANEL_ANIMATION,
 	DEFAULT_PANEL_LAYOUT,
-	DEFAULT_PANEL_SIZE,
 	DEFAULT_PANEL_STYLE,
-	MAX_PANEL_SIZE,
-	MIN_PANEL_SIZE,
+	hasSurface,
 	PANEL_ANIMATION_CLASS,
 	PANEL_ANIMATIONS,
 	PANEL_LAYOUTS,
@@ -13,8 +11,6 @@ import {
 	panelAnimation,
 	panelBarClasses,
 	panelLayout,
-	panelScaleStyle,
-	panelSize,
 	panelStyle,
 	panelSurfaceClass,
 } from './panel-appearance';
@@ -28,7 +24,6 @@ describe('los lectores toleran lo que venga del archivo', () => {
 			expect(panelStyle(config)).toBe(DEFAULT_PANEL_STYLE);
 			expect(panelLayout(config)).toBe(DEFAULT_PANEL_LAYOUT);
 			expect(panelAnimation(config)).toBe(DEFAULT_PANEL_ANIMATION);
-			expect(panelSize(config)).toBe(DEFAULT_PANEL_SIZE);
 		}
 	});
 
@@ -39,6 +34,15 @@ describe('los lectores toleran lo que venga del archivo', () => {
 			expect(panelAnimation({ panel: { animation } })).toBe(animation);
 	});
 
+	test('hay superficie en todos los tipos menos píldoras', () => {
+		// Es la señal que aplana las píldoras (`:flat`): en píldoras no hay
+		// superficie detrás, así que cada píldora conserva su isla con fondo.
+		expect(hasSurface('pills')).toBe(false);
+		for (const style of ['floating', 'bar', 'dock', 'trapezoid'] as const) {
+			expect(hasSurface(style)).toBe(true);
+		}
+	});
+
 	test('cualquier otra cosa cae al valor de fábrica', () => {
 		// El archivo se edita a mano: un valor mal escrito no puede dejar el panel
 		// sin dibujar.
@@ -47,25 +51,6 @@ describe('los lectores toleran lo que venga del archivo', () => {
 		expect(panelLayout({ panel: { layout: 'centrado' } })).toBe(DEFAULT_PANEL_LAYOUT);
 		expect(panelAnimation({ panel: { animation: 'rayo' } })).toBe(DEFAULT_PANEL_ANIMATION);
 		expect(panelStyle({ panel: 'bar' })).toBe(DEFAULT_PANEL_STYLE);
-	});
-});
-
-describe('el tamaño se acota a lo que entra en la franja', () => {
-	test('un número dentro del rango se respeta', () => {
-		expect(panelSize({ panel: { size: 90 } })).toBe(90);
-		expect(panelSize({ panel: { size: 110 } })).toBe(110);
-	});
-
-	test('fuera del rango se recorta; lo que no es número vale 100', () => {
-		expect(panelSize({ panel: { size: 500 } })).toBe(MAX_PANEL_SIZE);
-		expect(panelSize({ panel: { size: 10 } })).toBe(MIN_PANEL_SIZE);
-		expect(panelSize({ panel: { size: Number.NaN } })).toBe(DEFAULT_PANEL_SIZE);
-		expect(panelSize({ panel: { size: '120' } })).toBe(DEFAULT_PANEL_SIZE);
-	});
-
-	test('el factor sale en centésimas para la variable CSS', () => {
-		expect(panelScaleStyle(100)).toEqual({ '--panel-scale': '1' });
-		expect(panelScaleStyle(80)).toEqual({ '--panel-scale': '0.8' });
 	});
 });
 
@@ -141,21 +126,34 @@ describe('la superficie detrás de las píldoras', () => {
 		}
 	});
 
-	test('flotante, barra y dock son fondos translúcidos', () => {
-		for (const style of ['floating', 'bar', 'dock'] as const) {
+	test('flotante, barra, dock y trapecio son fondos translúcidos', () => {
+		for (const style of ['floating', 'bar', 'dock', 'trapezoid'] as const) {
 			for (const position of PANEL_POSITIONS) {
 				expect(panelSurfaceClass(style, position)).toContain('bg-ui-bg/80');
 			}
 		}
 	});
 
-	test('la barra no redondea; el dock redondea sólo el lado de adentro', () => {
+	test('la barra no redondea; el dock redondea el lado de adentro con el radio de la ventana', () => {
 		expect(panelSurfaceClass('bar', 'top')).not.toContain('rounded');
 		expect(panelSurfaceClass('floating', 'top')).toContain('rounded-corner-m');
-		expect(panelSurfaceClass('dock', 'top')).toContain('rounded-b-corner-m');
-		expect(panelSurfaceClass('dock', 'bottom')).toContain('rounded-t-corner-m');
-		expect(panelSurfaceClass('dock', 'left')).toContain('rounded-r-corner-m');
-		expect(panelSurfaceClass('dock', 'right')).toContain('rounded-l-corner-m');
+		expect(panelSurfaceClass('dock', 'top')).toContain('rounded-b-corner-window');
+		expect(panelSurfaceClass('dock', 'bottom')).toContain('rounded-t-corner-window');
+		expect(panelSurfaceClass('dock', 'left')).toContain('rounded-r-corner-window');
+		expect(panelSurfaceClass('dock', 'right')).toContain('rounded-l-corner-window');
+	});
+
+	test('el trapecio está entre los tipos y corta con un clip-path por posición', () => {
+		// La forma «\=====/» la da el `clip-path` de `main.css`; acá se exige que
+		// el tipo exista y que la superficie traiga la clase del trapecio con su
+		// variante por posición, sin redondeo propio.
+		expect(PANEL_STYLES).toContain('trapezoid');
+		for (const position of PANEL_POSITIONS) {
+			const classes = panelSurfaceClass('trapezoid', position);
+			expect(classes).toContain('panel-surface-trapezoid');
+			expect(classes).toContain(`panel-surface-trapezoid-${position}`);
+			expect(classes).not.toContain('rounded');
+		}
 	});
 });
 
