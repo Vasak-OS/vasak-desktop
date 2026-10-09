@@ -55,7 +55,7 @@ const onContextMenu = (event: MouseEvent) => {
       :key="app.path"
       :title="app.name"
       :data-fav-path="app.path"
-      class="min-w-0 flex-col items-center gap-1 text-center"
+      class="min-w-0 flex-col items-center gap-1 text-center [&>span]:w-full"
       @select="launch(app)"
     >
       <ThemeIcon :name="app.icon" :size="48" alt="" />

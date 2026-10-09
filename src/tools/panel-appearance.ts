@@ -140,12 +140,33 @@ export function panelAnimationClass(animation: PanelAnimation): string {
  * posible clase aparece completa en alguno de estos mapas.
  */
 
-/** Grosor, eje y relleno de la barra, que no cambian con el tipo ni la densidad. */
+/** Grosor y eje de la barra, que no cambian con el tipo ni la densidad. */
 const AXIS: Record<PanelPosition, string> = {
-	top: 'h-9 flex-row px-1',
-	bottom: 'h-9 flex-row px-1',
-	left: 'w-9 flex-col py-1 justify-items-center',
-	right: 'w-9 flex-col py-1 justify-items-center',
+	top: 'h-9 flex-row',
+	bottom: 'h-9 flex-row',
+	left: 'w-9 flex-col justify-items-center',
+	right: 'w-9 flex-col justify-items-center',
+};
+
+/** El relleno hacia los costados del contenido, normal (4 px). */
+const BAR_PADDING: Record<PanelPosition, string> = {
+	top: 'px-1',
+	bottom: 'px-1',
+	left: 'py-1',
+	right: 'py-1',
+};
+
+/**
+ * En trapecio el contenido se aparta del corte en diagonal: 16 px, el mismo
+ * `--panel-chamfer` que se come cada costado (`main.css`), para que el primer y
+ * el último icono no queden pisados por la diagonal. Si cambia el chamfer, cambiar
+ * acá también.
+ */
+const TRAPEZOID_PADDING: Record<PanelPosition, string> = {
+	top: 'px-4',
+	bottom: 'px-4',
+	left: 'py-4',
+	right: 'py-4',
 };
 
 /** El largo entero, para flotante y píldoras (dejan su margen contra los costados). */
@@ -220,7 +241,10 @@ export function panelBarClasses(
 ): string {
 	if (style === 'pills' && layout === 'distributed') return `relative ${BAR_CLASSES[position]}`;
 
-	const parts: string[] = [AXIS[position]];
+	const parts: string[] = [
+		AXIS[position],
+		style === 'trapezoid' ? TRAPEZOID_PADDING[position] : BAR_PADDING[position],
+	];
 
 	if (layout === 'compact') {
 		const anchor = COMPACT_ANCHOR[position];

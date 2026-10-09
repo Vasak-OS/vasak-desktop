@@ -34,7 +34,7 @@ onBeforeUnmount(() => item.value?.$el?.removeEventListener('contextmenu', onCont
   <DropdownMenuItem
     ref="item"
     :title="app.name"
-    class="h-full min-w-0 flex-col items-center justify-center gap-1 text-center"
+    class="h-full min-w-0 flex-col items-center justify-center gap-1 text-center [&>span]:w-full"
     @select="launch(app)">
     <ThemeIcon :name="app.icon" :size="size === 'lg' ? 56 : 48" alt="" />
     <MarqueeText :text="app.name" class="text-label-xs text-tx-main" />

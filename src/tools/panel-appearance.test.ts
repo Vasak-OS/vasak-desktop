@@ -155,6 +155,20 @@ describe('la superficie detrás de las píldoras', () => {
 			expect(classes).not.toContain('rounded');
 		}
 	});
+
+	test('el trapecio aparta el contenido del corte en diagonal con más relleno', () => {
+		// El corte se come 16 px (`--panel-chamfer`) de cada costado, así que el
+		// contenido va a 16 px (px-4/py-4) y no al relleno normal de 4 px (px-1/
+		// py-1) para que el primer y el último icono no queden pisados por la
+		// diagonal. Horizontal arriba/abajo, vertical a los costados.
+		for (const layout of ['distributed', 'compact'] as const) {
+			expect(panelBarClasses('top', 'trapezoid', layout).split(' ')).toContain('px-4');
+			expect(panelBarClasses('left', 'trapezoid', layout).split(' ')).toContain('py-4');
+			// y los demás tipos con superficie siguen con el relleno normal
+			expect(panelBarClasses('top', 'bar', layout).split(' ')).toContain('px-1');
+			expect(panelBarClasses('left', 'bar', layout).split(' ')).toContain('py-1');
+		}
+	});
 });
 
 describe('las animaciones', () => {
