@@ -33,12 +33,25 @@
      mínimo de 3.0 que pide WCAG 1.4.11 para lo que no es texto: a esos valores el
      contorno de un input no se percibe. Se separa en dos tokens en lugar de subir
      uno solo, porque el mismo color también hace de separador decorativo, y subirlo
-     ahí convertiría cada tarjeta en una caja marcada. */
-  --ui-border-strong: #7c7f93;
+     ahí convertiría cada tarjeta en una caja marcada.
+
+     Estos dos valores no se eligieron a ojo: son los que calcula `bordeFuerteSobre`
+     en `tauri-plugin-config-manager` para el esquema por omisión, y el
+     config-manager los escribe sobre `documentElement` en tiempo de ejecución. Lo
+     que hay en este `:root` es el piso para el instante antes de que esa lectura
+     llegue, y para una app que abra sin configurador.
+
+     Por eso no es un valor cualquiera: tiene que servir sobre el fondo *y* sobre la
+     superficie, porque un control no vive siempre sobre el fondo —los paneles, las
+     tarjetas y las ventanas son de `surface`. El valor anterior, `#7c7f93`, daba
+     3.49 contra el fondo pero 2.56 contra la superficie, o sea invisible justo donde
+     hay más controles. Estos dan 7.06 y 11.34 contra el fondo, y 5.17 y 8.69 contra
+     la superficie. */
+  --ui-border-strong: #4c4f69;
   --ui-background-dark: #1e1e2e;
   --ui-surface-dark: #313244;
   --ui-border-dark: #11111b;
-  --ui-border-strong-dark: #6c7086;
+  --ui-border-strong-dark: #cdd6f4;
 
   /* Colores de Texto */
   --text-main: #4c4f69;
@@ -121,6 +134,34 @@
   --use-status-error: var(--status-error);
   --use-status-success: var(--status-success);
   --use-status-warning: var(--status-warning);
+}
+
+/* Config loading status banners.
+   `fixed` y abajo: si fueran bloques en el flujo, los layouts que llenan el
+   viewport los dejarían fuera de pantalla —o sumarían scroll— justo cuando el
+   usuario tiene que verlos. Anclados abajo se ven siempre sin mover nada. */
+.config-status,
+.error-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  padding: 6px 16px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.config-status {
+  color: var(--use-text-muted, #666);
+  background-color: var(--use-ui-surface, #e8eaf0);
+  border-top: 1px solid var(--use-ui-border, #dce0e8);
+}
+
+.error-banner {
+  color: var(--use-status-error, #d32f2f);
+  background-color: #ffebee;
+  border-top: 1px solid #f5c6cb;
 }
 
 .dark {
