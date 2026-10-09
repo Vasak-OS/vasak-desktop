@@ -32,6 +32,7 @@ import { usePanelAutohide } from '@/tools/composables/usePanelAutohide';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { usePanelDensity, watchPanelDensity } from '@/tools/composables/usePanelDensity';
 import { usePanelInputRegion } from '@/tools/composables/usePanelInputRegion';
+import { usePanelTrapezoidClip } from '@/tools/composables/usePanelTrapezoidClip';
 import { useSharedEvent } from '@/tools/event.bus';
 import { containsNewNotifications } from '@/tools/notifications';
 import { panelHideClass, panelRegionMode } from '@/tools/panel-autohide';
@@ -53,6 +54,7 @@ const { t } = useI18n();
 const {
 	position,
 	vertical,
+	style,
 	showWeather,
 	showMusic,
 	barClasses,
@@ -94,6 +96,18 @@ const regionMode = computed(() =>
 
 const bar = ref<HTMLElement | null>(null);
 usePanelInputRegion(bar, regionMode, position);
+
+/**
+ * El recorte en trapecio de la superficie, con cantos redondeados (scoop cóncavo
+ * en la parte ancha, convexo en la angosta). Va por `clip-path: path()` recalculado
+ * al tamaño, no por una clase, porque la forma lleva arcos.
+ */
+const surface = ref<HTMLElement | null>(null);
+usePanelTrapezoidClip(
+	surface,
+	position,
+	computed(() => style.value === 'trapezoid')
+);
 
 /** La clase que desliza la barra fuera de la pantalla mientras está escondida. */
 const hideClass = computed(() => panelHideClass(position.value, panelHidden.value));
@@ -332,6 +346,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
          canto y el redondeo— sale de `panelSurfaceClass`. -->
     <div
       v-if="hasSurface"
+      ref="surface"
       aria-hidden="true"
       class="pointer-events-none absolute inset-0 -z-10"
       :class="surfaceClass"
