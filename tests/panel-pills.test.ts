@@ -372,6 +372,30 @@ describe('las píldoras se aplanan cuando hay superficie', () => {
 		view.unmount();
 	});
 
+	test('la píldora de los espacios de trabajo se aplana con superficie', async () => {
+		// Con flotante, barra, dock o trapecio la grilla de espacios pintaba su
+		// isla encima del panel: es la única píldora que no recibía `flat`.
+		panel.workspaces.value = { count: 4, active: 1, columns: 2, output_id: 1 };
+		panel.hasSurface.value = true;
+		const view = await render(Workspaces);
+		const pill = view.find('[data-workspace-switcher] [data-panel-pill]');
+		expect(pill.exists()).toBe(true);
+		expect(pill.classes()).toContain('bg-transparent');
+		expect(pill.classes()).not.toContain('bg-ui-shell');
+		view.unmount();
+	});
+
+	test('en modo píldoras la grilla de espacios conserva su isla con fondo', async () => {
+		panel.workspaces.value = { count: 4, active: 1, columns: 2, output_id: 1 };
+		panel.hasSurface.value = false;
+		const view = await render(Workspaces);
+		const pill = view.find('[data-workspace-switcher] [data-panel-pill]');
+		expect(pill.exists()).toBe(true);
+		expect(pill.classes()).toContain('bg-ui-shell');
+		expect(pill.classes()).not.toContain('bg-transparent');
+		view.unmount();
+	});
+
 	test('la píldora de ventanas también se aplana con superficie', async () => {
 		panel.hasSurface.value = true;
 		const view = await render(Windows);

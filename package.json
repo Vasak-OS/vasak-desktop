@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.64.1",
+	"version": "1.64.2",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -19,21 +19,21 @@
 	},
 	"dependencies": {
 		"@tailwindcss/vite": "^4.3.3",
-		"@tauri-apps/api": "^2.12.2",
-		"@tauri-apps/plugin-fs": "^2.6.0",
-		"@tauri-apps/plugin-opener": "^2.7.0",
-		"@tauri-apps/plugin-shell": "^2.4.1",
+		"@tauri-apps/api": "^2.12.3",
+		"@tauri-apps/plugin-fs": "^2.7.0",
+		"@tauri-apps/plugin-opener": "^2.7.1",
+		"@tauri-apps/plugin-shell": "^2.5.0",
 		"@vasakgroup/plugin-bluetooth-manager": "^2.2.1",
 		"@vasakgroup/plugin-config-manager": "^2.11.0",
 		"@vasakgroup/plugin-display-manager": "^2.0.0",
-		"@vasakgroup/plugin-network-manager": "^2.2.0",
+		"@vasakgroup/plugin-network-manager": "^2.2.1",
 		"@vasakgroup/plugin-power-profiles": "^2.0.0",
-		"@vasakgroup/plugin-user-data": "^2.1.0",
-		"@vasakgroup/plugin-vicons": "^2.2.1",
-		"@vasakgroup/plugin-vsk-contextual-menu": "^2.0.2",
-		"@vasakgroup/plugin-vsk-journal": "^2.0.0",
-		"@vasakgroup/tauri-plugin-i18n": "^2.3.0",
-		"@vasakgroup/vue-libvasak": "^2.16.0",
+		"@vasakgroup/plugin-user-data": "^2.1.1",
+		"@vasakgroup/plugin-vicons": "^2.2.2",
+		"@vasakgroup/plugin-vsk-contextual-menu": "^2.0.3",
+		"@vasakgroup/plugin-vsk-journal": "^2.0.1",
+		"@vasakgroup/tauri-plugin-i18n": "^2.3.1",
+		"@vasakgroup/vue-libvasak": "^2.17.0",
 		"pinia": "^3.0.4",
 		"vue": "^3.5.43",
 		"vue-router": "^5.4.0"
@@ -43,8 +43,8 @@
 		"@happy-dom/global-registrator": "^20.14.6",
 		"@tailwindcss/postcss": "^4.3.3",
 		"@tauri-apps/cli": "^2.12.1",
-		"@types/node": "^26.6.4",
-		"@vitejs/plugin-vue": "^6.0.9",
+		"@types/node": "^26.6.5",
+		"@vitejs/plugin-vue": "^6.0.10",
 		"@vue/test-utils": "^2.5.1",
 		"happy-dom": "^20.14.6",
 		"postcss": "^8.5.29",
@@ -52,7 +52,7 @@
 		"terser": "^5.51.2",
 		"typescript": "~5.9.3",
 		"vite": "~7.3.7",
-		"vue-tsc": "^3.3.12"
+		"vue-tsc": "^3.3.13"
 	},
 	"vasak": {
 		"bibliotecasAtrasadas": {
