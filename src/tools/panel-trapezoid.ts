@@ -79,13 +79,16 @@ function canonical(
 	const pRbase: Point = [L - chamfer - convex, D];
 
 	// Saliente cóncavo de arriba: cúbica tangente al borde (horizontal) en la
-	// esquina de la pantalla y a la diagonal en su arranque.
+	// esquina de la pantalla y a la diagonal en su arranque. El control de llegada
+	// va *subiendo* por la diagonal (hacia la esquina) para que la tangente siga el
+	// mismo sentido que la recta que viene después: así el empalme es continuo y no
+	// deja un pico («cusp») en la unión.
 	const handle = flare * 0.55;
 	const upL = unit(sub(dLtop, bl));
 	const cLexit: Point = [handle, 0];
-	const cLenter = along(dLtop, upL, -handle);
+	const cLenter = along(dLtop, upL, handle);
 	const upR = unit(sub(dRtop, br));
-	const cRenter = along(dRtop, upR, -handle);
+	const cRenter = along(dRtop, upR, handle);
 	const cRexit: Point = [L - handle, 0];
 
 	return [

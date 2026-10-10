@@ -39,14 +39,28 @@ describe('trapezoidClipPath', () => {
 	});
 
 	test('el borde ancho se apoya contra la pantalla; el angosto queda adentro', () => {
-		// En `top` el lado ancho (las esquinas de la pantalla) va en y=0 y el
-		// angosto en y=h; en `bottom` es al revés (espejo vertical).
-		const h = 38;
-		const top = trapezoidClipPath('top', 900, h);
-		expect(top).toContain('M 0,0'); // esquina ancha contra el borde de arriba
-		const bottom = trapezoidClipPath('bottom', 900, h);
-		expect(bottom).toContain(`M 0,${h}`); // el lado ancho pasó abajo
-		expect(top).not.toBe(bottom);
+		// Las dos esquinas del lado ancho tienen que caer sobre el borde de la
+		// pantalla: en `top` en y=0, en `bottom` en y=h, en `left` en x=0 y en
+		// `right` en x=w. Chequear sólo el conteo de comandos no lo garantiza: un
+		// error en la transformación de left/right puede dejar el ancho contra el
+		// borde equivocado sin cambiar nada más.
+		const S = 38; // grosor del panel horizontal / ancho del vertical
+		const long = 900;
+		const anchoEn: Record<string, [string, string]> = {
+			top: [`M 0,0`, `${long},0`], // (0,0) y (long,0)
+			bottom: [`M 0,${S}`, `${long},${S}`], // (0,h) y (long,h)
+			left: [`M 0,0`, `0,${long}`], // (0,0) y (0,long)
+			right: [`M ${S},0`, `${S},${long}`], // (w,0) y (w,long)
+		};
+		for (const position of PANEL_POSITIONS) {
+			const w = position === 'left' || position === 'right' ? S : long;
+			const h = position === 'left' || position === 'right' ? long : S;
+			const clip = trapezoidClipPath(position, w, h);
+			const [inicio, otra] = anchoEn[position] as [string, string];
+			expect(clip).toContain(inicio); // una esquina ancha, el arranque
+			expect(clip).toContain(otra); // la otra esquina ancha, sobre el mismo borde
+		}
+		expect(trapezoidClipPath('top', 900, S)).not.toBe(trapezoidClipPath('bottom', 900, S));
 	});
 
 	test('acota los radios y el bisel a un panel chico sin cruzar las curvas ni dar NaN', () => {
