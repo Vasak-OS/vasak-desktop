@@ -28,3 +28,27 @@ jobs:
       # Este repositorio ya está al día con las bibliotecas propias, así
       # que quedarse atrás pasa a cortar en vez de sólo avisar.
       bibliotecas_cortan: true
+      # Las pruebas de Rust corren en `revisar` y de esa misma corrida sale la
+      # cobertura que se le pasa a Sonar. Sin esto, las del backend —más de
+      # cuatrocientas— no corrían en ningún PR, y un PR que sólo toca Rust
+      # pasaba la puerta sin medir nada (Vasak-OS/.github#25).
+      pruebas_rust: -p vasak-desktop
+      # Lo que pide el grafo en Linux, mirado con `cargo tree -i`, no la lista
+      # de Tauri:
+      #
+      #   libwebkit2gtk-4.1-dev   webkit2gtk, gtk3 (que trae wayland-client),
+      #                           soup3 y `dbus-1`, que pide `libdbus-sys` por
+      #                           `tao`
+      #   libgtk-layer-shell-dev  `gtk-layer-shell-sys`, las superficies del
+      #                           panel y del escritorio
+      #   lld                     `src-tauri/.cargo/config.toml` enlaza con
+      #                           `-fuse-ld=lld`, y la imagen del runner no lo trae
+      #   build-essential         el compilador de C de los `-sys`
+      #
+      # `pipewire-sys` y `clang-sys` siguen en el candado pero no entran en la
+      # compilación de Linux, así que no hacen falta.
+      paquetes_rust: >-
+        libwebkit2gtk-4.1-dev
+        libgtk-layer-shell-dev
+        lld
+        build-essential
