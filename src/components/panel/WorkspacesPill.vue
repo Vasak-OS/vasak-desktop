@@ -7,6 +7,9 @@
  * seis—, y el backend avisa con `workspaces-changed` al cambiar de espacio o
  * de pantalla. Tocar un número pasa a ése. Sin Wayfire, o con un solo espacio,
  * no hay nada que elegir y la píldora no se dibuja.
+ *
+ * Con un panel que tiene superficie propia (flotante, barra, dock) va `flat`,
+ * como el resto de las píldoras: sin eso pintaba su fondo encima del panel.
  */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { WorkspaceSwitcher } from '@vasakgroup/vue-libvasak';
@@ -17,7 +20,7 @@ import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
-const { vertical } = usePanelConfig();
+const { vertical, hasSurface } = usePanelConfig();
 
 const state = ref<WorkspaceState | null>(null);
 const visible = computed(() => (state.value?.count ?? 0) > 1);
@@ -62,6 +65,7 @@ useSharedEvent<WorkspaceState | null>('workspaces-changed', (payload) => {
     :label="t('views.panel.workspaces')"
     :labels="labels"
     :orientation="vertical ? 'vertical' : 'horizontal'"
+    :flat="hasSurface"
     @change="select"
   />
 </template>

@@ -236,6 +236,7 @@ describe('las píldoras del panel dejan ver el escritorio entre ellas', () => {
 		'src/components/controls/TrayWeatherControl.vue',
 		'src/components/panel/KeyboardLayoutPill.vue',
 		'src/components/panel/PinnedAppsPill.vue',
+		'src/components/panel/WorkspacesPill.vue',
 		'src/components/widgets/PanelClockWidget.vue',
 	];
 
@@ -283,15 +284,15 @@ describe('las píldoras del panel dejan ver el escritorio entre ellas', () => {
 		}
 	});
 
-	test.each(PILL_FILES)('%s aplana sus PanelPill sobre una superficie (:flat="hasSurface")', (file) => {
+	test.each(PILL_FILES)('%s aplana sus píldoras sobre una superficie (:flat="hasSurface")', (file) => {
 		// Con una superficie (flotante/barra/dock/trapecio) la isla con fondo de
 		// cada píldora quedaba encima de la superficie: doble fondo. Con el `flat`
 		// de vue-libvasak 2.15.0, atado a `hasSurface`, la píldora no dibuja su
 		// fondo cuando hay superficie, y en píldoras (sin superficie) sigue igual.
 		const view = template(file);
-		const pills = [...view.matchAll(/<PanelPill\b((?:[^<>"]|"[^"]*")*)>/g)];
-		expect(pills.length, `sin PanelPill en ${file}`).toBeGreaterThan(0);
-		for (const [, attributes] of pills) {
+		const pills = [...view.matchAll(/<(PanelPill|WorkspaceSwitcher)\b((?:[^<>"]|"[^"]*")*)>/g)];
+		expect(pills.length, `sin píldoras en ${file}`).toBeGreaterThan(0);
+		for (const [, , attributes] of pills) {
 			expect(attributes ?? '', file).toContain(':flat="hasSurface"');
 		}
 	});
