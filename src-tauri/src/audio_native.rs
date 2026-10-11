@@ -15,7 +15,7 @@
 //!    tokio interval loop at 2000ms, used when PipeWire tools are also unavailable.
 
 use crate::audio;
-use crate::audio_input::{metadata_name, parse_audio_props, volume_percent};
+use crate::audio_input::{metadata_name, parse_audio_props, volume_percent, BatchTracker, PwNode};
 use crate::logger::{log_debug, log_error, log_info};
 use crate::structs::VolumeInfo;
 use serde_json::Value;
@@ -449,7 +449,7 @@ impl PwDumpMonitor {
 
 /// Un sink de salida, tal como llegó en la última tanda.
 #[derive(Debug, Clone, PartialEq)]
-struct SinkNode {
+pub(crate) struct SinkNode {
     name: String,
     /// El volumen lineal (0.0–1.0, puede pasar de 1), ya sin la escala cúbica.
     volume: f64,
@@ -477,53 +477,22 @@ struct OutputTracker {
     default_sink: Option<String>,
 }
 
-impl OutputTracker {
-    /// Incorpora una tanda de `pw-dump` (un arreglo de objetos).
-    fn ingest(&mut self, batch: &Value) {
-        let Some(objects) = batch.as_array() else {
-            return;
-        };
-        for object in objects {
-            let Some(id) = object.get("id").and_then(Value::as_u64) else {
-                continue;
-            };
-            // Un objeto que se va: `{"id": N, "info": null}`. Los metadatos no
-            // traen `info`, así que la ausencia sola no alcanza.
-            if object.get("info").is_some_and(Value::is_null) {
-                self.sinks.remove(&id);
-                continue;
-            }
-            match object.get("type").and_then(Value::as_str) {
-                Some("PipeWire:Interface:Node") => self.ingest_node(id, object),
-                Some("PipeWire:Interface:Metadata") => self.ingest_metadata(object),
-                _ => {}
-            }
-        }
+impl PwNode for SinkNode {
+    fn set_level(&mut self, volume: Option<f64>, muted: Option<bool>) {
+        self.volume = volume.unwrap_or(self.volume);
+        self.muted = muted.unwrap_or(self.muted);
+    }
+}
+
+impl BatchTracker for OutputTracker {
+    type Node = SinkNode;
+
+    fn nodes_mut(&mut self) -> &mut BTreeMap<u64, SinkNode> {
+        &mut self.sinks
     }
 
-    fn ingest_node(&mut self, id: u64, object: &Value) {
-        let info = object.get("info");
-        // Un cambio que no trae las propiedades (sólo `params`) no dice qué
-        // clase de nodo es: se actualiza el volumen/silencio de un sink ya
-        // conocido, sin borrarlo ni incorporar uno nuevo.
-        if info.and_then(|info| info.get("props")).is_none() {
-            if let (Some(node), Some((volume, muted))) =
-                (self.sinks.get_mut(&id), info.and_then(parse_audio_props))
-            {
-                node.volume = volume.unwrap_or(node.volume);
-                node.muted = muted.unwrap_or(node.muted);
-            }
-            return;
-        }
-        match parse_sink(object) {
-            Some(node) => {
-                self.sinks.insert(id, node);
-            }
-            // Un nodo que dejó de ser un sink de salida.
-            None => {
-                self.sinks.remove(&id);
-            }
-        }
+    fn parse_node(object: &Value) -> Option<SinkNode> {
+        parse_sink(object)
     }
 
     fn ingest_metadata(&mut self, object: &Value) {
@@ -550,6 +519,13 @@ impl OutputTracker {
                 _ => {}
             }
         }
+    }
+}
+
+impl OutputTracker {
+    /// Incorpora una tanda de `pw-dump` (un arreglo de objetos).
+    fn ingest(&mut self, batch: &Value) {
+        self.ingest_batch(batch);
     }
 
     /// El volumen y el silencio del sink por omisión, o `None` si todavía no se
