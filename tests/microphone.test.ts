@@ -83,6 +83,13 @@ beforeAll(() => {
 			case 'set_audio_device':
 				audio.choose(audio.outputs, args.deviceId as string);
 				return true;
+			// El selector de salida usa estos dos (vasak-desktop#230): incluyen
+			// las salidas disponibles-pero-inactivas y conmutan el perfil.
+			case 'get_audio_outputs':
+				return audio.outputs.map((d) => ({ ...d }));
+			case 'set_audio_output':
+				audio.choose(audio.outputs, args.sinkId as string);
+				return true;
 			case 'get_audio_volume':
 				return { current: 40, min: 0, max: 100, is_muted: false };
 			case 'plugin:event|listen': {
@@ -242,7 +249,7 @@ describe('elegir el dispositivo', () => {
 		await headset?.trigger('click');
 		await settle();
 		expect(called('set_audio_input_device').map((call) => call.args.deviceId)).toEqual(['bluez_input.00_11_22']);
-		expect(called('set_audio_device')).toEqual([]);
+		expect(called('set_audio_output')).toEqual([]);
 		expect(audio.inputs.find((d) => d.is_default)?.id).toBe('bluez_input.00_11_22');
 		expect(checked(view).join()).toContain('WH-1000XM4');
 		view.unmount();
@@ -277,7 +284,7 @@ describe('elegir el dispositivo', () => {
 		await headset?.trigger('click');
 		await settle();
 		expect(called('set_audio_input_device').map((call) => call.args.deviceId)).toEqual(['bluez_input.00_11_22']);
-		expect(called('set_audio_device')).toEqual([]);
+		expect(called('set_audio_output')).toEqual([]);
 
 		// Y el evento de las salidas ya no la toca.
 		audio.emit('audio-devices-changed', [device('99', 'Otra salida', true)]);
@@ -293,7 +300,7 @@ describe('elegir el dispositivo', () => {
 		const headset = view.findAll('[role="radio"]').find((radio: any) => radio.text().includes('WH-1000XM4'));
 		await headset?.trigger('click');
 		await settle();
-		expect(called('set_audio_device').map((call) => call.args.deviceId)).toEqual(['80']);
+		expect(called('set_audio_output').map((call) => call.args.sinkId)).toEqual(['80']);
 		expect(called('set_audio_input_device')).toEqual([]);
 		expect(audio.outputs.find((d) => d.is_default)?.id).toBe('80');
 		view.unmount();

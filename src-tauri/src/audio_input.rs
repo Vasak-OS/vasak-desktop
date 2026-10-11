@@ -163,6 +163,10 @@ impl AudioInputTracker {
                 description: node.name.clone(),
                 is_default: Some(node.name.as_str()) == default,
                 volume: node.volume,
+                // Las entradas son nodos vivos: no se conmuta ningún perfil.
+                card: None,
+                profile: None,
+                active: true,
             })
             .collect();
         Some(AudioInputSnapshot {

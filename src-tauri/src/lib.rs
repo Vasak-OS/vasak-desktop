@@ -221,6 +221,8 @@ pub fn run() {
             toggle_audio_mute,
             get_audio_devices,
             set_audio_device,
+            get_audio_outputs,
+            set_audio_output,
             get_microphone,
             set_microphone_volume,
             toggle_microphone_mute,

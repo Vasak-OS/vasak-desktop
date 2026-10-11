@@ -94,6 +94,28 @@ pub struct AudioDevice {
     pub description: String,
     pub is_default: bool,
     pub volume: f64,
+    /// La `card` dueña del dispositivo (su `Name`, p. ej.
+    /// `alsa_card.pci-0000_01_00.1`). En un sink sale de la propiedad
+    /// `device.name`; en una salida disponible-pero-inactiva es la card cuyo
+    /// perfil hay que conmutar. `None` cuando no se pudo asociar.
+    #[serde(default)]
+    pub card: Option<String>,
+    /// El perfil de salida a conmutar para que esta salida exista
+    /// (p. ej. `output:hdmi-stereo`). Sólo lo llevan las salidas inactivas;
+    /// un sink vivo lo deja en `None`.
+    #[serde(default)]
+    pub profile: Option<String>,
+    /// `true` cuando es un sink que ya existe; `false` cuando es un perfil de
+    /// `card` disponible pero sin sink todavía (p. ej. HDMI con la placa en
+    /// otro perfil). Elegir una salida inactiva conmuta el perfil primero.
+    #[serde(default = "default_true")]
+    pub active: bool,
+}
+
+/// El valor por omisión de `AudioDevice::active`: un dispositivo es un sink
+/// vivo salvo que se diga lo contrario.
+fn default_true() -> bool {
+    true
 }
 
 /// Un icono tal como lo manda el elemento: por nombre del tema, por mapa de

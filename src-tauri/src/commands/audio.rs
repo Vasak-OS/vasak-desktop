@@ -1,7 +1,8 @@
 use tauri::AppHandle;
 
 use crate::audio::{
-    get_volume, list_audio_devices, list_audio_input_devices, set_default_audio_device,
+    get_volume, list_audio_devices, list_audio_input_devices, list_audio_outputs,
+    set_audio_output as set_audio_output_inner, set_default_audio_device,
     set_default_audio_input_device, set_volume, toggle_mute,
 };
 use crate::logger::{log_debug, log_error, log_info};
@@ -41,6 +42,42 @@ pub async fn toggle_audio_mute(app: AppHandle) -> Result<bool, String> {
 #[tauri::command]
 pub async fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
     list_audio_devices().map_err(|e| e.to_string())
+}
+
+// Las salidas, incluyendo las disponibles-pero-inactivas (vasak-desktop#230).
+// `get_audio_devices`/`set_audio_device` siguen existiendo para quien sólo
+// quiere los sinks ya creados (el applet de música); el selector del centro de
+// control usa estos dos, que además enumeran y conmutan perfiles de `card`.
+
+/// Las salidas: los sinks que ya existen más las salidas de `card` disponibles
+/// sin sink todavía (HDMI con la placa en otro perfil).
+#[tauri::command]
+pub async fn get_audio_outputs() -> Result<Vec<AudioDevice>, String> {
+    list_audio_outputs().map_err(|e| e.to_string())
+}
+
+/// Elige una salida. Con `sink_id` fija un sink existente; con `card` + `profile`
+/// conmuta el perfil de la placa (crea el sink HDMI) y después lo fija.
+#[tauri::command]
+pub async fn set_audio_output(
+    sink_id: Option<String>,
+    card: Option<String>,
+    profile: Option<String>,
+    app: AppHandle,
+) -> Result<bool, String> {
+    log_info(&format!(
+        "Eligiendo salida de audio (sink: {:?}, card: {:?}, profile: {:?})",
+        sink_id, card, profile
+    ));
+    set_audio_output_inner(sink_id.as_deref(), card.as_deref(), profile.as_deref(), app)
+        .map(|_| {
+            log_info("Salida de audio elegida correctamente");
+            true
+        })
+        .map_err(|e| {
+            log_error(&format!("Error al elegir la salida de audio: {}", e));
+            e.to_string()
+        })
 }
 
 #[tauri::command]

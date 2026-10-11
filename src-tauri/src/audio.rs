@@ -188,6 +188,9 @@ struct SinkDraft {
     /// `device.class = "monitor"`: el monitor de una salida, que `pactl`
     /// lista entre las fuentes. No es un micrófono.
     monitor: bool,
+    /// La `card` dueña del sink, de la propiedad `device.name`. Sirve para
+    /// casar el sink con su card al conmutar un perfil.
+    card: String,
 }
 
 impl SinkDraft {
@@ -200,12 +203,20 @@ impl SinkDraft {
         } else {
             self.description
         };
+        let card = if self.card.is_empty() {
+            None
+        } else {
+            Some(self.card)
+        };
         Some(AudioDevice {
             id: self.id,
             is_default: default_sink == Some(self.name.as_str()),
             name,
             description: self.name,
             volume: self.volume.unwrap_or(0.5),
+            card,
+            profile: None,
+            active: true,
         })
     }
 }
@@ -274,6 +285,14 @@ fn parse_devices(output: &str, header: &str, default_name: Option<&str>) -> Vec<
             draft.smart_filter = value.trim_start().trim_start_matches('=').trim() == "\"true\"";
         } else if let Some(value) = trimmed.strip_prefix("device.class") {
             draft.monitor = value.trim_start().trim_start_matches('=').trim() == "\"monitor\"";
+        } else if let Some(value) = trimmed.strip_prefix("device.name") {
+            // `device.name = "alsa_card..."`: la card dueña del sink.
+            draft.card = value
+                .trim_start()
+                .trim_start_matches('=')
+                .trim()
+                .trim_matches('"')
+                .to_string();
         } else if trimmed.is_empty() && !draft.name.is_empty() {
             // Fin de este sink: la línea vacía que separa uno del siguiente.
             if let Some(device) = current.take().and_then(|draft| draft.finish(default_name)) {
@@ -286,6 +305,245 @@ fn parse_devices(output: &str, header: &str, default_name: Option<&str>) -> Vec<
         devices.push(device);
     }
     devices
+}
+
+// ── Las salidas disponibles-pero-inactivas (vasak-desktop#230) ───────────────
+//
+// `pactl list sinks` sólo trae los sinks que ya existen. El sink HDMI de la
+// placa no existe mientras el perfil de su `card` esté en `off` o en analógico,
+// así que la salida HDMI no aparece en el selector. Para poder elegirla hay que
+// enumerar los perfiles de salida de cada `card` y conmutar el que falte.
+
+/// Un perfil de salida de una `card`, de la línea de `Profiles:`.
+#[derive(Debug, Clone, PartialEq)]
+struct CardProfile {
+    /// El identificador que toma `pactl set-card-profile` (`output:hdmi-stereo`).
+    name: String,
+    /// Lo que se le muestra a quien usa el sistema («Salida digital (HDMI)»).
+    description: String,
+    /// Cuántos sinks crea el perfil. Sin sinks no es una salida.
+    sinks: u32,
+    /// `available: no` cuando no hay nada conectado (HDMI sin monitor): no se
+    /// ofrece.
+    available: bool,
+}
+
+/// Una `card` de `pactl list cards`, con sus perfiles de salida.
+#[derive(Debug, Clone, PartialEq, Default)]
+struct CardInfo {
+    /// El `Name` de la card (`alsa_card.pci-0000_01_00.1`), lo que casa con la
+    /// propiedad `device.name` de sus sinks.
+    name: String,
+    /// La descripción de la card (propiedad `device.description`).
+    description: String,
+    /// El perfil activo; su sink ya aparece en `pactl list sinks`, así que no
+    /// se vuelve a ofrecer como salida inactiva.
+    active_profile: String,
+    profiles: Vec<CardProfile>,
+}
+
+/// Parsea una línea de perfil de `pactl list cards`, p. ej.
+/// `output:hdmi-stereo: Salida digital (HDMI) (sinks: 1, sources: 0, priority: 5900, available: yes)`.
+fn parse_card_profile(line: &str) -> Option<CardProfile> {
+    let (name, rest) = line.split_once(": ")?;
+    // Los metadatos van siempre al final, entre paréntesis: ` (sinks: N, ...)`.
+    let (description, meta) = rest.rsplit_once(" (sinks:")?;
+    let sinks = meta
+        .trim_start()
+        .split(|c: char| !c.is_ascii_digit())
+        .find(|s| !s.is_empty())
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(0);
+    let available = meta
+        .split_once("available:")
+        .map(|(_, value)| !value.trim_start().starts_with("no"))
+        .unwrap_or(true);
+    Some(CardProfile {
+        name: name.trim().to_string(),
+        description: description.trim().to_string(),
+        sinks,
+        available,
+    })
+}
+
+/// Las `card`s y sus perfiles de salida, a partir de `pactl list cards`.
+fn parse_cards(output: &str) -> Vec<CardInfo> {
+    let mut cards = Vec::new();
+    let mut current: Option<CardInfo> = None;
+    let mut in_profiles = false;
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+
+        if trimmed.starts_with("Card #") {
+            if let Some(card) = current.take() {
+                cards.push(card);
+            }
+            current = Some(CardInfo::default());
+            in_profiles = false;
+            continue;
+        }
+
+        let Some(card) = current.as_mut() else {
+            continue;
+        };
+
+        if trimmed == "Profiles:" {
+            in_profiles = true;
+            continue;
+        }
+
+        if let Some(rest) = trimmed.strip_prefix("Active Profile:") {
+            card.active_profile = rest.trim().to_string();
+            in_profiles = false;
+            continue;
+        }
+
+        if trimmed.starts_with("Ports:") || trimmed.starts_with("Name:") {
+            // El `Name:` de la card va antes de `Profiles:`; `Ports:` después.
+            if let Some(rest) = trimmed.strip_prefix("Name:") {
+                if card.name.is_empty() {
+                    card.name = rest.trim().to_string();
+                }
+            }
+            in_profiles = false;
+            continue;
+        }
+
+        if let Some(value) = trimmed.strip_prefix("device.description") {
+            card.description = value
+                .trim_start()
+                .trim_start_matches('=')
+                .trim()
+                .trim_matches('"')
+                .to_string();
+            continue;
+        }
+
+        if in_profiles {
+            if let Some(profile) = parse_card_profile(trimmed) {
+                card.profiles.push(profile);
+            }
+        }
+    }
+
+    if let Some(card) = current.take() {
+        cards.push(card);
+    }
+    cards
+}
+
+/// Las salidas disponibles-pero-inactivas, a partir de las `card`s.
+///
+/// Se ofrece un perfil cuando crea al menos un sink, está disponible, es un
+/// perfil de salida pura (`output:` sin `+input`, para no duplicar cada salida
+/// con su variante «+ Entrada») y no es el perfil activo (su sink ya está en la
+/// lista). Así una placa HDMI en `off` aparece con sus salidas HDMI reales, sin
+/// llenar la lista con cada combinación.
+fn card_output_devices(cards: &[CardInfo]) -> Vec<AudioDevice> {
+    let mut devices = Vec::new();
+    for card in cards {
+        for profile in &card.profiles {
+            if profile.sinks == 0
+                || !profile.available
+                || profile.name == card.active_profile
+                || !profile.name.starts_with("output:")
+                || profile.name.contains("+input")
+            {
+                continue;
+            }
+            let card_label = if card.description.is_empty() {
+                card.name.as_str()
+            } else {
+                card.description.as_str()
+            };
+            let name = if card_label.is_empty() {
+                profile.description.clone()
+            } else {
+                format!("{} — {}", card_label, profile.description)
+            };
+            devices.push(AudioDevice {
+                // Único y estable: la misma card+perfil siempre da el mismo id.
+                id: format!("{}::{}", card.name, profile.name),
+                name,
+                description: profile.name.clone(),
+                is_default: false,
+                volume: 0.0,
+                card: Some(card.name.clone()),
+                profile: Some(profile.name.clone()),
+                active: false,
+            });
+        }
+    }
+    devices
+}
+
+/// El sink que quedó asociado a una `card` tras conmutar su perfil.
+fn find_card_sink<'a>(devices: &'a [AudioDevice], card: &str) -> Option<&'a AudioDevice> {
+    devices
+        .iter()
+        .find(|d| d.active && d.card.as_deref() == Some(card))
+}
+
+/// Las salidas de audio: los sinks que ya existen más las salidas de `card`
+/// disponibles pero todavía sin sink (HDMI con la placa en otro perfil).
+pub fn list_audio_outputs() -> Result<Vec<AudioDevice>> {
+    log_debug("Listando salidas de audio (sinks + perfiles de card)");
+    let mut devices = list_audio_devices()?;
+    let cards_output = CommandExecutor::run(CMD_PACTL, &["list", "cards"])?;
+    devices.extend(card_output_devices(&parse_cards(&cards_output)));
+    log_debug(&format!("Encontradas {} salidas de audio", devices.len()));
+    Ok(devices)
+}
+
+/// Elige una salida de audio.
+///
+/// Si la salida ya es un sink (`sink_id`), fija ese sink por omisión. Si es una
+/// salida inactiva de una `card` (`card` + `profile`), conmuta primero el perfil
+/// de la placa —así se crea el sink HDMI— y después fija ese sink nuevo.
+pub fn set_audio_output(
+    sink_id: Option<&str>,
+    card: Option<&str>,
+    profile: Option<&str>,
+    app: AppHandle,
+) -> Result<()> {
+    match (card, profile) {
+        (Some(card), Some(profile)) => {
+            log_info(&format!(
+                "Conmutando el perfil de la card {} a {}",
+                card, profile
+            ));
+            CommandExecutor::run(CMD_PACTL, &["set-card-profile", card, profile])?;
+            clear_sink_cache();
+
+            let sinks_output = CommandExecutor::run(CMD_PACTL, &["list", "sinks"])?;
+            let sinks = parse_sinks(&sinks_output, None);
+            let sink = find_card_sink(&sinks, card).ok_or_else(|| {
+                log_error(&format!(
+                    "No apareció ningún sink para la card {} tras conmutar a {}",
+                    card, profile
+                ));
+                VasakError::NotFound(format!("No hay sink para la card {}", card))
+            })?;
+            CommandExecutor::run(CMD_PACTL, &["set-default-sink", &sink.description])?;
+        }
+        _ => {
+            let sink_id = sink_id.ok_or_else(|| {
+                VasakError::NotFound("Falta el sink o el perfil de la salida".to_string())
+            })?;
+            CommandExecutor::run(CMD_PACTL, &["set-default-sink", sink_id])?;
+        }
+    }
+
+    clear_sink_cache();
+
+    if let Ok(devices) = list_audio_outputs() {
+        log_debug("Notificando cambio de salidas de audio al frontend");
+        let _ = app.emit("audio-devices-changed", devices);
+    }
+
+    log_info("Salida de audio establecida correctamente");
+    Ok(())
 }
 
 /// Establece el dispositivo de salida de audio por defecto
