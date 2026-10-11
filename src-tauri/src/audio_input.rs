@@ -47,7 +47,7 @@ pub struct AudioInputSnapshot {
 
 /// Una fuente de PipeWire, tal como llegó en la última tanda.
 #[derive(Debug, Clone, PartialEq)]
-struct SourceNode {
+pub(crate) struct SourceNode {
     name: String,
     description: String,
     /// El volumen lineal (0.0–1.0, puede pasar de 1), ya sin la escala cúbica.
@@ -64,13 +64,43 @@ pub struct AudioInputTracker {
     ready: bool,
 }
 
-impl AudioInputTracker {
-    /// Incorpora una tanda de `pw-dump` (un arreglo de objetos).
-    pub fn ingest(&mut self, batch: &Value) {
+/// Un nodo de `pw-dump` con volumen lineal y silencio, que una tanda que sólo
+/// trae `params` (sin la clase del nodo) actualiza en el lugar.
+pub(crate) trait PwNode {
+    fn set_level(&mut self, volume: Option<f64>, muted: Option<bool>);
+}
+
+impl PwNode for SourceNode {
+    fn set_level(&mut self, volume: Option<f64>, muted: Option<bool>) {
+        self.volume = volume.unwrap_or(self.volume);
+        self.muted = muted.unwrap_or(self.muted);
+    }
+}
+
+/// El recorrido de una tanda de `pw-dump`, compartido entre el rastreador del
+/// micrófono ([`AudioInputTracker`]) y el de la salida
+/// (`audio_native::OutputTracker`): los dos leen el mismo formato —un arreglo de
+/// objetos, cada uno un `Node` o un `Metadata`, y `{"id": N, "info": null}` para
+/// lo que se va— y sólo difieren en qué clase de nodo guardan y de qué metadato
+/// sale el por omisión. Tener el recorrido una sola vez evita que las dos copias
+/// se separen (vasak-desktop#231).
+pub(crate) trait BatchTracker {
+    type Node: PwNode;
+
+    /// El mapa de nodos por id donde el rastreador guarda lo que llega.
+    fn nodes_mut(&mut self) -> &mut BTreeMap<u64, Self::Node>;
+    /// Construye un nodo desde el objeto, o `None` si no es de la clase que este
+    /// rastreador sigue (un sink de salida, una fuente elegible).
+    fn parse_node(object: &Value) -> Option<Self::Node>;
+    /// Interpreta un `Metadata` `default`: de ahí sale cuál es el por omisión.
+    fn ingest_metadata(&mut self, object: &Value);
+
+    /// Incorpora una tanda de `pw-dump` (un arreglo de objetos). Devuelve `true`
+    /// si era un arreglo, es decir, si llegó un volcado.
+    fn ingest_batch(&mut self, batch: &Value) -> bool {
         let Some(objects) = batch.as_array() else {
-            return;
+            return false;
         };
-        self.ready = true;
         for object in objects {
             let Some(id) = object.get("id").and_then(Value::as_u64) else {
                 continue;
@@ -78,7 +108,7 @@ impl AudioInputTracker {
             // Un objeto que se va: `{"id": N, "info": null}`. Los metadatos no
             // traen `info`, así que la ausencia sola no alcanza.
             if object.get("info").is_some_and(Value::is_null) {
-                self.nodes.remove(&id);
+                self.nodes_mut().remove(&id);
                 continue;
             }
             match object.get("type").and_then(Value::as_str) {
@@ -87,30 +117,43 @@ impl AudioInputTracker {
                 _ => {}
             }
         }
+        true
     }
 
+    /// Un `Node`: un cambio que no trae las propiedades (sólo `params`) no dice
+    /// qué clase de nodo es, así que se actualiza el volumen y el silencio de un
+    /// nodo ya conocido; con `props`, se incorpora el nodo o se lo quita.
     fn ingest_node(&mut self, id: u64, object: &Value) {
         let info = object.get("info");
-        // Un cambio que no trae las propiedades (sólo `params`) no dice qué
-        // clase de nodo es: se actualiza lo que se sabía, sin borrarlo.
         if info.and_then(|info| info.get("props")).is_none() {
-            if let (Some(node), Some((volume, muted))) =
-                (self.nodes.get_mut(&id), info.and_then(parse_audio_props))
-            {
-                node.volume = volume.unwrap_or(node.volume);
-                node.muted = muted.unwrap_or(node.muted);
+            if let (Some(node), Some((volume, muted))) = (
+                self.nodes_mut().get_mut(&id),
+                info.and_then(parse_audio_props),
+            ) {
+                node.set_level(volume, muted);
             }
             return;
         }
-        match parse_source(object) {
+        match Self::parse_node(object) {
             Some(node) => {
-                self.nodes.insert(id, node);
+                self.nodes_mut().insert(id, node);
             }
-            // Un nodo que dejó de ser fuente (o que es un filtro).
             None => {
-                self.nodes.remove(&id);
+                self.nodes_mut().remove(&id);
             }
         }
+    }
+}
+
+impl BatchTracker for AudioInputTracker {
+    type Node = SourceNode;
+
+    fn nodes_mut(&mut self) -> &mut BTreeMap<u64, SourceNode> {
+        &mut self.nodes
+    }
+
+    fn parse_node(object: &Value) -> Option<SourceNode> {
+        parse_source(object)
     }
 
     fn ingest_metadata(&mut self, object: &Value) {
@@ -129,6 +172,15 @@ impl AudioInputTracker {
                 continue;
             }
             self.default_source = entry.get("value").and_then(metadata_name);
+        }
+    }
+}
+
+impl AudioInputTracker {
+    /// Incorpora una tanda de `pw-dump` (un arreglo de objetos).
+    pub fn ingest(&mut self, batch: &Value) {
+        if self.ingest_batch(batch) {
+            self.ready = true;
         }
     }
 
@@ -178,7 +230,10 @@ impl AudioInputTracker {
 }
 
 /// `{"name": "alsa_input…"}`, o la misma cosa como texto en versiones viejas.
-fn metadata_name(value: &Value) -> Option<String> {
+///
+/// Es parte del formato de `pw-dump`, no algo del micrófono: `audio_native` lo
+/// reusa para el sink por omisión (vasak-desktop#231).
+pub(crate) fn metadata_name(value: &Value) -> Option<String> {
     match value {
         Value::Object(map) => map.get("name").and_then(Value::as_str).map(str::to_string),
         Value::String(text) => serde_json::from_str::<Value>(text)
@@ -189,7 +244,9 @@ fn metadata_name(value: &Value) -> Option<String> {
 }
 
 /// El volumen lineal en porcentaje entero, como el de salida.
-fn volume_percent(linear: f64) -> i64 {
+///
+/// Compartido con `audio_native`: la salida y la entrada usan la misma escala.
+pub(crate) fn volume_percent(linear: f64) -> i64 {
     ((linear * 100.0).round() as i64).clamp(0, 150)
 }
 
@@ -225,7 +282,10 @@ fn parse_source(object: &Value) -> Option<SourceNode> {
 }
 
 /// El volumen lineal y el silencio de `params.Props`, si vinieron.
-fn parse_audio_props(info: &Value) -> Option<(Option<f64>, Option<bool>)> {
+///
+/// Es el formato de `params.Props` de `pw-dump`, igual para fuentes y sinks:
+/// `audio_native` lo reusa para el volumen del sink por omisión.
+pub(crate) fn parse_audio_props(info: &Value) -> Option<(Option<f64>, Option<bool>)> {
     let entry = info
         .get("params")?
         .get("Props")?

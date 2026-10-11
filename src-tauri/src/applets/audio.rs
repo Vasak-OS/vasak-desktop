@@ -169,6 +169,10 @@ async fn run_audio_monitor_loop(app: AppHandle, mut monitor: AudioMonitor) {
                     if last_volume.as_ref() == Some(&volume_info) {
                         continue;
                     }
+                    // El panel se mantiene al día con cada cambio del sink por
+                    // omisión; el OSD, en cambio, sólo ante un cambio real del
+                    // nivel o el silencio (vasak-desktop#231).
+                    let show_osd = osd_warranted(last_volume.as_ref(), &volume_info);
                     last_volume = Some(volume_info.clone());
 
                     log_debug(&format!(
@@ -183,7 +187,9 @@ async fn run_audio_monitor_loop(app: AppHandle, mut monitor: AudioMonitor) {
                         ));
                     }
 
-                    show_volume_osd(&app, &volume_info).await;
+                    if show_osd {
+                        show_volume_osd(&app, &volume_info).await;
+                    }
                 }
                 Err(_) => {
                     log_error("AudioApplet: monitor channel closed — reconnecting");
@@ -195,6 +201,20 @@ async fn run_audio_monitor_loop(app: AppHandle, mut monitor: AudioMonitor) {
         // Monitor is dead. Drop it and create a replacement.
         drop(monitor);
         monitor = AudioMonitor::new().await;
+    }
+}
+
+/// Si un cambio del sink por omisión justifica mostrar el OSD de volumen.
+///
+/// Sólo ante un cambio real del nivel o del silencio, y nunca en la primera
+/// lectura: lo que hay al arrancar la sesión es el punto de partida, no un
+/// cambio (igual que el OSD de brillo, ver `applets/brightness.rs`). El monitor
+/// ya reporta sólo el sink por omisión (vasak-desktop#231); esto evita además
+/// el OSD espurio al iniciar la sesión.
+fn osd_warranted(last: Option<&VolumeInfo>, next: &VolumeInfo) -> bool {
+    match last {
+        None => false,
+        Some(last) => last.current != next.current || last.is_muted != next.is_muted,
     }
 }
 
@@ -287,5 +307,40 @@ mod tests {
             audio_input_changes(Some(&last), &snapshot(50, false, 2)),
             (false, true)
         );
+    }
+
+    fn volume(current: i64, muted: bool) -> VolumeInfo {
+        VolumeInfo {
+            current,
+            min: 0,
+            max: 100,
+            is_muted: muted,
+        }
+    }
+
+    #[test]
+    fn la_primera_lectura_no_muestra_el_osd() {
+        // Lo que hay al arrancar la sesión es el punto de partida, no un
+        // cambio: nada de OSD de «Volumen: 100 %» espurio al iniciar
+        // (vasak-desktop#231).
+        assert!(!osd_warranted(None, &volume(100, false)));
+    }
+
+    #[test]
+    fn re_emitir_el_mismo_volumen_no_muestra_el_osd() {
+        let last = volume(45, false);
+        assert!(!osd_warranted(Some(&last), &volume(45, false)));
+    }
+
+    #[test]
+    fn un_cambio_de_nivel_muestra_el_osd() {
+        let last = volume(45, false);
+        assert!(osd_warranted(Some(&last), &volume(50, false)));
+    }
+
+    #[test]
+    fn un_cambio_de_silencio_muestra_el_osd() {
+        let last = volume(50, false);
+        assert!(osd_warranted(Some(&last), &volume(50, true)));
     }
 }
