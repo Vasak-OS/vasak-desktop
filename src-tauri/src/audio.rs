@@ -478,11 +478,83 @@ fn card_output_devices(cards: &[CardInfo]) -> Vec<AudioDevice> {
     devices
 }
 
-/// El sink que quedó asociado a una `card` tras conmutar su perfil.
-fn find_card_sink<'a>(devices: &'a [AudioDevice], card: &str) -> Option<&'a AudioDevice> {
-    devices
-        .iter()
-        .find(|d| d.active && d.card.as_deref() == Some(card))
+/// El prefijo del sink que crea una `card`: `alsa_card.X` → `alsa_output.X`.
+fn sink_prefix_for_card(card_name: &str) -> String {
+    card_name.replacen("alsa_card.", "alsa_output.", 1)
+}
+
+/// El sufijo que el nombre del sink toma del perfil:
+/// `output:hdmi-stereo` → `hdmi-stereo`; `output:analog-stereo+input:mono` →
+/// `analog-stereo`.
+fn profile_to_sink_suffix(profile_name: &str) -> &str {
+    profile_name
+        .strip_prefix("output:")
+        .unwrap_or(profile_name)
+        .split('+')
+        .next()
+        .unwrap_or(profile_name)
+}
+
+/// El `Name` del sink que creó el perfil recién conmutado para una `card`, en la
+/// salida de `pactl list sinks short`. Función pura, para probarla sin `pactl`.
+///
+/// Elige el sink **de ese perfil**, no cualquier sink de la placa: primero el
+/// nombre exacto (`alsa_output.<card>.<sufijo-del-perfil>`), y como respaldo uno
+/// cuyo nombre lo extienda (PipeWire a veces le agrega un sufijo `-extraN`).
+/// Nunca cae en un sink viejo de otro perfil de la misma placa —sigue en la
+/// lista unos instantes— que dejaría la salida fijada en la equivocada.
+fn pick_sink_for_card(short_output: &str, card_name: &str, profile_name: &str) -> Option<String> {
+    let prefix = sink_prefix_for_card(card_name);
+    let candidate = format!("{}.{}", prefix, profile_to_sink_suffix(profile_name));
+
+    // `pactl list sinks short`: columnas separadas por tab; la 2.ª es el `Name`.
+    let names = short_output
+        .lines()
+        .filter_map(|line| line.split(['\t', ' ']).filter(|s| !s.is_empty()).nth(1));
+
+    let mut fallback = None;
+    for name in names {
+        if name == candidate {
+            return Some(candidate);
+        }
+        if fallback.is_none() && name.starts_with(&candidate) {
+            fallback = Some(name.to_string());
+        }
+    }
+    fallback
+}
+
+/// Espera acotada a que PipeWire cree el sink del perfil recién conmutado.
+///
+/// Tras `set-card-profile` el sink nuevo no aparece al instante: `pactl list
+/// sinks` puede correr antes de que exista, así que un único intento cae en la
+/// carrera y no lo ve. Se reintenta unas pocas veces con espera corta (hasta
+/// ~1,35 s en total) y recién entonces se da por ausente, en lugar de devolver
+/// `NotFound` prematuro. Es el glue del poll; la elección del sink vive en
+/// `pick_sink_for_card`, que es pura.
+fn poll_card_sink(card: &str, profile: &str) -> Result<String> {
+    const ATTEMPTS: u32 = 10;
+    const DELAY: std::time::Duration = std::time::Duration::from_millis(150);
+
+    for attempt in 0..ATTEMPTS {
+        if attempt > 0 {
+            std::thread::sleep(DELAY);
+        }
+        if let Ok(short) = CommandExecutor::run(CMD_PACTL, &["list", "sinks", "short"]) {
+            if let Some(sink) = pick_sink_for_card(&short, card, profile) {
+                return Ok(sink);
+            }
+        }
+    }
+
+    log_error(&format!(
+        "No apareció ningún sink para la card {} tras conmutar a {}",
+        card, profile
+    ));
+    Err(VasakError::NotFound(format!(
+        "No hay sink para la card {} con el perfil {}",
+        card, profile
+    )))
 }
 
 /// Las salidas de audio: los sinks que ya existen más las salidas de `card`
@@ -516,16 +588,11 @@ pub fn set_audio_output(
             CommandExecutor::run(CMD_PACTL, &["set-card-profile", card, profile])?;
             clear_sink_cache();
 
-            let sinks_output = CommandExecutor::run(CMD_PACTL, &["list", "sinks"])?;
-            let sinks = parse_sinks(&sinks_output, None);
-            let sink = find_card_sink(&sinks, card).ok_or_else(|| {
-                log_error(&format!(
-                    "No apareció ningún sink para la card {} tras conmutar a {}",
-                    card, profile
-                ));
-                VasakError::NotFound(format!("No hay sink para la card {}", card))
-            })?;
-            CommandExecutor::run(CMD_PACTL, &["set-default-sink", &sink.description])?;
+            // El sink HDMI no existe al instante tras conmutar el perfil: se
+            // espera (acotado) a que PipeWire lo cree y se fija ese sink, el del
+            // perfil pedido, nunca uno viejo de otro perfil de la misma placa.
+            let sink = poll_card_sink(card, profile)?;
+            CommandExecutor::run(CMD_PACTL, &["set-default-sink", &sink])?;
         }
         _ => {
             let sink_id = sink_id.ok_or_else(|| {
@@ -877,42 +944,87 @@ Card #1
             .all(|d| d.profile.as_deref() != Some("output:analog-stereo")));
     }
 
-    /// Lo que imprime `pactl list sinks` después de conmutar el perfil HDMI:
-    /// aparece el sink nuevo, que trae la `card` en `device.name`.
-    const SINKS_TRAS_CONMUTAR: &str = r#"Sink #52
-	State: SUSPENDED
-	Name: alsa_output.pci-0000_00_1f.3.analog-stereo
-	Description: Audio interno Estéreo analógico
-	Volume: front-left: 39321 /  60% / -13,31 dB
-	Properties:
-		device.name = "alsa_card.pci-0000_00_1f.3"
-
-Sink #99
-	State: IDLE
-	Name: alsa_output.pci-0000_01_00.1.hdmi-stereo
-	Description: Salida digital (HDMI)
-	Volume: front-left: 65536 / 100% / 0,00 dB
-	Properties:
-		device.name = "alsa_card.pci-0000_01_00.1"
-"#;
+    // ── Elegir el sink del perfil recién conmutado (robustez, PR #233) ────────
+    //
+    // Tras `set-card-profile`, `set_audio_output` espera (poll) a que PipeWire
+    // cree el sink y lo elige por su nombre, derivado de card+perfil. La elección
+    // es `pick_sink_for_card`, pura; el glue de la espera es `poll_card_sink`.
 
     #[test]
-    fn tras_conmutar_el_perfil_se_encuentra_el_sink_nuevo_por_su_card() {
-        // Es el paso central de `set_audio_output` con card+profile: conmutado
-        // el perfil, el sink HDMI ya existe y se lo ubica por `device.name`.
-        let sinks = parse_sinks(SINKS_TRAS_CONMUTAR, None);
-        let sink = find_card_sink(&sinks, "alsa_card.pci-0000_01_00.1")
-            .expect("el sink HDMI aparece tras conmutar el perfil");
-        // `set-default-sink` recibe el `Name` del sink, que queda en `description`.
-        assert_eq!(sink.description, "alsa_output.pci-0000_01_00.1.hdmi-stereo");
+    fn el_sufijo_del_sink_sale_del_perfil_sin_output_ni_entrada() {
+        // `alsa_card.X` → `alsa_output.X`, y el sufijo es el del perfil sin el
+        // prefijo `output:` ni la parte `+input:...`.
+        assert_eq!(
+            sink_prefix_for_card("alsa_card.pci-0000_01_00.1"),
+            "alsa_output.pci-0000_01_00.1"
+        );
+        assert_eq!(profile_to_sink_suffix("output:hdmi-stereo"), "hdmi-stereo");
+        assert_eq!(
+            profile_to_sink_suffix("output:analog-stereo+input:analog-stereo"),
+            "analog-stereo"
+        );
     }
 
     #[test]
-    fn sin_sink_para_la_card_no_se_inventa_ninguno() {
-        // Si tras conmutar no apareció ningún sink de esa placa, no se casa con
-        // el de otra: `set_audio_output` devuelve NotFound en lugar de fijar la
-        // salida equivocada.
-        let sinks = parse_sinks(SINKS_TRAS_CONMUTAR, None);
-        assert!(find_card_sink(&sinks, "alsa_card.pci-9999_99_99.9").is_none());
+    fn pick_sink_for_card_arma_el_nombre_del_sink_hdmi() {
+        let short = "\
+0\talsa_output.pci-0000_00_1f.3.analog-stereo\tPipeWire\ts16le 2ch 48000Hz\tRUNNING
+1\talsa_output.pci-0000_01_00.1.hdmi-stereo\tPipeWire\ts16le 2ch 48000Hz\tIDLE
+";
+        let sink = pick_sink_for_card(short, "alsa_card.pci-0000_01_00.1", "output:hdmi-stereo");
+        assert_eq!(
+            sink.as_deref(),
+            Some("alsa_output.pci-0000_01_00.1.hdmi-stereo")
+        );
+    }
+
+    #[test]
+    fn pick_sink_for_card_cae_al_prefijo_cuando_el_nombre_exacto_no_aparece() {
+        // El sink existe con un sufijo extendido del esperado (`-extra1`): igual
+        // se lo toma, porque extiende el nombre del perfil pedido.
+        let short = "7\talsa_output.pci-0000_01_00.1.hdmi-stereo-extra1\tPipeWire\ts16le\tIDLE\n";
+        let sink = pick_sink_for_card(short, "alsa_card.pci-0000_01_00.1", "output:hdmi-stereo");
+        assert_eq!(
+            sink.as_deref(),
+            Some("alsa_output.pci-0000_01_00.1.hdmi-stereo-extra1")
+        );
+    }
+
+    #[test]
+    fn pick_sink_for_card_no_inventa_sink_de_otra_card() {
+        // Ningún sink pertenece a la placa HDMI: no se devuelve el de otra, que
+        // dejaría `set_audio_output` fijando una salida equivocada.
+        let short = "0\talsa_output.pci-0000_00_1f.3.analog-stereo\tPipeWire\ts16le\tRUNNING\n";
+        let sink = pick_sink_for_card(short, "alsa_card.pci-0000_01_00.1", "output:hdmi-stereo");
+        assert!(sink.is_none());
+    }
+
+    #[test]
+    fn pick_sink_for_card_rechaza_un_sink_de_otro_perfil_de_la_misma_card() {
+        // La placa todavía tiene colgado el sink del perfil anterior
+        // (`analog-stereo`) mientras se conmuta a `hdmi-stereo`. Es de la misma
+        // placa pero de OTRO perfil: no es la salida pedida y no debe devolverse.
+        let short = "3\talsa_output.pci-0000_00_1f.3.analog-stereo\tPipeWire\ts16le\tRUNNING\n";
+        let sink = pick_sink_for_card(short, "alsa_card.pci-0000_00_1f.3", "output:hdmi-stereo");
+        assert!(
+            sink.is_none(),
+            "un sink de otro perfil de la misma placa no es el sink pedido"
+        );
+    }
+
+    #[test]
+    fn pick_sink_for_card_elige_el_del_perfil_pedido_entre_varios_de_la_card() {
+        // La misma placa expone a la vez el sink analógico viejo y el HDMI recién
+        // creado: hay que quedarse con el del perfil pedido, no con el primero.
+        let short = "\
+3\talsa_output.pci-0000_00_1f.3.analog-stereo\tPipeWire\ts16le\tRUNNING
+4\talsa_output.pci-0000_00_1f.3.hdmi-stereo\tPipeWire\ts16le\tIDLE
+";
+        let sink = pick_sink_for_card(short, "alsa_card.pci-0000_00_1f.3", "output:hdmi-stereo");
+        assert_eq!(
+            sink.as_deref(),
+            Some("alsa_output.pci-0000_00_1f.3.hdmi-stereo"),
+            "entre varios sinks de la placa, se elige el del perfil pedido"
+        );
     }
 }
