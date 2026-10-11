@@ -24,6 +24,15 @@ export const getAudioDevices = <T = unknown>(): Promise<T> => invoke<T>('get_aud
 export const setAudioDevice = <T = unknown>(args: { deviceId: string }): Promise<T> =>
 	invoke<T>('set_audio_device', args);
 
+// Las salidas del selector (vasak-desktop#230): incluyen las disponibles-pero-
+// inactivas y conmutan el perfil de la `card` al elegirlas.
+export const getAudioOutputs = <T = unknown>(): Promise<T> => invoke<T>('get_audio_outputs');
+export const setAudioOutput = <T = unknown>(args: {
+	sinkId?: string;
+	card?: string | null;
+	profile?: string | null;
+}): Promise<T> => invoke<T>('set_audio_output', args);
+
 /** El volumen de salida, lo justo para `VolumeControl`: lee y cambia por `invoke`. */
 export function useVolumeState() {
 	const volumeInfo = ref<VolumeInfo>({ current: 0, min: 0, max: 100, is_muted: false });

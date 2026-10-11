@@ -297,6 +297,8 @@ components:
     noDevices: No devices available
     inputTitle: Input device
     microphoneAlt: Microphone
+    available: Available
+    availableHint: Available output
   BluetoothControl:
     iconAlt: Bluetooth icon
     toggle: Toggle Bluetooth

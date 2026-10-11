@@ -13,4 +13,21 @@ export interface AudioDevice {
 	description: string;
 	is_default: boolean;
 	volume: number;
+	/**
+	 * La `card` dueña de la salida (vasak-desktop#230). En un sink vivo sale de
+	 * `device.name`; en una salida disponible-pero-inactiva es la placa cuyo
+	 * perfil hay que conmutar al elegirla.
+	 */
+	card?: string | null;
+	/**
+	 * El perfil de salida a conmutar (p. ej. `output:hdmi-stereo`). Sólo lo
+	 * llevan las salidas inactivas; un sink vivo lo deja sin valor.
+	 */
+	profile?: string | null;
+	/**
+	 * `true` cuando es un sink que ya existe; `false` cuando es un perfil de
+	 * `card` disponible pero sin sink todavía (HDMI con la placa en otro
+	 * perfil). Ausente desde comandos viejos equivale a `true`.
+	 */
+	active?: boolean;
 }

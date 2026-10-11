@@ -278,6 +278,9 @@ mod tests {
                     description: format!("source-{i}"),
                     is_default: i == 0,
                     volume: 0.5,
+                    card: None,
+                    profile: None,
+                    active: true,
                 })
                 .collect(),
         }

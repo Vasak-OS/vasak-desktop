@@ -8,6 +8,26 @@ export const setAudioDevice = <T = any>(args: any): Promise<T> => {
 	return invoke<T>('set_audio_device', args);
 };
 
+/**
+ * Las salidas, incluyendo las disponibles-pero-inactivas: perfiles de `card`
+ * sin sink todavía, como el HDMI de la placa en otro perfil (vasak-desktop#230).
+ */
+export const getAudioOutputs = <T = any>(args?: any): Promise<T> => {
+	return invoke<T>('get_audio_outputs', args);
+};
+
+/**
+ * Elige una salida. Con `sinkId` fija un sink existente; con `card` + `profile`
+ * conmuta el perfil de la placa (crea el sink) y lo fija.
+ */
+export const setAudioOutput = <T = any>(args: {
+	sinkId?: string;
+	card?: string | null;
+	profile?: string | null;
+}): Promise<T> => {
+	return invoke<T>('set_audio_output', args);
+};
+
 export const musicNowPlaying = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('music_now_playing', args);
 };

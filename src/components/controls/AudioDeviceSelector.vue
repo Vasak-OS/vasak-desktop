@@ -14,7 +14,7 @@ import {
 } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, type Ref, ref, watch } from 'vue';
 import { getAudioInputDevices, setAudioInputDevice } from '@/services/audio-input.service';
-import { getAudioDevices, setAudioDevice } from '@/services/core.service';
+import { getAudioOutputs, setAudioOutput } from '@/services/core.service';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
@@ -28,6 +28,24 @@ interface AudioDevice {
 	description: string;
 	is_default: boolean;
 	volume: number;
+	/** La `card` dueña; en una salida inactiva, la placa cuyo perfil se conmuta. */
+	card?: string | null;
+	/** El perfil a conmutar para que la salida exista (p. ej. `output:hdmi-stereo`). */
+	profile?: string | null;
+	/** `false` en una salida disponible-pero-inactiva (perfil de card sin sink). */
+	active?: boolean;
+}
+
+/**
+ * Elegir una salida. Un sink vivo se fija por su id; una salida inactiva
+ * (perfil de `card` sin sink, como el HDMI de la placa en otro perfil) conmuta
+ * primero el perfil (vasak-desktop#230).
+ */
+function chooseOutput(device: AudioDevice) {
+	if (device.active === false && device.card && device.profile) {
+		return setAudioOutput({ card: device.card, profile: device.profile });
+	}
+	return setAudioOutput({ sinkId: device.id });
 }
 
 /**
@@ -37,15 +55,15 @@ interface AudioDevice {
 const SOURCES = {
 	input: {
 		read: () => getAudioInputDevices(),
-		choose: (deviceId: string) => setAudioInputDevice(deviceId),
+		choose: (device: AudioDevice) => setAudioInputDevice(device.id),
 		event: 'audio-input-devices-changed',
 		icon: 'audio-input-microphone-symbolic',
 		title: 'components.AudioDeviceSelector.inputTitle',
 		iconAlt: 'components.AudioDeviceSelector.microphoneAlt',
 	},
 	output: {
-		read: () => getAudioDevices<AudioDevice[]>(),
-		choose: (deviceId: string) => setAudioDevice({ deviceId }),
+		read: () => getAudioOutputs<AudioDevice[]>(),
+		choose: (device: AudioDevice) => chooseOutput(device),
 		event: 'audio-devices-changed',
 		icon: 'audio-speakers-symbolic',
 		title: 'components.AudioDeviceSelector.title',
@@ -88,8 +106,12 @@ const checkedDevice = computed<string | null>({
 });
 
 async function onDeviceChange(deviceId: string) {
+	// Una salida inactiva se elige por `card` + `profile`, no por su id: hay que
+	// resolver el dispositivo completo a partir del valor del grupo.
+	const device = devices.value.find((d) => d.id === deviceId);
+	if (!device) return;
 	try {
-		await source.value.choose(deviceId);
+		await source.value.choose(device);
 		selectedDeviceId.value = deviceId;
 		await loadDevices();
 	} catch (e) {
@@ -138,17 +160,31 @@ function getDeviceName(device: AudioDevice): string {
 		.trim();
 }
 
-/** Cada salida como opción del grupo: el nombre, su volumen y si es la predeterminada. */
+/**
+ * Cada salida como opción del grupo. Un sink vivo muestra su volumen; una salida
+ * disponible-pero-inactiva (perfil de `card` sin sink) no tiene volumen que
+ * mostrar, así que lleva la insignia «Disponible» y una pista en lugar del
+ * porcentaje (vasak-desktop#230).
+ */
 const options = computed<OptionGroupOption<string>[]>(() =>
-	devices.value.map((device) => ({
-		value: device.id,
-		label: getDeviceName(device),
-		description: t('components.AudioDeviceSelector.volume').replace(
-			'{0}',
-			String(Math.round(device.volume * 100))
-		),
-		badge: device.is_default ? t('components.AudioDeviceSelector.default') : undefined,
-	}))
+	devices.value.map((device) => {
+		const inactive = device.active === false;
+		return {
+			value: device.id,
+			label: getDeviceName(device),
+			description: inactive
+				? t('components.AudioDeviceSelector.availableHint')
+				: t('components.AudioDeviceSelector.volume').replace(
+						'{0}',
+						String(Math.round(device.volume * 100))
+					),
+			badge: device.is_default
+				? t('components.AudioDeviceSelector.default')
+				: inactive
+					? t('components.AudioDeviceSelector.available')
+					: undefined,
+		};
+	})
 );
 </script>
 

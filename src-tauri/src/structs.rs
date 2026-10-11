@@ -94,6 +94,28 @@ pub struct AudioDevice {
     pub description: String,
     pub is_default: bool,
     pub volume: f64,
+    /// La `card` dueña del dispositivo (su `Name`, p. ej.
+    /// `alsa_card.pci-0000_01_00.1`). En un sink sale de la propiedad
+    /// `device.name`; en una salida disponible-pero-inactiva es la card cuyo
+    /// perfil hay que conmutar. `None` cuando no se pudo asociar.
+    #[serde(default)]
+    pub card: Option<String>,
+    /// El perfil de salida a conmutar para que esta salida exista
+    /// (p. ej. `output:hdmi-stereo`). Sólo lo llevan las salidas inactivas;
+    /// un sink vivo lo deja en `None`.
+    #[serde(default)]
+    pub profile: Option<String>,
+    /// `true` cuando es un sink que ya existe; `false` cuando es un perfil de
+    /// `card` disponible pero sin sink todavía (p. ej. HDMI con la placa en
+    /// otro perfil). Elegir una salida inactiva conmuta el perfil primero.
+    #[serde(default = "default_true")]
+    pub active: bool,
+}
+
+/// El valor por omisión de `AudioDevice::active`: un dispositivo es un sink
+/// vivo salvo que se diga lo contrario.
+fn default_true() -> bool {
+    true
 }
 
 /// Un icono tal como lo manda el elemento: por nombre del tema, por mapa de
@@ -367,4 +389,52 @@ pub struct BatteryInfo {
     pub temperature: Option<f64>,
     /// Número de serie
     pub serial: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn un_audio_device_sin_los_campos_nuevos_queda_como_sink_vivo() {
+        // Una carga vieja —sin `card`, `profile` ni `active`, como la que arma un
+        // comando anterior a #230— se deserializa como un sink que ya existe: sin
+        // card ni perfil a conmutar y activo (el valor por omisión de `active`).
+        let json = r#"{
+            "id": "52",
+            "name": "Audio interno",
+            "description": "alsa_output.pci-0000_00_1f.3.analog-stereo",
+            "is_default": true,
+            "volume": 0.6
+        }"#;
+        let device: AudioDevice = serde_json::from_str(json).expect("carga válida");
+        assert!(device.card.is_none());
+        assert!(device.profile.is_none());
+        assert!(
+            device.active,
+            "sin el campo, un dispositivo es un sink vivo"
+        );
+    }
+
+    #[test]
+    fn una_salida_inactiva_conserva_su_card_perfil_y_estado() {
+        // Una salida disponible-pero-inactiva (HDMI con la placa en otro perfil)
+        // trae su card, su perfil a conmutar y `active: false`, y así sobrevive
+        // al viaje por serde.
+        let device = AudioDevice {
+            id: "alsa_card.pci-0000_01_00.1::output:hdmi-stereo".to_string(),
+            name: "Audio NVIDIA — Salida digital (HDMI)".to_string(),
+            description: "output:hdmi-stereo".to_string(),
+            is_default: false,
+            volume: 0.0,
+            card: Some("alsa_card.pci-0000_01_00.1".to_string()),
+            profile: Some("output:hdmi-stereo".to_string()),
+            active: false,
+        };
+        let json = serde_json::to_string(&device).expect("serializa");
+        let back: AudioDevice = serde_json::from_str(&json).expect("vuelve");
+        assert_eq!(back, device);
+        assert!(!back.active);
+        assert_eq!(back.profile.as_deref(), Some("output:hdmi-stereo"));
+    }
 }
