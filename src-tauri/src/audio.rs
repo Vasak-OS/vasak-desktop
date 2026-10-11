@@ -827,6 +827,32 @@ Source #53
         assert!(parse_sinks(output, None).is_empty());
     }
 
+    #[test]
+    fn un_sink_lleva_la_card_de_su_propiedad_device_name() {
+        // Un sink vivo informa su `card` dueña por `device.name`; eso es lo que
+        // deja casar el sink con su placa al conmutar un perfil (#230). Es un
+        // sink ya existente: va activo y sin perfil a conmutar.
+        let output = "Sink #52\n\tState: RUNNING\n\tName: alsa_output.pci-0000_01_00.1.hdmi-stereo\n\tDescription: Audio NVIDIA Salida digital (HDMI)\n\tVolume: front-left: 39321 /  60% / -13,31 dB\n\tProperties:\n\t\tdevice.class = \"sound\"\n\t\tdevice.name = \"alsa_card.pci-0000_01_00.1\"\n";
+        let devices = parse_sinks(output, None);
+        assert_eq!(devices.len(), 1);
+        assert_eq!(
+            devices[0].card.as_deref(),
+            Some("alsa_card.pci-0000_01_00.1")
+        );
+        assert!(devices[0].active);
+        assert!(devices[0].profile.is_none());
+    }
+
+    #[test]
+    fn un_sink_sin_device_name_deja_la_card_sin_asociar() {
+        // Sin la propiedad `device.name`, la card queda en `None`: no se inventa
+        // una placa para un sink que no la declara.
+        let output = "Sink #7\n\tName: bluez_output.00_11_22.1\n\tDescription: Auriculares WH-1000XM4\n\tVolume: front-left: 22938 /  35% / -27,36 dB\n";
+        let devices = parse_sinks(output, None);
+        assert_eq!(devices.len(), 1);
+        assert!(devices[0].card.is_none());
+    }
+
     // ── Salidas disponibles-pero-inactivas: HDMI con la placa en otro perfil ──
     // (vasak-desktop#230)
 
@@ -942,6 +968,61 @@ Card #1
         assert!(outputs
             .iter()
             .all(|d| d.profile.as_deref() != Some("output:analog-stereo")));
+    }
+
+    #[test]
+    fn parse_cards_ignora_lo_que_venga_antes_de_la_primera_card() {
+        // `pactl` puede anteponer líneas sueltas (un encabezado) antes del
+        // primer `Card #`: no pertenecen a ninguna card y no deben romper el
+        // parseo ni inventar una.
+        let output = "Algo suelto antes de cualquier card\n\tName: no-es-de-nadie\nCard #0\n\tName: alsa_card.x\n\tProfiles:\n\t\toutput:hdmi-stereo: HDMI (sinks: 1, sources: 0, available: yes)\n\tActive Profile: off\n";
+        let cards = parse_cards(output);
+        assert_eq!(cards.len(), 1);
+        assert_eq!(cards[0].name, "alsa_card.x");
+    }
+
+    #[test]
+    fn card_output_devices_etiqueta_con_el_nombre_tecnico_sin_descripcion() {
+        // Una card sin `device.description` igual se ofrece: la etiqueta cae a
+        // su `Name` técnico en lugar de quedar sin nombre.
+        let cards = vec![CardInfo {
+            name: "alsa_card.pci-0000_01_00.1".to_string(),
+            description: String::new(),
+            active_profile: "off".to_string(),
+            profiles: vec![CardProfile {
+                name: "output:hdmi-stereo".to_string(),
+                description: "Salida digital (HDMI)".to_string(),
+                sinks: 1,
+                available: true,
+            }],
+        }];
+        let outputs = card_output_devices(&cards);
+        assert_eq!(outputs.len(), 1);
+        assert_eq!(
+            outputs[0].name,
+            "alsa_card.pci-0000_01_00.1 — Salida digital (HDMI)"
+        );
+    }
+
+    #[test]
+    fn card_output_devices_sin_nombre_de_card_usa_solo_la_descripcion_del_perfil() {
+        // Caso defensivo: una card sin `Name` ni `device.description`. No se deja
+        // la salida sin texto: se muestra con la descripción del perfil a secas,
+        // sin el separador « — » que necesitaría una etiqueta de card.
+        let cards = vec![CardInfo {
+            name: String::new(),
+            description: String::new(),
+            active_profile: String::new(),
+            profiles: vec![CardProfile {
+                name: "output:hdmi-stereo".to_string(),
+                description: "Salida digital (HDMI)".to_string(),
+                sinks: 1,
+                available: true,
+            }],
+        }];
+        let outputs = card_output_devices(&cards);
+        assert_eq!(outputs.len(), 1);
+        assert_eq!(outputs[0].name, "Salida digital (HDMI)");
     }
 
     // ── Elegir el sink del perfil recién conmutado (robustez, PR #233) ────────
