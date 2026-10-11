@@ -57,7 +57,8 @@
           "gstreamer1.0-libav",
           "network-manager",
           "upower",
-          "pipewire-bin"
+          "pipewire-bin",
+          "ddcutil"
         ],
         "files": {}
       }
