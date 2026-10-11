@@ -769,3 +769,158 @@ impl AudioMonitor {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    //! El `OutputTracker`: que siga el sink por omisión a través de las tandas
+    //! incrementales de `pw-dump --monitor` y reporte **sólo** ese, nunca un
+    //! sink ajeno re-emitido (el OSD de «Volumen: 100 %» espurio de
+    //! vasak-desktop#231). Mismo formato de `pw-dump` que las pruebas de
+    //! `audio_input`.
+
+    use super::*;
+    use serde_json::json;
+
+    const SPEAKERS: &str = "alsa_output.pci-0000_00_1f.3.analog-stereo";
+    const HDMI: &str = "alsa_output.pci-0000_01_00.1.hdmi-stereo";
+
+    /// Un `Audio/Sink` como lo manda `pw-dump`. `cubic` es el volumen en la
+    /// escala cúbica de PipeWire (1.0 → 100 %, 0.064 → 40 %, 0.216 → 60 %).
+    fn sink(id: u64, name: &str, cubic: f64, mute: bool) -> Value {
+        json!({
+            "id": id,
+            "type": "PipeWire:Interface:Node",
+            "info": {
+                "props": { "media.class": "Audio/Sink", "node.name": name },
+                "params": {
+                    "Props": [
+                        { "volume": 1.0, "mute": mute, "channelVolumes": [cubic] },
+                        { "params": ["monitor.channel-volumes", false] }
+                    ]
+                }
+            }
+        })
+    }
+
+    /// El `Metadata` `default` con los pares que se le pasen (clave → nombre del
+    /// sink), en ese orden.
+    fn metadata(pairs: &[(&str, &str)]) -> Value {
+        let entries: Vec<Value> = pairs
+            .iter()
+            .map(|(key, name)| {
+                json!({ "subject": 0, "key": key, "type": "Spa:String:JSON",
+                        "value": { "name": name } })
+            })
+            .collect();
+        json!({
+            "id": 39,
+            "type": "PipeWire:Interface:Metadata",
+            "props": { "metadata.name": "default" },
+            "metadata": entries
+        })
+    }
+
+    fn vol(current: i64, muted: bool) -> VolumeInfo {
+        VolumeInfo {
+            current,
+            min: 0,
+            max: 100,
+            is_muted: muted,
+        }
+    }
+
+    /// El volcado inicial: dos sinks —la placa al 40 % (por omisión) y el HDMI
+    /// al 100 % (ajeno)— y el metadato que elige la placa. El HDMI lleva el id
+    /// más alto a propósito: así «el primer/último sink cualquiera» (el bug)
+    /// cae sobre él y se distingue del por omisión.
+    fn tracker_with_default() -> OutputTracker {
+        let mut tracker = OutputTracker::default();
+        tracker.ingest(&json!([
+            sink(40, SPEAKERS, 0.064, false),
+            sink(55, HDMI, 1.0, false),
+            metadata(&[("default.audio.sink", SPEAKERS)]),
+        ]));
+        tracker
+    }
+
+    #[test]
+    fn resuelve_el_sink_por_omision_desde_default_audio_sink() {
+        assert_eq!(
+            tracker_with_default().default_volume(),
+            Some(vol(40, false))
+        );
+    }
+
+    #[test]
+    fn una_tanda_con_un_sink_ajeno_al_100_no_cambia_el_volumen_por_omision() {
+        let mut tracker = tracker_with_default();
+        // `pw-dump --monitor` re-emite SÓLO el sink ajeno (HDMI) a su volumen
+        // crudo (100 %) al cambiar de pestaña o con Discord: eso no es el
+        // volumen del sistema y no debe moverlo (vasak-desktop#231). Es la que
+        // reproduce el «100 % espurio»: el parser viejo devolvía ese sink.
+        tracker.ingest(&json!([sink(55, HDMI, 1.0, false)]));
+        assert_eq!(tracker.default_volume(), Some(vol(40, false)));
+    }
+
+    #[test]
+    fn un_cambio_real_del_sink_por_omision_se_refleja() {
+        let mut tracker = tracker_with_default();
+        // La placa (por omisión) baja a 60 % y se silencia: eso sí se reporta.
+        tracker.ingest(&json!([sink(40, SPEAKERS, 0.216, true)]));
+        assert_eq!(tracker.default_volume(), Some(vol(60, true)));
+    }
+
+    #[test]
+    fn un_cambio_de_nivel_sin_propiedades_actualiza_el_sink_por_omision() {
+        let mut tracker = tracker_with_default();
+        // Una tanda que sólo trae `params` (sin `props`): es una actualización
+        // de volumen de un sink ya conocido, no un nodo nuevo.
+        tracker.ingest(&json!([{
+            "id": 40,
+            "type": "PipeWire:Interface:Node",
+            "info": { "params": { "Props": [{ "mute": false, "channelVolumes": [0.216] }] } }
+        }]));
+        assert_eq!(tracker.default_volume(), Some(vol(60, false)));
+    }
+
+    #[test]
+    fn default_configured_audio_sink_es_el_respaldo_cuando_no_vino_el_elegido() {
+        let mut tracker = OutputTracker::default();
+        tracker.ingest(&json!([
+            sink(40, SPEAKERS, 0.064, false),
+            sink(55, HDMI, 1.0, false),
+            metadata(&[("default.configured.audio.sink", SPEAKERS)]),
+        ]));
+        assert_eq!(tracker.default_volume(), Some(vol(40, false)));
+    }
+
+    #[test]
+    fn el_sink_elegido_manda_sobre_el_configurado() {
+        let mut tracker = OutputTracker::default();
+        // El configurado apunta al HDMI, pero WirePlumber eligió la placa: gana
+        // `default.audio.sink` aunque venga después en la tanda.
+        tracker.ingest(&json!([
+            sink(40, SPEAKERS, 0.064, false),
+            sink(55, HDMI, 1.0, false),
+            metadata(&[
+                ("default.configured.audio.sink", HDMI),
+                ("default.audio.sink", SPEAKERS),
+            ]),
+        ]));
+        assert_eq!(tracker.default_volume(), Some(vol(40, false)));
+    }
+
+    #[test]
+    fn sin_saber_cual_es_el_por_omision_no_hay_volumen() {
+        let mut tracker = OutputTracker::default();
+        tracker.ingest(&json!([sink(55, HDMI, 1.0, false)]));
+        assert_eq!(tracker.default_volume(), None);
+    }
+
+    #[test]
+    fn el_sink_por_omision_que_se_va_deja_de_tener_volumen() {
+        let mut tracker = tracker_with_default();
+        tracker.ingest(&json!([{ "id": 40, "info": null }]));
+        assert_eq!(tracker.default_volume(), None);
+    }
+}

@@ -308,4 +308,39 @@ mod tests {
             (false, true)
         );
     }
+
+    fn volume(current: i64, muted: bool) -> VolumeInfo {
+        VolumeInfo {
+            current,
+            min: 0,
+            max: 100,
+            is_muted: muted,
+        }
+    }
+
+    #[test]
+    fn la_primera_lectura_no_muestra_el_osd() {
+        // Lo que hay al arrancar la sesión es el punto de partida, no un
+        // cambio: nada de OSD de «Volumen: 100 %» espurio al iniciar
+        // (vasak-desktop#231).
+        assert!(!osd_warranted(None, &volume(100, false)));
+    }
+
+    #[test]
+    fn re_emitir_el_mismo_volumen_no_muestra_el_osd() {
+        let last = volume(45, false);
+        assert!(!osd_warranted(Some(&last), &volume(45, false)));
+    }
+
+    #[test]
+    fn un_cambio_de_nivel_muestra_el_osd() {
+        let last = volume(45, false);
+        assert!(osd_warranted(Some(&last), &volume(50, false)));
+    }
+
+    #[test]
+    fn un_cambio_de_silencio_muestra_el_osd() {
+        let last = volume(50, false);
+        assert!(osd_warranted(Some(&last), &volume(50, true)));
+    }
 }
