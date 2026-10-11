@@ -759,4 +759,160 @@ Source #53
         let output = "Sink #1\n\tName: vasak-equalizer\n\tDescription: VasakOS Equalizer\n";
         assert!(parse_sinks(output, None).is_empty());
     }
+
+    // ── Salidas disponibles-pero-inactivas: HDMI con la placa en otro perfil ──
+    // (vasak-desktop#230)
+
+    /// Lo que imprime `pactl list cards` con dos placas: la interna en
+    /// analógico y la del HDMI con el perfil en `off` (su sink todavía no
+    /// existe). Recortado a lo que se lee.
+    const CARDS: &str = r#"Card #0
+	Name: alsa_card.pci-0000_00_1f.3
+	Driver: alsa
+	Owner Module: 7
+	Properties:
+		alsa.card = "0"
+		device.description = "Audio interno"
+	Profiles:
+		output:analog-stereo: Estéreo analógico (sinks: 1, sources: 0, priority: 6500, available: yes)
+		output:analog-stereo+input:analog-stereo: Estéreo analógico + Entrada (sinks: 1, sources: 1, priority: 6600, available: yes)
+		output:hdmi-stereo: Salida digital (HDMI) (sinks: 1, sources: 0, priority: 5400, available: no)
+		off: Apagado (sinks: 0, sources: 0, priority: 0, available: yes)
+	Active Profile: output:analog-stereo
+	Ports:
+		analog-output-speaker: Altavoces (priority: 10000, latency offset: 0 usec)
+
+Card #1
+	Name: alsa_card.pci-0000_01_00.1
+	Driver: alsa
+	Owner Module: 9
+	Properties:
+		alsa.card = "1"
+		device.description = "Audio NVIDIA"
+	Profiles:
+		output:hdmi-stereo: Salida digital (HDMI) (sinks: 1, sources: 0, priority: 5900, available: yes)
+		output:hdmi-stereo-extra1: Salida digital (HDMI 2) (sinks: 1, sources: 0, priority: 5700, available: no)
+		output:hdmi-surround71+input:analog-stereo: Envolvente 7.1 + Entrada (sinks: 1, sources: 1, priority: 100, available: yes)
+		off: Apagado (sinks: 0, sources: 0, priority: 0, available: yes)
+	Active Profile: off
+	Ports:
+		hdmi-output-0: HDMI / DisplayPort (priority: 5900, latency offset: 0 usec)
+"#;
+
+    #[test]
+    fn un_perfil_hdmi_se_parsea_con_su_nombre_descripcion_sinks_y_disponibilidad() {
+        let line =
+            "output:hdmi-stereo: Salida digital (HDMI) (sinks: 1, sources: 0, priority: 5900, available: yes)";
+        let profile = parse_card_profile(line).expect("la línea es un perfil válido");
+        assert_eq!(profile.name, "output:hdmi-stereo");
+        // La descripción conserva sus propios paréntesis y no se come el `(HDMI)`.
+        assert_eq!(profile.description, "Salida digital (HDMI)");
+        assert_eq!(profile.sinks, 1);
+        assert!(profile.available);
+    }
+
+    #[test]
+    fn un_perfil_sin_nada_conectado_queda_como_no_disponible() {
+        let line =
+            "output:hdmi-stereo-extra1: Salida digital (HDMI 2) (sinks: 1, sources: 0, priority: 5700, available: no)";
+        let profile = parse_card_profile(line).expect("la línea es un perfil válido");
+        assert!(!profile.available);
+    }
+
+    #[test]
+    fn parse_cards_lee_la_placa_hdmi_con_su_perfil_en_off() {
+        let cards = parse_cards(CARDS);
+        assert_eq!(cards.len(), 2);
+
+        let nvidia = cards
+            .iter()
+            .find(|c| c.name == "alsa_card.pci-0000_01_00.1")
+            .expect("la placa HDMI está en la lista aunque su perfil esté en off");
+        assert_eq!(nvidia.description, "Audio NVIDIA");
+        assert_eq!(nvidia.active_profile, "off");
+        // El HDMI inactivo aparece entre los perfiles de la placa.
+        assert!(nvidia
+            .profiles
+            .iter()
+            .any(|p| p.name == "output:hdmi-stereo" && p.available));
+    }
+
+    #[test]
+    fn card_output_devices_ofrece_la_salida_hdmi_inactiva_pero_disponible() {
+        let cards = parse_cards(CARDS);
+        let outputs = card_output_devices(&cards);
+
+        // Sólo el HDMI real de la placa NVIDIA: el `extra1` no está conectado
+        // (available: no), el `off` no crea sink, el envolvente es `+input` y
+        // los perfiles de la placa interna son el activo o `+input`.
+        assert_eq!(outputs.len(), 1, "salidas ofrecidas: {:?}", outputs);
+        let hdmi = &outputs[0];
+        assert_eq!(hdmi.id, "alsa_card.pci-0000_01_00.1::output:hdmi-stereo");
+        assert_eq!(hdmi.name, "Audio NVIDIA — Salida digital (HDMI)");
+        assert_eq!(hdmi.card.as_deref(), Some("alsa_card.pci-0000_01_00.1"));
+        assert_eq!(hdmi.profile.as_deref(), Some("output:hdmi-stereo"));
+        // Es una salida sin sink todavía: la UI la marca distinto y, al
+        // elegirla, hay que conmutar el perfil antes de fijarla.
+        assert!(!hdmi.active);
+        assert!(!hdmi.is_default);
+    }
+
+    #[test]
+    fn card_output_devices_no_duplica_una_salida_con_su_variante_de_entrada() {
+        let cards = parse_cards(CARDS);
+        let outputs = card_output_devices(&cards);
+        // Ningún perfil ofrecido es un `+input`: no se duplica cada salida con
+        // su combinación «+ Entrada».
+        assert!(outputs.iter().all(|d| !d.description.contains("+input")));
+    }
+
+    #[test]
+    fn card_output_devices_no_reofrece_el_perfil_activo() {
+        let cards = parse_cards(CARDS);
+        let outputs = card_output_devices(&cards);
+        // El analógico de la placa interna es el perfil activo: su sink ya
+        // está en `pactl list sinks`, así que no se vuelve a ofrecer.
+        assert!(outputs
+            .iter()
+            .all(|d| d.profile.as_deref() != Some("output:analog-stereo")));
+    }
+
+    /// Lo que imprime `pactl list sinks` después de conmutar el perfil HDMI:
+    /// aparece el sink nuevo, que trae la `card` en `device.name`.
+    const SINKS_TRAS_CONMUTAR: &str = r#"Sink #52
+	State: SUSPENDED
+	Name: alsa_output.pci-0000_00_1f.3.analog-stereo
+	Description: Audio interno Estéreo analógico
+	Volume: front-left: 39321 /  60% / -13,31 dB
+	Properties:
+		device.name = "alsa_card.pci-0000_00_1f.3"
+
+Sink #99
+	State: IDLE
+	Name: alsa_output.pci-0000_01_00.1.hdmi-stereo
+	Description: Salida digital (HDMI)
+	Volume: front-left: 65536 / 100% / 0,00 dB
+	Properties:
+		device.name = "alsa_card.pci-0000_01_00.1"
+"#;
+
+    #[test]
+    fn tras_conmutar_el_perfil_se_encuentra_el_sink_nuevo_por_su_card() {
+        // Es el paso central de `set_audio_output` con card+profile: conmutado
+        // el perfil, el sink HDMI ya existe y se lo ubica por `device.name`.
+        let sinks = parse_sinks(SINKS_TRAS_CONMUTAR, None);
+        let sink = find_card_sink(&sinks, "alsa_card.pci-0000_01_00.1")
+            .expect("el sink HDMI aparece tras conmutar el perfil");
+        // `set-default-sink` recibe el `Name` del sink, que queda en `description`.
+        assert_eq!(sink.description, "alsa_output.pci-0000_01_00.1.hdmi-stereo");
+    }
+
+    #[test]
+    fn sin_sink_para_la_card_no_se_inventa_ninguno() {
+        // Si tras conmutar no apareció ningún sink de esa placa, no se casa con
+        // el de otra: `set_audio_output` devuelve NotFound en lugar de fijar la
+        // salida equivocada.
+        let sinks = parse_sinks(SINKS_TRAS_CONMUTAR, None);
+        assert!(find_card_sink(&sinks, "alsa_card.pci-9999_99_99.9").is_none());
+    }
 }
