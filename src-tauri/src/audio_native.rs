@@ -15,8 +15,11 @@
 //!    tokio interval loop at 2000ms, used when PipeWire tools are also unavailable.
 
 use crate::audio;
+use crate::audio_input::{metadata_name, parse_audio_props, volume_percent, BatchTracker, PwNode};
 use crate::logger::{log_debug, log_error, log_info};
 use crate::structs::VolumeInfo;
+use serde_json::Value;
+use std::collections::BTreeMap;
 use tokio::sync::{oneshot, watch};
 
 #[cfg(feature = "pipewire-native")]
@@ -381,8 +384,12 @@ impl PwDumpMonitor {
             };
 
             // Un `pw-dump` nuevo vuelve a mandar el volcado entero: lo que se
-            // sabía del micrófono puede estar viejo.
+            // sabía del micrófono y del sink por omisión puede estar viejo.
             crate::audio_input::reset();
+            let mut tracker = OutputTracker::default();
+            // Lo último que se mandó por el canal, para no despertar al applet
+            // cuando un sink ajeno se re-emite sin tocar el por omisión.
+            let mut last_sent: Option<VolumeInfo> = None;
 
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
@@ -409,12 +416,19 @@ impl PwDumpMonitor {
                     // Se lee una sola vez y lo usan el volumen y el perfil de
                     // los dispositivos Bluetooth (`bluetooth_audio_profile`),
                     // que sale del mismo flujo sin sumar procesos.
-                    if let Ok(batch) = serde_json::from_str::<serde_json::Value>(&json_buffer) {
+                    if let Ok(batch) = serde_json::from_str::<Value>(&json_buffer) {
                         crate::bluetooth_audio_profile::ingest(&batch);
                         // Y el micrófono (vasak-desktop#182), del mismo flujo.
                         crate::audio_input::ingest(&batch);
-                        if let Some(volume_info) = Self::parse_volume_from_value(&batch) {
-                            let _ = state_tx.send(volume_info);
+                        // El volumen de salida: sólo el sink por omisión, y sólo
+                        // cuando cambió. Un sink ajeno re-emitido (cambio de
+                        // pestaña, Discord) ya no mueve nada (vasak-desktop#231).
+                        tracker.ingest(&batch);
+                        if let Some(volume_info) = tracker.default_volume() {
+                            if last_sent.as_ref() != Some(&volume_info) {
+                                last_sent = Some(volume_info.clone());
+                                let _ = state_tx.send(volume_info);
+                            }
                         }
                     }
                     json_buffer.clear();
@@ -427,95 +441,122 @@ impl PwDumpMonitor {
             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
         }
     }
+}
 
-    /// Parses pw-dump JSON output to extract volume/mute for the default sink.
-    ///
-    /// pw-dump outputs arrays of PipeWire objects. We look for objects with
-    /// type "PipeWire:Interface:Node" and media.class "Audio/Sink" that have
-    /// volume parameters.
-    fn parse_volume_from_value(value: &serde_json::Value) -> Option<VolumeInfo> {
-        // pw-dump outputs an array of objects
-        let objects = value.as_array()?;
+// ─────────────────────────────────────────────────────────────────────────────
+// OutputTracker - el sink de salida por omisión a través de las tandas de pw-dump
+// ─────────────────────────────────────────────────────────────────────────────
 
-        for obj in objects {
-            // Check if this is a Node with Audio/Sink media class
-            let obj_type = match obj.get("type").and_then(|v| v.as_str()) {
-                Some(t) => t,
-                None => continue,
-            };
-            if obj_type != "PipeWire:Interface:Node" {
-                continue;
-            }
+/// Un sink de salida, tal como llegó en la última tanda.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct SinkNode {
+    name: String,
+    /// El volumen lineal (0.0–1.0, puede pasar de 1), ya sin la escala cúbica.
+    volume: f64,
+    muted: bool,
+}
 
-            let info = match obj.get("info") {
-                Some(i) => i,
-                None => continue,
-            };
-            let props = match info.get("props") {
-                Some(p) => p,
-                None => continue,
-            };
+/// Sigue el sink de salida por omisión a lo largo de las tandas de
+/// `pw-dump --monitor`.
+///
+/// `pw-dump --monitor` manda en cada tanda **sólo lo que cambió**, no el
+/// volcado entero. En un equipo con varios sinks (analógico + HDMI, el monitor
+/// de una salida) PipeWire re-emite un sink que **no** es el por omisión al
+/// cambiar de pestaña o al usar Discord, con su volumen crudo (1.0 = 100 %).
+/// Reportar el primer `Audio/Sink` de cada tanda mostraba ese volumen ajeno
+/// como si fuera el del sistema, y aparecía un OSD de «Volumen: 100 %» espurio
+/// (vasak-desktop#231). Por eso se recuerda el volumen de cada sink y cuál es
+/// el por omisión (`default.audio.sink`, con `default.configured.audio.sink`
+/// de respaldo), y se reporta **sólo** el por omisión. Es el mismo patrón que
+/// `audio_input` usa para el micrófono.
+#[derive(Debug, Default)]
+struct OutputTracker {
+    /// Volumen y silencio de cada `Audio/Sink`, por su id.
+    sinks: BTreeMap<u64, SinkNode>,
+    /// El nombre del sink por omisión.
+    default_sink: Option<String>,
+}
 
-            let media_class = match props.get("media.class").and_then(|v| v.as_str()) {
-                Some(mc) => mc,
-                None => continue,
-            };
-            if media_class != "Audio/Sink" {
-                continue;
-            }
+impl PwNode for SinkNode {
+    fn set_level(&mut self, volume: Option<f64>, muted: Option<bool>) {
+        self.volume = volume.unwrap_or(self.volume);
+        self.muted = muted.unwrap_or(self.muted);
+    }
+}
 
-            // Look for volume parameters in the params section
-            let params = match info.get("params") {
-                Some(p) => p,
-                None => continue,
-            };
+impl BatchTracker for OutputTracker {
+    type Node = SinkNode;
 
-            // Check Props params for volume info
-            if let Some(props_array) = params.get("Props").and_then(|v| v.as_array()) {
-                for prop_entry in props_array {
-                    // Look for channelVolumes and mute in the props
-                    let mute = prop_entry
-                        .get("mute")
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false);
+    fn nodes_mut(&mut self) -> &mut BTreeMap<u64, SinkNode> {
+        &mut self.sinks
+    }
 
-                    if let Some(volumes) =
-                        prop_entry.get("channelVolumes").and_then(|v| v.as_array())
-                    {
-                        // PipeWire volumes are cubic: actual_volume = pw_vol^3
-                        // Convert to percentage: pct = cbrt(pw_vol) * 100
-                        // Actually PipeWire uses linear 0.0..1.0 that maps to the
-                        // cubic scale internally. The raw value is the linear volume.
-                        if let Some(first_vol) = volumes.first().and_then(|v| v.as_f64()) {
-                            // Convert PipeWire linear volume (0.0-1.0+) to percentage
-                            // PipeWire uses cubic scale: percentage = cbrt(linear) * 100
-                            let pct = (first_vol.cbrt() * 100.0).round() as i64;
+    fn parse_node(object: &Value) -> Option<SinkNode> {
+        parse_sink(object)
+    }
 
-                            return Some(VolumeInfo {
-                                current: pct.clamp(0, 150), // Can go above 100%
-                                min: 0,
-                                max: 100,
-                                is_muted: mute,
-                            });
-                        }
-                    }
-
-                    // Alternative: look for volume as a single float
-                    if let Some(vol) = prop_entry.get("volume").and_then(|v| v.as_f64()) {
-                        let pct = (vol.cbrt() * 100.0).round() as i64;
-                        return Some(VolumeInfo {
-                            current: pct.clamp(0, 150),
-                            min: 0,
-                            max: 100,
-                            is_muted: mute,
-                        });
-                    }
+    fn ingest_metadata(&mut self, object: &Value) {
+        let name = object
+            .get("props")
+            .and_then(|props| props.get("metadata.name"))
+            .and_then(Value::as_str);
+        if name != Some("default") {
+            return;
+        }
+        let Some(entries) = object.get("metadata").and_then(Value::as_array) else {
+            return;
+        };
+        for entry in entries {
+            match entry.get("key").and_then(Value::as_str) {
+                // El que eligió WirePlumber; manda sobre el configurado.
+                Some("default.audio.sink") => {
+                    self.default_sink = entry.get("value").and_then(metadata_name);
                 }
+                // De respaldo, por si no viniera el elegido en esta tanda.
+                Some("default.configured.audio.sink") if self.default_sink.is_none() => {
+                    self.default_sink = entry.get("value").and_then(metadata_name);
+                }
+                _ => {}
             }
         }
-
-        None
     }
+}
+
+impl OutputTracker {
+    /// Incorpora una tanda de `pw-dump` (un arreglo de objetos).
+    fn ingest(&mut self, batch: &Value) {
+        self.ingest_batch(batch);
+    }
+
+    /// El volumen y el silencio del sink por omisión, o `None` si todavía no se
+    /// sabe cuál es o no llegó su volumen.
+    fn default_volume(&self) -> Option<VolumeInfo> {
+        let default = self.default_sink.as_deref()?;
+        let node = self.sinks.values().find(|node| node.name == default)?;
+        Some(VolumeInfo {
+            current: volume_percent(node.volume),
+            min: 0,
+            max: 100,
+            is_muted: node.muted,
+        })
+    }
+}
+
+/// Un sink de salida, o `None` si el nodo no es un `Audio/Sink`.
+fn parse_sink(object: &Value) -> Option<SinkNode> {
+    let info = object.get("info")?;
+    let props = info.get("props")?;
+    let class = props.get("media.class").and_then(Value::as_str)?;
+    if class != "Audio/Sink" {
+        return None;
+    }
+    let name = props.get("node.name").and_then(Value::as_str)?.to_string();
+    let (volume, muted) = parse_audio_props(info).unwrap_or((None, None));
+    Some(SinkNode {
+        name,
+        volume: volume.unwrap_or(0.0),
+        muted: muted.unwrap_or(false),
+    })
 }
 
 impl Drop for PwDumpMonitor {
@@ -702,5 +743,160 @@ impl AudioMonitor {
             AudioMonitor::PwDump(_) => "pw-dump",
             AudioMonitor::Pactl(_) => "pactl-polling",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    //! El `OutputTracker`: que siga el sink por omisión a través de las tandas
+    //! incrementales de `pw-dump --monitor` y reporte **sólo** ese, nunca un
+    //! sink ajeno re-emitido (el OSD de «Volumen: 100 %» espurio de
+    //! vasak-desktop#231). Mismo formato de `pw-dump` que las pruebas de
+    //! `audio_input`.
+
+    use super::*;
+    use serde_json::json;
+
+    const SPEAKERS: &str = "alsa_output.pci-0000_00_1f.3.analog-stereo";
+    const HDMI: &str = "alsa_output.pci-0000_01_00.1.hdmi-stereo";
+
+    /// Un `Audio/Sink` como lo manda `pw-dump`. `cubic` es el volumen en la
+    /// escala cúbica de PipeWire (1.0 → 100 %, 0.064 → 40 %, 0.216 → 60 %).
+    fn sink(id: u64, name: &str, cubic: f64, mute: bool) -> Value {
+        json!({
+            "id": id,
+            "type": "PipeWire:Interface:Node",
+            "info": {
+                "props": { "media.class": "Audio/Sink", "node.name": name },
+                "params": {
+                    "Props": [
+                        { "volume": 1.0, "mute": mute, "channelVolumes": [cubic] },
+                        { "params": ["monitor.channel-volumes", false] }
+                    ]
+                }
+            }
+        })
+    }
+
+    /// El `Metadata` `default` con los pares que se le pasen (clave → nombre del
+    /// sink), en ese orden.
+    fn metadata(pairs: &[(&str, &str)]) -> Value {
+        let entries: Vec<Value> = pairs
+            .iter()
+            .map(|(key, name)| {
+                json!({ "subject": 0, "key": key, "type": "Spa:String:JSON",
+                        "value": { "name": name } })
+            })
+            .collect();
+        json!({
+            "id": 39,
+            "type": "PipeWire:Interface:Metadata",
+            "props": { "metadata.name": "default" },
+            "metadata": entries
+        })
+    }
+
+    fn vol(current: i64, muted: bool) -> VolumeInfo {
+        VolumeInfo {
+            current,
+            min: 0,
+            max: 100,
+            is_muted: muted,
+        }
+    }
+
+    /// El volcado inicial: dos sinks —la placa al 40 % (por omisión) y el HDMI
+    /// al 100 % (ajeno)— y el metadato que elige la placa. El HDMI lleva el id
+    /// más alto a propósito: así «el primer/último sink cualquiera» (el bug)
+    /// cae sobre él y se distingue del por omisión.
+    fn tracker_with_default() -> OutputTracker {
+        let mut tracker = OutputTracker::default();
+        tracker.ingest(&json!([
+            sink(40, SPEAKERS, 0.064, false),
+            sink(55, HDMI, 1.0, false),
+            metadata(&[("default.audio.sink", SPEAKERS)]),
+        ]));
+        tracker
+    }
+
+    #[test]
+    fn resuelve_el_sink_por_omision_desde_default_audio_sink() {
+        assert_eq!(
+            tracker_with_default().default_volume(),
+            Some(vol(40, false))
+        );
+    }
+
+    #[test]
+    fn una_tanda_con_un_sink_ajeno_al_100_no_cambia_el_volumen_por_omision() {
+        let mut tracker = tracker_with_default();
+        // `pw-dump --monitor` re-emite SÓLO el sink ajeno (HDMI) a su volumen
+        // crudo (100 %) al cambiar de pestaña o con Discord: eso no es el
+        // volumen del sistema y no debe moverlo (vasak-desktop#231). Es la que
+        // reproduce el «100 % espurio»: el parser viejo devolvía ese sink.
+        tracker.ingest(&json!([sink(55, HDMI, 1.0, false)]));
+        assert_eq!(tracker.default_volume(), Some(vol(40, false)));
+    }
+
+    #[test]
+    fn un_cambio_real_del_sink_por_omision_se_refleja() {
+        let mut tracker = tracker_with_default();
+        // La placa (por omisión) baja a 60 % y se silencia: eso sí se reporta.
+        tracker.ingest(&json!([sink(40, SPEAKERS, 0.216, true)]));
+        assert_eq!(tracker.default_volume(), Some(vol(60, true)));
+    }
+
+    #[test]
+    fn un_cambio_de_nivel_sin_propiedades_actualiza_el_sink_por_omision() {
+        let mut tracker = tracker_with_default();
+        // Una tanda que sólo trae `params` (sin `props`): es una actualización
+        // de volumen de un sink ya conocido, no un nodo nuevo.
+        tracker.ingest(&json!([{
+            "id": 40,
+            "type": "PipeWire:Interface:Node",
+            "info": { "params": { "Props": [{ "mute": false, "channelVolumes": [0.216] }] } }
+        }]));
+        assert_eq!(tracker.default_volume(), Some(vol(60, false)));
+    }
+
+    #[test]
+    fn default_configured_audio_sink_es_el_respaldo_cuando_no_vino_el_elegido() {
+        let mut tracker = OutputTracker::default();
+        tracker.ingest(&json!([
+            sink(40, SPEAKERS, 0.064, false),
+            sink(55, HDMI, 1.0, false),
+            metadata(&[("default.configured.audio.sink", SPEAKERS)]),
+        ]));
+        assert_eq!(tracker.default_volume(), Some(vol(40, false)));
+    }
+
+    #[test]
+    fn el_sink_elegido_manda_sobre_el_configurado() {
+        let mut tracker = OutputTracker::default();
+        // El configurado apunta al HDMI, pero WirePlumber eligió la placa: gana
+        // `default.audio.sink` aunque venga después en la tanda.
+        tracker.ingest(&json!([
+            sink(40, SPEAKERS, 0.064, false),
+            sink(55, HDMI, 1.0, false),
+            metadata(&[
+                ("default.configured.audio.sink", HDMI),
+                ("default.audio.sink", SPEAKERS),
+            ]),
+        ]));
+        assert_eq!(tracker.default_volume(), Some(vol(40, false)));
+    }
+
+    #[test]
+    fn sin_saber_cual_es_el_por_omision_no_hay_volumen() {
+        let mut tracker = OutputTracker::default();
+        tracker.ingest(&json!([sink(55, HDMI, 1.0, false)]));
+        assert_eq!(tracker.default_volume(), None);
+    }
+
+    #[test]
+    fn el_sink_por_omision_que_se_va_deja_de_tener_volumen() {
+        let mut tracker = tracker_with_default();
+        tracker.ingest(&json!([{ "id": 40, "info": null }]));
+        assert_eq!(tracker.default_volume(), None);
     }
 }
