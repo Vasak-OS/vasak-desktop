@@ -178,7 +178,10 @@ impl AudioInputTracker {
 }
 
 /// `{"name": "alsa_input…"}`, o la misma cosa como texto en versiones viejas.
-fn metadata_name(value: &Value) -> Option<String> {
+///
+/// Es parte del formato de `pw-dump`, no algo del micrófono: `audio_native` lo
+/// reusa para el sink por omisión (vasak-desktop#231).
+pub(crate) fn metadata_name(value: &Value) -> Option<String> {
     match value {
         Value::Object(map) => map.get("name").and_then(Value::as_str).map(str::to_string),
         Value::String(text) => serde_json::from_str::<Value>(text)
@@ -189,7 +192,9 @@ fn metadata_name(value: &Value) -> Option<String> {
 }
 
 /// El volumen lineal en porcentaje entero, como el de salida.
-fn volume_percent(linear: f64) -> i64 {
+///
+/// Compartido con `audio_native`: la salida y la entrada usan la misma escala.
+pub(crate) fn volume_percent(linear: f64) -> i64 {
     ((linear * 100.0).round() as i64).clamp(0, 150)
 }
 
@@ -225,7 +230,10 @@ fn parse_source(object: &Value) -> Option<SourceNode> {
 }
 
 /// El volumen lineal y el silencio de `params.Props`, si vinieron.
-fn parse_audio_props(info: &Value) -> Option<(Option<f64>, Option<bool>)> {
+///
+/// Es el formato de `params.Props` de `pw-dump`, igual para fuentes y sinks:
+/// `audio_native` lo reusa para el volumen del sink por omisión.
+pub(crate) fn parse_audio_props(info: &Value) -> Option<(Option<f64>, Option<bool>)> {
     let entry = info
         .get("params")?
         .get("Props")?

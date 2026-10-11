@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.65.2",
+	"version": "1.65.3",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -23,8 +23,8 @@
 		"@tauri-apps/plugin-fs": "^2.7.0",
 		"@tauri-apps/plugin-opener": "^2.7.1",
 		"@tauri-apps/plugin-shell": "^2.5.0",
-		"@vasakgroup/plugin-bluetooth-manager": "^2.2.1",
-		"@vasakgroup/plugin-config-manager": "^2.11.0",
+		"@vasakgroup/plugin-bluetooth-manager": "^2.3.1",
+		"@vasakgroup/plugin-config-manager": "^2.12.1",
 		"@vasakgroup/plugin-display-manager": "^2.0.0",
 		"@vasakgroup/plugin-network-manager": "^2.2.1",
 		"@vasakgroup/plugin-power-profiles": "^2.0.0",
@@ -33,7 +33,7 @@
 		"@vasakgroup/plugin-vsk-contextual-menu": "^2.0.3",
 		"@vasakgroup/plugin-vsk-journal": "^2.0.1",
 		"@vasakgroup/tauri-plugin-i18n": "^2.3.1",
-		"@vasakgroup/vue-libvasak": "^2.17.0",
+		"@vasakgroup/vue-libvasak": "^2.18.0",
 		"pinia": "^3.0.4",
 		"vue": "^3.5.43",
 		"vue-router": "^5.4.0"
@@ -42,7 +42,7 @@
 		"@biomejs/biome": "^2.5.15",
 		"@happy-dom/global-registrator": "^20.14.6",
 		"@tailwindcss/postcss": "^4.3.3",
-		"@tauri-apps/cli": "^2.12.1",
+		"@tauri-apps/cli": "^2.12.2",
 		"@types/node": "^26.6.5",
 		"@vitejs/plugin-vue": "^6.0.10",
 		"@vue/test-utils": "^2.5.1",

@@ -15,8 +15,11 @@
 //!    tokio interval loop at 2000ms, used when PipeWire tools are also unavailable.
 
 use crate::audio;
+use crate::audio_input::{metadata_name, parse_audio_props, volume_percent};
 use crate::logger::{log_debug, log_error, log_info};
 use crate::structs::VolumeInfo;
+use serde_json::Value;
+use std::collections::BTreeMap;
 use tokio::sync::{oneshot, watch};
 
 #[cfg(feature = "pipewire-native")]
@@ -381,8 +384,12 @@ impl PwDumpMonitor {
             };
 
             // Un `pw-dump` nuevo vuelve a mandar el volcado entero: lo que se
-            // sabía del micrófono puede estar viejo.
+            // sabía del micrófono y del sink por omisión puede estar viejo.
             crate::audio_input::reset();
+            let mut tracker = OutputTracker::default();
+            // Lo último que se mandó por el canal, para no despertar al applet
+            // cuando un sink ajeno se re-emite sin tocar el por omisión.
+            let mut last_sent: Option<VolumeInfo> = None;
 
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
@@ -409,12 +416,19 @@ impl PwDumpMonitor {
                     // Se lee una sola vez y lo usan el volumen y el perfil de
                     // los dispositivos Bluetooth (`bluetooth_audio_profile`),
                     // que sale del mismo flujo sin sumar procesos.
-                    if let Ok(batch) = serde_json::from_str::<serde_json::Value>(&json_buffer) {
+                    if let Ok(batch) = serde_json::from_str::<Value>(&json_buffer) {
                         crate::bluetooth_audio_profile::ingest(&batch);
                         // Y el micrófono (vasak-desktop#182), del mismo flujo.
                         crate::audio_input::ingest(&batch);
-                        if let Some(volume_info) = Self::parse_volume_from_value(&batch) {
-                            let _ = state_tx.send(volume_info);
+                        // El volumen de salida: sólo el sink por omisión, y sólo
+                        // cuando cambió. Un sink ajeno re-emitido (cambio de
+                        // pestaña, Discord) ya no mueve nada (vasak-desktop#231).
+                        tracker.ingest(&batch);
+                        if let Some(volume_info) = tracker.default_volume() {
+                            if last_sent.as_ref() != Some(&volume_info) {
+                                last_sent = Some(volume_info.clone());
+                                let _ = state_tx.send(volume_info);
+                            }
                         }
                     }
                     json_buffer.clear();
@@ -427,95 +441,146 @@ impl PwDumpMonitor {
             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
         }
     }
+}
 
-    /// Parses pw-dump JSON output to extract volume/mute for the default sink.
-    ///
-    /// pw-dump outputs arrays of PipeWire objects. We look for objects with
-    /// type "PipeWire:Interface:Node" and media.class "Audio/Sink" that have
-    /// volume parameters.
-    fn parse_volume_from_value(value: &serde_json::Value) -> Option<VolumeInfo> {
-        // pw-dump outputs an array of objects
-        let objects = value.as_array()?;
+// ─────────────────────────────────────────────────────────────────────────────
+// OutputTracker - el sink de salida por omisión a través de las tandas de pw-dump
+// ─────────────────────────────────────────────────────────────────────────────
 
-        for obj in objects {
-            // Check if this is a Node with Audio/Sink media class
-            let obj_type = match obj.get("type").and_then(|v| v.as_str()) {
-                Some(t) => t,
-                None => continue,
+/// Un sink de salida, tal como llegó en la última tanda.
+#[derive(Debug, Clone, PartialEq)]
+struct SinkNode {
+    name: String,
+    /// El volumen lineal (0.0–1.0, puede pasar de 1), ya sin la escala cúbica.
+    volume: f64,
+    muted: bool,
+}
+
+/// Sigue el sink de salida por omisión a lo largo de las tandas de
+/// `pw-dump --monitor`.
+///
+/// `pw-dump --monitor` manda en cada tanda **sólo lo que cambió**, no el
+/// volcado entero. En un equipo con varios sinks (analógico + HDMI, el monitor
+/// de una salida) PipeWire re-emite un sink que **no** es el por omisión al
+/// cambiar de pestaña o al usar Discord, con su volumen crudo (1.0 = 100 %).
+/// Reportar el primer `Audio/Sink` de cada tanda mostraba ese volumen ajeno
+/// como si fuera el del sistema, y aparecía un OSD de «Volumen: 100 %» espurio
+/// (vasak-desktop#231). Por eso se recuerda el volumen de cada sink y cuál es
+/// el por omisión (`default.audio.sink`, con `default.configured.audio.sink`
+/// de respaldo), y se reporta **sólo** el por omisión. Es el mismo patrón que
+/// `audio_input` usa para el micrófono.
+#[derive(Debug, Default)]
+struct OutputTracker {
+    /// Volumen y silencio de cada `Audio/Sink`, por su id.
+    sinks: BTreeMap<u64, SinkNode>,
+    /// El nombre del sink por omisión.
+    default_sink: Option<String>,
+}
+
+impl OutputTracker {
+    /// Incorpora una tanda de `pw-dump` (un arreglo de objetos).
+    fn ingest(&mut self, batch: &Value) {
+        let Some(objects) = batch.as_array() else {
+            return;
+        };
+        for object in objects {
+            let Some(id) = object.get("id").and_then(Value::as_u64) else {
+                continue;
             };
-            if obj_type != "PipeWire:Interface:Node" {
+            // Un objeto que se va: `{"id": N, "info": null}`. Los metadatos no
+            // traen `info`, así que la ausencia sola no alcanza.
+            if object.get("info").is_some_and(Value::is_null) {
+                self.sinks.remove(&id);
                 continue;
             }
-
-            let info = match obj.get("info") {
-                Some(i) => i,
-                None => continue,
-            };
-            let props = match info.get("props") {
-                Some(p) => p,
-                None => continue,
-            };
-
-            let media_class = match props.get("media.class").and_then(|v| v.as_str()) {
-                Some(mc) => mc,
-                None => continue,
-            };
-            if media_class != "Audio/Sink" {
-                continue;
-            }
-
-            // Look for volume parameters in the params section
-            let params = match info.get("params") {
-                Some(p) => p,
-                None => continue,
-            };
-
-            // Check Props params for volume info
-            if let Some(props_array) = params.get("Props").and_then(|v| v.as_array()) {
-                for prop_entry in props_array {
-                    // Look for channelVolumes and mute in the props
-                    let mute = prop_entry
-                        .get("mute")
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false);
-
-                    if let Some(volumes) =
-                        prop_entry.get("channelVolumes").and_then(|v| v.as_array())
-                    {
-                        // PipeWire volumes are cubic: actual_volume = pw_vol^3
-                        // Convert to percentage: pct = cbrt(pw_vol) * 100
-                        // Actually PipeWire uses linear 0.0..1.0 that maps to the
-                        // cubic scale internally. The raw value is the linear volume.
-                        if let Some(first_vol) = volumes.first().and_then(|v| v.as_f64()) {
-                            // Convert PipeWire linear volume (0.0-1.0+) to percentage
-                            // PipeWire uses cubic scale: percentage = cbrt(linear) * 100
-                            let pct = (first_vol.cbrt() * 100.0).round() as i64;
-
-                            return Some(VolumeInfo {
-                                current: pct.clamp(0, 150), // Can go above 100%
-                                min: 0,
-                                max: 100,
-                                is_muted: mute,
-                            });
-                        }
-                    }
-
-                    // Alternative: look for volume as a single float
-                    if let Some(vol) = prop_entry.get("volume").and_then(|v| v.as_f64()) {
-                        let pct = (vol.cbrt() * 100.0).round() as i64;
-                        return Some(VolumeInfo {
-                            current: pct.clamp(0, 150),
-                            min: 0,
-                            max: 100,
-                            is_muted: mute,
-                        });
-                    }
-                }
+            match object.get("type").and_then(Value::as_str) {
+                Some("PipeWire:Interface:Node") => self.ingest_node(id, object),
+                Some("PipeWire:Interface:Metadata") => self.ingest_metadata(object),
+                _ => {}
             }
         }
-
-        None
     }
+
+    fn ingest_node(&mut self, id: u64, object: &Value) {
+        let info = object.get("info");
+        // Un cambio que no trae las propiedades (sólo `params`) no dice qué
+        // clase de nodo es: se actualiza el volumen/silencio de un sink ya
+        // conocido, sin borrarlo ni incorporar uno nuevo.
+        if info.and_then(|info| info.get("props")).is_none() {
+            if let (Some(node), Some((volume, muted))) =
+                (self.sinks.get_mut(&id), info.and_then(parse_audio_props))
+            {
+                node.volume = volume.unwrap_or(node.volume);
+                node.muted = muted.unwrap_or(node.muted);
+            }
+            return;
+        }
+        match parse_sink(object) {
+            Some(node) => {
+                self.sinks.insert(id, node);
+            }
+            // Un nodo que dejó de ser un sink de salida.
+            None => {
+                self.sinks.remove(&id);
+            }
+        }
+    }
+
+    fn ingest_metadata(&mut self, object: &Value) {
+        let name = object
+            .get("props")
+            .and_then(|props| props.get("metadata.name"))
+            .and_then(Value::as_str);
+        if name != Some("default") {
+            return;
+        }
+        let Some(entries) = object.get("metadata").and_then(Value::as_array) else {
+            return;
+        };
+        for entry in entries {
+            match entry.get("key").and_then(Value::as_str) {
+                // El que eligió WirePlumber; manda sobre el configurado.
+                Some("default.audio.sink") => {
+                    self.default_sink = entry.get("value").and_then(metadata_name);
+                }
+                // De respaldo, por si no viniera el elegido en esta tanda.
+                Some("default.configured.audio.sink") if self.default_sink.is_none() => {
+                    self.default_sink = entry.get("value").and_then(metadata_name);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// El volumen y el silencio del sink por omisión, o `None` si todavía no se
+    /// sabe cuál es o no llegó su volumen.
+    fn default_volume(&self) -> Option<VolumeInfo> {
+        let default = self.default_sink.as_deref()?;
+        let node = self.sinks.values().find(|node| node.name == default)?;
+        Some(VolumeInfo {
+            current: volume_percent(node.volume),
+            min: 0,
+            max: 100,
+            is_muted: node.muted,
+        })
+    }
+}
+
+/// Un sink de salida, o `None` si el nodo no es un `Audio/Sink`.
+fn parse_sink(object: &Value) -> Option<SinkNode> {
+    let info = object.get("info")?;
+    let props = info.get("props")?;
+    let class = props.get("media.class").and_then(Value::as_str)?;
+    if class != "Audio/Sink" {
+        return None;
+    }
+    let name = props.get("node.name").and_then(Value::as_str)?.to_string();
+    let (volume, muted) = parse_audio_props(info).unwrap_or((None, None));
+    Some(SinkNode {
+        name,
+        volume: volume.unwrap_or(0.0),
+        muted: muted.unwrap_or(false),
+    })
 }
 
 impl Drop for PwDumpMonitor {
