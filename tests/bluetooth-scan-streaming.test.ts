@@ -97,6 +97,15 @@ describe('el botón «Buscar» de la vista radial sigue arrancando el escaneo', 
 });
 
 describe('los `device-added` suman en vivo mientras el escaneo está abierto', () => {
+	test('el applet sigue suscrito a `bluetooth-change` y lo enruta a `applyBluetoothChange`', () => {
+		// El escaneo abierto no sirve de nada si el applet deja de escuchar el
+		// evento: sin esta suscripción —y sin que el manejador reenvíe al
+		// controlador— los `device-added` del streaming nunca llegan a la lista,
+		// y el agregado en vivo que se prueba abajo quedaría colgado del vacío.
+		expect(AREA).toContain("useSharedEvent('bluetooth-change', handleBluetoothChange)");
+		expect(AREA).toMatch(/const handleBluetoothChange = async[\s\S]*?applyBluetoothChange\(/);
+	});
+
 	const state = (): BluetoothStateRefs => ({
 		availableDevices: ref<any[]>([]),
 		connectedDevices: ref<any[]>([]),
