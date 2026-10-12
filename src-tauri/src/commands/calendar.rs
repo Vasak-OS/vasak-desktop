@@ -305,6 +305,95 @@ async fn session(app: &AppHandle) -> Option<Connection> {
     app.try_state::<DbusPool>()?.session().await
 }
 
+/// El evento que reciben las ventanas cuando cambió lo guardado del
+/// calendario: el tablero del panel, el centro de control y cualquier widget
+/// que lea por `calendar.service.ts`. Sin datos: quien lo recibe relee su rango.
+pub const CHANGED_EVENT: &str = "calendar-changed";
+
+/// Cuánto se juntan las señales antes de avisar. Una vuelta del sincronizador
+/// escribe de a lotes y manda un `Changed` por lote; las ventanas releen una
+/// vez por vuelta, no una por lote.
+const CHANGE_SETTLE: Duration = Duration::from_millis(500);
+
+/// Cuánto se espera para volver a escuchar si el bus se cortó.
+const WATCH_RETRY: Duration = Duration::from_secs(15);
+
+/// La regla de la señal que interesa: `Changed` del almacén, sólo del área del
+/// calendario. El bus filtra por el primer argumento, así que un lote de correo
+/// o de contactos no despierta al escritorio.
+pub(crate) fn changed_rule() -> zbus::Result<zbus::MatchRule<'static>> {
+    Ok(zbus::MatchRule::builder()
+        .msg_type(zbus::message::Type::Signal)
+        // Sólo del dueño del nombre del sincronizador y de su objeto: cualquier
+        // proceso de la sesión puede emitir una señal con esta interfaz.
+        .sender(BUS_NAME)?
+        .path(PATH)?
+        .interface(INTERFACE)?
+        .member("Changed")?
+        .arg(0, "calendar")?
+        .build())
+}
+
+/// Avisa con `notify` una vez por tanda de `changes`: después de la primera
+/// señal espera `settle`, y lo que llegó mientras tanto entra en el mismo
+/// aviso. Una señal que llega con error no despierta a nadie. Termina cuando
+/// termina el flujo.
+pub(crate) async fn coalesce_changes<S, T, E>(
+    changes: &mut S,
+    settle: Duration,
+    mut notify: impl FnMut(),
+) where
+    S: futures_util::Stream<Item = Result<T, E>> + Unpin,
+{
+    use futures_util::{FutureExt, StreamExt};
+
+    while let Some(change) = changes.next().await {
+        if change.is_err() {
+            continue;
+        }
+        tokio::time::sleep(settle).await;
+        // Lo que llegó mientras tanto entra en este aviso.
+        while let Some(Some(_)) = changes.next().now_or_never() {}
+        notify();
+    }
+}
+
+/// Pasa a las ventanas cada cambio del calendario guardado, como
+/// [`CHANGED_EVENT`]. Vive toda la sesión y se rearma si el bus se corta.
+pub fn watch_changes(app: AppHandle) {
+    use tauri::Emitter;
+
+    tauri::async_runtime::spawn(async move {
+        loop {
+            // Con reintento de verdad: si el bus de sesión no estaba al
+            // arrancar, `session()` no lo vuelve a buscar nunca.
+            let connection = match app.try_state::<DbusPool>() {
+                Some(pool) => pool.session_or_connect().await,
+                None => None,
+            };
+            if let Some(connection) = connection {
+                match changed_rule() {
+                    Ok(rule) => {
+                        match zbus::MessageStream::for_match_rule(rule, &connection, None).await {
+                            Ok(mut changes) => {
+                                coalesce_changes(&mut changes, CHANGE_SETTLE, || {
+                                    let _ = app.emit(CHANGED_EVENT, ());
+                                })
+                                .await;
+                            }
+                            Err(e) => log_info(&format!(
+                                "[calendar] no se pueden escuchar los cambios del almacén: {e}"
+                            )),
+                        }
+                    }
+                    Err(e) => log_info(&format!("[calendar] regla inválida: {e}")),
+                }
+            }
+            tokio::time::sleep(WATCH_RETRY).await;
+        }
+    });
+}
+
 /// Las veces de los eventos que caen en `[from, to)`, en RFC 3339.
 #[tauri::command]
 pub async fn calendar_occurrences(app: AppHandle, from: String, to: String) -> CalendarReply {
@@ -541,5 +630,194 @@ mod tests {
     #[test]
     fn la_espera_le_gana_al_dialogo_de_permiso() {
         assert!(CALL_TIMEOUT > Duration::from_secs(120));
+    }
+
+    // ── Los cambios del almacén ─────────────────────────────────────────────
+
+    /// Un par de conexiones de punta a punta: la del escritorio y la del
+    /// almacén, que es la que emite las señales.
+    async fn pair() -> (Connection, Connection) {
+        let guid = Guid::generate();
+        let (client, server) = UnixStream::pair().unwrap();
+        let server = connection::Builder::unix_stream(server)
+            .server(guid)
+            .unwrap()
+            .p2p()
+            .build();
+        let client = connection::Builder::unix_stream(client).p2p().build();
+        futures_util::try_join!(client, server).unwrap()
+    }
+
+    fn changed(area: &str) -> zbus::Message {
+        zbus::Message::signal(PATH, INTERFACE, "Changed")
+            .unwrap()
+            .build(&(area, "cuenta", 7u64))
+            .unwrap()
+    }
+
+    /// Cualquier proceso de la sesión puede emitir una señal con la interfaz
+    /// del almacén: sólo cuenta la del dueño del nombre del sincronizador, y
+    /// desde su objeto.
+    #[test]
+    fn solo_cuenta_el_changed_del_sincronizador_y_de_su_objeto() {
+        let rule = changed_rule().unwrap().to_string();
+        for part in [
+            "sender='ar.net.vasak.os.AccountsSync'",
+            "path='/ar/net/vasak/os/AccountsStore'",
+        ] {
+            assert!(rule.contains(part), "falta {part} en {rule}");
+        }
+    }
+
+    #[test]
+    fn la_regla_deja_pasar_solo_el_changed_del_calendario() {
+        let rule = changed_rule().unwrap();
+        assert!(rule.matches(&changed("calendar")).unwrap());
+        assert!(!rule.matches(&changed("email")).unwrap());
+        assert!(!rule.matches(&changed("contacts")).unwrap());
+        let status = zbus::Message::signal(PATH, INTERFACE, "StatusChanged")
+            .unwrap()
+            .build(&())
+            .unwrap();
+        assert!(!rule.matches(&status).unwrap());
+        // El mismo `Changed` de otra interfaz tampoco.
+        let other = zbus::Message::signal(PATH, "org.example.Otro", "Changed")
+            .unwrap()
+            .build(&("calendar", "cuenta", 7u64))
+            .unwrap();
+        assert!(!rule.matches(&other).unwrap());
+    }
+
+    #[tokio::test]
+    async fn por_el_bus_llega_el_cambio_del_calendario_y_no_los_de_otras_areas() {
+        use futures_util::StreamExt;
+
+        let (desktop, store) = pair().await;
+        let mut changes =
+            zbus::MessageStream::for_match_rule(changed_rule().unwrap(), &desktop, None)
+                .await
+                .unwrap();
+
+        let emit = |member: &'static str, area: Option<(&'static str, u64)>| {
+            let store = store.clone();
+            async move {
+                match area {
+                    Some((area, generation)) => store
+                        .emit_signal(
+                            None::<()>,
+                            PATH,
+                            INTERFACE,
+                            member,
+                            &(area, "cuenta", generation),
+                        )
+                        .await
+                        .unwrap(),
+                    None => store
+                        .emit_signal(None::<()>, PATH, INTERFACE, member, &())
+                        .await
+                        .unwrap(),
+                }
+            }
+        };
+        emit("Changed", Some(("email", 1))).await;
+        emit("Changed", Some(("contacts", 2))).await;
+        emit("StatusChanged", None).await;
+        emit("Changed", Some(("calendar", 3))).await;
+
+        // Las señales llegan en orden: si alguna de las otras pasara el
+        // filtro, llegaría antes que la del calendario.
+        let first = tokio::time::timeout(Duration::from_secs(5), changes.next())
+            .await
+            .expect("la señal del calendario no llegó")
+            .unwrap()
+            .unwrap();
+        let (area, _account, generation): (String, String, u64) =
+            first.body().deserialize().unwrap();
+        assert_eq!((area.as_str(), generation), ("calendar", 3));
+    }
+
+    /// Un flujo de señales que la prueba alimenta a mano.
+    fn feed() -> (
+        tokio::sync::mpsc::UnboundedSender<Result<(), ()>>,
+        impl futures_util::Stream<Item = Result<(), ()>> + Unpin,
+    ) {
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        (
+            tx,
+            futures_util::stream::poll_fn(move |cx| rx.poll_recv(cx)),
+        )
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn una_rafaga_de_senales_es_un_solo_aviso() {
+        let (tx, mut changes) = feed();
+        let (notified, mut notices) = tokio::sync::mpsc::unbounded_channel();
+        let watcher = tokio::spawn(async move {
+            coalesce_changes(&mut changes, CHANGE_SETTLE, || {
+                notified.send(tokio::time::Instant::now()).unwrap()
+            })
+            .await
+        });
+        let start = tokio::time::Instant::now();
+
+        // Un lote, y otros dos mientras el primero todavía se asienta.
+        tx.send(Ok(())).unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        tx.send(Ok(())).unwrap();
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        tx.send(Ok(())).unwrap();
+
+        let at = notices.recv().await.unwrap();
+        assert!(
+            at - start >= CHANGE_SETTLE,
+            "avisó antes de juntar la tanda"
+        );
+        drop(tx);
+        watcher.await.unwrap();
+        assert!(
+            notices.try_recv().is_err(),
+            "tres señales de una vuelta, más de un aviso"
+        );
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn dos_rafagas_separadas_son_dos_avisos() {
+        let (tx, mut changes) = feed();
+        let (notified, mut notices) = tokio::sync::mpsc::unbounded_channel();
+        let watcher = tokio::spawn(async move {
+            coalesce_changes(&mut changes, CHANGE_SETTLE, || notified.send(()).unwrap()).await
+        });
+
+        tx.send(Ok(())).unwrap();
+        tx.send(Ok(())).unwrap();
+        notices.recv().await.unwrap();
+        // Lo que llega después del aviso es otra vuelta: no se pierde.
+        tx.send(Ok(())).unwrap();
+        tx.send(Ok(())).unwrap();
+        notices.recv().await.unwrap();
+        drop(tx);
+        watcher.await.unwrap();
+        assert!(notices.try_recv().is_err());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn una_senal_con_error_no_despierta_a_nadie() {
+        let (tx, mut changes) = feed();
+        let mut notices = 0;
+        tx.send(Err(())).unwrap();
+        tx.send(Err(())).unwrap();
+        drop(tx);
+        coalesce_changes(&mut changes, CHANGE_SETTLE, || notices += 1).await;
+        assert_eq!(notices, 0);
+    }
+
+    #[test]
+    fn el_evento_es_el_que_escuchan_las_ventanas() {
+        // `CALENDAR_CHANGED` de `calendar.service.ts`: si uno cambia y el otro
+        // no, nadie se entera de lo nuevo.
+        let service = include_str!("../../../src/services/calendar.service.ts");
+        assert!(service.contains(&format!(
+            "export const CALENDAR_CHANGED = '{CHANGED_EVENT}';"
+        )));
     }
 }

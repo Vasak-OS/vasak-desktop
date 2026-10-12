@@ -22,9 +22,10 @@ import {
 	toIsoDate,
 } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
-import { calendarOccurrences } from '@/services/calendar.service';
+import { CALENDAR_CHANGED, calendarOccurrences } from '@/services/calendar.service';
 import { localeTag, marksFromReply, weekStartFor } from '@/tools/calendar-sheet';
 import { gridRange } from '@/tools/date-board';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 const emit = defineEmits<{ back: [] }>();
@@ -71,6 +72,9 @@ onMounted(() => {
 	backButton.value?.querySelector('button')?.focus();
 	void loadMarks();
 });
+
+// Lo nuevo que trae el sincronizador: se vuelven a marcar los días del mes.
+useSharedEvent(CALENDAR_CHANGED, () => void loadMarks());
 </script>
 
 <template>

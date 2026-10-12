@@ -31,6 +31,8 @@ export const calendar = {
 	},
 };
 
+export const CALENDAR_CHANGED = 'calendar-changed';
+
 export async function calendarOccurrences(from: string, to: string): Promise<CalendarReply> {
 	calendar.calls.push({ from, to });
 	const answer = calendar.answer;

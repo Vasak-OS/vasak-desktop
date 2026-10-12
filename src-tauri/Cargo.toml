@@ -1,6 +1,6 @@
 [package]
 name = "vasak-desktop"
-version = "1.65.7"
+version = "1.66.0"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -93,6 +93,9 @@ proptest = "1"
 # lado de un par de sockets (`commands/calendar.rs`), sin tocar el bus de la
 # sesión. El binario no lo necesita.
 zbus = { version = "4", default-features = false, features = ["async-io", "p2p"] }
+# Sólo en las pruebas: el reloj de tokio en pausa, para probar cómo se juntan
+# las señales del calendario (`coalesce_changes`) sin esperar de verdad.
+tokio = { version = "1.0", features = ["test-util"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-positioner = { version = "2", features = ["tray-icon"] }

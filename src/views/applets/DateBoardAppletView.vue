@@ -24,6 +24,7 @@ import {
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import {
+	CALENDAR_CHANGED,
 	type CalendarOccurrence,
 	type CalendarReply,
 	calendarLocations,
@@ -43,6 +44,7 @@ import {
 	weatherIcon,
 	weatherRings,
 } from '@/tools/date-board';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 /**
@@ -188,7 +190,11 @@ async function loadEvents(): Promise<void> {
 }
 
 /** El lugar sólo de los eventos del día que se ve: cada uno es una llamada. */
+/** La tanda de lugares vigente: una respuesta de antes de un cambio no pisa la nueva. */
+let locationsRequest = 0;
+
 async function loadLocations(): Promise<void> {
+	const mine = locationsRequest;
 	const byKey = new Map(
 		occurrences.value.map((occurrence) => [occurrenceKey(occurrence), occurrence])
 	);
@@ -199,6 +205,7 @@ async function loadLocations(): Promise<void> {
 	if (missing.length === 0) return;
 	try {
 		const found = await calendarLocations(missing);
+		if (mine !== locationsRequest) return;
 		const next = { ...locations.value };
 		missing.forEach((occurrence, index) => {
 			next[occurrenceKey(occurrence)] = found[index] ?? '';
@@ -242,6 +249,14 @@ function onShown(): void {
 }
 
 onMounted(() => void loadEvents());
+
+// Lo nuevo que trae el sincronizador: se relee el mes a la vista, y los lugares
+// se vuelven a pedir porque un evento pudo cambiar el suyo.
+useSharedEvent(CALENDAR_CHANGED, () => {
+	locationsRequest += 1;
+	locations.value = {};
+	void loadEvents();
+});
 </script>
 
 <template>
