@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.65.6",
+	"version": "1.65.7",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -23,10 +23,10 @@
 		"@tauri-apps/plugin-fs": "^2.7.0",
 		"@tauri-apps/plugin-opener": "^2.7.1",
 		"@tauri-apps/plugin-shell": "^2.5.0",
-		"@vasakgroup/plugin-bluetooth-manager": "^2.3.1",
+		"@vasakgroup/plugin-bluetooth-manager": "^2.3.2",
 		"@vasakgroup/plugin-config-manager": "^2.12.1",
 		"@vasakgroup/plugin-display-manager": "^2.0.0",
-		"@vasakgroup/plugin-network-manager": "^2.2.1",
+		"@vasakgroup/plugin-network-manager": "^2.2.2",
 		"@vasakgroup/plugin-power-profiles": "^2.0.0",
 		"@vasakgroup/plugin-user-data": "^2.1.1",
 		"@vasakgroup/plugin-vicons": "^2.2.2",
