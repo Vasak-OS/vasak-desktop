@@ -367,39 +367,35 @@ pub fn watch_changes(app: AppHandle) {
         loop {
             // Con reintento de verdad: si el bus de sesión no estaba al
             // arrancar, `session()` no lo vuelve a buscar nunca.
-            let pool = app.try_state::<DbusPool>();
-            let connection = match &pool {
-                Some(pool) => pool.session_or_connect().await,
-                None => None,
-            };
-            if let Some(connection) = connection {
-                match changed_rule() {
-                    Ok(rule) => {
-                        match zbus::MessageStream::for_match_rule(rule, &connection, None).await {
-                            Ok(mut changes) => {
-                                coalesce_changes(&mut changes, CHANGE_SETTLE, || {
-                                    let _ = app.emit(CHANGED_EVENT, ());
-                                })
-                                .await;
-                            }
-                            Err(e) => log_info(&format!(
-                                "[calendar] no se pueden escuchar los cambios del almacén: {e}"
-                            )),
-                        }
-                    }
-                    Err(e) => log_info(&format!("[calendar] regla inválida: {e}")),
-                }
-                // Si se llegó acá, la escucha terminó o no se pudo armar: lo
-                // normal es que la conexión se haya cortado. Se suelta, y la
-                // vuelta siguiente abre otra en vez de reintentar sobre la
-                // misma para siempre.
-                if let Some(pool) = &pool {
-                    pool.forget_session(&connection).await;
+            if let Some(pool) = app.try_state::<DbusPool>() {
+                if let Some(connection) = pool.session_or_connect().await {
+                    listen_changes(&pool, connection, || {
+                        let _ = app.emit(CHANGED_EVENT, ());
+                    })
+                    .await;
                 }
             }
             tokio::time::sleep(WATCH_RETRY).await;
         }
     });
+}
+
+/// Una vuelta de [`watch_changes`]: escucha los cambios en `connection` hasta
+/// que la escucha termina, y entonces suelta la conexión del pool.
+pub(crate) async fn listen_changes(pool: &DbusPool, connection: Connection, notify: impl FnMut()) {
+    match changed_rule() {
+        Ok(rule) => match zbus::MessageStream::for_match_rule(rule, &connection, None).await {
+            Ok(mut changes) => coalesce_changes(&mut changes, CHANGE_SETTLE, notify).await,
+            Err(e) => log_info(&format!(
+                "[calendar] no se pueden escuchar los cambios del almacén: {e}"
+            )),
+        },
+        Err(e) => log_info(&format!("[calendar] regla inválida: {e}")),
+    }
+    // Si se llegó acá, la escucha terminó o no se pudo armar: lo normal es que
+    // la conexión se haya cortado. Se suelta, y la vuelta siguiente abre otra
+    // en vez de reintentar sobre la misma para siempre.
+    pool.forget_session(&connection).await;
 }
 
 /// Las veces de los eventos que caen en `[from, to)`, en RFC 3339.
@@ -817,6 +813,41 @@ mod tests {
         drop(tx);
         coalesce_changes(&mut changes, CHANGE_SETTLE, || notices += 1).await;
         assert_eq!(notices, 0);
+    }
+
+    /// Cuando el otro lado corta, la escucha termina y suelta la conexión del
+    /// pool: la vuelta siguiente de `watch_changes` abre otra en vez de volver
+    /// a suscribirse para siempre sobre una muerta.
+    #[tokio::test]
+    async fn la_escucha_cortada_suelta_la_conexion_del_pool() {
+        let guid = Guid::generate();
+        let (client, server) = UnixStream::pair().unwrap();
+        let server = connection::Builder::unix_stream(server)
+            .server(guid)
+            .unwrap()
+            .p2p()
+            .build();
+        let client = connection::Builder::unix_stream(client).p2p().build();
+        let (client, server) = futures_util::try_join!(client, server).unwrap();
+
+        let pool = Arc::new(DbusPool::with_session(Some(client.clone())));
+        let listening = {
+            let pool = Arc::clone(&pool);
+            tokio::spawn(async move { listen_changes(&pool, client, || {}).await })
+        };
+        // Mientras escucha, la conexión sigue en el pool.
+        tokio::task::yield_now().await;
+        assert!(pool.session().await.is_some());
+
+        drop(server);
+        tokio::time::timeout(Duration::from_secs(5), listening)
+            .await
+            .expect("la escucha no terminó al cortarse la conexión")
+            .unwrap();
+        assert!(
+            pool.session().await.is_none(),
+            "la conexión cortada quedó en el pool"
+        );
     }
 
     #[test]
