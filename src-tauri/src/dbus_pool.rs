@@ -46,6 +46,16 @@ impl DbusPool {
         }
     }
 
+    /// Un pool con la conexión de sesión que se le da y sin bus del sistema:
+    /// para las pruebas de quienes lo usan, sin abrir ningún bus de verdad.
+    #[cfg(test)]
+    pub(crate) fn with_session(session: Option<Connection>) -> Self {
+        Self {
+            session: Arc::new(RwLock::new(session)),
+            system: Arc::new(RwLock::new(None)),
+        }
+    }
+
     /// Get a clone of the shared session bus connection.
     pub async fn session(&self) -> Option<Connection> {
         self.session.read().await.clone()
@@ -55,12 +65,22 @@ impl DbusPool {
     /// la intenta abrir y la deja guardada. Es para quien espera en bucle a que
     /// el bus aparezca: con `session()` esperaría para siempre.
     pub async fn session_or_connect(&self) -> Option<Connection> {
+        self.session_or_connect_with(|| Connection::session()).await
+    }
+
+    /// [`Self::session_or_connect`] con la forma de conectar como parámetro:
+    /// es lo que deja probar el reintento sin tocar el entorno del proceso.
+    async fn session_or_connect_with<F, Fut>(&self, connect: F) -> Option<Connection>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = zbus::Result<Connection>>,
+    {
         if let Some(connection) = self.session().await {
             return Some(connection);
         }
         let mut slot = self.session.write().await;
         if slot.is_none() {
-            match Connection::session().await {
+            match connect().await {
                 Ok(connection) => {
                     logger::log_info("DbusPool: conexión session establecida al reintentar");
                     *slot = Some(connection);
@@ -69,6 +89,22 @@ impl DbusPool {
             }
         }
         slot.clone()
+    }
+
+    /// Suelta la conexión de sesión guardada si es `stale`: se cortó —el bus se
+    /// reinició, por ejemplo— y seguir dándola haría que quien la pida no
+    /// pueda suscribirse nunca más. La próxima [`Self::session_or_connect`]
+    /// abre otra. Si la guardada ya es otra, no se toca: alguien ya reconectó.
+    pub async fn forget_session(&self, stale: &Connection) {
+        let mut slot = self.session.write().await;
+        if slot.as_ref().is_some_and(|c| {
+            c.server_guid() == stale.server_guid() && c.unique_name() == stale.unique_name()
+        }) {
+            logger::log_info(
+                "DbusPool: la conexión session se cortó; se abre otra en el próximo pedido",
+            );
+            *slot = None;
+        }
     }
 
     /// Get a clone of the shared system bus connection.
@@ -164,10 +200,7 @@ mod tests {
     }
 
     fn pool(session: Option<Connection>) -> DbusPool {
-        DbusPool {
-            session: Arc::new(RwLock::new(session)),
-            system: Arc::new(RwLock::new(None)),
-        }
+        DbusPool::with_session(session)
     }
 
     /// Con una conexión guardada, se usa ésa y no se abre otra.
@@ -182,18 +215,121 @@ mod tests {
 
     /// Sin conexión guardada y sin bus a dónde ir, contesta que no hay y no
     /// guarda nada: el próximo intento vuelve a probar. Con `session()` a
-    /// secas, quien espera el bus esperaría para siempre.
+    /// secas, quien espera el bus esperaría para siempre. Sin tocar el entorno
+    /// del proceso: otras pruebas usan el bus de sesión de verdad.
     #[tokio::test]
     async fn sin_bus_vuelve_a_intentar_en_cada_pedido() {
-        // Una dirección que no existe: la prueba no depende de que la máquina
-        // tenga bus de sesión.
-        std::env::set_var(
-            "DBUS_SESSION_BUS_ADDRESS",
-            "unix:path=/nonexistent/vasak-desktop-test-bus",
-        );
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
         let pool = pool(None);
-        assert!(pool.session_or_connect().await.is_none());
+        let attempts = AtomicUsize::new(0);
+        let unavailable = || async {
+            attempts.fetch_add(1, Ordering::SeqCst);
+            Err(zbus::Error::Address("sin bus".into()))
+        };
+        assert!(pool.session_or_connect_with(unavailable).await.is_none());
         assert!(pool.session().await.is_none(), "guardó algo sin conectar");
-        assert!(pool.session_or_connect().await.is_none());
+        assert!(pool.session_or_connect_with(unavailable).await.is_none());
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            2,
+            "no volvió a intentar en el segundo pedido"
+        );
+
+        // Cuando el bus aparece, la conexión se guarda y se reusa.
+        let (client, _server) = p2p().await;
+        let guid = client.server_guid().to_string();
+        let got = pool
+            .session_or_connect_with(|| async { Ok(client) })
+            .await
+            .expect("conectó");
+        assert_eq!(got.server_guid().to_string(), guid);
+        assert_eq!(
+            pool.session().await.unwrap().server_guid().to_string(),
+            guid
+        );
+        // Con una guardada, no se vuelve a conectar.
+        let again = pool
+            .session_or_connect_with(|| async { panic!("conectó de nuevo teniendo una") })
+            .await
+            .expect("había una conexión");
+        assert_eq!(again.server_guid().to_string(), guid);
+    }
+
+    /// Una conexión que se cortó se suelta y la próxima vez se abre otra;
+    /// una que ya fue reemplazada no se toca.
+    #[tokio::test]
+    async fn la_conexion_cortada_se_suelta_y_se_abre_otra() {
+        let (old, _old_server) = p2p().await;
+        let (fresh, _fresh_server) = p2p().await;
+        let old_guid = old.server_guid().to_string();
+        let fresh_guid = fresh.server_guid().to_string();
+        assert_ne!(old_guid, fresh_guid);
+        let pool = pool(Some(old.clone()));
+
+        // Otra conexión que no es la guardada: no se toca.
+        pool.forget_session(&fresh).await;
+        assert_eq!(
+            pool.session()
+                .await
+                .expect("soltó la que no era")
+                .server_guid()
+                .to_string(),
+            old_guid
+        );
+
+        pool.forget_session(&old).await;
+        assert!(pool.session().await.is_none(), "no soltó la cortada");
+        let got = pool
+            .session_or_connect_with(|| async { Ok(fresh.clone()) })
+            .await
+            .unwrap();
+        assert_eq!(got.server_guid().to_string(), fresh_guid);
+
+        // Quien llega tarde con la vieja no suelta la nueva: alguien ya
+        // reconectó.
+        pool.forget_session(&old).await;
+        assert_eq!(
+            pool.session()
+                .await
+                .expect("soltó la nueva")
+                .server_guid()
+                .to_string(),
+            fresh_guid
+        );
+    }
+
+    /// Soltar sin nada guardado no hace nada: dos escuchas que se cortan a la
+    /// vez no se pisan.
+    #[tokio::test]
+    async fn soltar_sin_conexion_guardada_no_hace_nada() {
+        let (stale, _server) = p2p().await;
+        let pool = pool(None);
+        pool.forget_session(&stale).await;
+        assert!(pool.session().await.is_none());
+    }
+
+    /// Dos conexiones al mismo bus comparten `server_guid`: lo que las separa
+    /// es el nombre único. Soltar una no suelta la otra. Necesita el bus de
+    /// sesión de verdad (con un par de sockets no hay nombres únicos):
+    /// `cargo test -p vasak-desktop -- --ignored dos_conexiones`.
+    #[tokio::test]
+    #[ignore = "necesita el bus de sesión"]
+    async fn dos_conexiones_al_mismo_bus_no_se_confunden() {
+        let kept = Connection::session().await.expect("bus de sesión");
+        let other = Connection::session().await.expect("bus de sesión");
+        assert_eq!(kept.server_guid(), other.server_guid());
+        assert_ne!(kept.unique_name(), other.unique_name());
+        let pool = pool(Some(kept.clone()));
+        pool.forget_session(&other).await;
+        assert_eq!(
+            pool.session()
+                .await
+                .expect("soltó la que no era")
+                .unique_name(),
+            kept.unique_name()
+        );
+        pool.forget_session(&kept).await;
+        assert!(pool.session().await.is_none());
     }
 }
