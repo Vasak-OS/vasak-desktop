@@ -6,6 +6,11 @@ import { invoke } from '@tauri-apps/api/core';
  * Es la única fuente de eventos del escritorio (decisión 6 del taller): el
  * servicio que mantiene la copia local de los calendarios contesta desde lo
  * guardado. Lo hace `commands/calendar.rs`; acá sólo se cruza el IPC.
+ *
+ * **Todo lo que muestre eventos pasa por acá**: el tablero del panel, el
+ * calendario del centro de control y los widgets del escritorio. Así leen lo
+ * mismo, de la misma forma, y se enteran juntos de lo nuevo
+ * ([`CALENDAR_CHANGED`]).
  */
 
 /** Una vez de un evento, tal como la manda `ListOccurrences` (RFC 3339 en UTC). */
@@ -49,3 +54,13 @@ export const calendarLocations = (
 
 /** Abre `vasak-calendar`. */
 export const openCalendar = (): Promise<void> => invoke<void>('open_calendar');
+
+/**
+ * El evento de que cambió lo guardado del calendario: el sincronizador trajo
+ * algo nuevo en segundo plano. Quien muestra eventos lo escucha con
+ * `useSharedEvent(CALENDAR_CHANGED, …)` —un solo oyente de Tauri para todo el
+ * escritorio— y relee su rango; no hace falta preguntar a intervalos. Las
+ * señales de una misma vuelta llegan juntas, en un solo aviso. Lo emite
+ * `commands/calendar.rs`.
+ */
+export const CALENDAR_CHANGED = 'calendar-changed';

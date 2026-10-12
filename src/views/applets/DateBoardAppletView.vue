@@ -24,6 +24,7 @@ import {
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import {
+	CALENDAR_CHANGED,
 	type CalendarOccurrence,
 	type CalendarReply,
 	calendarLocations,
@@ -43,6 +44,7 @@ import {
 	weatherIcon,
 	weatherRings,
 } from '@/tools/date-board';
+import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 /**
@@ -242,6 +244,13 @@ function onShown(): void {
 }
 
 onMounted(() => void loadEvents());
+
+// Lo nuevo que trae el sincronizador: se relee el mes a la vista, y los lugares
+// se vuelven a pedir porque un evento pudo cambiar el suyo.
+useSharedEvent(CALENDAR_CHANGED, () => {
+	locations.value = {};
+	void loadEvents();
+});
 </script>
 
 <template>

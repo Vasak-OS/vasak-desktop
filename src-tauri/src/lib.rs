@@ -342,6 +342,10 @@ pub fn run() {
             let dbus_pool = tauri::async_runtime::block_on(DbusPool::init());
             app.manage(dbus_pool);
 
+            // Los cambios del calendario guardado, para todas las ventanas que
+            // lo muestran: se escuchan una vez acá y no en cada una.
+            commands::watch_calendar_changes(app.handle().clone());
+
             // Register panel-ready listener BEFORE creating the panel, so the
             // readiness signal is available even if the frontend emits before
             // the deferred-applet task registers its own listener.

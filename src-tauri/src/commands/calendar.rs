@@ -305,6 +305,70 @@ async fn session(app: &AppHandle) -> Option<Connection> {
     app.try_state::<DbusPool>()?.session().await
 }
 
+/// El evento que reciben las ventanas cuando cambió lo guardado del
+/// calendario: el tablero del panel, el centro de control y cualquier widget
+/// que lea por `calendar.service.ts`. Sin datos: quien lo recibe relee su rango.
+pub const CHANGED_EVENT: &str = "calendar-changed";
+
+/// Cuánto se juntan las señales antes de avisar. Una vuelta del sincronizador
+/// escribe de a lotes y manda un `Changed` por lote; las ventanas releen una
+/// vez por vuelta, no una por lote.
+const CHANGE_SETTLE: Duration = Duration::from_millis(500);
+
+/// Cuánto se espera para volver a escuchar si el bus se cortó.
+const WATCH_RETRY: Duration = Duration::from_secs(15);
+
+/// La regla de la señal que interesa: `Changed` del almacén, sólo del área del
+/// calendario. El bus filtra por el primer argumento, así que un lote de correo
+/// o de contactos no despierta al escritorio.
+pub(crate) fn changed_rule() -> zbus::Result<zbus::MatchRule<'static>> {
+    Ok(zbus::MatchRule::builder()
+        .msg_type(zbus::message::Type::Signal)
+        .interface(INTERFACE)?
+        .member("Changed")?
+        .arg(0, "calendar")?
+        .build())
+}
+
+/// Pasa a las ventanas cada cambio del calendario guardado, como
+/// [`CHANGED_EVENT`]. Vive toda la sesión y se rearma si el bus se corta.
+pub fn watch_changes(app: AppHandle) {
+    use futures_util::StreamExt;
+    use tauri::Emitter;
+
+    tauri::async_runtime::spawn(async move {
+        loop {
+            if let Some(connection) = session(&app).await {
+                match changed_rule() {
+                    Ok(rule) => {
+                        match zbus::MessageStream::for_match_rule(rule, &connection, None).await {
+                            Ok(mut changes) => {
+                                while let Some(change) = changes.next().await {
+                                    if change.is_err() {
+                                        continue;
+                                    }
+                                    tokio::time::sleep(CHANGE_SETTLE).await;
+                                    // Lo que llegó mientras tanto entra en este aviso.
+                                    while let Some(Some(_)) =
+                                        futures_util::FutureExt::now_or_never(changes.next())
+                                    {
+                                    }
+                                    let _ = app.emit(CHANGED_EVENT, ());
+                                }
+                            }
+                            Err(e) => log_info(&format!(
+                                "[calendar] no se pueden escuchar los cambios del almacén: {e}"
+                            )),
+                        }
+                    }
+                    Err(e) => log_info(&format!("[calendar] regla inválida: {e}")),
+                }
+            }
+            tokio::time::sleep(WATCH_RETRY).await;
+        }
+    });
+}
+
 /// Las veces de los eventos que caen en `[from, to)`, en RFC 3339.
 #[tauri::command]
 pub async fn calendar_occurrences(app: AppHandle, from: String, to: String) -> CalendarReply {
