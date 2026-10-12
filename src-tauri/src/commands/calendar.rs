@@ -367,7 +367,8 @@ pub fn watch_changes(app: AppHandle) {
         loop {
             // Con reintento de verdad: si el bus de sesión no estaba al
             // arrancar, `session()` no lo vuelve a buscar nunca.
-            let connection = match app.try_state::<DbusPool>() {
+            let pool = app.try_state::<DbusPool>();
+            let connection = match &pool {
                 Some(pool) => pool.session_or_connect().await,
                 None => None,
             };
@@ -387,6 +388,13 @@ pub fn watch_changes(app: AppHandle) {
                         }
                     }
                     Err(e) => log_info(&format!("[calendar] regla inválida: {e}")),
+                }
+                // Si se llegó acá, la escucha terminó o no se pudo armar: lo
+                // normal es que la conexión se haya cortado. Se suelta, y la
+                // vuelta siguiente abre otra en vez de reintentar sobre la
+                // misma para siempre.
+                if let Some(pool) = &pool {
+                    pool.forget_session(&connection).await;
                 }
             }
             tokio::time::sleep(WATCH_RETRY).await;

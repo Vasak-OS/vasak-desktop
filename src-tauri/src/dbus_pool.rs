@@ -55,12 +55,22 @@ impl DbusPool {
     /// la intenta abrir y la deja guardada. Es para quien espera en bucle a que
     /// el bus aparezca: con `session()` esperaría para siempre.
     pub async fn session_or_connect(&self) -> Option<Connection> {
+        self.session_or_connect_with(|| Connection::session()).await
+    }
+
+    /// [`Self::session_or_connect`] con la forma de conectar como parámetro:
+    /// es lo que deja probar el reintento sin tocar el entorno del proceso.
+    async fn session_or_connect_with<F, Fut>(&self, connect: F) -> Option<Connection>
+    where
+        F: FnOnce() -> Fut,
+        Fut: std::future::Future<Output = zbus::Result<Connection>>,
+    {
         if let Some(connection) = self.session().await {
             return Some(connection);
         }
         let mut slot = self.session.write().await;
         if slot.is_none() {
-            match Connection::session().await {
+            match connect().await {
                 Ok(connection) => {
                     logger::log_info("DbusPool: conexión session establecida al reintentar");
                     *slot = Some(connection);
@@ -69,6 +79,22 @@ impl DbusPool {
             }
         }
         slot.clone()
+    }
+
+    /// Suelta la conexión de sesión guardada si es `stale`: se cortó —el bus se
+    /// reinició, por ejemplo— y seguir dándola haría que quien la pida no
+    /// pueda suscribirse nunca más. La próxima [`Self::session_or_connect`]
+    /// abre otra. Si la guardada ya es otra, no se toca: alguien ya reconectó.
+    pub async fn forget_session(&self, stale: &Connection) {
+        let mut slot = self.session.write().await;
+        if slot.as_ref().is_some_and(|c| {
+            c.server_guid() == stale.server_guid() && c.unique_name() == stale.unique_name()
+        }) {
+            logger::log_info(
+                "DbusPool: la conexión session se cortó; se abre otra en el próximo pedido",
+            );
+            *slot = None;
+        }
     }
 
     /// Get a clone of the shared system bus connection.
@@ -182,18 +208,48 @@ mod tests {
 
     /// Sin conexión guardada y sin bus a dónde ir, contesta que no hay y no
     /// guarda nada: el próximo intento vuelve a probar. Con `session()` a
-    /// secas, quien espera el bus esperaría para siempre.
+    /// secas, quien espera el bus esperaría para siempre. Sin tocar el entorno
+    /// del proceso: otras pruebas usan el bus de sesión de verdad.
     #[tokio::test]
     async fn sin_bus_vuelve_a_intentar_en_cada_pedido() {
-        // Una dirección que no existe: la prueba no depende de que la máquina
-        // tenga bus de sesión.
-        std::env::set_var(
-            "DBUS_SESSION_BUS_ADDRESS",
-            "unix:path=/nonexistent/vasak-desktop-test-bus",
-        );
         let pool = pool(None);
-        assert!(pool.session_or_connect().await.is_none());
+        let unavailable = || async { Err(zbus::Error::Address("sin bus".into())) };
+        assert!(pool.session_or_connect_with(unavailable).await.is_none());
         assert!(pool.session().await.is_none(), "guardó algo sin conectar");
-        assert!(pool.session_or_connect().await.is_none());
+
+        // Cuando el bus aparece, la conexión se guarda y se reusa.
+        let (client, _server) = p2p().await;
+        let guid = client.server_guid().to_string();
+        let got = pool
+            .session_or_connect_with(|| async { Ok(client) })
+            .await
+            .expect("conectó");
+        assert_eq!(got.server_guid().to_string(), guid);
+        assert_eq!(
+            pool.session().await.unwrap().server_guid().to_string(),
+            guid
+        );
+    }
+
+    /// Una conexión que se cortó se suelta y la próxima vez se abre otra;
+    /// una que ya fue reemplazada no se toca.
+    #[tokio::test]
+    async fn la_conexion_cortada_se_suelta_y_se_abre_otra() {
+        let (old, _old_server) = p2p().await;
+        let (fresh, _fresh_server) = p2p().await;
+        let pool = pool(Some(old.clone()));
+
+        // Otra conexión que no es la guardada: no se toca.
+        pool.forget_session(&fresh).await;
+        assert!(pool.session().await.is_some());
+
+        pool.forget_session(&old).await;
+        assert!(pool.session().await.is_none());
+        let guid = fresh.server_guid().to_string();
+        let got = pool
+            .session_or_connect_with(|| async { Ok(fresh) })
+            .await
+            .unwrap();
+        assert_eq!(got.server_guid().to_string(), guid);
     }
 }
