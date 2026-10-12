@@ -98,6 +98,25 @@ describe('el tablero de fecha, abierto', () => {
 		expect(view?.text()).toContain('Sala 7');
 		expect(view?.text()).not.toContain('Sala 3');
 	});
+
+	test('una respuesta de lugares de antes del aviso no pisa la de después', async () => {
+		board.answer = { state: 'ready', truncated: false, entries: [tomorrow('reunion')] };
+		let release: () => void = () => {};
+		board.locationGate = new Promise((resolve) => {
+			release = resolve;
+		});
+		await open();
+
+		// El evento se mudó mientras el primer pedido seguía en camino.
+		board.location = 'Sala 7';
+		sharedEvents.get(CALENDAR_CHANGED)?.();
+		await settle();
+		release();
+		await settle();
+
+		expect(view?.text()).toContain('Sala 7');
+		expect(view?.text()).not.toContain('Sala 3');
+	});
 });
 
 describe('el canal del aviso', () => {

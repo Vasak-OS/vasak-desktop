@@ -51,6 +51,26 @@ impl DbusPool {
         self.session.read().await.clone()
     }
 
+    /// La conexión de sesión, y si no la hay —el bus no estaba al arrancar—,
+    /// la intenta abrir y la deja guardada. Es para quien espera en bucle a que
+    /// el bus aparezca: con `session()` esperaría para siempre.
+    pub async fn session_or_connect(&self) -> Option<Connection> {
+        if let Some(connection) = self.session().await {
+            return Some(connection);
+        }
+        let mut slot = self.session.write().await;
+        if slot.is_none() {
+            match Connection::session().await {
+                Ok(connection) => {
+                    logger::log_info("DbusPool: conexión session establecida al reintentar");
+                    *slot = Some(connection);
+                }
+                Err(e) => logger::log_info(&format!("DbusPool: sin bus de sesión todavía: {e}")),
+            }
+        }
+        slot.clone()
+    }
+
     /// Get a clone of the shared system bus connection.
     pub async fn system(&self) -> Option<Connection> {
         self.system.read().await.clone()

@@ -365,7 +365,13 @@ pub fn watch_changes(app: AppHandle) {
 
     tauri::async_runtime::spawn(async move {
         loop {
-            if let Some(connection) = session(&app).await {
+            // Con reintento de verdad: si el bus de sesión no estaba al
+            // arrancar, `session()` no lo vuelve a buscar nunca.
+            let connection = match app.try_state::<DbusPool>() {
+                Some(pool) => pool.session_or_connect().await,
+                None => None,
+            };
+            if let Some(connection) = connection {
                 match changed_rule() {
                     Ok(rule) => {
                         match zbus::MessageStream::for_match_rule(rule, &connection, None).await {

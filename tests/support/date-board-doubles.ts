@@ -26,7 +26,10 @@ export const board = {
 	location: 'Sala 3',
 	calls: [] as Array<{ from: string; to: string }>,
 	locationCalls: [] as string[][],
+	/** Si está, el próximo pedido de lugares espera a que se cumpla. */
+	locationGate: null as Promise<void> | null,
 	reset() {
+		this.locationGate = null;
 		this.answer = { state: 'unavailable' };
 		this.location = 'Sala 3';
 		this.calls = [];
@@ -43,7 +46,12 @@ export async function calendarOccurrences(from: string, to: string): Promise<Cal
 
 export async function calendarLocations(events: Array<Pick<CalendarOccurrence, 'event_id'>>): Promise<string[]> {
 	board.locationCalls.push(events.map((event) => event.event_id));
-	return events.map(() => board.location);
+	// El lugar es el de cuando se pidió, aunque la respuesta tarde.
+	const value = board.location;
+	const gate = board.locationGate;
+	board.locationGate = null;
+	if (gate) await gate;
+	return events.map(() => value);
 }
 
 export const openCalendar = async () => {};
