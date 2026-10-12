@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.65.5",
+	"version": "1.65.6",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -40,13 +40,13 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.15",
-		"@happy-dom/global-registrator": "^20.14.6",
+		"@happy-dom/global-registrator": "^21.0.1",
 		"@tailwindcss/postcss": "^4.3.3",
 		"@tauri-apps/cli": "^2.12.2",
 		"@types/node": "^26.6.5",
 		"@vitejs/plugin-vue": "^6.0.10",
 		"@vue/test-utils": "^2.5.1",
-		"happy-dom": "^20.14.6",
+		"happy-dom": "^21.0.1",
 		"postcss": "^8.5.29",
 		"tailwindcss": "^4.3.3",
 		"terser": "^5.51.2",
