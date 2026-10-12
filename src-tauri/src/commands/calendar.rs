@@ -324,6 +324,10 @@ const WATCH_RETRY: Duration = Duration::from_secs(15);
 pub(crate) fn changed_rule() -> zbus::Result<zbus::MatchRule<'static>> {
     Ok(zbus::MatchRule::builder()
         .msg_type(zbus::message::Type::Signal)
+        // Sólo del dueño del nombre del sincronizador y de su objeto: cualquier
+        // proceso de la sesión puede emitir una señal con esta interfaz.
+        .sender(BUS_NAME)?
+        .path(PATH)?
         .interface(INTERFACE)?
         .member("Changed")?
         .arg(0, "calendar")?
@@ -643,6 +647,20 @@ mod tests {
             .unwrap()
             .build(&(area, "cuenta", 7u64))
             .unwrap()
+    }
+
+    /// Cualquier proceso de la sesión puede emitir una señal con la interfaz
+    /// del almacén: sólo cuenta la del dueño del nombre del sincronizador, y
+    /// desde su objeto.
+    #[test]
+    fn solo_cuenta_el_changed_del_sincronizador_y_de_su_objeto() {
+        let rule = changed_rule().unwrap().to_string();
+        for part in [
+            "sender='ar.net.vasak.os.AccountsSync'",
+            "path='/ar/net/vasak/os/AccountsStore'",
+        ] {
+            assert!(rule.contains(part), "falta {part} en {rule}");
+        }
     }
 
     #[test]
