@@ -6,6 +6,39 @@ use crate::app_url::get_app_url;
 use crate::gtk_utils;
 use crate::monitor_manager::get_primary_monitor;
 
+/// El tamaño lógico del OSD. `inner_size` lo toma en píxeles lógicos y el
+/// compositor lo escala por el factor del monitor, así que el tamaño físico real
+/// es éste por el `scale_factor`.
+const OSD_LOGICAL_WIDTH: f64 = 220.0;
+const OSD_LOGICAL_HEIGHT: f64 = 120.0;
+
+/// La posición física (esquina superior izquierda) para centrar el OSD en el
+/// tercio superior del monitor primario.
+///
+/// Todo en píxeles **físicos**: la geometría del monitor ya lo es, y el tamaño de
+/// la ventana —que se declara en lógicos— se pasa a físico con el `scale_factor`.
+/// Antes se restaba `320/2` en X y `140/2` en Y, números que no eran ni el tamaño
+/// de la ventana (220×120) ni físicos: el popup caía 50 px a la izquierda a 100 %
+/// y, como además mezclaba lógico con físico, se corría para el otro lado en una
+/// pantalla 2x.
+fn osd_physical_position(
+    monitor_position: (i32, i32),
+    monitor_size: (u32, u32),
+    scale_factor: f64,
+    logical_width: f64,
+    logical_height: f64,
+) -> (i32, i32) {
+    let physical_width = (logical_width * scale_factor).round() as i32;
+    let physical_height = (logical_height * scale_factor).round() as i32;
+
+    let (monitor_x, monitor_y) = monitor_position;
+    let (monitor_width, monitor_height) = monitor_size;
+
+    let x = monitor_x + (monitor_width as i32 - physical_width) / 2;
+    let y = monitor_y + (monitor_height as i32 / 3) - (physical_height / 2);
+    (x, y)
+}
+
 fn set_window_properties(window: &tauri::WebviewWindow) -> Result<(), Box<dyn std::error::Error>> {
     let gtk_window = window.gtk_window()?;
 
@@ -45,7 +78,7 @@ pub async fn create_osd_window(
     .title("")
     .decorations(false)
     .transparent(true)
-    .inner_size(220.0, 120.0)
+    .inner_size(OSD_LOGICAL_WIDTH, OSD_LOGICAL_HEIGHT)
     .visible(false)
     .skip_taskbar(true)
     .build()?;
@@ -54,10 +87,18 @@ pub async fn create_osd_window(
     let url = Url::parse(&complete_url).expect("Failed to parse URL");
     let _ = window.navigate(url);
 
-    let center_x = monitor_position.x + (monitor_size.width as i32 / 2) - (320 / 2);
-    let center_y = monitor_position.y + (monitor_size.height as i32 / 3) - (140 / 2);
+    let (center_x, center_y) = osd_physical_position(
+        (monitor_position.x, monitor_position.y),
+        (monitor_size.width, monitor_size.height),
+        primary_monitor.scale_factor(),
+        OSD_LOGICAL_WIDTH,
+        OSD_LOGICAL_HEIGHT,
+    );
 
-    window.set_position(tauri::PhysicalPosition { x: center_x, y: center_y })?;
+    window.set_position(tauri::PhysicalPosition {
+        x: center_x,
+        y: center_y,
+    })?;
 
     let _ = set_window_properties(&window);
 
