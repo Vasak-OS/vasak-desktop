@@ -15,7 +15,7 @@ import { nextTick } from 'vue';
 import { compileScript, parse } from 'vue/compiler-sfc';
 import type { CalendarOccurrence } from '../src/services/calendar.service';
 import { localeTag, marksFromReply, weekStartFor } from '../src/tools/calendar-sheet';
-import { calendar, sharedEvents } from './support/calendar-doubles';
+import { CALENDAR_CHANGED, calendar, sharedEvents } from './support/calendar-doubles';
 import { loadComponent, ROOT, useDom } from './support/mount-sfc';
 
 const DOUBLES = join(import.meta.dir, 'support', 'calendar-doubles.ts');
@@ -227,6 +227,25 @@ describe('la ficha del calendario, montada', () => {
 		}
 		// El error se anota, no se tira.
 		expect(calendar.errors).toHaveLength(1);
+	});
+
+	test('con el aviso de que cambió el calendario vuelve a marcar el mes que se ve', async () => {
+		sharedEvents.delete(CALENDAR_CHANGED);
+		const sheet = await open();
+		expect(calendar.calls).toHaveLength(1);
+		expect(sheet.findAll('[data-marked]')).toHaveLength(0);
+
+		// El sincronizador trajo un evento nuevo mientras la ficha está abierta.
+		const fifth = noonOf(5);
+		calendar.answer = { state: 'ready', truncated: false, entries: [occurrence('nuevo', fifth.start, fifth.end)] };
+		const handler = sharedEvents.get(CALENDAR_CHANGED);
+		expect(handler).toBeFunction();
+		handler?.();
+		await settle();
+
+		expect(calendar.calls).toHaveLength(2);
+		expect(calendar.calls[1]).toEqual(calendar.calls[0]);
+		expect(sheet.findAll('[data-marked]').map((day) => day.attributes('data-date'))).toEqual([fifth.iso]);
 	});
 
 	test('la ficha va sobre la superficie del centro y se acomoda por contenedor', () => {
