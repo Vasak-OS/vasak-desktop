@@ -304,6 +304,7 @@ components:
     toggle: Alternar Bluetooth
   BluetoothControlArea:
     scanAlt: Buscar dispositivos Bluetooth
+    scanning: Buscando dispositivos…
     available: Disponibles
     noneAvailable: No hay dispositivos disponibles
     connect: Conectar

@@ -9,12 +9,13 @@ import {
 	getConnectedDevices,
 	getDefaultAdapter,
 	getDeviceInfo,
-	scanForDevices,
+	startScan,
+	stopScan,
 	toggleBluetooth,
 } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ActionButton, SwitchToggle, ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, onMounted, ref } from 'vue';
+import { ActionButton, LoadingState, SwitchToggle, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import BluetoothDeviceCard from '@/components/cards/BluetoothDeviceCard.vue';
 import { applyBluetoothChange, resolveBluetoothIconName } from '@/tools/bluetooth.controller';
 import { useSharedEvent } from '@/tools/event.bus';
@@ -36,7 +37,12 @@ const isTogglingBluetooth = ref(false);
 const defaultAdapter = ref<AdapterInfo | null>(null);
 const connectedDevicesCount = ref(0);
 const loading = ref(true);
-const isScanning = ref(false);
+/**
+ * Hay un escaneo ABIERTO. No es el cronómetro de antes: se enciende al empezar
+ * a buscar y sólo se apaga al cerrar la vista (`onUnmounted`) o al apagar el
+ * Bluetooth. Mientras tanto los `device-added` del streaming suman en vivo.
+ */
+const scanning = ref(false);
 const connectingPath = ref<string | null>(null);
 
 const toggleBT = async () => {
@@ -78,14 +84,31 @@ const refreshDevices = async () => {
 
 const scanDevices = async () => {
 	if (!defaultAdapter.value) return;
-	isScanning.value = true;
+	// Si ya hay un escaneo abierto, no se vuelve a arrancar: un segundo
+	// `startScan` sobre el mismo adaptador no suma nada.
+	if (scanning.value) return;
+	scanning.value = true;
 	try {
-		await scanForDevices(defaultAdapter.value.path);
+		// Primero se siembra lo conocido/emparejado una sola vez; después se
+		// deja el escaneo ABIERTO y `handleBluetoothChange` va sumando los
+		// `device-added` a medida que BlueZ los anuncia —incluidos los BLE que
+		// anuncian lento, que la foto con cronómetro se perdía—.
 		await refreshDevices();
+		await startScan(defaultAdapter.value.path);
 	} catch (e) {
-		console.error('Error scanning for devices:', e);
+		logError('Error iniciando el escaneo de dispositivos:', e);
+		scanning.value = false;
 	}
-	isScanning.value = false;
+};
+
+const stopScanning = async () => {
+	if (!defaultAdapter.value || !scanning.value) return;
+	scanning.value = false;
+	try {
+		await stopScan(defaultAdapter.value.path);
+	} catch (e) {
+		logError('Error deteniendo el escaneo de dispositivos:', e);
+	}
 };
 
 const bluetoothIcon = computed(() => {
@@ -95,8 +118,25 @@ const bluetoothIcon = computed(() => {
 
 onMounted(async () => {
 	defaultAdapter.value = await getDefaultAdapter();
-	await refreshDevices();
-	if (props.scanOnMount && defaultAdapter.value?.powered) await scanDevices();
+	// Cuando se abre buscando, el escaneo siembra él mismo la lista; si no, se
+	// siembra sin abrir escaneo.
+	if (props.scanOnMount && defaultAdapter.value?.powered) {
+		await scanDevices();
+	} else {
+		await refreshDevices();
+	}
+});
+
+// Nunca se corta por tiempo: el escaneo abierto se cierra al desmontar la
+// vista. Sin esto, BlueZ seguiría descubriendo con la vista ya cerrada.
+onUnmounted(() => {
+	void stopScanning();
+});
+
+// Si el Bluetooth se apaga, el adaptador deja de descubrir: se apaga también el
+// indicador para que la rueda no quede girando sin que se busque nada.
+watch(isBluetoothOn, (on) => {
+	if (!on) scanning.value = false;
 });
 
 useSharedEvent('bluetooth-change', handleBluetoothChange);
@@ -152,7 +192,7 @@ const disconnect = async (device: any) => {
         :icon-alt="t('components.BluetoothControlArea.scanAlt')"
         :title="t('components.BluetoothControlArea.scanAlt')"
         variant="secondary"
-        :loading="isScanning"
+        :loading="scanning"
         :disabled="!isBluetoothOn"
         @click="scanDevices"
       />
@@ -162,8 +202,16 @@ const disconnect = async (device: any) => {
       <div class="flex-1 flex flex-col overflow-hidden">
         <div class="mb-4 font-semibold text-xl">{{ t('components.BluetoothControlArea.available') }}</div>
         <div class="flex-1 overflow-y-auto">
+          <!-- El escaneo queda abierto: mientras busca, la espera sin medida de
+               la librería explica por qué la lista todavía puede crecer. -->
+          <LoadingState
+            v-if="scanning"
+            :label="t('components.BluetoothControlArea.scanning')"
+            size="sm"
+            class="mb-2 px-1.5"
+          />
           <div
-            v-if="availableDevices.length === 0"
+            v-if="availableDevices.length === 0 && !scanning"
             class="text-tx-muted text-label-m px-1.5 text-center"
           >
             {{ t('components.BluetoothControlArea.noneAvailable') }}

@@ -304,6 +304,7 @@ components:
     toggle: Toggle Bluetooth
   BluetoothControlArea:
     scanAlt: Scan for Bluetooth devices
+    scanning: Searching for devices…
     available: Available
     noneAvailable: No devices available
     connect: Connect
