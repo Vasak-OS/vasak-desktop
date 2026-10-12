@@ -383,14 +383,20 @@ pub fn watch_changes(app: AppHandle) {
 /// Una vuelta de [`watch_changes`]: escucha los cambios en `connection` hasta
 /// que la escucha termina, y entonces suelta la conexión del pool.
 pub(crate) async fn listen_changes(pool: &DbusPool, connection: Connection, notify: impl FnMut()) {
-    match changed_rule() {
-        Ok(rule) => match zbus::MessageStream::for_match_rule(rule, &connection, None).await {
-            Ok(mut changes) => coalesce_changes(&mut changes, CHANGE_SETTLE, notify).await,
-            Err(e) => log_info(&format!(
-                "[calendar] no se pueden escuchar los cambios del almacén: {e}"
-            )),
-        },
-        Err(e) => log_info(&format!("[calendar] regla inválida: {e}")),
+    // Una regla que no se arma es un error de este código, no de la conexión:
+    // soltar la conexión compartida por eso la tiraría cada vuelta sin motivo.
+    let rule = match changed_rule() {
+        Ok(rule) => rule,
+        Err(e) => {
+            log_info(&format!("[calendar] regla inválida: {e}"));
+            return;
+        }
+    };
+    match zbus::MessageStream::for_match_rule(rule, &connection, None).await {
+        Ok(mut changes) => coalesce_changes(&mut changes, CHANGE_SETTLE, notify).await,
+        Err(e) => log_info(&format!(
+            "[calendar] no se pueden escuchar los cambios del almacén: {e}"
+        )),
     }
     // Si se llegó acá, la escucha terminó o no se pudo armar: lo normal es que
     // la conexión se haya cortado. Se suelta, y la vuelta siguiente abre otra
