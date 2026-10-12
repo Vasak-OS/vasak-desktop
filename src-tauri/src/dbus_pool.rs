@@ -144,3 +144,56 @@ pub async fn name_on_bus(conn: &Connection, name: &str) -> bool {
         .map(|names| names.iter().any(|n| n.as_str() == name))
         .unwrap_or(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::net::UnixStream;
+    use zbus::{connection, Guid};
+
+    async fn p2p() -> (Connection, Connection) {
+        let guid = Guid::generate();
+        let (client, server) = UnixStream::pair().unwrap();
+        let server = connection::Builder::unix_stream(server)
+            .server(guid)
+            .unwrap()
+            .p2p()
+            .build();
+        let client = connection::Builder::unix_stream(client).p2p().build();
+        futures_util::try_join!(client, server).unwrap()
+    }
+
+    fn pool(session: Option<Connection>) -> DbusPool {
+        DbusPool {
+            session: Arc::new(RwLock::new(session)),
+            system: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    /// Con una conexión guardada, se usa ésa y no se abre otra.
+    #[tokio::test]
+    async fn con_conexion_guardada_se_usa_esa() {
+        let (client, _server) = p2p().await;
+        let expected = client.server_guid().to_string();
+        let pool = pool(Some(client));
+        let got = pool.session_or_connect().await.expect("había una conexión");
+        assert_eq!(got.server_guid().to_string(), expected);
+    }
+
+    /// Sin conexión guardada y sin bus a dónde ir, contesta que no hay y no
+    /// guarda nada: el próximo intento vuelve a probar. Con `session()` a
+    /// secas, quien espera el bus esperaría para siempre.
+    #[tokio::test]
+    async fn sin_bus_vuelve_a_intentar_en_cada_pedido() {
+        // Una dirección que no existe: la prueba no depende de que la máquina
+        // tenga bus de sesión.
+        std::env::set_var(
+            "DBUS_SESSION_BUS_ADDRESS",
+            "unix:path=/nonexistent/vasak-desktop-test-bus",
+        );
+        let pool = pool(None);
+        assert!(pool.session_or_connect().await.is_none());
+        assert!(pool.session().await.is_none(), "guardó algo sin conectar");
+        assert!(pool.session_or_connect().await.is_none());
+    }
+}
