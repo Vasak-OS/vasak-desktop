@@ -30,7 +30,7 @@
 //! Decisión 2 del taller: lo que no está **se ve no disponible, nunca roto**.
 //! [`CalendarReply`] tiene las cuatro respuestas que el tablero sabe dibujar:
 //! los eventos, «el servicio no está», «no diste permiso» y «falló», y cada
-//! error de D-Bus cae en una de ellas ([`classify`]).
+//! error del plugin cae en una de ellas ([`classify_store`]).
 
 use std::collections::HashMap;
 use std::time::Duration;
