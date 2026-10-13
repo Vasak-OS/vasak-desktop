@@ -38,12 +38,16 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri_plugin_vsk_store::{Error as StoreError, StoreClient, StoreExt};
+#[cfg(test)]
 use zbus::Connection;
 
 use crate::logger::log_info;
 
+#[cfg(test)]
 const BUS_NAME: &str = "ar.net.vasak.os.AccountsSync";
+#[cfg(test)]
 const PATH: &str = "/ar/net/vasak/os/AccountsStore";
+#[cfg(test)]
 const INTERFACE: &str = "ar.net.vasak.os.AccountsStore";
 
 /// Lo que se espera a una lectura: más que los 120 s que el servicio le da al
@@ -168,6 +172,7 @@ fn classify_name(name: &str) -> Option<Failure> {
     }
 }
 
+#[cfg(test)]
 fn classify(error: zbus::Error) -> Failure {
     match &error {
         zbus::Error::MethodError(name, detail, _) => classify_name(name.as_str())
@@ -185,7 +190,9 @@ fn classify(error: zbus::Error) -> Failure {
     }
 }
 
-/// Una llamada al almacén que contesta JSON, con el tope de espera.
+/// Una llamada al almacén que contesta JSON, con el tope de espera. Sólo para
+/// las pruebas: en la sesión, todo pasa por el cliente del plugin.
+#[cfg(test)]
 async fn call_json<A>(connection: &Connection, method: &str, args: &A) -> Result<String, Failure>
 where
     A: serde::ser::Serialize + zbus::zvariant::DynamicType,
@@ -241,6 +248,9 @@ pub(crate) trait StoreCalls {
     ) -> impl std::future::Future<Output = Result<String, Failure>> + Send;
 }
 
+/// Una conexión punto a punto con un almacén de mentira, para las pruebas. Va
+/// al nombre conocido sin comprobar al dueño: en la sesión no se usa nunca.
+#[cfg(test)]
 impl StoreCalls for Connection {
     async fn json(&self, request: Request<'_>) -> Result<String, Failure> {
         match request {
@@ -388,14 +398,14 @@ pub(crate) async fn read_locations(store: &impl StoreCalls, events: &[EventRef])
                 occurrence_id: event.occurrence_id.as_str(),
             })
             .await
-        .ok()
-        .and_then(|json| {
-            serde_json::from_str::<Option<EventDetail>>(&json)
-                .ok()
-                .flatten()
-        })
-        .map(|detail| detail.location.trim().to_string())
-        .unwrap_or_default();
+            .ok()
+            .and_then(|json| {
+                serde_json::from_str::<Option<EventDetail>>(&json)
+                    .ok()
+                    .flatten()
+            })
+            .map(|detail| detail.location.trim().to_string())
+            .unwrap_or_default();
         locations.push(location);
     }
     locations
@@ -643,5 +653,4 @@ mod tests {
     }
 
     // ── Los cambios del almacén ─────────────────────────────────────────────
-
 }
