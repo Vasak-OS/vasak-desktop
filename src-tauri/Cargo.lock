@@ -5248,9 +5248,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-vsk-store"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9a61c34a644e40c592201a4f2e2e89f20c57424497bd92754e0c3211a28cd9f"
+checksum = "15c640c1829575c8f6ce60f9705e05493cfb3f11e348f598c048f4b643a221ef"
 dependencies = [
  "futures-util",
  "serde",
