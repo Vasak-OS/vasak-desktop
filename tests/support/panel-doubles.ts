@@ -7,8 +7,13 @@
 import { computed, defineComponent, h, ref } from 'vue';
 import type { KeyboardLayout, WorkspaceState } from '../../src/services/compositor.service';
 import type { NetworkInfo } from '../../src/services/network.service';
+import { DEFAULT_PINNED, type PinnedApp } from '../../src/tools/pinned-apps';
 
 export { calculateVolumePercentage, getVolumeIconName } from '../../src/utils/volume';
+// Las funciones puras de la píldora de ventanas y de los anclados son las de
+// verdad: lo que la prueba cambia es la configuración que las alimenta.
+export { windowsPillCapStyle, windowsPillClasses } from '../../src/tools/windows-pill';
+export { pinnedLabel } from '../../src/tools/pinned-apps';
 
 type Handler = (payload: unknown) => void;
 
@@ -37,6 +42,15 @@ export const panel = {
 	panelLayout: ref<'distributed' | 'compact'>('distributed'),
 	/** `true` cuando el tipo dibuja una superficie detrás (flotante/barra/dock/trapecio). */
 	hasSurface: ref(false),
+	// Los interruptores de la sección `panel` (vasak-desktop#251): todos encendidos
+	// salvo que la prueba apague uno. Es como los lee el escritorio: ausente = sí.
+	showWorkspaces: ref(true),
+	showWindows: ref(true),
+	showNetworkName: ref(true),
+	showVolumeNumber: ref(true),
+	showBatteryNumber: ref(true),
+	/** Las aplicaciones ancladas: por defecto las dos de siempre. */
+	pinnedApps: ref<readonly PinnedApp[]>(DEFAULT_PINNED),
 	failSwitch: false,
 	handlers: new Map<string, Handler>(),
 	calls: [] as Array<{ name: string; args: unknown[] }>,
@@ -51,6 +65,19 @@ export const panel = {
 		this.vertical.value = false;
 		this.panelLayout.value = 'distributed';
 		this.hasSurface.value = false;
+		this.showWorkspaces.value = true;
+		this.showWindows.value = true;
+		this.showNetworkName.value = true;
+		this.showVolumeNumber.value = true;
+		this.showBatteryNumber.value = true;
+		this.pinnedApps.value = DEFAULT_PINNED;
+		battery.value = {
+			has_battery: true,
+			percentage: 100,
+			state: 'Full',
+			is_present: true,
+			is_charging: false,
+		};
 		this.failSwitch = false;
 		density.value = 'full';
 		this.handlers.clear();
@@ -79,6 +106,21 @@ export const getCurrentNetworkState = async () => panel.network.value;
 export const getVpnStatus = async () => ({ state: 'disconnected' });
 export const getAudioVolume = async () => panel.volume.value;
 
+/** La batería del equipo: por defecto hay una al 100 %, para ver el número. */
+export const battery = ref({
+	has_battery: true,
+	percentage: 100,
+	state: 'Full',
+	is_present: true,
+	is_charging: false,
+});
+export const getBatteryInfo = async () => battery.value;
+
+/** El lanzamiento de una aplicación anclada: lo registra para mirarlo. */
+export const openApp = async (args: unknown) => {
+	record('openApp', args);
+};
+
 export const toggleApplet = async (applet: string, button?: unknown) => {
 	record('toggleApplet', applet, button);
 };
@@ -97,7 +139,17 @@ export function usePanelDensity() {
 }
 
 export function usePanelConfig() {
-	return { vertical: panel.vertical, layout: panel.panelLayout, hasSurface: panel.hasSurface };
+	return {
+		vertical: panel.vertical,
+		layout: panel.panelLayout,
+		hasSurface: panel.hasSurface,
+		showWorkspaces: panel.showWorkspaces,
+		showWindows: panel.showWindows,
+		showNetworkName: panel.showNetworkName,
+		showVolumeNumber: panel.showVolumeNumber,
+		showBatteryNumber: panel.showBatteryNumber,
+		pinnedApps: panel.pinnedApps,
+	};
 }
 
 export function useSharedEvent(name: string, handler: Handler) {

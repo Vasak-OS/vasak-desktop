@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.66.2",
+	"version": "1.67.0",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -35,7 +35,7 @@
 		"@vasakgroup/tauri-plugin-i18n": "^2.3.1",
 		"@vasakgroup/vue-libvasak": "^2.18.0",
 		"pinia": "^3.0.4",
-		"vue": "^3.5.43",
+		"vue": "^3.5.44",
 		"vue-router": "^5.4.0"
 	},
 	"devDependencies": {
@@ -47,7 +47,7 @@
 		"@vitejs/plugin-vue": "^6.0.10",
 		"@vue/test-utils": "^2.5.1",
 		"happy-dom": "^21.0.1",
-		"postcss": "^8.5.29",
+		"postcss": "^8.5.30",
 		"tailwindcss": "^4.3.3",
 		"terser": "^5.51.2",
 		"typescript": "~5.9.3",
