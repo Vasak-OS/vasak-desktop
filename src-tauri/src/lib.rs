@@ -175,6 +175,10 @@ pub fn run() {
         // dejan — sin esto sólo queda un volcado de núcleo sin símbolos.
         .plugin(tauri_plugin_vsk_journal::init())
         .plugin(tauri_plugin_vsk_contextual_menu::init())
+        // El almacén del sistema: los eventos del panel, del centro de control
+        // y de los widgets, con el dueño del sincronizador comprobado, y el
+        // aviso de lo nuevo del calendario para todas las ventanas.
+        .plugin(tauri_plugin_vsk_store::init(&["calendar"]))
         .invoke_handler(tauri::generate_handler![
             batch_invoke,
             privacy_in_use,
@@ -341,10 +345,6 @@ pub fn run() {
             // but stored as None so the pool is always available.
             let dbus_pool = tauri::async_runtime::block_on(DbusPool::init());
             app.manage(dbus_pool);
-
-            // Los cambios del calendario guardado, para todas las ventanas que
-            // lo muestran: se escuchan una vez acá y no en cada una.
-            commands::watch_calendar_changes(app.handle().clone());
 
             // Register panel-ready listener BEFORE creating the panel, so the
             // readiness signal is available even if the frontend emits before

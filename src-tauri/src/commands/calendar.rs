@@ -36,10 +36,10 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
+use tauri_plugin_vsk_store::{Error as StoreError, StoreClient, StoreExt};
 use zbus::Connection;
 
-use crate::dbus_pool::DbusPool;
 use crate::logger::log_info;
 
 const BUS_NAME: &str = "ar.net.vasak.os.AccountsSync";
@@ -131,7 +131,7 @@ pub enum CalendarReply {
 
 /// Cómo se lee un error de D-Bus.
 #[derive(Debug, Clone, PartialEq)]
-enum Failure {
+pub(crate) enum Failure {
     Unavailable,
     Denied,
     Failed(String),
@@ -206,12 +206,119 @@ where
         .map_err(|e| Failure::Failed(format!("respuesta inválida de {method}: {e}")))
 }
 
+/// Lo que el tablero le pide al almacén.
+pub(crate) enum Request<'a> {
+    Calendars,
+    Occurrences {
+        from: &'a str,
+        to: &'a str,
+        cursor: &'a str,
+    },
+    Event {
+        event_id: &'a str,
+        occurrence_id: &'a str,
+    },
+}
+
+impl Request<'_> {
+    fn method(&self) -> &'static str {
+        match self {
+            Request::Calendars => "ListCalendars",
+            Request::Occurrences { .. } => "ListOccurrences",
+            Request::Event { .. } => "GetEvent",
+        }
+    }
+}
+
+/// Quién contesta los pedidos al almacén. En la sesión, el cliente de
+/// `tauri-plugin-vsk-store`, que comprueba que el dueño del nombre del
+/// sincronizador sea el de verdad antes de creerle nada; en las pruebas, una
+/// conexión punto a punto con un almacén de mentira.
+pub(crate) trait StoreCalls {
+    fn json(
+        &self,
+        request: Request<'_>,
+    ) -> impl std::future::Future<Output = Result<String, Failure>> + Send;
+}
+
+impl StoreCalls for Connection {
+    async fn json(&self, request: Request<'_>) -> Result<String, Failure> {
+        match request {
+            Request::Calendars => call_json(self, "ListCalendars", &()).await,
+            Request::Occurrences { from, to, cursor } => {
+                call_json(
+                    self,
+                    "ListOccurrences",
+                    &(from, to, Vec::<String>::new(), cursor, PAGE_LIMIT),
+                )
+                .await
+            }
+            Request::Event {
+                event_id,
+                occurrence_id,
+            } => call_json(self, "GetEvent", &(event_id, occurrence_id)).await,
+        }
+    }
+}
+
+impl StoreCalls for StoreClient {
+    async fn json(&self, request: Request<'_>) -> Result<String, Failure> {
+        let method = request.method();
+        let answer = match request {
+            Request::Calendars => {
+                tokio::time::timeout(CALL_TIMEOUT, self.call_json("ListCalendars", &())).await
+            }
+            Request::Occurrences { from, to, cursor } => {
+                tokio::time::timeout(
+                    CALL_TIMEOUT,
+                    self.call_json(
+                        "ListOccurrences",
+                        &(from, to, Vec::<String>::new(), cursor, PAGE_LIMIT),
+                    ),
+                )
+                .await
+            }
+            Request::Event {
+                event_id,
+                occurrence_id,
+            } => {
+                tokio::time::timeout(
+                    CALL_TIMEOUT,
+                    self.call_json("GetEvent", &(event_id, occurrence_id)),
+                )
+                .await
+            }
+        };
+        answer
+            .map_err(|_| {
+                Failure::Failed(format!(
+                    "{method} no contestó en {} s",
+                    CALL_TIMEOUT.as_secs()
+                ))
+            })?
+            .map_err(classify_store)
+    }
+}
+
+/// Lo que quiere decir un error del plugin para quien mira el tablero. Sin
+/// sincronizador, o con uno que no es el de verdad, es «no disponible».
+pub(crate) fn classify_store(error: StoreError) -> Failure {
+    match &error {
+        StoreError::NotRunning | StoreError::Impostor => Failure::Unavailable,
+        StoreError::Store {
+            name: Some(name),
+            message,
+        } => classify_name(name).unwrap_or_else(|| Failure::Failed(message.clone())),
+        _ => Failure::Failed(error.to_string()),
+    }
+}
+
 /// Los nombres de los calendarios, por identificador.
 ///
 /// Si no se pueden leer, el tablero sigue con los eventos sin el nombre: no
 /// vale la pena perder lo que sí llegó por un dato de adorno.
-async fn calendar_names(connection: &Connection) -> HashMap<String, String> {
-    match call_json(connection, "ListCalendars", &()).await {
+async fn calendar_names(store: &impl StoreCalls) -> HashMap<String, String> {
+    match store.json(Request::Calendars).await {
         Ok(json) => serde_json::from_str::<Vec<CalendarItem>>(&json)
             .map(|items| items.into_iter().map(|c| (c.id, c.display_name)).collect())
             .unwrap_or_default(),
@@ -221,7 +328,7 @@ async fn calendar_names(connection: &Connection) -> HashMap<String, String> {
 
 /// Junta las páginas de un rango y les pone el nombre de su calendario.
 pub(crate) async fn read_occurrences(
-    connection: &Connection,
+    store: &impl StoreCalls,
     from: &str,
     to: &str,
 ) -> CalendarReply {
@@ -230,12 +337,13 @@ pub(crate) async fn read_occurrences(
     let mut cursor = String::new();
 
     for page_number in 0..MAX_PAGES {
-        let json = match call_json(
-            connection,
-            "ListOccurrences",
-            &(from, to, Vec::<String>::new(), cursor.as_str(), PAGE_LIMIT),
-        )
-        .await
+        let json = match store
+            .json(Request::Occurrences {
+                from,
+                to,
+                cursor: cursor.as_str(),
+            })
+            .await
         {
             Ok(json) => json,
             Err(failure) => return failure.into(),
@@ -261,7 +369,7 @@ pub(crate) async fn read_occurrences(
         }
     }
 
-    let names = calendar_names(connection).await;
+    let names = calendar_names(store).await;
     for entry in &mut entries {
         entry.calendar = names.get(&entry.calendar_id).cloned();
     }
@@ -271,15 +379,15 @@ pub(crate) async fn read_occurrences(
 
 /// El lugar de cada evento pedido, en el mismo orden; vacío si no tiene o no se
 /// pudo leer.
-pub(crate) async fn read_locations(connection: &Connection, events: &[EventRef]) -> Vec<String> {
+pub(crate) async fn read_locations(store: &impl StoreCalls, events: &[EventRef]) -> Vec<String> {
     let mut locations = Vec::with_capacity(events.len().min(MAX_DETAILS));
     for event in events.iter().take(MAX_DETAILS) {
-        let location = call_json(
-            connection,
-            "GetEvent",
-            &(event.event_id.as_str(), event.occurrence_id.as_str()),
-        )
-        .await
+        let location = store
+            .json(Request::Event {
+                event_id: event.event_id.as_str(),
+                occurrence_id: event.occurrence_id.as_str(),
+            })
+            .await
         .ok()
         .and_then(|json| {
             serde_json::from_str::<Option<EventDetail>>(&json)
@@ -301,116 +409,11 @@ pub struct EventRef {
     pub occurrence_id: String,
 }
 
-async fn session(app: &AppHandle) -> Option<Connection> {
-    app.try_state::<DbusPool>()?.session().await
-}
-
-/// El evento que reciben las ventanas cuando cambió lo guardado del
-/// calendario: el tablero del panel, el centro de control y cualquier widget
-/// que lea por `calendar.service.ts`. Sin datos: quien lo recibe relee su rango.
-pub const CHANGED_EVENT: &str = "calendar-changed";
-
-/// Cuánto se juntan las señales antes de avisar. Una vuelta del sincronizador
-/// escribe de a lotes y manda un `Changed` por lote; las ventanas releen una
-/// vez por vuelta, no una por lote.
-const CHANGE_SETTLE: Duration = Duration::from_millis(500);
-
-/// Cuánto se espera para volver a escuchar si el bus se cortó.
-const WATCH_RETRY: Duration = Duration::from_secs(15);
-
-/// La regla de la señal que interesa: `Changed` del almacén, sólo del área del
-/// calendario. El bus filtra por el primer argumento, así que un lote de correo
-/// o de contactos no despierta al escritorio.
-pub(crate) fn changed_rule() -> zbus::Result<zbus::MatchRule<'static>> {
-    Ok(zbus::MatchRule::builder()
-        .msg_type(zbus::message::Type::Signal)
-        // Sólo del dueño del nombre del sincronizador y de su objeto: cualquier
-        // proceso de la sesión puede emitir una señal con esta interfaz.
-        .sender(BUS_NAME)?
-        .path(PATH)?
-        .interface(INTERFACE)?
-        .member("Changed")?
-        .arg(0, "calendar")?
-        .build())
-}
-
-/// Avisa con `notify` una vez por tanda de `changes`: después de la primera
-/// señal espera `settle`, y lo que llegó mientras tanto entra en el mismo
-/// aviso. Una señal que llega con error no despierta a nadie. Termina cuando
-/// termina el flujo.
-pub(crate) async fn coalesce_changes<S, T, E>(
-    changes: &mut S,
-    settle: Duration,
-    mut notify: impl FnMut(),
-) where
-    S: futures_util::Stream<Item = Result<T, E>> + Unpin,
-{
-    use futures_util::{FutureExt, StreamExt};
-
-    while let Some(change) = changes.next().await {
-        if change.is_err() {
-            continue;
-        }
-        tokio::time::sleep(settle).await;
-        // Lo que llegó mientras tanto entra en este aviso.
-        while let Some(Some(_)) = changes.next().now_or_never() {}
-        notify();
-    }
-}
-
-/// Pasa a las ventanas cada cambio del calendario guardado, como
-/// [`CHANGED_EVENT`]. Vive toda la sesión y se rearma si el bus se corta.
-pub fn watch_changes(app: AppHandle) {
-    use tauri::Emitter;
-
-    tauri::async_runtime::spawn(async move {
-        loop {
-            // Con reintento de verdad: si el bus de sesión no estaba al
-            // arrancar, `session()` no lo vuelve a buscar nunca.
-            if let Some(pool) = app.try_state::<DbusPool>() {
-                if let Some(connection) = pool.session_or_connect().await {
-                    listen_changes(&pool, connection, || {
-                        let _ = app.emit(CHANGED_EVENT, ());
-                    })
-                    .await;
-                }
-            }
-            tokio::time::sleep(WATCH_RETRY).await;
-        }
-    });
-}
-
-/// Una vuelta de [`watch_changes`]: escucha los cambios en `connection` hasta
-/// que la escucha termina, y entonces suelta la conexión del pool.
-pub(crate) async fn listen_changes(pool: &DbusPool, connection: Connection, notify: impl FnMut()) {
-    // Una regla que no se arma es un error de este código, no de la conexión:
-    // soltar la conexión compartida por eso la tiraría cada vuelta sin motivo.
-    let rule = match changed_rule() {
-        Ok(rule) => rule,
-        Err(e) => {
-            log_info(&format!("[calendar] regla inválida: {e}"));
-            return;
-        }
-    };
-    match zbus::MessageStream::for_match_rule(rule, &connection, None).await {
-        Ok(mut changes) => coalesce_changes(&mut changes, CHANGE_SETTLE, notify).await,
-        Err(e) => log_info(&format!(
-            "[calendar] no se pueden escuchar los cambios del almacén: {e}"
-        )),
-    }
-    // Si se llegó acá, la escucha terminó o no se pudo armar: lo normal es que
-    // la conexión se haya cortado. Se suelta, y la vuelta siguiente abre otra
-    // en vez de reintentar sobre la misma para siempre.
-    pool.forget_session(&connection).await;
-}
-
 /// Las veces de los eventos que caen en `[from, to)`, en RFC 3339.
 #[tauri::command]
 pub async fn calendar_occurrences(app: AppHandle, from: String, to: String) -> CalendarReply {
-    let Some(connection) = session(&app).await else {
-        return CalendarReply::Unavailable;
-    };
-    let reply = read_occurrences(&connection, &from, &to).await;
+    let store = app.store();
+    let reply = read_occurrences(store.as_ref(), &from, &to).await;
     if let CalendarReply::Failed { detail } = &reply {
         log_info(&format!(
             "[calendario] no se pudieron leer los eventos: {detail}"
@@ -422,10 +425,7 @@ pub async fn calendar_occurrences(app: AppHandle, from: String, to: String) -> C
 /// El lugar de unos eventos: los del día que muestra el tablero.
 #[tauri::command]
 pub async fn calendar_locations(app: AppHandle, events: Vec<EventRef>) -> Vec<String> {
-    match session(&app).await {
-        Some(connection) => read_locations(&connection, &events).await,
-        None => vec![String::new(); events.len().min(MAX_DETAILS)],
-    }
+    read_locations(app.store().as_ref(), &events).await
 }
 
 #[cfg(test)]
@@ -644,225 +644,4 @@ mod tests {
 
     // ── Los cambios del almacén ─────────────────────────────────────────────
 
-    /// Un par de conexiones de punta a punta: la del escritorio y la del
-    /// almacén, que es la que emite las señales.
-    async fn pair() -> (Connection, Connection) {
-        let guid = Guid::generate();
-        let (client, server) = UnixStream::pair().unwrap();
-        let server = connection::Builder::unix_stream(server)
-            .server(guid)
-            .unwrap()
-            .p2p()
-            .build();
-        let client = connection::Builder::unix_stream(client).p2p().build();
-        futures_util::try_join!(client, server).unwrap()
-    }
-
-    fn changed(area: &str) -> zbus::Message {
-        zbus::Message::signal(PATH, INTERFACE, "Changed")
-            .unwrap()
-            .build(&(area, "cuenta", 7u64))
-            .unwrap()
-    }
-
-    /// Cualquier proceso de la sesión puede emitir una señal con la interfaz
-    /// del almacén: sólo cuenta la del dueño del nombre del sincronizador, y
-    /// desde su objeto.
-    #[test]
-    fn solo_cuenta_el_changed_del_sincronizador_y_de_su_objeto() {
-        let rule = changed_rule().unwrap().to_string();
-        for part in [
-            "sender='ar.net.vasak.os.AccountsSync'",
-            "path='/ar/net/vasak/os/AccountsStore'",
-        ] {
-            assert!(rule.contains(part), "falta {part} en {rule}");
-        }
-    }
-
-    #[test]
-    fn la_regla_deja_pasar_solo_el_changed_del_calendario() {
-        let rule = changed_rule().unwrap();
-        assert!(rule.matches(&changed("calendar")).unwrap());
-        assert!(!rule.matches(&changed("email")).unwrap());
-        assert!(!rule.matches(&changed("contacts")).unwrap());
-        let status = zbus::Message::signal(PATH, INTERFACE, "StatusChanged")
-            .unwrap()
-            .build(&())
-            .unwrap();
-        assert!(!rule.matches(&status).unwrap());
-        // El mismo `Changed` de otra interfaz tampoco.
-        let other = zbus::Message::signal(PATH, "org.example.Otro", "Changed")
-            .unwrap()
-            .build(&("calendar", "cuenta", 7u64))
-            .unwrap();
-        assert!(!rule.matches(&other).unwrap());
-    }
-
-    #[tokio::test]
-    async fn por_el_bus_llega_el_cambio_del_calendario_y_no_los_de_otras_areas() {
-        use futures_util::StreamExt;
-
-        let (desktop, store) = pair().await;
-        let mut changes =
-            zbus::MessageStream::for_match_rule(changed_rule().unwrap(), &desktop, None)
-                .await
-                .unwrap();
-
-        let emit = |member: &'static str, area: Option<(&'static str, u64)>| {
-            let store = store.clone();
-            async move {
-                match area {
-                    Some((area, generation)) => store
-                        .emit_signal(
-                            None::<()>,
-                            PATH,
-                            INTERFACE,
-                            member,
-                            &(area, "cuenta", generation),
-                        )
-                        .await
-                        .unwrap(),
-                    None => store
-                        .emit_signal(None::<()>, PATH, INTERFACE, member, &())
-                        .await
-                        .unwrap(),
-                }
-            }
-        };
-        emit("Changed", Some(("email", 1))).await;
-        emit("Changed", Some(("contacts", 2))).await;
-        emit("StatusChanged", None).await;
-        emit("Changed", Some(("calendar", 3))).await;
-
-        // Las señales llegan en orden: si alguna de las otras pasara el
-        // filtro, llegaría antes que la del calendario.
-        let first = tokio::time::timeout(Duration::from_secs(5), changes.next())
-            .await
-            .expect("la señal del calendario no llegó")
-            .unwrap()
-            .unwrap();
-        let (area, _account, generation): (String, String, u64) =
-            first.body().deserialize().unwrap();
-        assert_eq!((area.as_str(), generation), ("calendar", 3));
-    }
-
-    /// Un flujo de señales que la prueba alimenta a mano.
-    fn feed() -> (
-        tokio::sync::mpsc::UnboundedSender<Result<(), ()>>,
-        impl futures_util::Stream<Item = Result<(), ()>> + Unpin,
-    ) {
-        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-        (
-            tx,
-            futures_util::stream::poll_fn(move |cx| rx.poll_recv(cx)),
-        )
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn una_rafaga_de_senales_es_un_solo_aviso() {
-        let (tx, mut changes) = feed();
-        let (notified, mut notices) = tokio::sync::mpsc::unbounded_channel();
-        let watcher = tokio::spawn(async move {
-            coalesce_changes(&mut changes, CHANGE_SETTLE, || {
-                notified.send(tokio::time::Instant::now()).unwrap()
-            })
-            .await
-        });
-        let start = tokio::time::Instant::now();
-
-        // Un lote, y otros dos mientras el primero todavía se asienta.
-        tx.send(Ok(())).unwrap();
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        tx.send(Ok(())).unwrap();
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        tx.send(Ok(())).unwrap();
-
-        let at = notices.recv().await.unwrap();
-        assert!(
-            at - start >= CHANGE_SETTLE,
-            "avisó antes de juntar la tanda"
-        );
-        drop(tx);
-        watcher.await.unwrap();
-        assert!(
-            notices.try_recv().is_err(),
-            "tres señales de una vuelta, más de un aviso"
-        );
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn dos_rafagas_separadas_son_dos_avisos() {
-        let (tx, mut changes) = feed();
-        let (notified, mut notices) = tokio::sync::mpsc::unbounded_channel();
-        let watcher = tokio::spawn(async move {
-            coalesce_changes(&mut changes, CHANGE_SETTLE, || notified.send(()).unwrap()).await
-        });
-
-        tx.send(Ok(())).unwrap();
-        tx.send(Ok(())).unwrap();
-        notices.recv().await.unwrap();
-        // Lo que llega después del aviso es otra vuelta: no se pierde.
-        tx.send(Ok(())).unwrap();
-        tx.send(Ok(())).unwrap();
-        notices.recv().await.unwrap();
-        drop(tx);
-        watcher.await.unwrap();
-        assert!(notices.try_recv().is_err());
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn una_senal_con_error_no_despierta_a_nadie() {
-        let (tx, mut changes) = feed();
-        let mut notices = 0;
-        tx.send(Err(())).unwrap();
-        tx.send(Err(())).unwrap();
-        drop(tx);
-        coalesce_changes(&mut changes, CHANGE_SETTLE, || notices += 1).await;
-        assert_eq!(notices, 0);
-    }
-
-    /// Cuando el otro lado corta, la escucha termina y suelta la conexión del
-    /// pool: la vuelta siguiente de `watch_changes` abre otra en vez de volver
-    /// a suscribirse para siempre sobre una muerta.
-    #[tokio::test]
-    async fn la_escucha_cortada_suelta_la_conexion_del_pool() {
-        let guid = Guid::generate();
-        let (client, server) = UnixStream::pair().unwrap();
-        let server = connection::Builder::unix_stream(server)
-            .server(guid)
-            .unwrap()
-            .p2p()
-            .build();
-        let client = connection::Builder::unix_stream(client).p2p().build();
-        let (client, server) = futures_util::try_join!(client, server).unwrap();
-
-        let pool = Arc::new(DbusPool::with_session(Some(client.clone())));
-        let listening = {
-            let pool = Arc::clone(&pool);
-            tokio::spawn(async move { listen_changes(&pool, client, || {}).await })
-        };
-        // Mientras escucha, la conexión sigue en el pool.
-        tokio::task::yield_now().await;
-        assert!(pool.session().await.is_some());
-
-        drop(server);
-        tokio::time::timeout(Duration::from_secs(5), listening)
-            .await
-            .expect("la escucha no terminó al cortarse la conexión")
-            .unwrap();
-        assert!(
-            pool.session().await.is_none(),
-            "la conexión cortada quedó en el pool"
-        );
-    }
-
-    #[test]
-    fn el_evento_es_el_que_escuchan_las_ventanas() {
-        // `CALENDAR_CHANGED` de `calendar.service.ts`: si uno cambia y el otro
-        // no, nadie se entera de lo nuevo.
-        let service = include_str!("../../../src/services/calendar.service.ts");
-        assert!(service.contains(&format!(
-            "export const CALENDAR_CHANGED = '{CHANGED_EVENT}';"
-        )));
-    }
 }

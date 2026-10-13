@@ -1,6 +1,6 @@
 [package]
 name = "vasak-desktop"
-version = "1.67.0"
+version = "1.68.0"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -70,6 +70,9 @@ tokio = { version = "1.0", features = ["rt", "sync", "time", "net", "io-util", "
 image = "0.25"
 percent-encoding = "2"
 futures-util = "0.3"
+# El cliente del almacén del sistema, compartido con mail, calendario y
+# contactos: comprueba al dueño del nombre del sincronizador antes de creerle.
+tauri-plugin-vsk-store = "0.1"
 log = "0.4"
 async-trait = "0.1.89"
 dirs = "7"

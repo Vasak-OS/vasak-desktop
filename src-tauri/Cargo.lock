@@ -5247,6 +5247,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-vsk-store"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9a61c34a644e40c592201a4f2e2e89f20c57424497bd92754e0c3211a28cd9f"
+dependencies = [
+ "futures-util",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.21",
+ "tokio",
+ "zbus 5.19.0",
+]
+
+[[package]]
 name = "tauri-runtime"
 version = "2.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5893,7 +5909,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "vasak-desktop"
-version = "1.67.0"
+version = "1.68.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -5934,6 +5950,7 @@ dependencies = [
  "tauri-plugin-vicons",
  "tauri-plugin-vsk-contextual-menu",
  "tauri-plugin-vsk-journal",
+ "tauri-plugin-vsk-store",
  "thiserror 2.0.21",
  "tokio",
  "url",
@@ -6898,6 +6915,7 @@ dependencies = [
  "rustix",
  "serde",
  "serde_repr",
+ "tokio",
  "tracing",
  "uds_windows",
  "uuid",
