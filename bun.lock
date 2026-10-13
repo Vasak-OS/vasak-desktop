@@ -21,7 +21,7 @@
         "@vasakgroup/plugin-vsk-journal": "^2.0.1",
         "@vasakgroup/plugin-vsk-store": "^0.2.0",
         "@vasakgroup/tauri-plugin-i18n": "^2.3.1",
-        "@vasakgroup/vue-libvasak": "^2.18.0",
+        "@vasakgroup/vue-libvasak": "^2.20.1",
         "pinia": "^3.0.4",
         "vue": "^3.5.44",
         "vue-router": "^5.4.0",
@@ -289,7 +289,7 @@
 
     "@vasakgroup/tauri-plugin-i18n": ["@vasakgroup/tauri-plugin-i18n@2.3.1", "", { "dependencies": { "@tauri-apps/api": "^2.10.1" }, "peerDependencies": { "vue": "^3.0.0" }, "optionalPeers": ["vue"] }, "sha512-UZogtGKZFSy2Ok2hkXn5oAOuXGSeKbCKC/+HzHwuGMQi5Q42l+/+vyTx+sFcr0R0ffhewctUSQePED+17sUJpg=="],
 
-    "@vasakgroup/vue-libvasak": ["@vasakgroup/vue-libvasak@2.18.0", "", { "peerDependencies": { "@tauri-apps/api": "^2.0.0", "@vasakgroup/plugin-config-manager": "^2.0.0", "@vasakgroup/plugin-vicons": "^2.0.0", "@vasakgroup/tauri-plugin-i18n": "^2.3.0", "vue": "^3.0.0" } }, "sha512-d2YR3E14Jz87PKRBPWFLrQPS2VD+SD1njW64AFCdy+bduVjPYo0+ggMNuahgN97zEXbMyUu1c01B1k05cVBiOA=="],
+    "@vasakgroup/vue-libvasak": ["@vasakgroup/vue-libvasak@2.20.1", "", { "peerDependencies": { "@tauri-apps/api": "^2.0.0", "@vasakgroup/plugin-config-manager": "^2.0.0", "@vasakgroup/plugin-vicons": "^2.0.0", "@vasakgroup/tauri-plugin-i18n": "^2.3.0", "vue": "^3.0.0" } }, "sha512-NefHyrowB4jgxAgug27GQqmIK49n43ETzoy2tP8IE4m4IVWPyDzYF9VfE18XOVO4kKxVXH39c0OumcK6yF/I/Q=="],
 
     "@vitejs/plugin-vue": ["@vitejs/plugin-vue@6.0.10", "", { "dependencies": { "@rolldown/pluginutils": "^1.0.1" }, "peerDependencies": { "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0", "vue": "^3.2.25 || ^3.6.0-rc.10" } }, "sha512-b80aUQh3n+qEzzZm5oQp3rT2QImeCx58K6eFl/RkJ3d65KW0kTuv5lNsLRVAjbW9YRUpo/wzmvzMgV34bTAItA=="],
 
