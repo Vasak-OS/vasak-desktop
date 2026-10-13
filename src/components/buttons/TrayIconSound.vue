@@ -56,7 +56,10 @@ const { isOpen } = useOpenApplet('audio');
  */
 const level = computed(() => Math.round(volumePercentage.value));
 const label = computed(() =>
-	!showVolumeNumber.value || vertical.value || !showsNumbers(density.value) || volumeInfo.value.is_muted
+	!showVolumeNumber.value ||
+	vertical.value ||
+	!showsNumbers(density.value) ||
+	volumeInfo.value.is_muted
 		? ''
 		: String(level.value)
 );

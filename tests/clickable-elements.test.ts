@@ -199,8 +199,10 @@ describe('los botones del panel se anuncian con nombre', () => {
 		expect(read('components/buttons/WindowPanelButton.vue')).toContain(':alt="title"');
 		const panel = read('views/PanelView.vue');
 		expect(panel).toContain(':accessible-label="t(\'views.panel.menuAlt\')"');
-		// Los accesos fijos, por `alt` como los demás iconos chicos.
-		expect(read('components/panel/PinnedAppsPill.vue')).toContain(':alt="t(app.label)"');
+		// Los accesos fijos, por `alt` como los demás iconos chicos. El nombre sale
+		// de `label(app)`: traducido en los predeterminados, literal en los de la
+		// configuración (vasak-desktop#251).
+		expect(read('components/panel/PinnedAppsPill.vue')).toContain(':alt="label(app)"');
 		expect(panel).toContain(':accessible-label="t(\'views.panel.notificationsAlt\')"');
 		for (const path of [
 			'components/buttons/TrayIconNetwork.vue',

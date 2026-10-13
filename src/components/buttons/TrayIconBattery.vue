@@ -38,7 +38,10 @@ const batteryAltText = computed(() => {
  * Apagarlo lo esconde en cualquier densidad (vasak-desktop#251).
  */
 const label = computed(() =>
-	!showBatteryNumber.value || vertical.value || !showsNumbers(density.value) || !batteryInfo.value.has_battery
+	!showBatteryNumber.value ||
+	vertical.value ||
+	!showsNumbers(density.value) ||
+	!batteryInfo.value.has_battery
 		? ''
 		: String(Math.round(batteryInfo.value.percentage))
 );
