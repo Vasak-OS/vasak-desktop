@@ -5892,8 +5892,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
+name = "vasak-accounts-store-client"
+version = "0.20.0"
+source = "git+https://github.com/Vasak-OS/vasak-accounts?branch=main#9fd17b026619c3222f6a43fde628599d7e550c2c"
+dependencies = [
+ "zbus 5.19.0",
+]
+
+[[package]]
 name = "vasak-desktop"
-version = "1.67.0"
+version = "1.68.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -5938,6 +5946,7 @@ dependencies = [
  "tokio",
  "url",
  "uuid",
+ "vasak-accounts-store-client",
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",
@@ -6898,6 +6907,7 @@ dependencies = [
  "rustix",
  "serde",
  "serde_repr",
+ "tokio",
  "tracing",
  "uds_windows",
  "uuid",

@@ -39,6 +39,8 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use zbus::Connection;
 
+use vasak_accounts_store_client::{trusted_owner, BoxFuture, OwnerResolver, ServiceIdentity};
+
 use crate::dbus_pool::DbusPool;
 use crate::logger::log_info;
 
@@ -186,11 +188,21 @@ fn classify(error: zbus::Error) -> Failure {
 }
 
 /// Una llamada al almacén que contesta JSON, con el tope de espera.
-async fn call_json<A>(connection: &Connection, method: &str, args: &A) -> Result<String, Failure>
+///
+/// Va dirigida al **nombre único** ya verificado del dueño (`owner`), no al
+/// nombre bien conocido: así, si el nombre cambia de dueño después de la
+/// comprobación, las llamadas siguen yendo a la conexión que se verificó y no a
+/// la de un impostor. Ver [`verified_session`] y `vasak-accounts#77`.
+async fn call_json<A>(
+    connection: &Connection,
+    owner: &str,
+    method: &str,
+    args: &A,
+) -> Result<String, Failure>
 where
     A: serde::ser::Serialize + zbus::zvariant::DynamicType,
 {
-    let call = connection.call_method(Some(BUS_NAME), PATH, Some(INTERFACE), method, args);
+    let call = connection.call_method(Some(owner), PATH, Some(INTERFACE), method, args);
     let reply = tokio::time::timeout(CALL_TIMEOUT, call)
         .await
         .map_err(|_| {
@@ -210,8 +222,8 @@ where
 ///
 /// Si no se pueden leer, el tablero sigue con los eventos sin el nombre: no
 /// vale la pena perder lo que sí llegó por un dato de adorno.
-async fn calendar_names(connection: &Connection) -> HashMap<String, String> {
-    match call_json(connection, "ListCalendars", &()).await {
+async fn calendar_names(connection: &Connection, owner: &str) -> HashMap<String, String> {
+    match call_json(connection, owner, "ListCalendars", &()).await {
         Ok(json) => serde_json::from_str::<Vec<CalendarItem>>(&json)
             .map(|items| items.into_iter().map(|c| (c.id, c.display_name)).collect())
             .unwrap_or_default(),
@@ -222,6 +234,7 @@ async fn calendar_names(connection: &Connection) -> HashMap<String, String> {
 /// Junta las páginas de un rango y les pone el nombre de su calendario.
 pub(crate) async fn read_occurrences(
     connection: &Connection,
+    owner: &str,
     from: &str,
     to: &str,
 ) -> CalendarReply {
@@ -232,6 +245,7 @@ pub(crate) async fn read_occurrences(
     for page_number in 0..MAX_PAGES {
         let json = match call_json(
             connection,
+            owner,
             "ListOccurrences",
             &(from, to, Vec::<String>::new(), cursor.as_str(), PAGE_LIMIT),
         )
@@ -261,7 +275,7 @@ pub(crate) async fn read_occurrences(
         }
     }
 
-    let names = calendar_names(connection).await;
+    let names = calendar_names(connection, owner).await;
     for entry in &mut entries {
         entry.calendar = names.get(&entry.calendar_id).cloned();
     }
@@ -271,11 +285,16 @@ pub(crate) async fn read_occurrences(
 
 /// El lugar de cada evento pedido, en el mismo orden; vacío si no tiene o no se
 /// pudo leer.
-pub(crate) async fn read_locations(connection: &Connection, events: &[EventRef]) -> Vec<String> {
+pub(crate) async fn read_locations(
+    connection: &Connection,
+    owner: &str,
+    events: &[EventRef],
+) -> Vec<String> {
     let mut locations = Vec::with_capacity(events.len().min(MAX_DETAILS));
     for event in events.iter().take(MAX_DETAILS) {
         let location = call_json(
             connection,
+            owner,
             "GetEvent",
             &(event.event_id.as_str(), event.occurrence_id.as_str()),
         )
@@ -303,6 +322,96 @@ pub struct EventRef {
 
 async fn session(app: &AppHandle) -> Option<Connection> {
     app.try_state::<DbusPool>()?.session().await
+}
+
+/// Resuelve al dueño de un nombre del bus de sesión con la **zbus 4** del
+/// escritorio, para dárselo a la verificación del crate.
+///
+/// `vasak-accounts-store-client` ya trae un resolvedor equivalente
+/// (`DbusOwnerResolver`), pero su API tipada es sobre **zbus 5** y el escritorio
+/// está fijado en zbus 4 a propósito (migrar rompe la bandeja del sistema; ver
+/// el `Cargo.toml`). No se puede pasar la `Connection` de zbus 4 a esa API sin
+/// mezclar las dos zbus en este crate. Por eso se implementa acá el rasgo
+/// `OwnerResolver` —agnóstico de la versión— y se reutiliza [`trusted_owner`],
+/// que es la verificación en sí: `pid` del dueño → `/proc/<pid>/exe` ==
+/// `/usr/bin/vasak-accounts-sync`, no forjable, que falla cerrado.
+struct SessionOwnerResolver {
+    proxy: zbus::fdo::DBusProxy<'static>,
+}
+
+impl SessionOwnerResolver {
+    async fn new(connection: &Connection) -> zbus::Result<Self> {
+        Ok(Self {
+            proxy: zbus::fdo::DBusProxy::new(connection).await?,
+        })
+    }
+}
+
+impl OwnerResolver for SessionOwnerResolver {
+    fn name_owner<'a>(&'a self, name: &'a str) -> BoxFuture<'a, Result<Option<String>, String>> {
+        Box::pin(async move {
+            let bus_name = zbus::names::BusName::try_from(name).map_err(|e| e.to_string())?;
+            match self.proxy.get_name_owner(bus_name).await {
+                Ok(unique) => Ok(Some(unique.to_string())),
+                Err(zbus::fdo::Error::NameHasNoOwner(_)) => Ok(None),
+                Err(e) => Err(e.to_string()),
+            }
+        })
+    }
+
+    fn process_id<'a>(&'a self, unique_name: &'a str) -> BoxFuture<'a, Result<u32, String>> {
+        Box::pin(async move {
+            let bus_name =
+                zbus::names::BusName::try_from(unique_name).map_err(|e| e.to_string())?;
+            self.proxy
+                .get_connection_unix_process_id(bus_name)
+                .await
+                .map_err(|e| e.to_string())
+        })
+    }
+}
+
+/// El nombre único del dueño del almacén, ya verificado contra el servicio
+/// instalado, o el motivo de desconfianza traducido a lo que ve el tablero.
+///
+/// Falla **cerrado**: cualquier cosa que impida confiar —el nombre sin dueño, el
+/// bus que no contesta, el pid que no se lee, el `exe` que no coincide— es
+/// [`Failure::Unavailable`], el mismo camino que un servicio ausente (decisión 2
+/// del taller: no disponible, nunca roto).
+///
+/// Está partido de la resolución del bus —toma un [`OwnerResolver`] cualquiera—
+/// para poder probar el rechazo del impostor con un resolvedor y una identidad
+/// de mentira, sin bus. Ver las pruebas y `vasak-accounts#77`.
+async fn trusted_owner_or_unavailable<R>(
+    resolver: &R,
+    identity: &ServiceIdentity,
+) -> Result<String, Failure>
+where
+    R: OwnerResolver + ?Sized,
+{
+    trusted_owner(resolver, BUS_NAME, identity)
+        .await
+        .map_err(|e| {
+            // `TrustError::Display` no interpola la ruta del dueño a propósito.
+            log_info(&format!("[calendario] no se confía en el almacén: {e}"));
+            Failure::Unavailable
+        })
+}
+
+/// La conexión del pool y el nombre único verificado del dueño del almacén, o
+/// `None` si no hay conexión o no se puede confiar. Se comprueba **una vez por
+/// conexión**, antes de la primera llamada; el nombre único que devuelve es al
+/// que las lecturas dirigen sus llamadas. Ver [`trusted_owner_or_unavailable`].
+async fn verified_session(app: &AppHandle) -> Option<(Connection, String)> {
+    let connection = session(app).await?;
+    let resolver = SessionOwnerResolver::new(&connection)
+        .await
+        .map_err(|e| log_info(&format!("[calendario] no se pudo abrir el resolvedor: {e}")))
+        .ok()?;
+    let owner = trusted_owner_or_unavailable(&resolver, &ServiceIdentity::installed())
+        .await
+        .ok()?;
+    Some((connection, owner))
 }
 
 /// El evento que reciben las ventanas cuando cambió lo guardado del
@@ -407,10 +516,10 @@ pub(crate) async fn listen_changes(pool: &DbusPool, connection: Connection, noti
 /// Las veces de los eventos que caen en `[from, to)`, en RFC 3339.
 #[tauri::command]
 pub async fn calendar_occurrences(app: AppHandle, from: String, to: String) -> CalendarReply {
-    let Some(connection) = session(&app).await else {
+    let Some((connection, owner)) = verified_session(&app).await else {
         return CalendarReply::Unavailable;
     };
-    let reply = read_occurrences(&connection, &from, &to).await;
+    let reply = read_occurrences(&connection, &owner, &from, &to).await;
     if let CalendarReply::Failed { detail } = &reply {
         log_info(&format!(
             "[calendario] no se pudieron leer los eventos: {detail}"
@@ -422,8 +531,8 @@ pub async fn calendar_occurrences(app: AppHandle, from: String, to: String) -> C
 /// El lugar de unos eventos: los del día que muestra el tablero.
 #[tauri::command]
 pub async fn calendar_locations(app: AppHandle, events: Vec<EventRef>) -> Vec<String> {
-    match session(&app).await {
-        Some(connection) => read_locations(&connection, &events).await,
+    match verified_session(&app).await {
+        Some((connection, owner)) => read_locations(&connection, &owner, &events).await,
         None => vec![String::new(); events.len().min(MAX_DETAILS)],
     }
 }
@@ -431,12 +540,19 @@ pub async fn calendar_locations(app: AppHandle, events: Vec<EventRef>) -> Vec<St
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
+    use std::process::{Child, Command};
     use std::sync::{Arc, Mutex};
     // De tokio y no de `std`: con `tauri-plugin-display-manager` zbus se
     // compila con su característica `tokio`, y entonces `unix_stream` pide
     // este tipo.
     use tokio::net::UnixStream;
     use zbus::{connection, Guid};
+
+    /// Un nombre único cualquiera para las pruebas de las lecturas: en un par de
+    /// sockets p2p el destino se ignora, así que las llamadas llegan igual al
+    /// almacén de mentira. En producción es el nombre único ya verificado.
+    const TEST_OWNER: &str = ":1.store";
 
     /// Un almacén de mentira, del otro lado de un par de sockets: la llamada
     /// de verdad, con su encabezado y su cuerpo, sin tocar el bus de la sesión.
@@ -527,8 +643,13 @@ mod tests {
         let cursors = store.cursors.clone();
         let connection = connect(Some(store)).await;
 
-        let reply =
-            read_occurrences(&connection, "2026-03-01T00:00:00Z", "2026-04-12T00:00:00Z").await;
+        let reply = read_occurrences(
+            &connection,
+            TEST_OWNER,
+            "2026-03-01T00:00:00Z",
+            "2026-04-12T00:00:00Z",
+        )
+        .await;
 
         let CalendarReply::Ready { entries, truncated } = reply else {
             panic!("se esperaban eventos: {reply:?}");
@@ -553,7 +674,7 @@ mod tests {
         let connection = connect(Some(store)).await;
 
         assert_eq!(
-            read_occurrences(&connection, "a", "b").await,
+            read_occurrences(&connection, TEST_OWNER, "a", "b").await,
             CalendarReply::Denied
         );
     }
@@ -565,7 +686,7 @@ mod tests {
         let connection = connect(None).await;
 
         assert_eq!(
-            read_occurrences(&connection, "a", "b").await,
+            read_occurrences(&connection, TEST_OWNER, "a", "b").await,
             CalendarReply::Unavailable
         );
     }
@@ -594,7 +715,7 @@ mod tests {
             },
         ];
         assert_eq!(
-            read_locations(&connection, &refs).await,
+            read_locations(&connection, TEST_OWNER, &refs).await,
             vec!["Sala 3".to_string(), String::new()]
         );
     }
@@ -640,6 +761,127 @@ mod tests {
     #[test]
     fn la_espera_le_gana_al_dialogo_de_permiso() {
         assert!(CALL_TIMEOUT > Duration::from_secs(120));
+    }
+
+    // ── La verificación del dueño del almacén (vasak-accounts#77) ────────────
+    //
+    // El sabotaje es real: un proceso de verdad hace de impostor, con su propio
+    // `/proc/<pid>/exe`, que es justo lo que mira el verificador —no una prueba
+    // en negativo—. La verificación en sí vive en `vasak-accounts-store-client`
+    // (y la prueba con bus real, en su `tests/real_bus.rs`); acá se comprueba el
+    // cableado del escritorio: que un impostor caiga en «no disponible» y que al
+    // dueño legítimo se le tome su nombre único. Ninguna de estas pruebas escribe
+    // la ruta del dueño en un registro.
+
+    /// Un proceso de verdad que hace de impostor: existe, tiene su `exe`, y no es
+    /// el servicio. Se mata solo al salir del alcance.
+    struct Impostor(Child);
+
+    impl Impostor {
+        fn start() -> Self {
+            Impostor(
+                Command::new("sleep")
+                    .arg("120")
+                    .spawn()
+                    .expect("no se pudo arrancar el proceso impostor"),
+            )
+        }
+
+        fn pid(&self) -> u32 {
+            self.0.id()
+        }
+
+        /// El binario que el impostor ejecuta de verdad, para el camino que **sí**
+        /// confía. Se lee del enlace del núcleo, no se inventa.
+        fn executable(&self) -> PathBuf {
+            std::fs::read_link(format!("/proc/{}/exe", self.pid()))
+                .expect("el impostor tiene que tener un exe")
+        }
+    }
+
+    impl Drop for Impostor {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+
+    /// Un resolvedor que contesta lo que se le diga, sin bus. El pid que devuelve
+    /// es el de un proceso de verdad, así que `/proc/<pid>/exe` se lee de verdad.
+    struct FakeResolver {
+        owner: Option<String>,
+        pid: u32,
+    }
+
+    impl OwnerResolver for FakeResolver {
+        fn name_owner<'a>(
+            &'a self,
+            _name: &'a str,
+        ) -> BoxFuture<'a, Result<Option<String>, String>> {
+            let owner = self.owner.clone();
+            Box::pin(async move { Ok(owner) })
+        }
+
+        fn process_id<'a>(&'a self, _unique_name: &'a str) -> BoxFuture<'a, Result<u32, String>> {
+            let pid = self.pid;
+            Box::pin(async move { Ok(pid) })
+        }
+    }
+
+    #[tokio::test]
+    async fn un_impostor_que_toma_el_nombre_lo_ve_no_disponible() {
+        // La identidad es la del servicio instalado (`/usr/bin/vasak-accounts-sync`),
+        // que no es el `exe` del impostor: se rechaza y cae en «no disponible».
+        let impostor = Impostor::start();
+        let resolver = FakeResolver {
+            owner: Some(":1.42".to_owned()),
+            pid: impostor.pid(),
+        };
+
+        assert_eq!(
+            trusted_owner_or_unavailable(&resolver, &ServiceIdentity::installed()).await,
+            Err(Failure::Unavailable)
+        );
+    }
+
+    #[tokio::test]
+    async fn al_dueno_legitimo_se_le_toma_su_nombre_unico() {
+        // La identidad apunta al binario que el proceso ejecuta de verdad: es lo
+        // que pasaría si ese proceso fuera el servicio instalado. Se confía, y lo
+        // que se devuelve para dirigir las llamadas es su nombre único.
+        let servicio = Impostor::start();
+        let resolver = FakeResolver {
+            owner: Some(":1.7".to_owned()),
+            pid: servicio.pid(),
+        };
+        let identity = ServiceIdentity {
+            executable: servicio.executable(),
+        };
+
+        assert_eq!(
+            trusted_owner_or_unavailable(&resolver, &identity).await,
+            Ok(":1.7".to_owned())
+        );
+    }
+
+    #[tokio::test]
+    async fn un_nombre_sin_dueno_lo_ve_no_disponible() {
+        // El servicio no está: el nombre no tiene dueño. No se confía en nadie.
+        let resolver = FakeResolver {
+            owner: None,
+            pid: 0,
+        };
+        assert_eq!(
+            trusted_owner_or_unavailable(&resolver, &ServiceIdentity::installed()).await,
+            Err(Failure::Unavailable)
+        );
+    }
+
+    #[test]
+    fn el_nombre_que_se_verifica_es_el_del_sincronizador() {
+        // Si el nombre bien conocido del escritorio y el que el crate verifica se
+        // separan, se verificaría un nombre y se llamaría a otro.
+        assert_eq!(BUS_NAME, vasak_accounts_store_client::SERVICE_NAME);
     }
 
     // ── Los cambios del almacén ─────────────────────────────────────────────
