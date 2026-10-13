@@ -1,6 +1,6 @@
 [package]
 name = "vasak-desktop"
-version = "1.66.1"
+version = "1.66.2"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -42,7 +42,13 @@ tauri-plugin-opener = "2"
 #tauri-plugin-network-manager = { path = "../../tauri-plugin-network-manager" }
 tauri-plugin-network-manager = "2"
 #tauri-plugin-bluetooth-manager = { path = "../../tauri-plugin-bluetooth-manager" }
-tauri-plugin-bluetooth-manager = "2.2.1"
+# 2.3.2 como piso: 2.2.1 abría una `Connection::system()` nueva por `start_scan`
+# que zbus cerraba al retornar el comando, así que BlueZ cortaba el
+# descubrimiento al instante y el panel «se quedaba buscando» sin encontrar nada
+# —mientras bluetoothctl, un cliente aparte, sí veía los dispositivos—. El
+# escaneo reusa la conexión persistente desde 2.2.2, y 2.3.2 suma además el
+# `SetDiscoveryFilter(Transport=auto)`.
+tauri-plugin-bluetooth-manager = "2.3.2"
 # Brillo por monitor y configuración de la luz nocturna, compartido con
 # vasak-settings (vasak-desktop#178).
 tauri-plugin-display-manager = "2"
