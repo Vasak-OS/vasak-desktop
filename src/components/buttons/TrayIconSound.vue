@@ -16,7 +16,7 @@ import { logError } from '@/utils/logger';
 import { calculateVolumePercentage, getVolumeIconName } from '@/utils/volume';
 
 const { t } = useI18n();
-const { vertical, hasSurface } = usePanelConfig();
+const { vertical, hasSurface, showVolumeNumber } = usePanelConfig();
 const density = usePanelDensity();
 
 const volumeInfo = ref<VolumeInfo>({
@@ -49,10 +49,14 @@ const { isOpen } = useOpenApplet('audio');
 /**
  * El número de la píldora (vasak-desktop#151): «50», como en el video. En
  * silencio no hay número: el icono tachado ya lo dice.
+ *
+ * El ajuste `panel.volumeNumber` se **combina** con la densidad: el número sale
+ * sólo si el ajuste no está apagado **y** hay lugar (`showsNumbers`) **y** no
+ * está en silencio. Apagarlo lo esconde en cualquier densidad (vasak-desktop#251).
  */
 const level = computed(() => Math.round(volumePercentage.value));
 const label = computed(() =>
-	vertical.value || !showsNumbers(density.value) || volumeInfo.value.is_muted
+	!showVolumeNumber.value || vertical.value || !showsNumbers(density.value) || volumeInfo.value.is_muted
 		? ''
 		: String(level.value)
 );

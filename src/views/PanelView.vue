@@ -57,6 +57,8 @@ const {
 	style,
 	showWeather,
 	showMusic,
+	showWindows,
+	showWorkspaces,
 	barClasses,
 	surfaceClass,
 	hasSurface,
@@ -375,8 +377,9 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       <!-- En el panel más angosto las ventanas suben al lado de los accesos
            fijos: así, si lo de la izquierda no entra, lo que se recorta es la
            música o los espacios de trabajo y no la barra de ventanas, que no
-           sale nunca (decisión del usuario, 03/10/2026). -->
-      <WindowsArea v-if="windowsFirst" />
+           sale nunca (decisión del usuario, 03/10/2026). La píldora entera se
+           apaga con `panel.windows` (vasak-desktop#251). -->
+      <WindowsArea v-if="showWindows && windowsFirst" />
       <!-- Only while a phone is connected: a permanent button for hardware
            most people never plug in is clutter in the one strip of screen that
            is always on top of everything else. -->
@@ -397,9 +400,9 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
           class="absolute top-0.5 right-0.5 size-2 rounded-corner-full bg-status-warning"
         ></span>
       </PanelPill>
-      <WorkspacesPill />
+      <WorkspacesPill v-if="showWorkspaces" />
       <TrayMusicControl v-if="showMusic" />
-      <WindowsArea v-if="!windowsFirst" />
+      <WindowsArea v-if="showWindows && !windowsFirst" />
     </div>
     <div class="flex items-center gap-1.5" :class="GROUP_CLASSES[position].center" data-panel-center>
       <PanelClockWidget />

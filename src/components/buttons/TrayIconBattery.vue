@@ -13,7 +13,7 @@ import { showsNumbers } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
-const { vertical, hasSurface } = usePanelConfig();
+const { vertical, hasSurface, showBatteryNumber } = usePanelConfig();
 const density = usePanelDensity();
 
 const batteryInfo = ref<BatteryInfo>({
@@ -31,9 +31,14 @@ const batteryAltText = computed(() => {
 		.replace('{1}', String(batteryInfo.value.state));
 });
 
-/** El número de la píldora (vasak-desktop#151): «100», como en el video. */
+/**
+ * El número de la píldora (vasak-desktop#151): «100», como en el video. El
+ * ajuste `panel.batteryNumber` se **combina** con la densidad: sale sólo si el
+ * ajuste no está apagado **y** hay lugar (`showsNumbers`) **y** hay batería.
+ * Apagarlo lo esconde en cualquier densidad (vasak-desktop#251).
+ */
 const label = computed(() =>
-	vertical.value || !showsNumbers(density.value) || !batteryInfo.value.has_battery
+	!showBatteryNumber.value || vertical.value || !showsNumbers(density.value) || !batteryInfo.value.has_battery
 		? ''
 		: String(Math.round(batteryInfo.value.percentage))
 );

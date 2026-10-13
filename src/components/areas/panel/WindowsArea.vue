@@ -13,6 +13,7 @@ import { getWindows } from '@/services/window.service';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
 import { launcherForApp } from '@/tools/tray-item';
+import { windowsPillCapStyle, windowsPillClasses } from '@/tools/windows-pill';
 import { logError } from '@/utils/logger';
 
 interface WindowDelta {
@@ -110,20 +111,20 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
        ahí la píldora se quedaba en su mínimo —una sola ventana con scroll
        adentro— aunque sobrara lugar: la barra no le reservaba ancho. Por eso en
        compacto lleva `shrink-0` (vasak-desktop#213) **y no** el `max-w-[20rem]`:
-       reserva su ancho de contenido y usa el que la barra le dé, así que con
-       lugar se ven todas. Pero con `shrink-0` y sin tope absoluto, muchas
-       ventanas estiraban la barra centrada más allá de la pantalla. Por eso
-       además lleva un tope **absoluto** ligado al viewport (`max-w-[90vw]`): la
-       barra crece mostrándolas todas hasta ese tope, y pasado el tope la píldora
-       acota y desplaza adentro lo que sobra (`overflow-x-auto`). Conviven: el
-       tope relativo `max-w-full` de la propia `PanelPill` —el 100 % de su hueco
-       en la barra— es el que mantiene sano el ancho angosto (240/360 px), donde
-       la barra centrada recortaría la píldora sin dejar desplazar (vasak-desktop
-       #213, hilo de CodeRabbit en #213); el absoluto la frena antes de desbordar
-       la pantalla en anchos grandes. De costado toma el alto que sobra (`flex-1`)
-       y desplaza hacia abajo. La barra de desplazamiento va oculta
-       (`.windows-pill`, abajo): se ve una píldora limpia, se arrastra igual con
-       la rueda o el gesto. -->
+       reserva su ancho y usa el que la barra le dé. El viejo tope `max-w-[90vw]`
+       dejaba crecer la píldora casi hasta la pantalla y recién ahí desplazaba,
+       así que con muchas ventanas quedaba una tira larguísima, cortada sin poder
+       desplazar cómodo. Ahora se fija a **tres iconos** —`windowsPillCapStyle`,
+       un ancho en `rem` sacado del tamaño real del botón, el relleno y el borde
+       (vasak-desktop#251)— y lo que sobra se desplaza adentro (`overflow-x-auto`).
+       El tope en línea gana sobre el `max-w-full` de la propia `PanelPill`, que
+       sigue cuidando el ancho angosto (240/360 px) cuando no hay tope de iconos.
+       De costado la píldora toma el alto que sobra (`flex-1`) pero se fija igual a
+       tres iconos de **alto** (`max-height` en línea) y desplaza hacia abajo lo
+       que sobra (`overflow-y-auto`). En densidad distribuida sigue cediendo a las
+       vecinas hasta `max-w-[20rem]`, sin tope de iconos. La barra de
+       desplazamiento va oculta (`.windows-pill`, abajo): se ve una píldora limpia,
+       se arrastra igual con la rueda o el gesto. -->
   <PanelPill
     v-if="windows.length > 0"
     :interactive="false"
@@ -133,13 +134,8 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
     role="group"
     :accessible-label="t('views.panel.windowsAlt')"
     class="windows-pill min-w-0"
-    :class="[
-      vertical
-        ? 'min-h-0 flex-1 py-1 overflow-y-auto overflow-x-hidden'
-        : 'px-1 overflow-x-auto overflow-y-hidden',
-      !vertical && layout !== 'compact' ? 'max-w-[20rem]' : '',
-      !vertical && layout === 'compact' ? 'shrink-0 max-w-[90vw]' : '',
-    ]"
+    :class="windowsPillClasses(vertical, layout)"
+    :style="windowsPillCapStyle(vertical, layout)"
     data-windows-pill
   >
     <TransitionGroup

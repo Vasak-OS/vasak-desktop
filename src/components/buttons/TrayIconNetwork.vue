@@ -20,7 +20,7 @@ import { showsNames } from '@/tools/panel-density';
 import { logError } from '@/utils/logger';
 
 const { t } = useI18n();
-const { vertical, hasSurface } = usePanelConfig();
+const { vertical, hasSurface, showNetworkName } = usePanelConfig();
 const density = usePanelDensity();
 
 const networkState = ref<NetworkInfo>({
@@ -59,9 +59,20 @@ const networkAlt = computed(() => {
  * Lo que dice la píldora: el nombre de la red, como en el video de referencia
  * (vasak-desktop#151). Por cable, el de la conexión. Desconectada, nada: el
  * icono ya lo dice, y la píldora queda redonda.
+ *
+ * El ajuste `panel.networkName` se **combina** con la densidad, no la pisa: el
+ * nombre sale sólo si el ajuste no está apagado **y** además hay lugar
+ * (`showsNames`) **y** hay conexión. Apagarlo lo esconde en cualquier densidad;
+ * dejarlo encendido no fuerza el nombre donde no entra (vasak-desktop#251).
  */
 const networkLabel = computed(() => {
-	if (vertical.value || !showsNames(density.value) || !networkState.value.is_connected) return '';
+	if (
+		!showNetworkName.value ||
+		vertical.value ||
+		!showsNames(density.value) ||
+		!networkState.value.is_connected
+	)
+		return '';
 	const { ssid, name } = networkState.value;
 	const known = (value: string) => Boolean(value) && value !== 'Unknown';
 	return known(ssid) ? ssid : known(name) ? name : '';

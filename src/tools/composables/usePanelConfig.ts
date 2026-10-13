@@ -11,6 +11,7 @@ import {
 } from '@/tools/panel-appearance';
 import { readPanelAutohide } from '@/tools/panel-autohide';
 import { isVertical, panelPosition } from '@/tools/panel-position';
+import { resolvePinnedApps } from '@/tools/pinned-apps';
 
 /**
  * Qué muestra el panel y de qué lado va.
@@ -49,6 +50,21 @@ export function usePanelConfig() {
 		showTransfer: computed(() => section.value.transfer !== false),
 		showTray: computed(() => section.value.tray !== false),
 		showPrivacy: computed(() => section.value.privacy !== false),
+		/** `true` salvo que `panel.workspaces` esté en `false`: la píldora de espacios de trabajo. */
+		showWorkspaces: computed(() => section.value.workspaces !== false),
+		/** `true` salvo que `panel.windows` esté en `false`: la píldora de ventanas abiertas. */
+		showWindows: computed(() => section.value.windows !== false),
+		/** `true` salvo que `panel.networkName` esté en `false`: el nombre de la red en su píldora. */
+		showNetworkName: computed(() => section.value.networkName !== false),
+		/** `true` salvo que `panel.volumeNumber` esté en `false`: el número del volumen en su píldora. */
+		showVolumeNumber: computed(() => section.value.volumeNumber !== false),
+		/** `true` salvo que `panel.batteryNumber` esté en `false`: el número de la batería en su píldora. */
+		showBatteryNumber: computed(() => section.value.batteryNumber !== false),
+		/**
+		 * Las aplicaciones ancladas: la lista de `panel.pinned`, o los dos por
+		 * defecto cuando está ausente (ver `resolvePinnedApps`).
+		 */
+		pinnedApps: computed(() => resolvePinnedApps(section.value)),
 		position,
 		/** `true` cuando el panel es una columna, que es lo que más se pregunta. */
 		vertical: computed(() => isVertical(position.value)),
