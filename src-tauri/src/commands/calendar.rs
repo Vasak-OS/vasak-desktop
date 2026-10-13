@@ -457,18 +457,23 @@ mod tests {
         events: HashMap<String, String>,
         deny: bool,
         cursors: Arc<Mutex<Vec<String>>>,
+        /// Cada pedido, con sus argumentos y en orden.
+        calls: Arc<Mutex<Vec<String>>>,
     }
 
     #[zbus::interface(name = "ar.net.vasak.os.AccountsStore")]
     impl FakeStore {
         fn list_occurrences(
             &self,
-            _from: String,
-            _to: String,
-            _calendar_ids: Vec<String>,
+            from: String,
+            to: String,
+            calendar_ids: Vec<String>,
             cursor: String,
-            _limit: u32,
+            limit: u32,
         ) -> zbus::fdo::Result<String> {
+            self.calls.lock().unwrap().push(format!(
+                "ListOccurrences {from} {to} {calendar_ids:?} {cursor:?} {limit}"
+            ));
             if self.deny {
                 return Err(zbus::fdo::Error::AccessDenied("sin permiso".into()));
             }
@@ -482,10 +487,15 @@ mod tests {
         }
 
         fn list_calendars(&self) -> String {
+            self.calls.lock().unwrap().push("ListCalendars".into());
             self.calendars.clone()
         }
 
-        fn get_event(&self, event_id: String, _occurrence_id: String) -> String {
+        fn get_event(&self, event_id: String, occurrence_id: String) -> String {
+            self.calls
+                .lock()
+                .unwrap()
+                .push(format!("GetEvent {event_id} {occurrence_id:?}"));
             self.events
                 .get(&event_id)
                 .cloned()
@@ -652,5 +662,299 @@ mod tests {
         assert!(CALL_TIMEOUT > Duration::from_secs(120));
     }
 
-    // ── Los cambios del almacén ─────────────────────────────────────────────
+    // ── Los errores del plugin ─────────────────────────────────────────────
+
+    fn store_error(name: Option<&str>, message: &str) -> StoreError {
+        StoreError::Store {
+            name: name.map(str::to_string),
+            message: message.into(),
+        }
+    }
+
+    /// Sin sincronizador, o con uno que no es el de verdad, el tablero dice
+    /// «no disponible», nunca «falló»: no hay nada roto que la persona pueda
+    /// arreglar.
+    #[test]
+    fn sin_sincronizador_o_con_un_impostor_el_tablero_ve_no_disponible() {
+        assert_eq!(classify_store(StoreError::NotRunning), Failure::Unavailable);
+        assert_eq!(classify_store(StoreError::Impostor), Failure::Unavailable);
+    }
+
+    #[test]
+    fn los_errores_de_dbus_del_plugin_caen_en_lo_que_ve_la_persona() {
+        for name in [
+            "org.freedesktop.DBus.Error.AccessDenied",
+            "org.freedesktop.DBus.Error.AuthFailed",
+        ] {
+            assert_eq!(
+                classify_store(store_error(Some(name), "x")),
+                Failure::Denied,
+                "{name}"
+            );
+        }
+        for name in [
+            "org.freedesktop.DBus.Error.ServiceUnknown",
+            "org.freedesktop.DBus.Error.NameHasNoOwner",
+            "org.freedesktop.DBus.Error.UnknownObject",
+            "org.freedesktop.DBus.Error.UnknownMethod",
+        ] {
+            assert_eq!(
+                classify_store(store_error(Some(name), "x")),
+                Failure::Unavailable,
+                "{name}"
+            );
+        }
+    }
+
+    /// Lo que no es ni permiso ni servicio ausente es un fallo, con el texto
+    /// del almacén y no el nombre técnico del error.
+    #[test]
+    fn los_demas_errores_del_plugin_son_un_fallo_con_su_texto() {
+        assert_eq!(
+            classify_store(store_error(
+                Some("org.freedesktop.DBus.Error.Failed"),
+                "la base está cerrada"
+            )),
+            Failure::Failed("la base está cerrada".into())
+        );
+        assert_eq!(
+            classify_store(store_error(None, "se cortó")),
+            Failure::Failed("se cortó".into())
+        );
+        let Failure::Failed(detail) = classify_store(StoreError::Reply("rota".into())) else {
+            panic!("una respuesta rota es un fallo");
+        };
+        assert!(detail.contains("rota"), "{detail}");
+    }
+
+    // ── Por el cliente comprobado del plugin ───────────────────────────────
+    //
+    // Las pruebas de arriba usan una conexión punto a punto, que en la sesión
+    // no se usa nunca. Estas pasan por `StoreCalls for StoreClient`, lo que usa
+    // el escritorio de verdad, contra un `dbus-daemon` privado: el almacén de
+    // mentira se sirve con el zbus 4 del escritorio y el plugin le habla con el
+    // suyo.
+
+    mod bus {
+        use super::*;
+        use std::io::{BufRead, BufReader};
+        use std::process::{Child, Command, Stdio};
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use tauri_plugin_vsk_store::client::{OwnerCheck, SERVICE};
+
+        static LOCK: Mutex<()> = Mutex::new(());
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+
+        /// Un `dbus-daemon` sólo para una prueba, sin activación de servicios:
+        /// la del sistema arrancaría el sincronizador de verdad. El cliente del
+        /// plugin abre el bus **de sesión**, así que la prueba apunta ahí
+        /// `DBUS_SESSION_BUS_ADDRESS`; con el candado, de a una.
+        struct PrivateBus {
+            child: Child,
+            config: std::path::PathBuf,
+            address: String,
+            _turn: std::sync::MutexGuard<'static, ()>,
+        }
+
+        impl PrivateBus {
+            fn start() -> Self {
+                let turn = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+                let dir = std::env::temp_dir();
+                let config = dir.join(format!(
+                    "vsk-desktop-test-{}-{}.conf",
+                    std::process::id(),
+                    NEXT.fetch_add(1, Ordering::SeqCst)
+                ));
+                std::fs::write(
+                    &config,
+                    format!(
+                        r#"<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+  <type>session</type>
+  <listen>unix:tmpdir={}</listen>
+  <auth>EXTERNAL</auth>
+  <policy context="default">
+    <allow send_destination="*" eavesdrop="true"/>
+    <allow eavesdrop="true"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+"#,
+                        dir.display()
+                    ),
+                )
+                .unwrap();
+                let mut child = Command::new("dbus-daemon")
+                    .arg(format!("--config-file={}", config.display()))
+                    .arg("--nofork")
+                    .arg("--print-address")
+                    .stdout(Stdio::piped())
+                    .spawn()
+                    .expect("hace falta `dbus-daemon` para estas pruebas (paquete dbus-daemon)");
+                let mut address = String::new();
+                BufReader::new(child.stdout.take().unwrap())
+                    .read_line(&mut address)
+                    .unwrap();
+                let address = address.trim().to_string();
+                assert!(!address.is_empty(), "dbus-daemon no dio su dirección");
+                std::env::set_var("DBUS_SESSION_BUS_ADDRESS", &address);
+                Self {
+                    child,
+                    config,
+                    address,
+                    _turn: turn,
+                }
+            }
+
+            /// Publica el almacén de mentira y toma el nombre del sincronizador.
+            async fn serve(&self, store: FakeStore) -> Connection {
+                connection::Builder::address(self.address.as_str())
+                    .unwrap()
+                    .serve_at(PATH, store)
+                    .unwrap()
+                    .name(SERVICE)
+                    .unwrap()
+                    .build()
+                    .await
+                    .unwrap()
+            }
+        }
+
+        impl Drop for PrivateBus {
+            fn drop(&mut self) {
+                let _ = self.child.kill();
+                let _ = self.child.wait();
+                let _ = std::fs::remove_file(&self.config);
+            }
+        }
+
+        /// La comprobación del dueño, decidida por la prueba: el almacén de
+        /// mentira corre en este proceso, que no es el sincronizador instalado.
+        struct Decided(bool);
+
+        impl OwnerCheck for Decided {
+            fn trusted(&self, _pid: u32) -> bool {
+                self.0
+            }
+        }
+
+        fn client(trusted: bool) -> StoreClient {
+            StoreClient::with_check(std::sync::Arc::new(Decided(trusted)))
+        }
+
+        const FROM: &str = "2026-03-01T00:00:00Z";
+        const TO: &str = "2026-04-12T00:00:00Z";
+
+        /// Cada pedido del tablero llega al almacén con su método y sus
+        /// argumentos: el rango en orden, todos los calendarios, el cursor de
+        /// cada página y el tamaño de página; el lugar, por evento y vez.
+        #[tokio::test]
+        async fn el_cliente_del_plugin_pide_cada_cosa_con_su_metodo_y_sus_argumentos() {
+            let bus = PrivateBus::start();
+            let mut events = HashMap::new();
+            events.insert(
+                "a/1".to_string(),
+                r#"{"event_id":"a/1","location":"Sala 3"}"#.to_string(),
+            );
+            let store = FakeStore {
+                pages: vec![
+                    format!(r#"{{"items":[{}],"next_cursor":"1","truncated":false}}"#, occurrence("a/1", "a/7")),
+                    format!(r#"{{"items":[{}],"next_cursor":null,"truncated":false}}"#, occurrence("a/2", "a/7")),
+                ],
+                calendars: r#"[{"id":"a/7","account_id":"a","display_name":"Trabajo","color":null,"components":["VEVENT"]}]"#.into(),
+                events,
+                ..Default::default()
+            };
+            let calls = store.calls.clone();
+            let _servicio = bus.serve(store).await;
+            let client = client(true);
+
+            let reply = read_occurrences(&client, FROM, TO).await;
+            let refs = vec![
+                EventRef {
+                    event_id: "a/1".into(),
+                    occurrence_id: String::new(),
+                },
+                EventRef {
+                    event_id: "a/2".into(),
+                    occurrence_id: "5".into(),
+                },
+            ];
+            let locations = read_locations(&client, &refs).await;
+
+            let CalendarReply::Ready { entries, truncated } = reply else {
+                panic!("se esperaban eventos: {reply:?}");
+            };
+            assert_eq!(entries.len(), 2);
+            assert_eq!(entries[0].calendar.as_deref(), Some("Trabajo"));
+            assert!(!truncated);
+            assert_eq!(locations, vec!["Sala 3".to_string(), String::new()]);
+            assert_eq!(
+                *calls.lock().unwrap(),
+                vec![
+                    format!("ListOccurrences {FROM} {TO} [] \"\" {PAGE_LIMIT}"),
+                    format!("ListOccurrences {FROM} {TO} [] \"1\" {PAGE_LIMIT}"),
+                    "ListCalendars".to_string(),
+                    "GetEvent a/1 \"\"".to_string(),
+                    "GetEvent a/2 \"5\"".to_string(),
+                ]
+            );
+        }
+
+        #[tokio::test]
+        async fn por_el_cliente_del_plugin_un_permiso_negado_se_ve_como_negado() {
+            let bus = PrivateBus::start();
+            let _servicio = bus
+                .serve(FakeStore {
+                    deny: true,
+                    ..Default::default()
+                })
+                .await;
+
+            assert_eq!(
+                read_occurrences(&client(true), FROM, TO).await,
+                CalendarReply::Denied
+            );
+        }
+
+        /// A un impostor no se le pide nada —ni los eventos ni el lugar— y el
+        /// tablero lo ve como un servicio que no está.
+        #[tokio::test]
+        async fn a_un_impostor_no_se_le_pide_nada_y_el_tablero_ve_no_disponible() {
+            let bus = PrivateBus::start();
+            let store = FakeStore::default();
+            let calls = store.calls.clone();
+            let _impostor = bus.serve(store).await;
+            let client = client(false);
+
+            let reply = read_occurrences(&client, FROM, TO).await;
+            let locations = read_locations(
+                &client,
+                &[EventRef {
+                    event_id: "a/1".into(),
+                    occurrence_id: String::new(),
+                }],
+            )
+            .await;
+
+            assert_eq!(reply, CalendarReply::Unavailable);
+            assert_eq!(locations, vec![String::new()]);
+            assert!(
+                calls.lock().unwrap().is_empty(),
+                "{:?}",
+                calls.lock().unwrap()
+            );
+        }
+
+        #[tokio::test]
+        async fn sin_sincronizador_en_el_bus_el_tablero_ve_no_disponible() {
+            let _bus = PrivateBus::start();
+
+            assert_eq!(
+                read_occurrences(&client(true), FROM, TO).await,
+                CalendarReply::Unavailable
+            );
+        }
+    }
 }
