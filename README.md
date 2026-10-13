@@ -6,7 +6,7 @@ La magia de VasakOS el core de su Desktop, TopBar, Menu y Mas... Todo diseñado 
 
 ## Tecnología
 
-[![Rust](https://img.shields.io/badge/Rust-1.82%2B-orange?style=flat&logo=rust)](https://www.rust-lang.org/) [![Tauri](https://img.shields.io/badge/Tauri-2.0-24283b?style=flat&logo=tauri)](https://tauri.app/) [![Vue](https://img.shields.io/badge/Vue-3.5-42b883?style=flat&logo=vue.js)](https://vuejs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178c6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+[![Rust](https://img.shields.io/badge/Rust-1.82%2B-orange?style=flat&logo=rust)](https://www.rust-lang.org/) [![Tauri](https://img.shields.io/badge/Tauri-2.0-24283b?style=flat&logo=tauri)](https://tauri.app/) [![Vue](https://img.shields.io/badge/Vue-3.5-42b883?style=flat&logo=vue.js)](https://vuejs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178c6?style=flat&logo=typescript)](https://www.typescriptlang.org/) [![systemd](https://img.shields.io/badge/systemd-user-24283b?style=flat&logo=systemd)](https://systemd.io/)
 
 ## Estado
 
@@ -36,41 +36,35 @@ La magia de VasakOS el core de su Desktop, TopBar, Menu y Mas... Todo diseñado 
 ### Flujo de datos
 
 ```mermaid
-<!--
 graph TD
     A[Entrada: Teclado / Ratón / D-Bus / Sistema] --> B[Procesamiento: Core Rust + Tauri Commands]
     B --> C[Salida: UI actualizada / Acciones del sistema]
     style A fill:#e1f5fe
     style C fill:#e8f5e9
--->
 ```
 
 ### Componentes internos
 
 ```mermaid
-<!--
 flowchart LR
     subgraph App[Vasak desktop]
         UI[Frontend Vue 3 + vue-libvasak]
-        Core[Core Rust: lógica principal]
-        IPC[Tauri Commands / Eventos]
-        System[Systemd / D-Bus / PipeWire / Wayland]
+        Core[Core Rust: panel, overview, notifications, media + daemon systemd]
+        IPC[Tauri Commands / Eventos + D-Bus]
     end
     UI --> IPC
     IPC --> Core
     Core --> DBus[(D-Bus / zbus)]
-    Core --> System
+    Core --> System[Systemd --user / D-Bus / Wayfire IPC / PipeWire]
     style UI fill:#f3e5f5
     style Core fill:#e3f2fd
     style DBus fill:#fff3e0
     style System fill:#fce4ec
--->
 ```
 
 ### Integración en el sistema VasakOS
 
 ```mermaid
-<!--
 C4Context
     title Vasak desktop en VasakOS
     Person(usuario, "Usuario", "Persona que usa el sistema")
@@ -81,20 +75,19 @@ C4Context
         System_Ext(accounts, "vasak-accounts", "Cuentas e identidad")
         System_Ext(permissions, "vasak-permissions", "Permisos y portales")
     }
-    System_Ext(systemd, "systemd", "Gestión de servicios")
-    System_Ext(dbus, "D-Bus", "Bus de mensajes del sistema")
-    System_Ext(wayland, "Wayland / Wayfire", "Compositor")
-    System_Ext(pipewire, "PipeWire", "Multimedia")
+    System_Ext(systemd, "systemd --user", "Socket-activated via D-Bus")
+    System_Ext(dbus, "D-Bus sesión", "Bus de mensajes")
+    System_Ext(wayland, "Wayland / Wayfire", "Compositor + plugins")
+    System_Ext(pipewire, "PipeWire", "Control de medios MPRIS")
     Rel(usuario, app, "Usa")
     Rel(app, settings, "Lee/escribe config")
     Rel(app, keyring, "Guarda/lee secrets")
     Rel(app, accounts, "Identidad de cuenta")
     Rel(app, permissions, "Solicita permisos")
-    Rel(app, systemd, "Activación / sockets")
-    Rel(app, dbus, "Expone / consume interfaces")
-    Rel(app, wayland, "Superficies / protocolos")
-    Rel(app, pipewire, "Streams de audio/video")
--->
+    Rel(app, systemd, "Socket-activated via D-Bus")
+    Rel(app, dbus, "Expone interfaces D-Bus")
+    Rel(app, wayland, "Wayfire IPC: workspaces, ventanas")
+    Rel(app, pipewire, "MPRIS: metadatos y controles")
 ```
 
 ---
@@ -125,12 +118,6 @@ bun run dev
 
 # Build producción
 bun run build
-
-# Solo frontend
-bun run build:frontend
-
-# Solo backend Rust
-cargo build --release --locked
 ```
 
 ### Flatpak / AppImage
@@ -142,17 +129,14 @@ cargo build --release --locked
 ## Uso rápido
 
 ```bash
-# Se lanza automáticamente (systemd --user) o manualmente:
+# Se lanza automáticamente al iniciar la sesión Wayfire (systemd --user socket-activated)
+# Para lanzar manualmente (debug):
 vasak-desktop
 ```
 
 ### Atajos / flags principales
 
-| Acción | Comando / Tecla |
-|--------|-----------------|
-| Acción principal | `vasak-desktop` |
-| Configuración | `vasak-desktop --config` |
-| Ayuda | `vasak-desktop --help` |
+| Acción | Comando / Tecla |\n|--------|-----------------|\n| Acción principal | `vasak-desktop` |\n| Configuración | `vasak-desktop --config` |\n| Ayuda | `vasak-desktop --help` |
 
 > **Captura:** `assets/demo.gif` *(placeholder — sustituir por GIF real)*
 
@@ -166,19 +150,39 @@ vasak-desktop
 ~/.config/vasak/vasak-desktop.toml
 ```
 
+Ejemplo mínimo:
+
+```toml
+[panel]
+position = "top"
+height = 36
+autohide = false
+
+[overview]
+blur_background = true
+show_recent = true
+max_recent = 8
+
+[notifications]
+position = "right"
+width = 360
+max_visible = 10
+
+[media]
+show_artwork = true
+preferred_players = ["spotify", "firefox", "mpv"]
+```
+
 ### Variables de entorno
 
 | Variable | Descripción | Por defecto |
 |----------|-------------|-------------|
 | `VASAK_DEBUG` | Activa logs de depuración en consola | `false` |
-| `VASAK_PROFILE` | Perfil de rendimiento: `balanced`, `performance`, `power-save` | `balanced` |
+| `VASAK_PROFILE` | Perfil de rendimiento: balanced, performance, power-save | `balanced` |
 
 ### Integración con `tauri-plugin-config-manager`
 
-- Esquemas de color: respeta `--ui-primary`, `--ui-surface`, `--ui-focus`, `--ui-on-surface`, `--ui-border`
-- Tema de iconos: usa el tema del sistema (`vasakos-icon-theme`) vía `vicon` lookup
-- Radio de bordes: variable CSS `--ui-radius` del esquema activo (por defecto 12px)
-- Fuentes: `--ui-font-family`, `--ui-font-size-base` desde el esquema
+- Esquemas de color: respeta `--ui-primary`, `--ui-surface`, `--ui-focus`, `--ui-on-surface`, `--ui-border`\n- Tema de iconos: usa el tema del sistema (`vasakos-icon-theme`) vía `vicon` lookup\n- Radio de bordes: variable CSS `--ui-radius` del esquema activo (por defecto 12px)\n- Fuentes: `--ui-font-family`, `--ui-font-size-base` desde el esquema
 
 ---
 
@@ -209,7 +213,7 @@ vasak-desktop
 
 `just` (command runner), `cargo-binstall` (opcional), `cargo-llvm-cov` (para cobertura)
 
-### Correr la app en desarrollo
+### Correr en desarrollo
 
 ```bash
 # Frontend (Vite dev server + Tauri dev)
@@ -219,7 +223,7 @@ bun run tauri dev
 bun run dev
 
 # Solo backend (cargo watch)
-cargo watch -x "run --bin vasak-desktop"
+cargo watch -x "run --bin vasak-desktop`
 ```
 
 ### Compilar / Build de release
@@ -242,7 +246,7 @@ cargo build --release --locked
 ### Targets principales
 
 ```bash
-# Desarrollo (Tauri dev server + hot reload)
+# Desarrollo
 bun run dev
 
 # Build producción
@@ -255,9 +259,7 @@ bun run build:frontend
 cargo build --release --locked
 
 # Lint + tipos (pre-commit / CI)
-bunx --bun biome check .
-bunx vue-tsc --noEmit
-cargo fmt --check
+bunx --bun biome check .\nbunx vue-tsc --noEmit\ncargo fmt --check
 ```
 
 ### Pruebas
@@ -291,7 +293,7 @@ Tipos habituales: `feat`, `fix`, `bugfix`, `docs`, `ci`, `chore`, `security`, `r
 
 1. Rama desde `origin/main`:
    ```bash
-   git worktree add -b feat/tema ~/wt/vasak-desktop-tema origin/main
+   git worktree add -b feat/{{TEMA}} ~/wt/vasak-desktop-{{TEMA}} origin/main
    ```
 2. Prefijos de rama: `fix/`, `feat/`, `bugfix/`, `docs/`, `ci/`, `chore/`, `security/`
 3. Escribe el fix → **`qa` escribe las pruebas** (fallan sin el fix) → suite verde → abre PR
@@ -307,14 +309,11 @@ Tipos habituales: `feat`, `fix`, `bugfix`, `docs`, `ci`, `chore`, `security`, `r
 
 ### Crates / módulos principales
 
-| `vasak-desktop-core` | Lógica compartida: estado, D-Bus, IPC |
-| `vasak-desktop-ui` | Frontend Vue 3 + componentes vue-libvasak |
-| `vasak-desktop-tauri` | Puente Tauri: commands, eventos, WebView |
+| Crate / Módulo | Responsabilidad |\n|----------------|-----------------|\n| `vasak-desktop-core` | Lógica compartida: estado, D-Bus, IPC |\n| `vasak-desktop-ui` | Frontend Vue 3 + componentes vue-libvasak |\n| `vasak-desktop-tauri` | Puente Tauri: commands, eventos, WebView |
 
 ### Interfaces D-Bus / zbus expuestas
 
-| `org.vasak.Vasak-desktop` | `GetState()`, `StateChanged(dict)`, `SetConfig(dict)` | Estado y control principal |
-| `org.vasak.Vasak-desktop.Panel` | `SetPosition(string)`, `SetAutohide(bool)`, `Height(u32)` | Configuración panel en runtime |
+| Interfaz | Métodos / Señales / Propiedades | Descripción |\n|----------|----------------------------------|-------------|\n| `org.vasak.Vasak-desktop` | `GetState()`, `StateChanged(dict)`, `SetConfig(dict)` | Estado y control principal |\n| `org.vasak.Vasak-desktop.Panel` | `SetPosition(string)`, `SetAutohide(bool)`, `Height(u32)` | Configuración panel en runtime |
 
 ### Puntos de extensión
 
@@ -324,13 +323,7 @@ Tipos habituales: `feat`, `fix`, `bugfix`, `docs`, `ci`, `chore`, `security`, `r
 
 ### Features / Cargo features
 
-| Feature | Descripción | Default |
-|---------|-------------|---------|
-| `system-tray` | Bandeja del sistema + menú contextual | ✓ |
-| `notifications` | Integración libnotify / freedesktop | ✓ |
-| `updater` | Auto-actualización (tauri-plugin-updater) | |
-| `devtools` | DevTools en release (solo debug) | |
-| `experimental-wayland` | Protocolo Wayland inestable | |
+| Feature | Descripción | Default |\n|---------|-------------|---------|\n| `system-tray` | Bandeja del sistema + menú contextual | ✓ |\n| `notifications` | Integración libnotify / freedesktop | ✓ |\n| `updater` | Auto-actualización (tauri-plugin-updater) | |\n| `devtools` | DevTools en release (solo debug) | |\n| `experimental-wayland` | Protocolo Wayland inestable | |
 
 Y para apps Tauri+Vue: features del `tauri.conf.json` → `bundle` / `plugins` / `allowlist` (capabilities).
 
@@ -347,9 +340,9 @@ Y para apps Tauri+Vue: features del `tauri.conf.json` → `bundle` / `plugins` /
 
 ## Contribuir
 
-- **Guía:** [.github/CONTRIBUTING.md](https://github.com/Vasak-OS/.github/blob/main/CONTRIBUTING.md)
-- **Plantillas de issue:** [.github/ISSUE_TEMPLATE/](https://github.com/Vasak-OS/.github/tree/main/ISSUE_TEMPLATE)
-- **Código de conducta:** [CODE_OF_CONDUCT.md](https://github.com/Vasak-OS/.github/blob/main/CODE_OF_CONDUCT.md)
+- **Guía:** [`.github/CONTRIBUTING.md`](https://github.com/Vasak-OS/.github/blob/main/CONTRIBUTING.md)
+- **Plantillas de issue:** [`.github/ISSUE_TEMPLATE/`](https://github.com/Vasak-OS/.github/tree/main/ISSUE_TEMPLATE)
+- **Código de conducta:** [`CODE_OF_CONDUCT.md`](https://github.com/Vasak-OS/.github/blob/main/CODE_OF_CONDUCT.md)
 
 ---
 
@@ -358,7 +351,7 @@ Y para apps Tauri+Vue: features del `tauri.conf.json` → `bundle` / `plugins` /
 > **Actualizado automáticamente en CI** — muestra los avatares de quienes han aportado código a este repo.
 
 <div align="center">
-  
+  <a href="https://github.com/JoaquinDecima" target="_blank"><img src="https://avatars.githubusercontent.com/u/11674229?v=4&s=40" width="40" height="40" alt="JoaquinDecima" style="border-radius: 50%; margin: 2px;" title="JoaquinDecima (1179 contribuciones)"></a>
 </div>
 
 [Ver todos los contribuidores](https://github.com/Vasak-OS/vasak-desktop/graphs/contributors)
