@@ -202,6 +202,7 @@ pub fn run() {
             open_calendar,
             calendar_occurrences,
             calendar_locations,
+            request_calendar_access_again,
             twingate_info,
             twingate_authorize,
             wallpaper_pixels,

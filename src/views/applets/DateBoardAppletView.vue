@@ -30,6 +30,7 @@ import {
 	calendarLocations,
 	calendarOccurrences,
 	openCalendar,
+	requestCalendarAccessAgain,
 } from '@/services/calendar.service';
 import { useWeather } from '@/tools/composables/useWeather';
 import {
@@ -233,6 +234,43 @@ async function launchCalendar(): Promise<void> {
 	}
 }
 
+// ── Volver a pedir el permiso ──────────────────────────────────────────────────
+
+/** Mientras el servicio decide: el botón queda en «pidiendo…» y no se repite. */
+const reasking = ref(false);
+/** Por qué no reapareció el diálogo, ya traducido, o vacío si no hace falta decir nada. */
+const reaskNote = ref('');
+
+/**
+ * Pide volver a preguntar por el permiso del calendario y, si el servicio
+ * olvidó la decisión anterior, relee: esa lectura es la que abre el diálogo.
+ * Un re-pedido demasiado seguido o un fallo quedan dichos sin sacar el estado
+ * «sin permiso».
+ */
+async function retryPermission(): Promise<void> {
+	if (reasking.value) return;
+	reasking.value = true;
+	reaskNote.value = '';
+	try {
+		const outcome = await requestCalendarAccessAgain();
+		switch (outcome.outcome) {
+			case 'reopened':
+				await loadEvents();
+				break;
+			case 'too_soon':
+				reaskNote.value = t('views.dateBoard.reaskTooSoon');
+				break;
+			default:
+				reaskNote.value = t('views.dateBoard.reaskFailed');
+		}
+	} catch (error) {
+		logError('[DateBoard] no se pudo volver a pedir el permiso:', error);
+		reaskNote.value = t('views.dateBoard.reaskFailed');
+	} finally {
+		reasking.value = false;
+	}
+}
+
 /**
  * Cada vez que vuelve a la vista.
  *
@@ -407,7 +445,20 @@ useSharedEvent(CALENDAR_CHANGED, () => {
               :note="t('views.dateBoard.deniedNote')"
               icon=""
               size="sm"
-              muted />
+              muted>
+              <ActionButton
+                :label="t('views.dateBoard.reask')"
+                icon="dialog-password"
+                variant="secondary"
+                size="sm"
+                :loading="reasking"
+                :disabled="reasking"
+                data-reask-permission
+                @click="retryPermission" />
+              <p v-if="reaskNote" class="m-0 text-label-xs text-tx-muted" aria-live="polite" data-reask-note>
+                {{ reaskNote }}
+              </p>
+            </EmptyState>
             <EmptyState
               v-else-if="reply?.state === 'failed'"
               :title="t('views.dateBoard.failed')"

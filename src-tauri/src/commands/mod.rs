@@ -19,6 +19,7 @@ mod privacy;
 pub mod runner;
 mod session;
 mod session_popup;
+mod store_access;
 mod tray;
 mod twingate;
 mod wallpaper_assets;
@@ -64,6 +65,7 @@ pub use privacy::{privacy_in_use, privacy_stop_screen};
 pub use runner::{open_app, open_calendar, open_settings, open_settings_section};
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};
 pub use session_popup::toggle_session_popup;
+pub use store_access::request_calendar_access_again;
 pub use tray::{
     get_launcher_entries, get_tray_items, get_tray_menu, get_tray_popup_data, init_sni_watcher,
     load_dbus_menu_level, open_tray_popup, tray_item_activate, tray_item_secondary_activate,

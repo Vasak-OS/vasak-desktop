@@ -224,7 +224,10 @@ views:
     unavailable: The calendar is not available
     unavailableNote: It needs the VasakOS accounts service, which keeps the local copy of the calendars.
     denied: No permission to read the calendar
-    deniedNote: It can be granted in Settings, under application permissions.
+    deniedNote: Ask to be prompted again, or grant it in Settings, under application permissions.
+    reask: Ask for permission again
+    reaskTooSoon: You just asked. Give it a moment.
+    reaskFailed: Could not ask for permission again.
     failed: Could not read the events
     truncated: There are more events than shown.
     conditions:
