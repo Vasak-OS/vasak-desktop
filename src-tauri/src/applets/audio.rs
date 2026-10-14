@@ -17,22 +17,26 @@ impl Applet for AudioApplet {
     }
 
     async fn start(&self, app: AppHandle) -> Result<(), Box<dyn Error>> {
-        log_info("AudioApplet: starting with native monitor integration");
+        log_info("AudioApplet: starting with native monitor integration (lazy)");
 
-        let monitor = AudioMonitor::new().await;
+        // Clone app for the three background tasks
+        let app_for_monitor = app.clone();
+        let app_for_bluetooth = app.clone();
+        let _app_for_input = app.clone();
 
-        let profiles_app = app.clone();
+        // Defer AudioMonitor creation to a background task to avoid blocking startup
         tokio::spawn(async move {
-            forward_bluetooth_profiles(profiles_app).await;
+            let monitor = AudioMonitor::new().await;
+            run_audio_monitor_loop(app_for_monitor, monitor).await;
         });
 
-        let input_app = app.clone();
+        // Spawn other tasks without blocking
         tokio::spawn(async move {
-            forward_audio_input(input_app).await;
+            forward_bluetooth_profiles(app_for_bluetooth).await;
         });
 
         tokio::spawn(async move {
-            run_audio_monitor_loop(app, monitor).await;
+            forward_audio_input(app).await;
         });
 
         Ok(())
