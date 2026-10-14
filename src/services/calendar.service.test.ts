@@ -23,6 +23,7 @@ beforeAll(async () => {
 				calls.push({ cmd, args });
 				if (cmd === 'calendar_occurrences') return { state: 'denied' };
 				if (cmd === 'calendar_locations') return ['Sala 3'];
+				if (cmd === 'request_calendar_access_again') return { outcome: 'reopened' };
 				return null;
 			},
 		},
@@ -64,5 +65,12 @@ describe('el servicio del calendario', () => {
 		await service.openCalendar();
 
 		expect(calls.at(-1)?.cmd).toBe('open_calendar');
+	});
+
+	test('volver a pedir el permiso es request_calendar_access_again, sin argumentos', async () => {
+		const outcome = await service.requestCalendarAccessAgain();
+
+		expect(outcome).toEqual({ outcome: 'reopened' });
+		expect(calls.at(-1)).toEqual({ cmd: 'request_calendar_access_again', args: {} });
 	});
 });
