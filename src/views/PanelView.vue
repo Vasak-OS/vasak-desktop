@@ -6,12 +6,29 @@ import { emit } from '@tauri-apps/api/event';
 import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { Badge, PanelPill, ThemeIcon } from '@vasakgroup/vue-libvasak';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { defineAsyncComponent } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	watch,
+} from 'vue';
 
 const TrayBarArea = defineAsyncComponent(() => import('@/components/areas/panel/TrayBarArea.vue'));
-const TrayMusicControl = defineAsyncComponent(() => import('@/components/controls/TrayMusicControl.vue'));
-const TrayWeatherControl = defineAsyncComponent(() => import('@/components/controls/TrayWeatherControl.vue'));
+const TrayMusicControl = defineAsyncComponent(
+	() => import('@/components/controls/TrayMusicControl.vue')
+);
+const TrayWeatherControl = defineAsyncComponent(
+	() => import('@/components/controls/TrayWeatherControl.vue')
+);
+
+import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
+import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
+import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
+import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
+import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
 import KeyboardLayoutPill from '@/components/panel/KeyboardLayoutPill.vue';
 import PinnedAppsPill from '@/components/panel/PinnedAppsPill.vue';
 import WorkspacesPill from '@/components/panel/WorkspacesPill.vue';
@@ -63,6 +80,8 @@ const {
 	autohide,
 } = usePanelConfig();
 
+const windowsFirst = computed(() => density.value === 'tight');
+
 /**
  * Esconder y revelar la barra cuando `panel.autohide` está puesto. La máquina de
  * estados vive aparte (`usePanelAutohide`); `panelHidden` desliza la barra y
@@ -97,312 +116,204 @@ const bar = ref<HTMLElement | null>(null);
 usePanelInputRegion(bar, regionMode, position);
 
 /**
- * El recorte en trapecio de la superficie, con cantos redondeados (scoop cóncavo
- * en la parte ancha, convexo en la angosta). Va por `clip-path: path()` recalculado
- * al tamaño, no por una clase, porque la forma lleva arcos.
+ * Densidad del panel: si el usuario la cambia, ajustamos el CSS del
+ * contenedor y la sombra de la superficie.
  */
-const surface = ref<HTMLElement | null>(null);
-usePanelTrapezoidClip(
-	surface,
-	position,
-	computed(() => style.value === 'trapezoid')
-);
-
-/** La clase que desliza la barra fuera de la pantalla mientras está escondida. */
-const hideClass = computed(() => panelHideClass(position.value, panelHidden.value));
+usePanelDensity();
 
 /**
- * Cuánto texto entra: en un panel angosto los nombres largos se pliegan al
- * icono (`panel-density.ts`), medido sobre la propia barra.
+ * Vigila los cambios de densidad en Configuración y los replica en la
+ * variable CSS `--panel-density` para que los estilos reaccionen.
  */
-watchPanelDensity(vertical);
-const density = usePanelDensity();
-const windowsFirst = computed(() => density.value === 'tight');
+watchPanelDensity();
 
 /**
- * El clic derecho del panel: sólo cosas del panel.
- *
- * Lo que se hace con el escritorio —los widgets, el fondo— tiene su propio clic
- * derecho ahí, y ofrecerlo también acá daría dos caminos para lo mismo, uno de
- * ellos en el lugar equivocado.
- *
- * Va en modo ventana porque el panel mide unos treinta píxeles de alto: un menú
- * dibujado adentro quedaría recortado a la primera línea. El resto —el dibujo,
- * el teclado, el tema, cerrarse al perder el foco— es del plugin, que es el
- * mismo menú que usan todas las aplicaciones de VasakOS.
+ * El clip trapezoidal del panel según la posición y el estado de autohide.
  */
-const openPanelContextMenu = async (event: MouseEvent) => {
-	try {
-		const chosen = await showContextMenu(
-			[
-				{
-					id: 'panel',
-					label: t('views.applets.panelMenu.panelSettings'),
-					icon: 'preferences-system-windows',
-				},
-				{
-					id: 'notifications',
-					label: t('views.applets.panelMenu.notifications'),
-					icon: 'preferences-desktop-notification',
-				},
-				{ type: 'separator' },
-				{
-					id: 'system',
-					label: t('views.applets.panelMenu.systemSettings'),
-					icon: 'preferences-system',
-				},
-			],
-			event,
-			{ window: true }
-		);
-
-		switch (chosen?.id) {
-			case 'panel':
-				await invoke('open_settings_section', { section: 'appearance-panel' });
-				break;
-			case 'notifications':
-				await toggleControlCenter();
-				break;
-			case 'system':
-				await invoke('open_settings');
-				break;
-		}
-	} catch (error) {
-		logError('No se pudo abrir el menú del panel:', error);
-	}
-};
-
-const notifications = ref<AppNotification[]>([]);
-const hasNewNotifications = ref(false);
-let notificationResetTimer: ReturnType<typeof setTimeout> | undefined;
+usePanelTrapezoidClip(position, vertical, animationClass, barClasses, panelHidden);
 
 /**
- * Phones the device service can see.
- *
- * The button only exists while there is one. A permanent icon for a feature
- * that needs hardware most people never plug in is clutter in the one strip of
- * screen that is always visible.
+ * Conexiones móviles (KDE Connect / GSConnect).
  */
 const connectDevices = ref<ConnectDevice[]>([]);
+const connectLoading = ref(false);
+const connectError = ref<string | null>(null);
 
-const hasPhone = computed(() => connectDevices.value.length > 0);
-
-/**
- * True while a phone is plugged in but nobody has accepted the debugging
- * prompt yet. Worth a mark on the icon: from the outside it looks identical to
- * a phone that simply has no apps.
- */
-const phoneNeedsAuth = computed(() =>
-	connectDevices.value.some((device) => device.state === 'unauthorized')
-);
-
-const refreshConnectDevices = async () => {
-	connectDevices.value = await listConnectDevices();
-};
-
-const openPhoneMenu = async () => {
+async function cargarDispositivos() {
+	if (connectLoading.value) return;
+	connectLoading.value = true;
+	connectError.value = null;
 	try {
-		await toggleConnectMenu();
-	} catch (error) {
-		logError('Error al abrir el menú del teléfono:', error);
-	}
-};
-
-/**
- * El botón del menú, el lince: de él cuelga el menú, lo abra un clic o la
- * tecla Super. Es una píldora de la librería, así que el `ref` es la
- * instancia: `anchorOf` sabe leerle el `$el`, y el observador necesita el
- * elemento.
- */
-const menuButton = ref<{ $el?: Element } | null>(null);
-const { isOpen: menuIsOpen } = useOpenApplet('menu');
-
-const openMenu = async () => {
-	try {
-		await toggleMenu(menuButton.value);
-	} catch (error) {
-		logError('Error al abrir el menu:', error);
-	}
-};
-
-/**
- * Le cuenta al backend dónde quedó el botón del menú, para que abrirlo sin clic
- * —la tecla Super, por D-Bus— lo cuelgue de acá y no del centro.
- *
- * Al montarse, cuando el panel cambia de lado y cuando el botón cambia de
- * tamaño. Con `ResizeObserver` y no con `resize`: en este WebView `resize` no
- * llega.
- */
-const sendMenuButton = async () => {
-	try {
-		await reportMenuButton(position.value, menuButton.value);
-	} catch (error) {
-		logError('No se pudo informar el botón del menú:', error);
-	}
-};
-
-let menuButtonObserver: ResizeObserver | undefined;
-
-watch(position, async () => {
-	await nextTick();
-	await sendMenuButton();
-});
-
-onMounted(() => {
-	void sendMenuButton();
-	const element = menuButton.value?.$el;
-	if (typeof ResizeObserver !== 'undefined' && element instanceof Element) {
-		menuButtonObserver = new ResizeObserver(() => void sendMenuButton());
-		menuButtonObserver.observe(element);
-	}
-});
-
-onBeforeUnmount(() => menuButtonObserver?.disconnect());
-
-const openNotificationCenter = async () => {
-	try {
-		await toggleControlCenter();
-	} catch (error) {
-		logError('Error al abrir el centro de control:', error);
-	}
-};
-
-async function loadNotifications() {
-	try {
-		notifications.value = await getAllNotifications();
-	} catch (error) {
-		logError('Error loading notifications:', error);
+		connectDevices.value = await listConnectDevices();
+	} catch (error: any) {
+		connectError.value = error?.message ?? 'Error desconocido';
+		logError('Error al listar dispositivos Connect', { error: error?.message });
+	} finally {
+		connectLoading.value = false;
 	}
 }
 
-onMounted(async () => {
-	performance.mark('panel-mounted');
-	await loadNotifications();
-	performance.mark('panel-ready');
-	performance.measure('panel-startup', 'panel-mounted', 'panel-ready');
-	// Signal backend that panel has painted - triggers deferred applets
-	emit('panel-ready', {});
+/**
+ * Notificaciones.
+ */
+const notifications = ref<AppNotification[]>([]);
+const notificationsLoading = ref(false);
+const notificationsError = ref<string | null>(null);
+const MAX_NOTIFICATIONS = 10;
 
-	// After the readiness signal: the device service is a deferred applet, so
-	// it has not subscribed yet, and nothing here belongs on the path that
-	// decides how fast the panel appears.
-	await refreshConnectDevices();
+async function cargarNotificaciones() {
+	if (notificationsLoading.value) return;
+	notificationsLoading.value = true;
+	notificationsError.value = null;
+	try {
+		const lista = await getAllNotifications();
+		notifications.value = lista.slice(0, MAX_NOTIFICATIONS);
+	} catch (error: any) {
+		notificationsError.value = error?.message ?? 'Error desconocido';
+		logError('Error al cargar notificaciones', { error: error?.message });
+	} finally {
+		notificationsLoading.value = false;
+	}
+}
+
+const hasUnreadNotifications = computed(() => notifications.value.some((n) => !n.read));
+
+/**
+ * Menú de notificaciones: se abre con el icono de la campana.
+ */
+const showNotificationsMenu = ref(false);
+const notificationsMenuAnchor = ref<HTMLElement | null>(null);
+
+function toggleNotificationsMenu() {
+	showNotificationsMenu.value = !showNotificationsMenu.value;
+}
+
+function closeNotificationsMenu() {
+	showNotificationsMenu.value = false;
+}
+
+/**
+ * Marcador de audio (micrófono) — usa el composable que aísla la lógica del
+ * icono y el texto.
+ */
+const { icon: micIcon, label: micLabel, active: micActive } = useOpenApplet('mic', t);
+
+/**
+ * Marcador de pantalla (captura) — igual que el de audio.
+ */
+const { icon: screenIcon, label: screenLabel, active: screenActive } = useOpenApplet('screen', t);
+
+/**
+ * Menú contextual del reloj.
+ */
+const showClockMenu = ref(false);
+const clockMenuAnchor = ref<HTMLElement | null>(null);
+
+function toggleClockMenu() {
+	showClockMenu.value = !showClockMenu.value;
+}
+
+function closeClockMenu() {
+	showClockMenu.value = false;
+}
+
+/**
+ * Menú contextual del usuario.
+ */
+const showUserMenu = ref(false);
+const userMenuAnchor = ref<HTMLElement | null>(null);
+
+function toggleUserMenu() {
+	showUserMenu.value = !showUserMenu.value;
+}
+
+function closeUserMenu() {
+	showUserMenu.value = false;
+}
+
+/**
+ * Menú contextual de KDE Connect.
+ */
+const showConnectMenu = ref(false);
+const connectMenuAnchor = ref<HTMLElement | null>(null);
+
+function toggleConnectMenuPanel() {
+	if (showConnectMenu.value) {
+		closeConnectMenuPanel();
+	} else {
+		cargarDispositivos();
+		showConnectMenu.value = true;
+	}
+}
+
+function closeConnectMenuPanel() {
+	showConnectMenu.value = false;
+}
+
+/**
+ * Atajos de teclado globales.
+ */
+onMounted(() => {
+	cargarNotificaciones();
+	cargarDispositivos();
+
+	const handleKeydown = (event: KeyboardEvent) => {
+		// Meta+Space: menú de aplicaciones
+		if (event.metaKey && event.code === 'Space') {
+			event.preventDefault();
+			toggleMenu();
+		}
+		// Meta+Shift+A: control center
+		if (event.metaKey && event.shiftKey && event.code === 'KeyA') {
+			event.preventDefault();
+			toggleControlCenter();
+		}
+		// Meta+Shift+N: notificaciones
+		if (event.metaKey && event.shiftKey && event.code === 'KeyN') {
+			event.preventDefault();
+			toggleNotificationsMenu();
+		}
+	};
+
+	window.addEventListener('keydown', handleKeydown);
+	onBeforeUnmount(() => {
+		window.removeEventListener('keydown', handleKeydown);
+	});
 });
 
-// At setup, not inside onMounted: useSharedEvent registers onMounted and
-// onUnmounted hooks of its own, and Vue only collects those while the component
-// is being set up. Called later they never fire, and the subscription is never
-// released.
-useSharedEvent('connect-device-added', refreshConnectDevices);
-useSharedEvent('connect-device-changed', refreshConnectDevices);
-useSharedEvent('connect-device-removed', refreshConnectDevices);
-
-// La foto entera, en una sola asignación: ver `NotificationDelta`.
-//
-// La campanita se sacude sólo si en la foto viene alguna notificación que antes
-// no estaba. Antes bastaba con que la lista trajera algo, y como toda foto trae
-// lo que quedó, la campanita se sacudía también al borrar una.
-useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
-	const hasNew = containsNewNotifications(notifications.value, delta.items);
-	notifications.value = delta.items;
-
-	if (!hasNew) return;
-
-	hasNewNotifications.value = true;
-	clearTimeout(notificationResetTimer);
-	notificationResetTimer = setTimeout(() => {
-		hasNewNotifications.value = false;
-	}, 1000);
-});
+/**
+ * Eventos compartidos.
+ */
+useSharedEvent('connect-devices-changed', () => cargarDispositivos());
+useSharedEvent('notifications-changed', () => cargarNotificaciones());
+useSharedEvent('panel-pointer-entered', () => revealPanel());
+useSharedEvent('panel-pointer-left', () => hidePanel());
 </script>
 
 <template>
-	<!-- El panel en píldoras flotantes (vasak-desktop#151), como el video de
-	     referencia: la barra ya no es una franja continua sino píldoras sueltas
-	     sobre el escritorio. La `<nav>` es transparente y sólo reparte: a la
-	     izquierda el menú, los accesos fijos, las notificaciones, los espacios
-	     de trabajo, la música y las ventanas; al centro el reloj y el clima; a la derecha la
-	     bandeja, el teclado, la red, el Bluetooth, el volumen y la batería.
-	     Cada píldora es una `PanelPill` de la librería en `ui-shell`, sin
-	     `backdrop-blur`: el desenfoque lo pone Wayfire detrás de cada una.
-
-	     El tipo, la densidad, la animación y el tamaño salen de la configuración
-	     (`panel-appearance.ts`): en píldoras la `<nav>` queda transparente y la
-	     región de entrada se recorta a las píldoras; en flotante, barra y dock se
-	     dibuja una superficie detrás y la región pasa a ser la barra entera
-	     (`usePanelInputRegion`). -->
-	<nav
-		ref="bar"
-		@contextmenu.prevent="openPanelContextMenu"
-		class="panel-bar z-20 grid items-center gap-2 bg-transparent transition-transform duration-200"
-		:class="[barClasses, animationClass, hideClass]"
-		data-panel-bar
-	>
-    <!-- La superficie continua de flotante, barra y dock, detrás de las
-         píldoras. En píldoras no existe: la `<nav>` es transparente y entre una
-         píldora y otra se ve el escritorio. Es translúcida y sin `backdrop-blur`:
-         el desenfoque lo pone Wayfire detrás de la franja. Su forma —el fondo, el
-         canto y el redondeo— sale de `panelSurfaceClass`. -->
+  <div
+    ref="bar"
+    :class="[
+      'flex fixed z-50',
+      barClasses[position],
+      animationClass,
+      panelHidden.value ? 'translate-y-full' : 'translate-y-0',
+    ]"
+    :style="surfaceClass"
+    data-panel-bar
+  >
     <div
-      v-if="hasSurface"
-      ref="surface"
-      aria-hidden="true"
-      class="pointer-events-none absolute inset-0 -z-10"
-      :class="surfaceClass"
-      data-panel-surface
-    ></div>
-    <div class="flex min-w-0 items-center gap-1.5 overflow-x-clip" :class="GROUP_CLASSES[position].start" data-panel-start>
-      <!-- El botón del menú: el lince de VasakOS (`start-here` del tema), como
-           siempre. Abre el menú con la búsqueda enfocada, lo abra este botón o
-           la tecla Super (tests/menu-search-focus.test.ts). -->
-      <PanelPill
-        ref="menuButton"
-        icon="start-here"
-        icon-type="icon"
-        :accessible-label="t('views.panel.menuAlt')"
-        :title="t('views.panel.menuAlt')"
-        :expanded="menuIsOpen"
-        :orientation="vertical ? 'vertical' : 'horizontal'"
-        :flat="hasSurface"
-        class="shrink-0"
-        data-menu-pill
-        @click="openMenu"
-      />
-      <!-- Configuración y Archivos: la zona de los accesos fijos, donde después
-           van las aplicaciones ancladas. -->
+      class="flex w-full items-center gap-1.5 px-2"
+      :class="GROUP_CLASSES[position].start"
+      data-panel-left
+    >
       <PinnedAppsPill />
-      <!-- En el panel más angosto las ventanas suben al lado de los accesos
-           fijos: así, si lo de la izquierda no entra, lo que se recorta es la
-           música o los espacios de trabajo y no la barra de ventanas, que no
-           sale nunca (decisión del usuario, 03/10/2026). La píldora entera se
-           apaga con `panel.windows` (vasak-desktop#251). -->
-      <WindowsArea v-if="showWindows && windowsFirst" />
-      <!-- Only while a phone is connected: a permanent button for hardware
-           most people never plug in is clutter in the one strip of screen that
-           is always on top of everything else. -->
-      <PanelPill
-        v-if="hasPhone"
-        icon="smartphone"
-        icon-type="icon"
-        :accessible-label="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
-        :title="phoneNeedsAuth ? t('views.connect.unauthorized') : t('views.connect.menuAlt')"
-        :orientation="vertical ? 'vertical' : 'horizontal'"
-        :flat="hasSurface"
-        class="shrink-0"
-        data-phone-pill
-        @click="openPhoneMenu"
-      >
-        <span
-          v-if="phoneNeedsAuth"
-          class="absolute top-0.5 right-0.5 size-2 rounded-corner-full bg-status-warning"
-        ></span>
-      </PanelPill>
-      <WorkspacesPill v-if="showWorkspaces" />
       <Suspense>
         <TrayMusicControl v-if="showMusic" />
         <template #fallback><div class="w-10 h-10 animate-pulse bg-ui-line" /></template>
       </Suspense>
-      <WindowsArea v-if="showWindows && !windowsFirst" />
+      <WindowsArea v-if="showWindows && windowsFirst" />
+      <WorkspacesPill v-if="showWorkspaces" />
     </div>
     <div class="flex items-center gap-1.5" :class="GROUP_CLASSES[position].center" data-panel-center>
       <PanelClockWidget />
@@ -421,38 +332,164 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
       <TrayIconBluetooth />
       <TrayIconSound />
       <TrayIconBattery />
-      <!-- La campanita vuelve al extremo del panel, junto a la bandeja, como
-           antes del pasaje a píldoras (vasak-desktop#160): es el último grupo,
-           así que queda en el final de la barra sin importar de qué lado esté.
-           El número no pasa de 99 para que entre en la píldora. -->
-      <PanelPill
-        :accessible-label="t('views.panel.notificationsAlt')"
-        :title="t('views.panel.notificationsAlt')"
-        :orientation="vertical ? 'vertical' : 'horizontal'"
-        :flat="hasSurface"
-        class="shrink-0"
-        data-notifications-pill
-        @click="openNotificationCenter"
-      >
-        <template #leading>
-          <ThemeIcon
-            name="preferences-desktop-notification"
-            type="symbol"
-            :size="18"
-            alt=""
-            class="shrink-0"
-            :class="{ 'animate-bell-shake': hasNewNotifications }"
-          />
-        </template>
-        <Badge
-          v-if="notifications.length > 0 && !vertical"
-          tone="accent"
-          variant="solid"
-          counter
-          :label="notifications.length"
-          :max="99"
-        />
-      </PanelPill>
     </div>
-  </nav>
+  </div>
+
+  <!-- Menú de notificaciones -->
+  <div
+    v-if="showNotificationsMenu"
+    class="fixed z-50"
+    :style="{ top: '48px', right: '16px' }"
+  >
+    <div class="bg-ui-surface border border-ui-border style="border-radius: var(--radius-corner-lg)" shadow-surface-l w-80 max-h-96 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-ui-border">
+        <span class="font-medium">{{ t('panel.notifications') }}</span>
+        <button
+          @click="closeNotificationsMenu"
+          class="p-1 style="border-radius: var(--radius-corner-m)" hover:bg-ui-hover transition-colors"
+          aria-label="Cerrar"
+        >
+          <ThemeIcon name="close" size="20" />
+        </button>
+      </div>
+      <div class="max-h-[400px] overflow-y-auto">
+        <div v-if="notificationsLoading" class="p-8 text-center text-tx-muted">
+          Cargando…
+        </div>
+        <div v-else-if="notificationsError" class="p-4 text-center text-status-error">
+          {{ notificationsError }}
+        </div>
+        <div v-else-if="notifications.length === 0" class="p-8 text-center text-tx-muted">
+          {{ t('panel.noNotifications') }}
+        </div>
+        <div v-else class="divide-y divide-ui-border">
+          <div
+            v-for="notification in notifications"
+            :key="notification.id"
+            class="p-4 hover:bg-ui-hover transition-colors"
+          >
+            <div class="flex items-start gap-3">
+              <ThemeIcon :name="notification.icon" size="24" class="text-tx-main shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="font-medium truncate">{{ notification.title }}</p>
+                <p class="text-sm text-tx-muted truncate">{{ notification.body }}</p>
+                <p class="text-xs text-tx-muted mt-1">{{ notification.timestamp }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menú del reloj -->
+  <div
+    v-if="showClockMenu"
+    class="fixed z-50"
+    :style="{ top: '48px', right: '16px' }"
+  >
+    <div class="bg-ui-surface border border-ui-border style="border-radius: var(--radius-corner-lg)" shadow-surface-l w-56">
+      <div class="p-2">
+        <button
+          @click="closeClockMenu"
+          class="w-full flex items-center gap-2 px-3 py-2 style="border-radius: var(--radius-corner-m)" hover:bg-ui-hover transition-colors"
+        >
+          <ThemeIcon name="calendar-month" size="20" />
+          <span>{{ t('panel.calendar') }}</span>
+        </button>
+        <button
+          @click="closeClockMenu"
+          class="w-full flex items-center gap-2 px-3 py-2 style="border-radius: var(--radius-corner-m)" hover:bg-ui-hover transition-colors"
+        >
+          <ThemeIcon name="clock" size="20" />
+          <span>{{ t('panel.dateTime') }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menú de usuario -->
+  <div
+    v-if="showUserMenu"
+    class="fixed z-50"
+    :style="{ top: '48px', right: '16px' }"
+  >
+    <div class="bg-ui-surface border border-ui-border style="border-radius: var(--radius-corner-lg)" shadow-surface-l w-56">
+      <div class="p-2">
+        <button
+          @click="closeUserMenu"
+          class="w-full flex items-center gap-2 px-3 py-2 style="border-radius: var(--radius-corner-m)" hover:bg-ui-hover transition-colors"
+        >
+          <ThemeIcon name="account" size="20" />
+          <span>{{ t('panel.userSettings') }}</span>
+        </button>
+        <button
+          @click="closeUserMenu"
+          class="w-full flex items-center gap-2 px-3 py-2 style="border-radius: var(--radius-corner-m)" hover:bg-ui-hover transition-colors"
+        >
+          <ThemeIcon name="lock" size="20" />
+          <span>{{ t('panel.lock') }}</span>
+        </button>
+        <button
+          @click="closeUserMenu"
+          class="w-full flex items-center gap-2 px-3 py-2 style="border-radius: var(--radius-corner-m)" hover:bg-ui-hover transition-colors text-status-error"
+        >
+          <ThemeIcon name="logout" size="20" />
+          <span>{{ t('panel.logout') }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menú de KDE Connect -->
+  <div
+    v-if="showConnectMenu"
+    class="fixed z-50"
+    :style="{ top: '48px', right: '16px' }"
+  >
+    <div class="bg-ui-surface border border-ui-border style="border-radius: var(--radius-corner-lg)" shadow-surface-l w-72 max-h-96 overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-ui-border">
+        <span class="font-medium">{{ t('panel.kdeConnect') }}</span>
+        <button
+          @click="closeConnectMenuPanel"
+          class="p-1 style="border-radius: var(--radius-corner-m)" hover:bg-ui-hover transition-colors"
+          aria-label="Cerrar"
+        >
+          <ThemeIcon name="close" size="20" />
+        </button>
+      </div>
+      <div class="max-h-[400px] overflow-y-auto">
+        <div v-if="connectLoading" class="p-8 text-center text-tx-muted">
+          Cargando…
+        </div>
+        <div v-else-if="connectError" class="p-4 text-center text-status-error">
+          {{ connectError }}
+        </div>
+        <div v-else-if="connectDevices.length === 0" class="p-8 text-center text-tx-muted">
+          {{ t('panel.noDevices') }}
+        </div>
+        <div v-else class="divide-y divide-ui-border">
+          <div
+            v-for="device in connectDevices"
+            :key="device.id"
+            class="p-4 hover:bg-ui-hover transition-colors"
+          >
+            <div class="flex items-center gap-3">
+              <ThemeIcon :name="device.icon" size="24" class="shrink-0" />
+              <div class="flex-1 min-w-0">
+                <p class="font-medium truncate">{{ device.name }}</p>
+                <p class="text-sm text-tx-muted truncate">{{ device.type }}</p>
+              </div>
+              <button
+                @click="() => toggleConnectMenu(device.id)"
+                class="px-3 py-1 text-sm style="border-radius: var(--radius-corner-m)" bg-primary text-on-primary hover:bg-primary-hover transition-colors"
+              >
+                {{ device.connected ? t('panel.disconnect') : t('panel.connect') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>

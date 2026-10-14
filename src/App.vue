@@ -1,50 +1,50 @@
 <script setup lang="ts">
 /** biome-ignore-all lint/correctness/noUnusedImports: imports used in template */
 
-import { useConfigStore } from '@vasakgroup/plugin-config-manager'
-import { nextTick, onMounted, ref, shallowRef } from 'vue'
-import { RouterView } from 'vue-router'
-import { useSharedEvent } from '@/tools/event.bus'
-import { viewTransitionGuard } from '@/tools/view.transition'
-import { logError, logInfo } from '@/utils/logger'
+import { useConfigStore } from '@vasakgroup/plugin-config-manager';
+import { onMounted, ref } from 'vue';
+import { RouterView } from 'vue-router';
+import { useSharedEvent } from '@/tools/event.bus';
+import { viewTransitionGuard } from '@/tools/view.transition';
+import { logError, logInfo } from '@/utils/logger';
 
 // Start loading config immediately, don't wait for onMounted
-const configLoading = ref(true)
-const configError = ref(false)
+const configLoading = ref(true);
+const configError = ref(false);
 const configPromise = (async () => {
-  try {
-    const configStore = useConfigStore()
-    await configStore.loadConfig()
-    configLoading.value = false
-    logInfo('Configuración cargada correctamente')
-  } catch (error: any) {
-    configLoading.value = false
-    configError.value = true
-    logError('Error al cargar configuración en App.vue', { error: error.message })
-  }
-})()
+	try {
+		const configStore = useConfigStore();
+		await configStore.loadConfig();
+		configLoading.value = false;
+		logInfo('Configuración cargada correctamente');
+	} catch (error: any) {
+		configLoading.value = false;
+		configError.value = true;
+		logError('Error al cargar configuración en App.vue', { error: error.message });
+	}
+})();
 
 onMounted(async () => {
-  // Ensure config loading started before mount
-  await configPromise
-  
-  // Config changes handling
-  useSharedEvent('config-changed', (payload: any) => {
-    logInfo('Evento config-changed recibido, recargando configuración')
-    const configStore = useConfigStore()
+	// Ensure config loading started before mount
+	await configPromise;
 
-    // Only use View Transition for user-initiated theme switches
-    if (payload?.key === 'theme' || payload?.type === 'theme') {
-      viewTransitionGuard.startTransition(() => configStore.loadConfig())
-      return
-    }
+	// Config changes handling
+	useSharedEvent('config-changed', (payload: any) => {
+		logInfo('Evento config-changed recibido, recargando configuración');
+		const configStore = useConfigStore();
 
-    // Non-theme config changes: defer during active transition, otherwise execute immediately
-    viewTransitionGuard.deferUpdate(() => {
-      configStore.loadConfig()
-    })
-  })
-})
+		// Only use View Transition for user-initiated theme switches
+		if (payload?.key === 'theme' || payload?.type === 'theme') {
+			viewTransitionGuard.startTransition(() => configStore.loadConfig());
+			return;
+		}
+
+		// Non-theme config changes: defer during active transition, otherwise execute immediately
+		viewTransitionGuard.deferUpdate(() => {
+			configStore.loadConfig();
+		});
+	});
+});
 </script>
 
 <template>
