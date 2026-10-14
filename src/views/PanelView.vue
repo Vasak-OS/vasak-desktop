@@ -7,14 +7,11 @@ import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { Badge, PanelPill, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import TrayBarArea from '@/components/areas/panel/TrayBarArea.vue';
-import WindowsArea from '@/components/areas/panel/WindowsArea.vue';
-import TrayIconBattery from '@/components/buttons/TrayIconBattery.vue';
-import TrayIconBluetooth from '@/components/buttons/TrayIconBluetooth.vue';
-import TrayIconNetwork from '@/components/buttons/TrayIconNetwork.vue';
-import TrayIconSound from '@/components/buttons/TrayIconSound.vue';
-import TrayMusicControl from '@/components/controls/TrayMusicControl.vue';
-import TrayWeatherControl from '@/components/controls/TrayWeatherControl.vue';
+import { defineAsyncComponent } from 'vue';
+
+const TrayBarArea = defineAsyncComponent(() => import('@/components/areas/panel/TrayBarArea.vue'));
+const TrayMusicControl = defineAsyncComponent(() => import('@/components/controls/TrayMusicControl.vue'));
+const TrayWeatherControl = defineAsyncComponent(() => import('@/components/controls/TrayWeatherControl.vue'));
 import KeyboardLayoutPill from '@/components/panel/KeyboardLayoutPill.vue';
 import PinnedAppsPill from '@/components/panel/PinnedAppsPill.vue';
 import WorkspacesPill from '@/components/panel/WorkspacesPill.vue';
@@ -401,15 +398,24 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
         ></span>
       </PanelPill>
       <WorkspacesPill v-if="showWorkspaces" />
-      <TrayMusicControl v-if="showMusic" />
+      <Suspense>
+        <TrayMusicControl v-if="showMusic" />
+        <template #fallback><div class="w-10 h-10 animate-pulse bg-ui-line" /></template>
+      </Suspense>
       <WindowsArea v-if="showWindows && !windowsFirst" />
     </div>
     <div class="flex items-center gap-1.5" :class="GROUP_CLASSES[position].center" data-panel-center>
       <PanelClockWidget />
-      <TrayWeatherControl v-if="showWeather" />
+      <Suspense>
+        <TrayWeatherControl v-if="showWeather" />
+        <template #fallback><div class="w-10 h-10 animate-pulse bg-ui-line" /></template>
+      </Suspense>
     </div>
     <div class="flex min-w-0 items-center gap-1.5 overflow-x-clip" :class="GROUP_CLASSES[position].end" data-panel-end>
-      <TrayBarArea />
+      <Suspense>
+        <TrayBarArea />
+        <template #fallback><div class="w-10 h-10 animate-pulse bg-ui-line" /></template>
+      </Suspense>
       <KeyboardLayoutPill />
       <TrayIconNetwork />
       <TrayIconBluetooth />
