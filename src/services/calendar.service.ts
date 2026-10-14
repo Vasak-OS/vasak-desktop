@@ -56,6 +56,34 @@ export const calendarLocations = (
 export const openCalendar = (): Promise<void> => invoke<void>('open_calendar');
 
 /**
+ * Los cuatro desenlaces de volver a pedir el permiso del calendario.
+ *
+ * - `reopened`: se olvidó la decisión anterior; el próximo pedido de eventos
+ *   reabre el diálogo, así que hay que releer.
+ * - `too_soon`: se volvió a pedir hace muy poco (el techo contra la fatiga de
+ *   permisos); hay que esperar un momento.
+ * - `not_allowed`: el escritorio no puede pedir este recurso (no debería pasar).
+ * - `failed`: el servicio de permisos no está, o falló.
+ */
+export type ReaskOutcome =
+	| { outcome: 'reopened' }
+	| { outcome: 'too_soon' }
+	| { outcome: 'not_allowed' }
+	| { outcome: 'failed'; detail: string };
+
+/**
+ * Le pide a `vasak-permissions` que vuelva a preguntar por el permiso de leer el
+ * calendario guardado (ola 2 de «pedir permiso de nuevo»).
+ *
+ * Un rechazo recordado no se reabre con sólo reintentar la lectura: hace falta
+ * que el servicio olvide la decisión del escritorio sobre `store.calendar`. Tras
+ * `reopened`, releer con [`calendarOccurrences`] dispara el diálogo nuevo. Lo
+ * hace `commands/store_access.rs`.
+ */
+export const requestCalendarAccessAgain = (): Promise<ReaskOutcome> =>
+	invoke<ReaskOutcome>('request_calendar_access_again');
+
+/**
  * El evento de que cambió lo guardado del calendario: el sincronizador trajo
  * algo nuevo en segundo plano. Quien muestra eventos lo escucha con
  * `useSharedEvent(CALENDAR_CHANGED, …)` —un solo oyente de Tauri para todo el

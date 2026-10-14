@@ -7,7 +7,7 @@
  * del tablero son las de verdad.
  */
 import { defineComponent, h, ref } from 'vue';
-import type { CalendarOccurrence, CalendarReply } from '../../src/services/calendar.service';
+import type { CalendarOccurrence, CalendarReply, ReaskOutcome } from '../../src/services/calendar.service';
 
 export {
 	dayWeather,
@@ -28,12 +28,17 @@ export const board = {
 	locationCalls: [] as string[][],
 	/** Si está, el próximo pedido de lugares espera a que se cumpla. */
 	locationGate: null as Promise<void> | null,
+	/** Lo que contesta volver a pedir el permiso, y cuántas veces lo pidieron. */
+	reaskOutcome: { outcome: 'reopened' } as ReaskOutcome,
+	reaskCalls: 0,
 	reset() {
 		this.locationGate = null;
 		this.answer = { state: 'unavailable' };
 		this.location = 'Sala 3';
 		this.calls = [];
 		this.locationCalls = [];
+		this.reaskOutcome = { outcome: 'reopened' };
+		this.reaskCalls = 0;
 	},
 };
 
@@ -55,6 +60,11 @@ export async function calendarLocations(events: Array<Pick<CalendarOccurrence, '
 }
 
 export const openCalendar = async () => {};
+
+export async function requestCalendarAccessAgain(): Promise<ReaskOutcome> {
+	board.reaskCalls += 1;
+	return board.reaskOutcome;
+}
 
 export const sharedEvents = new Map<string, () => void>();
 export function useSharedEvent(name: string, handler: () => void) {

@@ -224,7 +224,10 @@ views:
     unavailable: El calendario no está disponible
     unavailableNote: Hace falta el servicio de cuentas de VasakOS, que guarda la copia local de los calendarios.
     denied: Sin permiso para leer el calendario
-    deniedNote: Se puede dar desde Configuración, en los permisos de las aplicaciones.
+    deniedNote: Pedí que te pregunte de nuevo, o dalo desde Configuración, en los permisos de las aplicaciones.
+    reask: Pedir permiso de nuevo
+    reaskTooSoon: Ya lo pediste recién. Esperá un momento.
+    reaskFailed: No se pudo volver a pedir el permiso.
     failed: No se pudieron leer los eventos
     truncated: Hay más eventos de los que se muestran.
     conditions:
