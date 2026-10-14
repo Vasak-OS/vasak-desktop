@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { CHANGED_EVENT } from '@vasakgroup/plugin-vsk-store';
 
 /**
  * Los eventos del calendario, del almacén local de vasak-accounts.
@@ -61,6 +62,8 @@ export const openCalendar = (): Promise<void> => invoke<void>('open_calendar');
  * `useSharedEvent(CALENDAR_CHANGED, …)` —un solo oyente de Tauri para todo el
  * escritorio— y relee su rango; no hace falta preguntar a intervalos. Las
  * señales de una misma vuelta llegan juntas, en un solo aviso. Lo emite
- * `commands/calendar.rs`.
+ * `tauri-plugin-vsk-store`, que el escritorio registra sólo para el área del
+ * calendario y que antes de creerle nada comprueba que el dueño del nombre
+ * del sincronizador sea el de verdad.
  */
-export const CALENDAR_CHANGED = 'calendar-changed';
+export const CALENDAR_CHANGED = CHANGED_EVENT;

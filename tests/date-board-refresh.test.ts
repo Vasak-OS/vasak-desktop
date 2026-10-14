@@ -1,8 +1,8 @@
 /**
  * El tablero de fecha se entera solo de lo nuevo (vasak-desktop#237).
  *
- * El escritorio avisa `calendar-changed` cuando el sincronizador guardó algo
- * del calendario. El tablero, abierto, tiene que volver a pedir el mes que
+ * `tauri-plugin-vsk-store` avisa (`CHANGED_EVENT`) cuando el sincronizador
+ * guardó algo del calendario. El tablero, abierto, tiene que volver a pedir el mes que
  * muestra —y el lugar de los eventos del día, que pudo cambiar— sin cerrarlo
  * y volver a abrirlo. Se monta la vista de verdad con el servicio doblado.
  */
@@ -120,10 +120,17 @@ describe('el tablero de fecha, abierto', () => {
 });
 
 describe('el canal del aviso', () => {
-	test('el servicio y el escritorio nombran el mismo evento', async () => {
+	// El aviso ya no lo emite el escritorio: lo emite el plugin del almacén, y
+	// sólo para las áreas con que se lo registró. Escuchar otro nombre, o
+	// registrarlo sin el calendario, deja el tablero sin enterarse de nada.
+	test('el servicio escucha el aviso del plugin del almacén', async () => {
 		const service = await import('../src/services/calendar.service');
-		const rust = await Bun.file(join(import.meta.dir, '..', 'src-tauri/src/commands/calendar.rs')).text();
-		expect(service.CALENDAR_CHANGED).toBe('calendar-changed');
-		expect(rust).toContain(`pub const CHANGED_EVENT: &str = "${service.CALENDAR_CHANGED}";`);
+		const { CHANGED_EVENT } = await import('@vasakgroup/plugin-vsk-store');
+		expect(service.CALENDAR_CHANGED).toBe(CHANGED_EVENT);
+	});
+
+	test('el escritorio registra el plugin del almacén para el calendario', async () => {
+		const lib = await Bun.file(join(import.meta.dir, '..', 'src-tauri/src/lib.rs')).text();
+		expect(lib).toMatch(/\.plugin\(tauri_plugin_vsk_store::init\(&\[[^\]]*"calendar"[^\]]*\]\)\)/);
 	});
 });

@@ -5247,6 +5247,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-vsk-store"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15c640c1829575c8f6ce60f9705e05493cfb3f11e348f598c048f4b643a221ef"
+dependencies = [
+ "futures-util",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.21",
+ "tokio",
+ "zbus 5.19.0",
+]
+
+[[package]]
 name = "tauri-runtime"
 version = "2.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5892,16 +5908,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
-name = "vasak-accounts-store-client"
-version = "0.20.0"
-source = "git+https://github.com/Vasak-OS/vasak-accounts?branch=main#9fd17b026619c3222f6a43fde628599d7e550c2c"
-dependencies = [
- "zbus 5.19.0",
-]
-
-[[package]]
 name = "vasak-desktop"
-version = "1.68.0"
+version = "1.69.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -5942,11 +5950,11 @@ dependencies = [
  "tauri-plugin-vicons",
  "tauri-plugin-vsk-contextual-menu",
  "tauri-plugin-vsk-journal",
+ "tauri-plugin-vsk-store",
  "thiserror 2.0.21",
  "tokio",
  "url",
  "uuid",
- "vasak-accounts-store-client",
  "wayland-client",
  "wayland-protocols",
  "wayland-protocols-wlr",
