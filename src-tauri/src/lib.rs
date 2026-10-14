@@ -15,6 +15,10 @@ mod audio;
 mod audio_input;
 mod audio_native;
 mod bluetooth_audio_profile;
+/// La lógica de lectura del calendario desde el almacén local. Vive aparte de
+/// `commands/calendar.rs` (el envoltorio fino de Tauri) para que sus funciones
+/// y sus pruebas cuenten para la cobertura; ver la cabecera del módulo.
+mod calendar_store;
 mod commands;
 mod connect;
 mod dbus_service;
