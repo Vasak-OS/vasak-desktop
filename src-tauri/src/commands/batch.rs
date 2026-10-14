@@ -2,11 +2,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
+use crate::applets::battery::{get_battery_info as get_battery_info_internal, has_battery};
 use crate::audio::get_volume;
-use crate::applets::battery::{has_battery, get_battery_info as get_battery_info_internal};
+use crate::logger::log_debug;
 use crate::notifications::get_notifications;
 use crate::structs::{TrayManager, WMState};
-use crate::logger::log_debug;
 
 #[derive(Debug, Deserialize)]
 pub struct BatchRequest {
@@ -56,7 +56,10 @@ async fn dispatch_command(app: &AppHandle, command: &str, _args: &Value) -> Batc
                 Ok(wm) => wm.get_window_list().map_err(|e| e.to_string()),
                 Err(_) => {
                     // Lock contended — return cached state if fresh
-                    if let Some(guard) = state.cached_windows.try_read_for(std::time::Duration::from_millis(50)) {
+                    if let Some(guard) = state
+                        .cached_windows
+                        .try_read_for(std::time::Duration::from_millis(50))
+                    {
                         if let Some(ref cached) = *guard {
                             if cached.updated_at.elapsed() < std::time::Duration::from_secs(5) {
                                 Ok(cached.windows.clone())
@@ -120,11 +123,11 @@ async fn dispatch_command(app: &AppHandle, command: &str, _args: &Value) -> Batc
 const MAX_BATCH_SIZE: usize = 20;
 
 #[tauri::command]
-pub async fn batch_invoke(
-    app: AppHandle,
-    requests: Vec<BatchRequest>,
-) -> Vec<BatchResponse> {
-    log_debug(&format!("batch_invoke: processing {} requests", requests.len()));
+pub async fn batch_invoke(app: AppHandle, requests: Vec<BatchRequest>) -> Vec<BatchResponse> {
+    log_debug(&format!(
+        "batch_invoke: processing {} requests",
+        requests.len()
+    ));
 
     let mut requests = requests;
     let rejected = if requests.len() > MAX_BATCH_SIZE {

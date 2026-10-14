@@ -145,7 +145,8 @@ pub fn weather_store(
     // Fuera del candado: emitir despierta a las otras ventanas, y ninguna
     // debería quedarse esperando este mutex para contestar.
     if let Some(foto) = foto {
-        app.emit("weather-updated", foto).map_err(|e| e.to_string())?;
+        app.emit("weather-updated", foto)
+            .map_err(|e| e.to_string())?;
     }
 
     Ok(())
@@ -239,7 +240,11 @@ mod tests {
         estado.guardar(json!({"current": {"temperature_2m": 20}}), None, hace(120));
 
         let foto = estado.foto(Instant::now()).expect("hay datos guardados");
-        assert!((119..=121).contains(&foto.edad_segundos), "{}", foto.edad_segundos);
+        assert!(
+            (119..=121).contains(&foto.edad_segundos),
+            "{}",
+            foto.edad_segundos
+        );
         assert!(!foto.vencido);
     }
 

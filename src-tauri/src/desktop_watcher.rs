@@ -137,7 +137,8 @@ mod tests {
 
     #[test]
     fn se_resuelve_home_y_se_sacan_las_comillas() {
-        let contenido = "XDG_DOWNLOAD_DIR=\"$HOME/Descargas\"\nXDG_DESKTOP_DIR=\"$HOME/Escritorio\"\n";
+        let contenido =
+            "XDG_DOWNLOAD_DIR=\"$HOME/Descargas\"\nXDG_DESKTOP_DIR=\"$HOME/Escritorio\"\n";
         assert_eq!(
             escritorio_en_user_dirs(contenido, "/home/pato"),
             Some(PathBuf::from("/home/pato/Escritorio"))
@@ -170,7 +171,10 @@ mod tests {
             None
         );
         // Y una clave vacía tampoco vale: vigilar "" no falla, no hace nada.
-        assert_eq!(escritorio_en_user_dirs("XDG_DESKTOP_DIR=\"\"", "/home/pato"), None);
+        assert_eq!(
+            escritorio_en_user_dirs("XDG_DESKTOP_DIR=\"\"", "/home/pato"),
+            None
+        );
     }
 
     #[test]

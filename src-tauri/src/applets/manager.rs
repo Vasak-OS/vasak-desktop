@@ -1,10 +1,10 @@
+use super::Applet;
+use crate::logger::{log_error, log_info};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 use tokio::sync::RwLock;
-use crate::logger::{log_info, log_error};
-use super::Applet;
 
 /// Priority levels for applet startup ordering.
 /// Critical applets are started first and awaited before proceeding.
@@ -76,7 +76,10 @@ impl AppletManager {
         };
 
         // Phase 1: Start Critical applets concurrently and await all of them
-        log_info(&format!("Fase 1: Iniciando {} applets críticos", critical.len()));
+        log_info(&format!(
+            "Fase 1: Iniciando {} applets críticos",
+            critical.len()
+        ));
         let mut critical_handles = Vec::new();
         for (name, applet) in critical {
             let app_handle = app.clone();
@@ -85,7 +88,10 @@ impl AppletManager {
                 log_info(&format!("Iniciando applet crítico: {}", name));
                 if let Err(e) = applet.start(app_handle).await {
                     log::error!("Critical applet '{}' failed to start: {}", name, e);
-                    log_error(&format!("Applet crítico '{}' falló al iniciar: {}", name, e));
+                    log_error(&format!(
+                        "Applet crítico '{}' falló al iniciar: {}",
+                        name, e
+                    ));
                 } else {
                     log::info!("Critical applet '{}' started successfully", name);
                     log_info(&format!("Applet crítico '{}' iniciado correctamente", name));
@@ -101,7 +107,10 @@ impl AppletManager {
         log_info("Fase 1 completada: applets críticos listos");
 
         // Phase 2: Spawn Normal applets without awaiting
-        log_info(&format!("Fase 2: Iniciando {} applets normales", normal.len()));
+        log_info(&format!(
+            "Fase 2: Iniciando {} applets normales",
+            normal.len()
+        ));
         for (name, applet) in normal {
             let app_handle = app.clone();
             tokio::spawn(async move {
@@ -120,7 +129,10 @@ impl AppletManager {
 
         // Phase 3: Deferred applets start after panel-ready event
         if !deferred.is_empty() {
-            log_info(&format!("Fase 3: {} applets diferidos esperando panel-ready", deferred.len()));
+            log_info(&format!(
+                "Fase 3: {} applets diferidos esperando panel-ready",
+                deferred.len()
+            ));
             let app_handle = app.clone();
             let deferred_applets = deferred;
 
@@ -152,10 +164,16 @@ impl AppletManager {
                         log_info(&format!("Iniciando applet diferido: {}", name));
                         if let Err(e) = applet.start(app_clone).await {
                             log::error!("Deferred applet '{}' failed to start: {}", name, e);
-                            log_error(&format!("Applet diferido '{}' falló al iniciar: {}", name, e));
+                            log_error(&format!(
+                                "Applet diferido '{}' falló al iniciar: {}",
+                                name, e
+                            ));
                         } else {
                             log::info!("Deferred applet '{}' started successfully", name);
-                            log_info(&format!("Applet diferido '{}' iniciado correctamente", name));
+                            log_info(&format!(
+                                "Applet diferido '{}' iniciado correctamente",
+                                name
+                            ));
                         }
                     });
                 }
@@ -163,5 +181,4 @@ impl AppletManager {
             });
         }
     }
-
 }

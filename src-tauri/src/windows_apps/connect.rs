@@ -12,17 +12,20 @@ pub async fn create_connect_window(app: AppHandle) -> Result<(), Box<dyn std::er
     const WIDTH: f64 = 520.0;
     const HEIGHT: f64 = 640.0;
 
-    let window =
-        WebviewWindowBuilder::new(&app, "connect", WebviewUrl::App("index.html#/connect".into()))
-            .title("Aplicaciones del teléfono")
-            .decorations(false)
-            .transparent(true)
-            .inner_size(WIDTH, HEIGHT)
-            .max_inner_size(WIDTH, HEIGHT)
-            .min_inner_size(WIDTH, HEIGHT)
-            .visible(true)
-            .skip_taskbar(true)
-            .build()?;
+    let window = WebviewWindowBuilder::new(
+        &app,
+        "connect",
+        WebviewUrl::App("index.html#/connect".into()),
+    )
+    .title("Aplicaciones del teléfono")
+    .decorations(false)
+    .transparent(true)
+    .inner_size(WIDTH, HEIGHT)
+    .max_inner_size(WIDTH, HEIGHT)
+    .min_inner_size(WIDTH, HEIGHT)
+    .visible(true)
+    .skip_taskbar(true)
+    .build()?;
 
     let complete_url = format!("{}/index.html#/connect", get_app_url());
     let url = Url::parse(&complete_url).expect("Failed to parse URL");

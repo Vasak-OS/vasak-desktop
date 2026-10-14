@@ -2,10 +2,10 @@ use super::Applet;
 use async_trait::async_trait;
 use serde_json::json;
 use std::error::Error;
+use std::os::unix::io::AsRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::{fs, io};
-use std::os::unix::io::AsRawFd;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::windows_apps::create_osd_window;
@@ -112,7 +112,11 @@ struct InputEvent {
 fn tiene_luz_de_mayusculas(fd: std::os::unix::io::RawFd) -> bool {
     let mut luces: u8 = 0;
     let leidos = unsafe {
-        libc::ioctl(fd, EVIOCGBIT_LED, &mut luces as *mut u8 as *mut libc::c_void)
+        libc::ioctl(
+            fd,
+            EVIOCGBIT_LED,
+            &mut luces as *mut u8 as *mut libc::c_void,
+        )
     };
 
     leidos >= 0 && (luces >> LED_CAPSL) & 1 == 1
@@ -301,9 +305,9 @@ async fn announce_mic_state(app: &AppHandle, muted: bool) {
 /// when something actually happened.
 fn spawn_mic_monitor(app: AppHandle, running: Arc<AtomicBool>) {
     tokio::spawn(async move {
+        use std::process::Stdio;
         use tokio::io::{AsyncBufReadExt, BufReader};
         use tokio::process::Command;
-        use std::process::Stdio;
 
         let mut last_muted: Option<bool> = read_mic_muted().await;
         let mut backoff = std::time::Duration::from_secs(1);
