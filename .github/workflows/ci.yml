@@ -44,6 +44,9 @@ jobs:
       #   lld                     `src-tauri/.cargo/config.toml` enlaza con
       #                           `-fuse-ld=lld`, y la imagen del runner no lo trae
       #   build-essential         el compilador de C de los `-sys`
+      #   dbus-daemon             no es del grafo sino de las pruebas: las del
+      #                           calendario levantan un bus privado para el
+      #                           cliente de `tauri-plugin-vsk-store`
       #
       # `pipewire-sys` y `clang-sys` siguen en el candado pero no entran en la
       # compilación de Linux, así que no hacen falta.
@@ -52,3 +55,4 @@ jobs:
         libgtk-layer-shell-dev
         lld
         build-essential
+        dbus-daemon

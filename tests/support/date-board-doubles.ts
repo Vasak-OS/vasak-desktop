@@ -42,7 +42,8 @@ export const board = {
 	},
 };
 
-export const CALENDAR_CHANGED = 'calendar-changed';
+/** El mismo evento que usa el servicio de verdad: el de `tauri-plugin-vsk-store`. */
+export { CHANGED_EVENT as CALENDAR_CHANGED } from '@vasakgroup/plugin-vsk-store';
 
 export async function calendarOccurrences(from: string, to: string): Promise<CalendarReply> {
 	board.calls.push({ from, to });
