@@ -1,6 +1,6 @@
-use crate::logger::{log_debug, log_error, log_info};
-use crate::structs::WMState;
 use crate::window_manager::WindowInfo;
+use crate::structs::WMState;
+use crate::logger::{log_info, log_error, log_debug};
 use std::time::Duration;
 
 /// Maximum age for cached window state to be considered valid on lock timeout.
@@ -52,10 +52,7 @@ const TOGGLE_LOCK_TIMEOUT: Duration = Duration::from_millis(100);
 const LOCK_RETRY_INTERVAL: Duration = Duration::from_millis(10);
 
 #[tauri::command]
-pub async fn toggle_window(
-    window_id: String,
-    state: tauri::State<'_, WMState>,
-) -> Result<(), String> {
+pub async fn toggle_window(window_id: String, state: tauri::State<'_, WMState>) -> Result<(), String> {
     log_info(&format!("Alternando ventana: {}", window_id));
 
     // Try non-blocking read first (Requirement 13.4, 13.6)

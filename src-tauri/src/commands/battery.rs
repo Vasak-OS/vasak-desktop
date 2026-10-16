@@ -1,6 +1,6 @@
-use crate::applets::battery::{get_battery_info as get_battery_info_internal, has_battery};
-use crate::logger::{log_debug, log_info};
 use crate::structs::BatteryInfo;
+use crate::applets::battery::{has_battery, get_battery_info as get_battery_info_internal};
+use crate::logger::{log_debug, log_info};
 
 #[tauri::command]
 pub async fn battery_exists() -> bool {
@@ -15,10 +15,8 @@ pub async fn battery_fetch_info() -> Option<BatteryInfo> {
     log_debug("Obteniendo información de batería");
     let info = get_battery_info_internal().await;
     if let Some(ref battery) = info {
-        log_info(&format!(
-            "Batería: {}% - {} - Cargando: {}",
-            battery.percentage, battery.state, battery.is_charging
-        ));
+        log_info(&format!("Batería: {}% - {} - Cargando: {}", 
+            battery.percentage, battery.state, battery.is_charging));
     } else {
         log_debug("No se pudo obtener información de batería");
     }

@@ -324,10 +324,7 @@ mod tests {
         assert!(cupo().try_acquire().is_err(), "el que sobra no entra");
 
         drop(tomados);
-        assert!(
-            cupo().try_acquire().is_ok(),
-            "y al liberarse vuelve a entrar"
-        );
+        assert!(cupo().try_acquire().is_ok(), "y al liberarse vuelve a entrar");
     }
 
     #[test]

@@ -88,18 +88,11 @@ fn ningun_texto_esta_vacio() {
             for parte in clave.split('.') {
                 actual = &actual[parte];
             }
-            if actual
-                .as_str()
-                .map(|s| s.trim().is_empty())
-                .unwrap_or(false)
-            {
+            if actual.as_str().map(|s| s.trim().is_empty()).unwrap_or(false) {
                 vacias.push(clave.clone());
             }
         }
-        assert!(
-            vacias.is_empty(),
-            "textos vacíos en {idioma}.yml: {vacias:?}"
-        );
+        assert!(vacias.is_empty(), "textos vacíos en {idioma}.yml: {vacias:?}");
     }
 }
 
@@ -116,11 +109,7 @@ fn los_marcadores_de_interpolacion_coinciden() {
         let texto = v.as_str().unwrap_or_default();
         let mut encontrados: Vec<String> = texto
             .match_indices('{')
-            .filter_map(|(i, _)| {
-                texto[i..]
-                    .find('}')
-                    .map(|j| texto[i..i + j + 1].to_string())
-            })
+            .filter_map(|(i, _)| texto[i..].find('}').map(|j| texto[i..i + j + 1].to_string()))
             .collect();
         encontrados.sort();
         encontrados

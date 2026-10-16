@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use std::collections::HashMap;
+use std::hash::Hash;
 
 /// A debouncer that prevents rapid-fire events from overwhelming the system.
 /// Only emits the latest value after a specified delay with no new updates.
@@ -24,7 +24,8 @@ impl<K: Eq + Hash + Clone, V: Clone> Debouncer<K, V> {
     /// Debounce a value. Returns Some(value) if enough time has passed since last update,
     /// None if we should wait longer.
     pub fn debounce(&self, key: K, value: V) -> Option<V> {
-        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        let mut pending = self.pending.lock()
+            .unwrap_or_else(|e| e.into_inner());
         let now = Instant::now();
 
         // Check if we should debounce
@@ -47,14 +48,16 @@ impl<K: Eq + Hash + Clone, V: Clone> Debouncer<K, V> {
 
     /// Force emit a value, bypassing the debounce delay
     pub fn force_emit(&self, key: K, value: V) -> V {
-        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        let mut pending = self.pending.lock()
+            .unwrap_or_else(|e| e.into_inner());
         pending.insert(key, (value.clone(), Instant::now()));
         value
     }
 
     /// Clear all pending values
     pub fn clear(&self) {
-        let mut pending = self.pending.lock().unwrap_or_else(|e| e.into_inner());
+        let mut pending = self.pending.lock()
+            .unwrap_or_else(|e| e.into_inner());
         pending.clear();
     }
 }
@@ -77,7 +80,8 @@ impl<K: Eq + Hash + Clone, V: Clone> TtlCache<K, V> {
 
     /// Get a value from cache if it exists and hasn't expired
     pub fn get(&self, key: &K) -> Option<V> {
-        let mut cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self.cache.lock()
+            .unwrap_or_else(|e| e.into_inner());
         if let Some((value, timestamp)) = cache.get(key) {
             if timestamp.elapsed() < self.ttl {
                 return Some(value.clone());
@@ -91,19 +95,22 @@ impl<K: Eq + Hash + Clone, V: Clone> TtlCache<K, V> {
 
     /// Insert a value into the cache
     pub fn insert(&self, key: K, value: V) {
-        let mut cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self.cache.lock()
+            .unwrap_or_else(|e| e.into_inner());
         cache.insert(key, (value, Instant::now()));
     }
 
     /// Clear all cached values
     pub fn clear(&self) {
-        let mut cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self.cache.lock()
+            .unwrap_or_else(|e| e.into_inner());
         cache.clear();
     }
 
     /// Remove expired entries
     pub fn cleanup(&self) {
-        let mut cache = self.cache.lock().unwrap_or_else(|e| e.into_inner());
+        let mut cache = self.cache.lock()
+            .unwrap_or_else(|e| e.into_inner());
         cache.retain(|_, (_, timestamp)| timestamp.elapsed() < self.ttl);
     }
 }

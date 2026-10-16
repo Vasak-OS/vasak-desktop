@@ -45,7 +45,10 @@ fn setup_desktop(
     // Tauri reports physical pixels; GDK and layer-shell work in logical ones.
     let scale = monitor.scale_factor();
     let size = monitor.size();
-    let logical = (size.width as f64 / scale, size.height as f64 / scale);
+    let logical = (
+        size.width as f64 / scale,
+        size.height as f64 / scale,
+    );
 
     spawn_layer_window(
         app,

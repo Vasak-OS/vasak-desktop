@@ -57,8 +57,7 @@ mod tests {
 
     /// Un directorio propio para no pisar a otro test que corra a la par.
     fn directorio_de_prueba(nombre: &str) -> std::path::PathBuf {
-        let dir =
-            std::env::temp_dir().join(format!("vsk-rafaga-{}-{}", std::process::id(), nombre));
+        let dir = std::env::temp_dir().join(format!("vsk-rafaga-{}-{}", std::process::id(), nombre));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).expect("crear el directorio de prueba");
         dir
@@ -114,10 +113,7 @@ mod tests {
     fn sin_cambios_no_vuelve() {
         let dir = directorio_de_prueba("quieto");
         let mut inotify = Inotify::init().expect("inotify");
-        inotify
-            .watches()
-            .add(&dir, WatchMask::CREATE)
-            .expect("vigilar");
+        inotify.watches().add(&dir, WatchMask::CREATE).expect("vigilar");
 
         let (aviso, recibo) = std::sync::mpsc::channel();
         std::thread::spawn(move || {

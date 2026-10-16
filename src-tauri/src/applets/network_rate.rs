@@ -76,7 +76,10 @@ fn interfaces_de_salida(v4: &str, v6: &str) -> BTreeSet<String> {
     for linea in v6.lines() {
         let campos: Vec<&str> = linea.split_whitespace().collect();
 
-        if campos.len() >= 10 && campos[0].chars().all(|c| c == '0') && campos[1] == "00" {
+        if campos.len() >= 10
+            && campos[0].chars().all(|c| c == '0')
+            && campos[1] == "00"
+        {
             if let Some(interfaz) = campos.last() {
                 salidas.insert((*interfaz).to_string());
             }
@@ -225,8 +228,7 @@ mod tests {
     use super::*;
 
     /// Las rutas de una máquina común: salida por wlan0.
-    const RUTAS: &str =
-        "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\tMTU\tWindow\tIRTT
+    const RUTAS: &str = "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\tMTU\tWindow\tIRTT
 wlan0\t00000000\t016413AC\t0003\t0\t0\t600\t00000000\t0\t0\t0
 wlan0\t006413AC\t00000000\t0001\t0\t0\t600\tOOFFFFFF\t0\t0\t0
 docker0\t000011AC\t00000000\t0001\t0\t0\t0\t0000FFFF\t0\t0\t0
@@ -268,8 +270,7 @@ docker0\t000011AC\t00000000\t0001\t0\t0\t0\t0000FFFF\t0\t0\t0
         // El caso que rompía la regla anterior: `br0` se descartaba por ser
         // puente y `eth0` por tener amo, así que no quedaba nada y el indicador
         // marcaba cero para siempre. La ruta por defecto nombra al puente.
-        let rutas =
-            "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\tMTU\tWindow\tIRTT
+        let rutas = "Iface\tDestination\tGateway\tFlags\tRefCnt\tUse\tMetric\tMask\tMTU\tWindow\tIRTT
 br0\t00000000\t0164A8C0\t0003\t0\t0\t100\t00000000\t0\t0\t0
 ";
         let texto = "a\nb\n   br0: 900 1 0 0 0 0 0 0 400 1 0 0 0 0 0 0\n  eth0: 900 1 0 0 0 0 0 0 400 1 0 0 0 0 0 0\n";
@@ -366,7 +367,10 @@ br0\t00000000\t0164A8C0\t0003\t0\t0\t100\t00000000\t0\t0\t0
             enviados: 10,
         };
 
-        assert_eq!(tasa(c, c, Duration::ZERO), NetworkRate { down: 0, up: 0 });
+        assert_eq!(
+            tasa(c, c, Duration::ZERO),
+            NetworkRate { down: 0, up: 0 }
+        );
     }
 
     #[test]

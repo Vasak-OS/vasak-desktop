@@ -45,7 +45,8 @@ impl Applet for BatteryApplet {
         // Check SysFS availability first (cheap, no D-Bus)
         let sysfs_battery = "/sys/class/power_supply/BAT0";
         let has_sysfs_battery = Path::new(sysfs_battery).exists();
-        let has_sysfs = has_sysfs_battery || Path::new("/sys/class/power_supply/AC0").exists();
+        let has_sysfs = has_sysfs_battery
+            || Path::new("/sys/class/power_supply/AC0").exists();
 
         // Try D-Bus path
         if let Some(conn) = get_system_connection(&app_handle).await {
@@ -110,7 +111,12 @@ impl BatteryApplet {
         }
     }
 
-    async fn run_dbus_loop(&self, app_handle: AppHandle, mut conn: Connection, mut path: String) {
+    async fn run_dbus_loop(
+        &self,
+        app_handle: AppHandle,
+        mut conn: Connection,
+        mut path: String,
+    ) {
         let mut reconnect_attempts = 0u32;
         let max_reconnects = 5;
 
@@ -297,7 +303,10 @@ impl BatteryApplet {
     ///   - The signal body couldn't be parsed
     ///   - There are invalidated properties (requiring a full GetAll refresh)
     ///   - No existing cache to merge into
-    async fn handle_properties_changed(msg: &Message, conn: &Connection) -> Option<BatteryInfo> {
+    async fn handle_properties_changed(
+        msg: &Message,
+        conn: &Connection,
+    ) -> Option<BatteryInfo> {
         // Parse the PropertiesChanged signal body:
         // (interface_name: String, changed_properties: HashMap<String, OwnedValue>, invalidated_properties: Vec<String>)
         let body: (String, HashMap<String, OwnedValue>, Vec<String>) =
@@ -380,9 +389,7 @@ fn read_sysfs_battery_info() -> Option<BatteryInfo> {
     }
 
     let read_str = |file: &str| -> Option<String> {
-        fs::read_to_string(bat_path.join(file))
-            .ok()
-            .map(|s| s.trim().to_string())
+        fs::read_to_string(bat_path.join(file)).ok().map(|s| s.trim().to_string())
     };
 
     let capacity: f64 = read_str("capacity")?.parse().ok()?;
@@ -396,8 +403,7 @@ fn read_sysfs_battery_info() -> Option<BatteryInfo> {
         "discharging" => "Discharging",
         "full" => "FullyCharged",
         _ => "Unknown",
-    }
-    .to_string();
+    }.to_string();
 
     // Time estimates (seconds in sysfs, or 0 if unavailable)
     let time_to_empty = read_str("time_to_empty_now")

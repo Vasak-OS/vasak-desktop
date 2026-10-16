@@ -1,13 +1,13 @@
-use crate::logger::{log_error, log_info};
-use crate::structs::CachedWindowList;
 use crate::window_manager;
 use crate::window_manager::delta::WindowDelta;
 use crate::window_manager::{WindowInfo, WindowManagerBackend};
+use crate::structs::CachedWindowList;
+use crate::logger::{log_info, log_error};
+use window_manager::WindowManager;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use tauri::Emitter;
-use window_manager::WindowManager;
 
 /// Debounce window for coalescing rapid sequential changes (50ms).
 const DEBOUNCE_MS: u64 = 50;
@@ -72,9 +72,7 @@ pub fn setup_windows_monitoring(
     let (tx, rx) = channel();
 
     {
-        let mut wm = window_manager
-            .write()
-            .unwrap_or_else(|error| error.into_inner());
+        let mut wm = window_manager.write().unwrap_or_else(|error| error.into_inner());
         wm.backend.setup_event_monitoring(tx)?;
         log_info("Monitoreo de eventos de ventanas establecido");
     }
