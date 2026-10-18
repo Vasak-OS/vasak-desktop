@@ -50,6 +50,7 @@ export function usePanelConfig() {
 		showTransfer: computed(() => section.value.transfer !== false),
 		showTray: computed(() => section.value.tray !== false),
 		showPrivacy: computed(() => section.value.privacy !== false),
+		showKeyboard: computed(() => section.value.keyboard !== false),
 		/** `true` salvo que `panel.workspaces` esté en `false`: la píldora de espacios de trabajo. */
 		showWorkspaces: computed(() => section.value.workspaces !== false),
 		/** `true` salvo que `panel.windows` esté en `false`: la píldora de ventanas abiertas. */
