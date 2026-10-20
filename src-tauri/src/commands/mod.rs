@@ -26,6 +26,7 @@ mod wallpaper_assets;
 mod wallpaper_colors;
 mod wallpaper_picker;
 mod weather;
+pub(crate) mod webkit;
 mod window_manager;
 
 pub use airplane_mode::{get_airplane_mode, set_airplane_mode, unblock_radios};

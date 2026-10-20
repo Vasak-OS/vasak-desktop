@@ -10,12 +10,16 @@ pub async fn show_osd_internal(
     label: &str,
     app: &AppHandle,
 ) -> Result<(), String> {
-    let window = if let Some(w) = app.get_webview_window("osd_popup") {
-        w
-    } else {
-        create_osd_window(app, icon, value, maximum, label)
-            .await
-            .map_err(|e| format!("Failed to create OSD window: {}", e))?
+    let window = match app.get_webview_window("osd_popup") {
+        Some(w) => w,
+        None => {
+            let w = create_osd_window(app, icon, value, maximum, label)
+                .await
+                .map_err(|e| format!("Failed to create OSD window: {}", e))?;
+            // Recién creada: se afina una vez y queda afinada mientras se reusa.
+            crate::commands::webkit::tune_window(&w);
+            w
+        }
     };
 
     let _ = window.emit(

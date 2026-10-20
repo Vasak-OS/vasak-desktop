@@ -17,7 +17,12 @@ pub fn toggle_connect_menu(app: AppHandle) -> Result<(), tauri::Error> {
         }
     } else {
         spawn(async move {
-            let _ = create_connect_window(app).await;
+            if create_connect_window(app.clone()).await.is_ok() {
+                // Recién creada: se afina una vez y queda afinada mientras se reusa.
+                if let Some(window) = app.get_webview_window("connect") {
+                    crate::commands::webkit::tune_window(&window);
+                }
+            }
         });
     }
 
