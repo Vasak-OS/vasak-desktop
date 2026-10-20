@@ -11,7 +11,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	ListCard,
-	TextInput,
+	PasswordField,
 	ThemeIcon,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref } from 'vue';
@@ -39,7 +39,11 @@ const confirmConnect = async () => {
 	connecting.value = true;
 	errorMsg.value = '';
 	try {
-		await connectToWifi({ ssid: props.ssid, password: password.value } as WiFiConnectionConfig);
+		await connectToWifi({
+			ssid: props.ssid,
+			password: password.value,
+			security_type: props.security_type,
+		} as WiFiConnectionConfig);
 		showModal.value = false;
 		password.value = '';
 	} catch (error) {
@@ -138,9 +142,8 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         <!-- `ariaLabel` además del marcador: un marcador no es un nombre —se
              borra al escribir, y un lector de pantalla no tiene por qué leerlo—,
              así que este campo no tenía ninguno. -->
-        <TextInput
+        <PasswordField
           v-model="password"
-          type="password"
           autocomplete="current-password"
           :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
           :ariaLabel="t('components.NetworkWiFiCard.passwordPlaceholder')"
