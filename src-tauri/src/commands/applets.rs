@@ -1,7 +1,7 @@
 use tauri::AppHandle;
 
 use crate::windows_apps::anchored_applet::{
-    dismiss_anchored_applet, toggle_anchored_applet, AnchorRect, AppletSizing,
+    dismiss_anchored_applet, dismiss_open_applet, toggle_anchored_applet, AnchorRect, AppletSizing,
 };
 
 /// Abre o cierra un applet del panel, colgado del botón que lo pidió.
@@ -28,4 +28,12 @@ pub fn toggle_applet(
 #[tauri::command]
 pub fn dismiss_applet(app: AppHandle, applet: String) -> Result<(), String> {
     dismiss_anchored_applet(&app, &applet)
+}
+
+/// Cierra lo que esté abierto —el applet o el menú, y el centro de control— por
+/// un clic en el escritorio, que no les quita el foco (vasak-desktop#262).
+#[tauri::command]
+pub fn dismiss_popups(app: AppHandle) -> Result<(), String> {
+    crate::commands::control_center::hide_control_center(app.clone()).ok();
+    dismiss_open_applet(&app)
 }
