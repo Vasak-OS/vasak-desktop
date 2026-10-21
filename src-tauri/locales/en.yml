@@ -597,6 +597,13 @@ widgets:
     description: The month with your events
     noEventsToday: No events today
     allDay: All day
+  system:
+    name: System
+    description: CPU, memory, network and temperature
+    cpu: CPU
+    memory: Memory
+    network: Network
+    temperature: Temperature
   files:
     name: Desktop files
     description: What you have in your Desktop folder
