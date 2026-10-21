@@ -1,6 +1,4 @@
 use crate::logger::{log_error, log_info};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -73,36 +71,38 @@ fn resolver_desktop(path: &str, directorios: &[PathBuf]) -> PathBuf {
         .unwrap_or_else(|| pedido.to_path_buf())
 }
 
-#[allow(clippy::lines_filter_map_ok)]
+/// La primera línea `Exec=` de un `.desktop`, sin el prefijo.
+fn exec_de(contenido: &str) -> Option<&str> {
+    contenido
+        .lines()
+        .find_map(|linea| linea.strip_prefix("Exec="))
+}
+
 #[tauri::command]
 pub async fn open_app(path: &str) -> Result<(), String> {
     log_info(&format!("Abriendo aplicación desde: {}", path));
     let resuelto = resolver_desktop(path, &crate::menu_manager::applications_dirs());
-    let file = File::open(&resuelto).map_err(|e| {
+    let contenido = tokio::fs::read_to_string(&resuelto).await.map_err(|e| {
         log_error(&format!("Error al abrir archivo .desktop {}: {}", path, e));
         e.to_string()
     })?;
-    let reader = BufReader::new(file);
 
-    for line in reader.lines().flatten() {
-        if line.starts_with("Exec=") {
-            let exec_line = line.trim_start_matches("Exec=");
-            let (cmd, args) = parse_exec_line(exec_line).map_err(|e| {
-                log_error(&format!("Error parseando Exec en {}: {}", path, e));
-                e
-            })?;
+    if let Some(exec_line) = exec_de(&contenido) {
+        let (cmd, args) = parse_exec_line(exec_line).map_err(|e| {
+            log_error(&format!("Error parseando Exec en {}: {}", path, e));
+            e
+        })?;
 
-            log_info(&format!("Ejecutando comando: {} {:?}", cmd, args));
-            comando_de_aplicacion(&cmd, &args).spawn().map_err(|e| {
-                log_error(&format!(
-                    "Error al ejecutar comando {} {:?}: {}",
-                    cmd, args, e
-                ));
-                e.to_string()
-            })?;
+        log_info(&format!("Ejecutando comando: {} {:?}", cmd, args));
+        comando_de_aplicacion(&cmd, &args).spawn().map_err(|e| {
+            log_error(&format!(
+                "Error al ejecutar comando {} {:?}: {}",
+                cmd, args, e
+            ));
+            e.to_string()
+        })?;
 
-            return Ok(());
-        }
+        return Ok(());
     }
 
     log_error(&format!("No se encontró comando ejecutable en: {}", path));
@@ -284,5 +284,21 @@ mod tests_resolver {
             resolver_desktop("/no/existe/x.desktop", &[]),
             PathBuf::from("/no/existe/x.desktop")
         );
+    }
+}
+
+#[cfg(test)]
+mod tests_exec {
+    use super::exec_de;
+
+    #[test]
+    fn toma_la_primera_linea_exec() {
+        let desktop = "[Desktop Entry]\nName=App\nExec=app --x %U\nExec=otra\n";
+        assert_eq!(exec_de(desktop), Some("app --x %U"));
+    }
+
+    #[test]
+    fn sin_exec_no_hay_comando() {
+        assert_eq!(exec_de("[Desktop Entry]\nName=App\n"), None);
     }
 }

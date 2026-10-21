@@ -866,7 +866,10 @@ pub fn dismiss_anchored_applet(app: &AppHandle, id: &str) -> Result<(), String> 
 pub fn dismiss_open_applet(app: &AppHandle) -> Result<(), String> {
     let handle = app.clone();
     app.run_on_main_thread(move || {
-        if let Some(spec) = STATE.with(|state| state.borrow().open).and_then(applet_spec) {
+        if let Some(spec) = STATE
+            .with(|state| state.borrow().open)
+            .and_then(applet_spec)
+        {
             dismiss_on_main(&handle, spec);
         }
     })
