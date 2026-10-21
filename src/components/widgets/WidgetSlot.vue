@@ -5,6 +5,7 @@ import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import FilesWidget from '@/components/widgets/FilesWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import SystemStatsWidget from '@/components/widgets/SystemStatsWidget.vue';
+import TasksWidget from '@/components/widgets/TasksWidget.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import WidgetFrame from '@/components/widgets/WidgetFrame.vue';
 import { WIDGETS, type WidgetType } from '@/tools/widgets/catalog';
@@ -38,6 +39,7 @@ const WIDGET_COMPONENTS = {
 	files: FilesWidget,
 	calendar: CalendarWidget,
 	system: SystemStatsWidget,
+	tasks: TasksWidget,
 } as const;
 
 const widgetComponent = computed(() => WIDGET_COMPONENTS[props.type]);

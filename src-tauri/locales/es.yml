@@ -604,6 +604,13 @@ widgets:
     memory: Memoria
     network: Red
     temperature: Temperatura
+  tasks:
+    name: Tareas del día
+    description: Lo que vence hoy o está atrasado
+    heading: Tareas de hoy
+    none: No hay tareas para hoy
+    unavailable: Las tareas no están disponibles
+    more: y {0} más
   files:
     name: Archivos del escritorio
     description: Lo que tenés en la carpeta Escritorio

@@ -53,6 +53,27 @@ export const calendarLocations = (
 		events: events.map(({ event_id, occurrence_id }) => ({ event_id, occurrence_id })),
 	});
 
+/** Una tarea sin completar, tal como la manda `ListTasks`. */
+export interface CalendarTask {
+	task_id: string;
+	title: string;
+	/** RFC 3339 en UTC; vacío si no vence. */
+	due: string | null;
+	all_day: boolean;
+	done: boolean;
+	/** De 1 (la más alta) a 9, o nada. */
+	priority: number | null;
+}
+
+export type TasksReply =
+	| { state: 'ready'; tasks: CalendarTask[]; truncated: boolean }
+	| { state: 'unavailable' }
+	| { state: 'denied' }
+	| { state: 'failed'; detail: string };
+
+/** Las tareas sin completar de todas las cuentas, del mismo almacén que los eventos. */
+export const calendarTasks = (): Promise<TasksReply> => invoke<TasksReply>('calendar_tasks');
+
 /** Abre `vasak-calendar`. */
 export const openCalendar = (): Promise<void> => invoke<void>('open_calendar');
 
