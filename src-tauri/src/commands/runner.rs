@@ -1,7 +1,7 @@
 use crate::logger::{log_error, log_info};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// El directorio desde el que arranca una aplicación que abre el escritorio.
@@ -53,11 +53,32 @@ fn parse_exec_line(exec_line: &str) -> Result<(String, Vec<String>), String> {
     Ok((command, args))
 }
 
+/// La ruta real del `.desktop` que pide `open_app`.
+///
+/// Configuración guarda lo anclado con el identificador del archivo
+/// (`firefox.desktop`), no con su ruta: un nombre suelto se busca en los
+/// directorios de aplicaciones (usuario primero). Una ruta que existe se usa tal cual.
+fn resolver_desktop(path: &str, directorios: &[PathBuf]) -> PathBuf {
+    let pedido = Path::new(path);
+    if pedido.is_absolute() && pedido.exists() {
+        return pedido.to_path_buf();
+    }
+    let Some(nombre) = pedido.file_name() else {
+        return pedido.to_path_buf();
+    };
+    directorios
+        .iter()
+        .map(|dir| dir.join(nombre))
+        .find(|candidato| candidato.exists())
+        .unwrap_or_else(|| pedido.to_path_buf())
+}
+
 #[allow(clippy::lines_filter_map_ok)]
 #[tauri::command]
 pub async fn open_app(path: &str) -> Result<(), String> {
     log_info(&format!("Abriendo aplicación desde: {}", path));
-    let file = File::open(path).map_err(|e| {
+    let resuelto = resolver_desktop(path, &crate::menu_manager::applications_dirs());
+    let file = File::open(&resuelto).map_err(|e| {
         log_error(&format!("Error al abrir archivo .desktop {}: {}", path, e));
         e.to_string()
     })?;
@@ -234,5 +255,34 @@ mod tests_seccion {
             "una opción, no una sección"
         );
         assert!(!es_nombre_de_seccion(&"a".repeat(41)));
+    }
+}
+
+#[cfg(test)]
+mod tests_resolver {
+    use super::resolver_desktop;
+    use std::path::PathBuf;
+
+    #[test]
+    fn un_identificador_suelto_se_busca_en_los_directorios() {
+        let dir = std::env::temp_dir().join(format!("vsk-resolver-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("app-prueba.desktop"), "[Desktop Entry]").unwrap();
+
+        let resuelto = resolver_desktop(
+            "app-prueba.desktop",
+            &[PathBuf::from("/no/existe"), dir.clone()],
+        );
+        assert_eq!(resuelto, dir.join("app-prueba.desktop"));
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn una_ruta_inexistente_queda_como_vino() {
+        assert_eq!(
+            resolver_desktop("/no/existe/x.desktop", &[]),
+            PathBuf::from("/no/existe/x.desktop")
+        );
     }
 }
