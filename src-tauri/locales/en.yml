@@ -604,6 +604,13 @@ widgets:
     memory: Memory
     network: Network
     temperature: Temperature
+  tasks:
+    name: Tasks due today
+    description: What is due today or overdue
+    heading: Due today
+    none: Nothing due today
+    unavailable: Tasks are not available
+    more: and {0} more
   files:
     name: Desktop files
     description: What you have in your Desktop folder

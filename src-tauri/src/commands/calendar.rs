@@ -14,8 +14,8 @@ use tauri::AppHandle;
 use tauri_plugin_vsk_store::{StoreClient, StoreExt};
 
 use crate::calendar_store::{
-    classify_store, read_locations, read_occurrences, CalendarReply, EventRef, Failure, Request,
-    StoreCalls, CALL_TIMEOUT, PAGE_LIMIT,
+    classify_store, read_locations, read_occurrences, read_tasks, CalendarReply, EventRef, Failure,
+    Request, StoreCalls, TasksReply, CALL_TIMEOUT, PAGE_LIMIT, TASKS_LIMIT,
 };
 use crate::logger::log_info;
 
@@ -33,6 +33,13 @@ impl StoreCalls for StoreClient {
                         "ListOccurrences",
                         &(from, to, Vec::<String>::new(), cursor, PAGE_LIMIT),
                     ),
+                )
+                .await
+            }
+            Request::Tasks => {
+                tokio::time::timeout(
+                    CALL_TIMEOUT,
+                    self.call_json("ListTasks", &(Vec::<String>::new(), false, "", TASKS_LIMIT)),
                 )
                 .await
             }
@@ -75,4 +82,16 @@ pub async fn calendar_occurrences(app: AppHandle, from: String, to: String) -> C
 #[tauri::command]
 pub async fn calendar_locations(app: AppHandle, events: Vec<EventRef>) -> Vec<String> {
     read_locations(app.store().as_ref(), &events).await
+}
+
+/// Las tareas sin completar, para el widget de tareas del escritorio.
+#[tauri::command]
+pub async fn calendar_tasks(app: AppHandle) -> TasksReply {
+    let reply = read_tasks(app.store().as_ref()).await;
+    if let TasksReply::Failed { detail } = &reply {
+        log_info(&format!(
+            "[calendario] no se pudieron leer las tareas: {detail}"
+        ));
+    }
+    reply
 }

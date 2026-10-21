@@ -67,6 +67,9 @@ pub(crate) const PAGE_LIMIT: u32 = 500;
 /// cinco mil eventos no se dibujan igual; el resto queda marcado como recortado.
 const MAX_PAGES: usize = 10;
 
+/// Cuántas tareas pide el widget: son las del día, no el archivo entero.
+pub(crate) const TASKS_LIMIT: u32 = 100;
+
 /// Cuántos eventos se completan con su lugar de una vez: los de un día, que es
 /// lo que muestra el tablero. Cada uno es una llamada.
 const MAX_DETAILS: usize = 24;
@@ -106,6 +109,55 @@ struct OccurrencePage {
     next_cursor: Option<String>,
     #[serde(default)]
     truncated: bool,
+}
+
+/// Una tarea de `ListTasks`, con lo que el widget del escritorio necesita.
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub struct CalendarTask {
+    pub task_id: String,
+    pub title: String,
+    /// RFC 3339 en UTC, o vacío si no vence.
+    #[serde(default)]
+    pub due: Option<String>,
+    #[serde(default)]
+    pub all_day: bool,
+    #[serde(default)]
+    pub done: bool,
+    #[serde(default)]
+    pub priority: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct TaskPage {
+    #[serde(default)]
+    items: Vec<CalendarTask>,
+    #[serde(default)]
+    truncated: bool,
+}
+
+/// Lo que contesta el widget de tareas: igual que [`CalendarReply`], con tareas.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+pub enum TasksReply {
+    Ready {
+        tasks: Vec<CalendarTask>,
+        truncated: bool,
+    },
+    Unavailable,
+    Denied,
+    Failed {
+        detail: String,
+    },
+}
+
+impl From<Failure> for TasksReply {
+    fn from(failure: Failure) -> Self {
+        match failure {
+            Failure::Unavailable => TasksReply::Unavailable,
+            Failure::Denied => TasksReply::Denied,
+            Failure::Failed(detail) => TasksReply::Failed { detail },
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -231,6 +283,8 @@ pub(crate) enum Request<'a> {
         event_id: &'a str,
         occurrence_id: &'a str,
     },
+    /// Las tareas sin completar, de todas las cuentas (una sola página).
+    Tasks,
 }
 
 impl Request<'_> {
@@ -239,6 +293,7 @@ impl Request<'_> {
             Request::Calendars => "ListCalendars",
             Request::Occurrences { .. } => "ListOccurrences",
             Request::Event { .. } => "GetEvent",
+            Request::Tasks => "ListTasks",
         }
     }
 }
@@ -273,6 +328,14 @@ impl StoreCalls for Connection {
                 event_id,
                 occurrence_id,
             } => call_json(self, "GetEvent", &(event_id, occurrence_id)).await,
+            Request::Tasks => {
+                call_json(
+                    self,
+                    "ListTasks",
+                    &(Vec::<String>::new(), false, "", TASKS_LIMIT),
+                )
+                .await
+            }
         }
     }
 }
@@ -330,7 +393,7 @@ pub(crate) async fn read_occurrences(
             Err(e) => {
                 return CalendarReply::Failed {
                     detail: format!("no se pudo leer la página de eventos: {e}"),
-                }
+                };
             }
         };
         truncated |= page.truncated;
@@ -352,6 +415,24 @@ pub(crate) async fn read_occurrences(
     }
 
     CalendarReply::Ready { entries, truncated }
+}
+
+/// Las tareas sin completar. Una sola página: el widget muestra unas pocas y
+/// filtra las de hoy; si hay más, `truncated` lo avisa.
+pub(crate) async fn read_tasks(store: &impl StoreCalls) -> TasksReply {
+    let json = match store.json(Request::Tasks).await {
+        Ok(json) => json,
+        Err(failure) => return failure.into(),
+    };
+    match serde_json::from_str::<TaskPage>(&json) {
+        Ok(page) => TasksReply::Ready {
+            tasks: page.items.into_iter().filter(|t| !t.done).collect(),
+            truncated: page.truncated,
+        },
+        Err(e) => TasksReply::Failed {
+            detail: format!("no se pudo leer la página de tareas: {e}"),
+        },
+    }
 }
 
 /// El lugar de cada evento pedido, en el mismo orden; vacío si no tiene o no se
@@ -404,6 +485,7 @@ mod tests {
         calendars: String,
         events: HashMap<String, String>,
         deny: bool,
+        tasks: String,
         cursors: Arc<Mutex<Vec<String>>>,
         /// Cada pedido, con sus argumentos y en orden.
         calls: Arc<Mutex<Vec<String>>>,
@@ -432,6 +514,22 @@ mod tests {
                 cursor.parse().unwrap()
             };
             Ok(self.pages[index].clone())
+        }
+
+        fn list_tasks(
+            &self,
+            calendar_ids: Vec<String>,
+            include_completed: bool,
+            cursor: String,
+            limit: u32,
+        ) -> zbus::fdo::Result<String> {
+            self.calls.lock().unwrap().push(format!(
+                "ListTasks {calendar_ids:?} {include_completed} {cursor:?} {limit}"
+            ));
+            if self.deny {
+                return Err(zbus::fdo::Error::AccessDenied("sin permiso".into()));
+            }
+            Ok(self.tasks.clone())
         }
 
         fn list_calendars(&self) -> String {
@@ -510,6 +608,55 @@ mod tests {
             *cursors.lock().unwrap(),
             vec![String::new(), "1".to_string()]
         );
+    }
+
+    #[tokio::test]
+    async fn las_tareas_sin_completar_se_piden_de_todas_las_cuentas() {
+        let store = FakeStore {
+            tasks: r#"{"items":[{"task_id":"a/1","title":"Pagar","due":"2026-10-21T12:00:00Z","all_day":false,"done":false,"priority":1},{"task_id":"a/2","title":"Hecha","done":true}],"truncated":true}"#.into(),
+            ..Default::default()
+        };
+        let calls = store.calls.clone();
+        let connection = connect(Some(store)).await;
+
+        let TasksReply::Ready { tasks, truncated } = read_tasks(&connection).await else {
+            panic!("se esperaban tareas");
+        };
+
+        // Una tarea que el servicio marcó hecha no llega al widget.
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(tasks[0].title, "Pagar");
+        assert!(truncated);
+        assert_eq!(
+            *calls.lock().unwrap(),
+            vec![format!("ListTasks [] false \"\" {TASKS_LIMIT}")]
+        );
+    }
+
+    #[tokio::test]
+    async fn las_tareas_sin_permiso_o_sin_servicio_se_ven_como_tales() {
+        let denied = connect(Some(FakeStore {
+            deny: true,
+            ..Default::default()
+        }))
+        .await;
+        assert_eq!(read_tasks(&denied).await, TasksReply::Denied);
+
+        let missing = connect(None).await;
+        assert_eq!(read_tasks(&missing).await, TasksReply::Unavailable);
+    }
+
+    #[tokio::test]
+    async fn una_pagina_de_tareas_rota_es_un_fallo_con_su_texto() {
+        let store = FakeStore {
+            tasks: "no es json".into(),
+            ..Default::default()
+        };
+        let connection = connect(Some(store)).await;
+        assert!(matches!(
+            read_tasks(&connection).await,
+            TasksReply::Failed { .. }
+        ));
     }
 
     #[tokio::test]

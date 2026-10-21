@@ -204,6 +204,7 @@ pub fn run() {
             open_settings_section,
             open_calendar,
             calendar_occurrences,
+            calendar_tasks,
             calendar_locations,
             request_calendar_access_again,
             twingate_info,

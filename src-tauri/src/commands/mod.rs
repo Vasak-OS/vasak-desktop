@@ -38,7 +38,7 @@ pub use audio::{
 };
 pub use batch::batch_invoke;
 pub use battery::{battery_exists, battery_fetch_info, get_battery_info};
-pub use calendar::{calendar_locations, calendar_occurrences};
+pub use calendar::{calendar_locations, calendar_occurrences, calendar_tasks};
 pub use compositor::{
     get_keyboard_layout, get_workspaces, next_keyboard_layout, set_panel_input_region,
     switch_workspace,

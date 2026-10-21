@@ -10,6 +10,7 @@ import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import FilesWidget from '@/components/widgets/FilesWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
 import SystemStatsWidget from '@/components/widgets/SystemStatsWidget.vue';
+import TasksWidget from '@/components/widgets/TasksWidget.vue';
 import WeatherWidget from '@/components/widgets/WeatherWidget.vue';
 import WidgetHost from '@/components/widgets/WidgetHost.vue';
 import { toggleWallpaperPicker } from '@/services/wallpaper.service';
@@ -62,6 +63,7 @@ const widgetComponents: Record<WidgetType, unknown> = {
 	files: FilesWidget,
 	calendar: CalendarWidget,
 	system: SystemStatsWidget,
+	tasks: TasksWidget,
 };
 
 const container = ref<HTMLElement | null>(null);
