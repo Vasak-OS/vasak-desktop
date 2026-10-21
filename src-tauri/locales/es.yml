@@ -592,6 +592,11 @@ widgets:
     description: El tiempo de tu ciudad
     extended: Extendido
     today: Sólo hoy
+  calendar:
+    name: Calendario
+    description: El mes con tus eventos
+    noEventsToday: Hoy no tenés eventos
+    allDay: Todo el día
   files:
     name: Archivos del escritorio
     description: Lo que tenés en la carpeta Escritorio

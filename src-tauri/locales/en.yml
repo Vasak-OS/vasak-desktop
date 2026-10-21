@@ -592,6 +592,11 @@ widgets:
     description: The forecast for your city
     extended: Extended
     today: Today only
+  calendar:
+    name: Calendar
+    description: The month with your events
+    noEventsToday: No events today
+    allDay: All day
   files:
     name: Desktop files
     description: What you have in your Desktop folder

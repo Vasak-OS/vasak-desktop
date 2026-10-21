@@ -5,6 +5,7 @@ import { showContextMenu } from '@vasakgroup/plugin-vsk-contextual-menu';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { ActionButton, ListCard } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import CalendarWidget from '@/components/widgets/CalendarWidget.vue';
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import FilesWidget from '@/components/widgets/FilesWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
@@ -58,6 +59,7 @@ const widgetComponents: Record<WidgetType, unknown> = {
 	music: MusicWidget,
 	weather: WeatherWidget,
 	files: FilesWidget,
+	calendar: CalendarWidget,
 };
 
 const container = ref<HTMLElement | null>(null);

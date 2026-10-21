@@ -13,7 +13,7 @@ export const CELL_GAP = 12;
 /** El margen que se deja libre en los bordes, para que nada quede pegado. */
 export const GRID_PADDING = 24;
 
-export type WidgetType = 'clock' | 'music' | 'weather' | 'files';
+export type WidgetType = 'clock' | 'music' | 'weather' | 'files' | 'calendar';
 
 export type WidgetPlacement = {
 	/** Identidad de esta instancia: hace falta porque puede haber dos del mismo tipo. */
@@ -83,6 +83,17 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
 			{ id: 'extended', labelKey: 'widgets.weather.extended', size: { w: 3, h: 3 } },
 			{ id: 'today', labelKey: 'widgets.weather.today', size: { w: 2, h: 1 } },
 		],
+		unique: true,
+	},
+	calendar: {
+		type: 'calendar',
+		labelKey: 'widgets.calendar.name',
+		descriptionKey: 'widgets.calendar.description',
+		icon: 'x-office-calendar-symbolic',
+		// Tres de alto es el mes solo; con cuatro suma los eventos de hoy.
+		default: { w: 3, h: 3 },
+		min: { w: 3, h: 3 },
+		max: { w: 5, h: 5 },
 		unique: true,
 	},
 	files: {
