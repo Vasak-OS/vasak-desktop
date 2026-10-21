@@ -189,6 +189,7 @@ pub fn run() {
             privacy_stop_screen,
             toggle_applet,
             dismiss_applet,
+            dismiss_popups,
             weather_cached,
             weather_claim,
             weather_place,

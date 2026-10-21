@@ -860,6 +860,12 @@ pub fn dismiss_anchored_applet(app: &AppHandle, id: &str) -> Result<(), String> 
     .map_err(|error| format!("no se pudo llegar al hilo principal: {error}"))
 }
 
+/// El applet abierto, si hay uno. Sólo desde el hilo principal de GTK, donde
+/// vive el estado.
+pub fn open_applet_id() -> Option<&'static str> {
+    STATE.with(|state| state.borrow().open)
+}
+
 /// Cierra en el acto el applet abierto.
 ///
 /// Para cuando el panel se muda de lado: el botón que lo abrió ya no está donde
@@ -889,6 +895,15 @@ pub fn destroy_applets(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn el_applet_abierto_sale_del_estado() {
+        STATE.with(|state| state.borrow_mut().open = None);
+        assert_eq!(open_applet_id(), None);
+        STATE.with(|state| state.borrow_mut().open = Some(APPLETS[0].id));
+        assert_eq!(open_applet_id(), Some(APPLETS[0].id));
+        STATE.with(|state| state.borrow_mut().open = None);
+    }
 
     const MONITOR: (f64, f64) = (1920.0, 1080.0);
     const APPLET: (f64, f64) = (400.0, 300.0);
