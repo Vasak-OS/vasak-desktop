@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import CalendarWidget from '@/components/widgets/CalendarWidget.vue';
 import DesktopClockWidget from '@/components/widgets/DesktopClockWidget.vue';
 import FilesWidget from '@/components/widgets/FilesWidget.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
@@ -34,6 +35,7 @@ const WIDGET_COMPONENTS = {
 	music: MusicWidget,
 	weather: WeatherWidget,
 	files: FilesWidget,
+	calendar: CalendarWidget,
 } as const;
 
 const widgetComponent = computed(() => WIDGET_COMPONENTS[props.type]);
