@@ -71,6 +71,7 @@ mod panel_autohide;
 mod panel_position;
 mod screen_time;
 mod session_lock;
+pub mod system_stats;
 mod tray;
 mod utils;
 mod window_manager;
@@ -190,6 +191,7 @@ pub fn run() {
             toggle_applet,
             dismiss_applet,
             dismiss_popups,
+            system_stats::system_stats,
             weather_cached,
             weather_claim,
             weather_place,

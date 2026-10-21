@@ -597,6 +597,13 @@ widgets:
     description: El mes con tus eventos
     noEventsToday: Hoy no tenés eventos
     allDay: Todo el día
+  system:
+    name: Sistema
+    description: CPU, memoria, red y temperatura
+    cpu: CPU
+    memory: Memoria
+    network: Red
+    temperature: Temperatura
   files:
     name: Archivos del escritorio
     description: Lo que tenés en la carpeta Escritorio
