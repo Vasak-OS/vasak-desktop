@@ -1,7 +1,7 @@
 use tauri::AppHandle;
 
 use crate::windows_apps::anchored_applet::{
-    dismiss_anchored_applet, dismiss_open_applet, toggle_anchored_applet, AnchorRect, AppletSizing,
+    dismiss_anchored_applet, open_applet_id, toggle_anchored_applet, AnchorRect, AppletSizing,
 };
 
 /// Abre o cierra un applet del panel, colgado del botón que lo pidió.
@@ -35,5 +35,12 @@ pub fn dismiss_applet(app: AppHandle, applet: String) -> Result<(), String> {
 #[tauri::command]
 pub fn dismiss_popups(app: AppHandle) -> Result<(), String> {
     crate::commands::control_center::hide_control_center(app.clone()).ok();
-    dismiss_open_applet(&app)
+    let handle = app.clone();
+    // El estado de los applets vive en el hilo principal.
+    app.run_on_main_thread(move || {
+        if let Some(id) = open_applet_id() {
+            let _ = dismiss_anchored_applet(&handle, id);
+        }
+    })
+    .map_err(|error| format!("no se pudo llegar al hilo principal: {error}"))
 }

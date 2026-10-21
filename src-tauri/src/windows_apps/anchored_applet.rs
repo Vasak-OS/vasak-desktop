@@ -860,20 +860,10 @@ pub fn dismiss_anchored_applet(app: &AppHandle, id: &str) -> Result<(), String> 
     .map_err(|error| format!("no se pudo llegar al hilo principal: {error}"))
 }
 
-/// Cierra con su salida el applet abierto, sea cual sea. Es lo que pide un clic
-/// en el escritorio: sus superficies no toman el foco de teclado, así que el
-/// compositor nunca se lo saca al applet y no hay pérdida de foco que lo cierre.
-pub fn dismiss_open_applet(app: &AppHandle) -> Result<(), String> {
-    let handle = app.clone();
-    app.run_on_main_thread(move || {
-        if let Some(spec) = STATE
-            .with(|state| state.borrow().open)
-            .and_then(applet_spec)
-        {
-            dismiss_on_main(&handle, spec);
-        }
-    })
-    .map_err(|error| format!("no se pudo llegar al hilo principal: {error}"))
+/// El applet abierto, si hay uno. Sólo desde el hilo principal de GTK, donde
+/// vive el estado.
+pub fn open_applet_id() -> Option<&'static str> {
+    STATE.with(|state| state.borrow().open)
 }
 
 /// Cierra en el acto el applet abierto.
@@ -905,6 +895,15 @@ pub fn destroy_applets(app: &AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn el_applet_abierto_sale_del_estado() {
+        STATE.with(|state| state.borrow_mut().open = None);
+        assert_eq!(open_applet_id(), None);
+        STATE.with(|state| state.borrow_mut().open = Some(APPLETS[0].id));
+        assert_eq!(open_applet_id(), Some(APPLETS[0].id));
+        STATE.with(|state| state.borrow_mut().open = None);
+    }
 
     const MONITOR: (f64, f64) = (1920.0, 1080.0);
     const APPLET: (f64, f64) = (400.0, 300.0);
