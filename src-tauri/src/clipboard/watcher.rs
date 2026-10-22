@@ -208,7 +208,11 @@ impl Dispatch<ExtDataControlOfferV1, ()> for WatchState {
 /// lectura bloquea este hilo mientras tanto, lo que está bien: es un hilo propio.
 /// Devuelve `None` si no es UTF-8 válido —no es texto que mostrar— o si el pipe
 /// falla.
-fn read_offer(offer: &ExtDataControlOfferV1, mime: &str, connection: &Connection) -> Option<String> {
+fn read_offer(
+    offer: &ExtDataControlOfferV1,
+    mime: &str,
+    connection: &Connection,
+) -> Option<String> {
     let mut fds = [0_i32; 2];
     // O_CLOEXEC para no filtrar el pipe a procesos hijos.
     if unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) } != 0 {
@@ -227,7 +231,9 @@ fn read_offer(offer: &ExtDataControlOfferV1, mime: &str, connection: &Connection
     let mut buffer = Vec::new();
     let mut reader = std::fs::File::from(read_fd).take(store::MAX_BYTES);
     if let Err(error) = reader.read_to_end(&mut buffer) {
-        log_warning(&format!("[portapapeles] no se pudo leer la oferta: {error}"));
+        log_warning(&format!(
+            "[portapapeles] no se pudo leer la oferta: {error}"
+        ));
         return None;
     }
     String::from_utf8(buffer).ok()

@@ -82,15 +82,14 @@ pub fn insert(ring: &mut VecDeque<Entry>, text: String, cap: usize, next_id: &mu
         if position == 0 {
             return false;
         }
-        let entry = ring.remove(position).expect("la posición acaba de encontrarse");
+        let entry = ring
+            .remove(position)
+            .expect("la posición acaba de encontrarse");
         ring.push_front(entry);
         return true;
     }
     *next_id += 1;
-    ring.push_front(Entry {
-        id: *next_id,
-        text,
-    });
+    ring.push_front(Entry { id: *next_id, text });
     while ring.len() > cap {
         ring.pop_back();
     }
@@ -181,10 +180,17 @@ mod tests {
     #[test]
     fn se_elige_el_mime_de_texto_mas_preciso() {
         assert_eq!(
-            pick_text_mime(&mimes(&["STRING", "text/plain", "text/plain;charset=utf-8"])),
+            pick_text_mime(&mimes(&[
+                "STRING",
+                "text/plain",
+                "text/plain;charset=utf-8"
+            ])),
             Some("text/plain;charset=utf-8")
         );
-        assert_eq!(pick_text_mime(&mimes(&["STRING", "UTF8_STRING"])), Some("UTF8_STRING"));
+        assert_eq!(
+            pick_text_mime(&mimes(&["STRING", "UTF8_STRING"])),
+            Some("UTF8_STRING")
+        );
         assert_eq!(pick_text_mime(&mimes(&["image/png"])), None);
     }
 
