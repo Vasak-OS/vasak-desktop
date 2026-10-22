@@ -24,7 +24,7 @@
 		"@tauri-apps/plugin-opener": "^2.7.2",
 		"@tauri-apps/plugin-shell": "^2.5.0",
 		"@vasakgroup/plugin-bluetooth-manager": "^2.3.2",
-		"@vasakgroup/plugin-config-manager": "^2.12.1",
+		"@vasakgroup/plugin-config-manager": "^2.13.0",
 		"@vasakgroup/plugin-display-manager": "^2.0.0",
 		"@vasakgroup/plugin-network-manager": "^2.2.2",
 		"@vasakgroup/plugin-power-profiles": "^2.0.0",
