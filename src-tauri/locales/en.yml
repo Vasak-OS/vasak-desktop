@@ -37,6 +37,10 @@ quickSettings:
   unavailable: Not available
 
 views:
+  clipboard:
+    search: Search history
+    clear: Clear history
+    empty: Nothing in the clipboard history yet
   privacyApplet:
     title: Camera, microphone and screen
     subtitle: What is using each one right now.

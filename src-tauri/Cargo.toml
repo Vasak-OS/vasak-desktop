@@ -1,6 +1,6 @@
 [package]
 name = "vasak-desktop"
-version = "1.77.0"
+version = "1.78.0"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"

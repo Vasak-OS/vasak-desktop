@@ -19,6 +19,10 @@ const routes = [
 		component: () => import('@/views/ControlCenterView.vue'),
 	},
 	{
+		path: '/clipboard',
+		component: () => import('@/views/ClipboardView.vue'),
+	},
+	{
 		path: '/applets',
 		children: [
 			{
