@@ -148,9 +148,25 @@ impl Dispatch<ExtDataControlDeviceV1, ()> for WatchState {
                 // se limpia para que el mapa no crezca.
                 state.offers.clear();
             }
+            // La selección primaria (el pegado con el botón del medio) no entra al
+            // historial; sólo se libera su oferta, que el compositor crea por cada
+            // texto resaltado en cualquier app. Sin esto se filtra un objeto de
+            // protocolo por cada resaltado.
+            ext_data_control_device_v1::Event::PrimarySelection { id } => {
+                if let Some(offer) = id {
+                    state.offers.remove(&offer.id());
+                    offer.destroy();
+                }
+            }
             _ => {}
         }
     }
+
+    // El compositor crea la oferta como hijo del `data_offer`: hay que declararlo,
+    // o `blocking_dispatch` entra en pánico al recibir el evento y el hilo muere.
+    wayland_client::event_created_child!(WatchState, ExtDataControlDeviceV1, [
+        ext_data_control_device_v1::EVT_DATA_OFFER_OPCODE => (ExtDataControlOfferV1, ()),
+    ]);
 }
 
 impl Dispatch<ExtDataControlOfferV1, ()> for WatchState {
@@ -195,11 +211,17 @@ fn read_offer(
     drop(write_fd);
 
     let mut buffer = Vec::new();
-    let mut reader = std::fs::File::from(read_fd).take(store::MAX_BYTES);
+    // Un byte más que el tope: si lo supera, es un pegado demasiado grande y no se
+    // guarda —ni siquiera un prefijo recortado, que al elegirlo pegaría texto a
+    // medias (lo dice el doc de `MAX_BYTES`)—.
+    let mut reader = std::fs::File::from(read_fd).take(store::MAX_BYTES + 1);
     if let Err(error) = reader.read_to_end(&mut buffer) {
         log_warning(&format!(
             "[portapapeles] no se pudo leer la oferta: {error}"
         ));
+        return None;
+    }
+    if buffer.len() as u64 > store::MAX_BYTES {
         return None;
     }
     String::from_utf8(buffer).ok()

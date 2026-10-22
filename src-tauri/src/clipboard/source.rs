@@ -20,6 +20,7 @@ use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_protocols::ext::data_control::v1::client::{
     ext_data_control_device_v1::{self, ExtDataControlDeviceV1},
     ext_data_control_manager_v1::ExtDataControlManagerV1,
+    ext_data_control_offer_v1::ExtDataControlOfferV1,
     ext_data_control_source_v1::{self, ExtDataControlSourceV1},
 };
 
@@ -107,19 +108,37 @@ impl Dispatch<wl_registry::WlRegistry, ()> for SourceState {
 
 globals::ignora_eventos!(SourceState, wl_seat::WlSeat);
 globals::ignora_eventos!(SourceState, ExtDataControlManagerV1);
+// El manager nos entrega una oferta por cada selección (la nuestra incluida, que
+// el compositor nos refleja). No las leemos —de eso se ocupa el vigía, con su
+// propia conexión—, pero el tipo tiene que existir para declararla como hijo.
+globals::ignora_eventos!(SourceState, ExtDataControlOfferV1);
 
 impl Dispatch<ExtDataControlDeviceV1, ()> for SourceState {
     fn event(
         _: &mut Self,
         _: &ExtDataControlDeviceV1,
-        _: ext_data_control_device_v1::Event,
+        event: ext_data_control_device_v1::Event,
         _: &(),
         _: &Connection,
         _: &QueueHandle<Self>,
     ) {
-        // Como dueños no nos interesan las ofertas ajenas: de eso se ocupa el
-        // vigía, con su propia conexión.
+        // Como dueños no leemos ninguna oferta, pero sí hay que soltarlas al quedar
+        // vigentes, o se filtra un objeto de protocolo por cada cambio de selección.
+        match event {
+            ext_data_control_device_v1::Event::Selection { id: Some(offer) }
+            | ext_data_control_device_v1::Event::PrimarySelection { id: Some(offer) } => {
+                offer.destroy();
+            }
+            _ => {}
+        }
     }
+
+    // El compositor crea la oferta como hijo del `data_offer`: hay que declararlo o
+    // `blocking_dispatch` entra en pánico y el hilo dueño muere, soltando la
+    // selección —elegir una entrada no volvería a ponerla en el portapapeles—.
+    wayland_client::event_created_child!(SourceState, ExtDataControlDeviceV1, [
+        ext_data_control_device_v1::EVT_DATA_OFFER_OPCODE => (ExtDataControlOfferV1, ()),
+    ]);
 }
 
 impl Dispatch<ExtDataControlSourceV1, ()> for SourceState {
