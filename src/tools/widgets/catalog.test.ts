@@ -3,7 +3,6 @@ import {
 	CELL_GAP,
 	CELL_SIZE,
 	clampToGrid,
-	defaultLayout,
 	firstFreeSlot,
 	fitAll,
 	gridSize,
@@ -103,115 +102,64 @@ describe('escritorio nuevo', () => {
 	// 1920×1080: la cuadrícula de 14×7 de una pantalla común.
 	const { columns, rows } = gridSize(1920, 1080);
 
-	test('arranca con el reloj y la música', () => {
-		const types = defaultLayout(false, columns, rows).map((w) => w.type);
-		expect(types).toEqual(['clock', 'music']);
-	});
-
-	test('si la persona tenía los archivos a la vista, aparecen como widget', () => {
-		expect(defaultLayout(true, columns, rows).map((w) => w.type)).toContain('files');
-	});
-
-	test('ningún widget por omisión se pisa con otro', () => {
-		expect(anyOverlap(defaultLayout(true, columns, rows))).toBe(false);
-	});
-
 	/**
-	 * El reloj iba en la columna 5 —o la 7 con archivos— y en la fila 3, sin
-	 * importar la pantalla: en 14 columnas quedaba flotando a la izquierda del
-	 * centro.
+	 * vasak-desktop#259: el escritorio no trae widgets por omisión, ni el reloj
+	 * ni la música ni los archivos. Se suman a mano desde el panel.
 	 */
-	test('el reloj va arriba y pegado al borde derecho, en cualquier pantalla', () => {
-		for (const [width, height] of [
-			[1366, 768],
-			[1920, 1080],
-			[3840, 2160],
-		]) {
-			const size = gridSize(width, height);
-			const clock = defaultLayout(true, size.columns, size.rows).find((w) => w.type === 'clock');
+	test('sin nada guardado, no hay ningún widget', () => {
+		expect(resolveLayout(undefined, columns, rows)).toEqual([]);
+		expect(resolveLayout(null, columns, rows)).toEqual([]);
+	});
 
-			expect(clock?.y).toBe(1);
-			expect((clock?.x ?? 0) + (clock?.w ?? 0) - 1).toBe(size.columns);
+	test('un valor guardado que no es una lista tampoco trae widgets', () => {
+		expect(resolveLayout({ clock: true }, columns, rows)).toEqual([]);
+		expect(resolveLayout('clock', columns, rows)).toEqual([]);
+	});
+
+	test('el catálogo sigue ofreciendo todos los widgets para sumarlos a mano', () => {
+		expect(Object.keys(WIDGETS).sort()).toEqual([
+			'calendar',
+			'clock',
+			'files',
+			'music',
+			'system',
+			'tasks',
+			'weather',
+		]);
+	});
+
+	test('un widget sumado a mano entra en el escritorio libre', () => {
+		for (const type of Object.keys(WIDGETS) as Array<keyof typeof WIDGETS>) {
+			const { w, h } = WIDGETS[type].default;
+			expect(firstFreeSlot([], { w, h }, columns, rows)).toEqual({ x: 1, y: 1 });
 		}
-	});
-
-	test('la música va debajo del reloj, alineada con él', () => {
-		const layout = defaultLayout(false, columns, rows);
-		const clock = layout.find((w) => w.type === 'clock');
-		const music = layout.find((w) => w.type === 'music');
-
-		expect(music?.x).toBe(clock?.x);
-		expect(music?.y).toBe((clock?.y ?? 0) + (clock?.h ?? 0));
-	});
-
-	test('los tamaños son los del catálogo, con el reloj de cuatro de ancho', () => {
-		const layout = defaultLayout(false, columns, rows);
-
-		expect(layout.find((w) => w.type === 'clock')).toMatchObject(WIDGETS.clock.default);
-		expect(layout.find((w) => w.type === 'music')).toMatchObject(WIDGETS.music.default);
-		expect(WIDGETS.clock.default.w).toBeGreaterThanOrEqual(4);
-	});
-
-	/**
-	 * Que no se pisen no alcanza: una disposición con los archivos solos
-	 * tampoco se pisa. Con el ancho de siempre, en 7 columnas quedaban dos
-	 * libres y el reloj y la música se descartaban sin que nada fallara.
-	 */
-	test('en una pantalla angosta entran los tres, sin pisarse', () => {
-		const layout = defaultLayout(true, 7, 6);
-
-		expect(anyOverlap(layout)).toBe(false);
-		expect(layout.map((w) => w.type).sort()).toEqual(['clock', 'files', 'music']);
 	});
 });
 
 describe('qué disposición se muestra', () => {
 	const { columns, rows } = gridSize(1920, 1080);
 
-	test('sin nada guardado, la de siempre', () => {
-		const result = resolveLayout(undefined, false, columns, rows);
-
-		expect(result.fromDefault).toBe(true);
-		expect(result.placements.map((w) => w.type)).toEqual(['clock', 'music']);
-	});
-
 	/**
-	 * El caso de la persona que no quiere widgets: sacaba el último, se guardaba
-	 * la lista vacía, y al releer la configuración volvían el reloj y la música.
+	 * Sacar el último widget guarda una lista vacía: el escritorio queda libre y
+	 * lo sigue estando al releer la configuración.
 	 */
-	test('una lista vacía es un escritorio libre, no uno sin configurar', () => {
-		const result = resolveLayout([], true, columns, rows);
-
-		expect(result.placements).toEqual([]);
-		expect(result.fromDefault).toBe(false);
+	test('una lista vacía es un escritorio libre', () => {
+		expect(resolveLayout([], columns, rows)).toEqual([]);
 	});
 
 	test('lo guardado se respeta', () => {
 		const saved = [{ id: 'weather-1', type: 'weather', x: 2, y: 2, w: 3, h: 3 }];
-		const result = resolveLayout(saved, true, columns, rows);
 
-		expect(result.placements).toEqual(saved as WidgetPlacement[]);
-		expect(result.fromDefault).toBe(false);
+		expect(resolveLayout(saved, columns, rows)).toEqual(saved as WidgetPlacement[]);
 	});
 
-	/**
-	 * El monitor secundario no arranca con la disposición de siempre: eso
-	 * duplicaría en cada pantalla el reloj y la música del principal. Empieza
-	 * vacío y la persona agrega lo que quiera.
-	 */
-	test('sin default, nada guardado es un escritorio vacío (monitor secundario)', () => {
-		const result = resolveLayout(undefined, true, columns, rows, false);
+	test('quien ya tenía widgets guardados los conserva', () => {
+		const saved = [
+			{ id: 'clock', type: 'clock', x: 11, y: 1, w: 4, h: 2 },
+			{ id: 'music', type: 'music', x: 11, y: 3, w: 4, h: 1 },
+		];
 
-		expect(result.placements).toEqual([]);
-		expect(result.fromDefault).toBe(false);
-	});
-
-	test('sin default, lo guardado del secundario se respeta igual', () => {
-		const saved = [{ id: 'clock', type: 'clock', x: 1, y: 1, w: 4, h: 2 }];
-		const result = resolveLayout(saved, false, columns, rows, false);
-
-		expect(result.placements).toEqual(saved as WidgetPlacement[]);
-		expect(result.fromDefault).toBe(false);
+		expect(resolveLayout(saved, columns, rows).map((w) => w.type)).toEqual(['clock', 'music']);
 	});
 
 	test('un widget que esta versión no conoce se deja afuera', () => {
@@ -221,9 +169,7 @@ describe('qué disposición se muestra', () => {
 			null,
 		];
 
-		expect(resolveLayout(saved, false, columns, rows).placements.map((w) => w.id)).toEqual([
-			'clock',
-		]);
+		expect(resolveLayout(saved, columns, rows).map((w) => w.id)).toEqual(['clock']);
 	});
 });
 
@@ -234,18 +180,22 @@ describe('acomodar una disposición entera', () => {
 	 */
 	test('en una pantalla chica ningún widget queda encima de otro', () => {
 		const { columns, rows } = gridSize(1366, 768);
+		const saved = [
+			{ id: 'clock', type: 'clock', x: 7, y: 3, w: 4, h: 2 },
+			{ id: 'music', type: 'music', x: 7, y: 4, w: 4, h: 2 },
+		];
 
-		for (const withFiles of [false, true]) {
-			expect(anyOverlap(fitAll(defaultLayout(withFiles, columns, rows), columns, rows))).toBe(
-				false
-			);
-		}
+		expect(anyOverlap(resolveLayout(saved, columns, rows))).toBe(false);
 	});
 
 	test('todos quedan dentro de la cuadrícula', () => {
 		const { columns, rows } = gridSize(1366, 768);
+		const saved = [
+			{ id: 'files', type: 'files', x: 1, y: 1, w: 5, h: 5 },
+			{ id: 'clock', type: 'clock', x: 12, y: 1, w: 4, h: 2 },
+		];
 
-		for (const placement of fitAll(defaultLayout(true, columns, rows), columns, rows)) {
+		for (const placement of resolveLayout(saved, columns, rows)) {
 			expect(placement.x + placement.w - 1).toBeLessThanOrEqual(columns);
 			expect(placement.y + placement.h - 1).toBeLessThanOrEqual(rows);
 		}
