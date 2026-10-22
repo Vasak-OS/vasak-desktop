@@ -9,6 +9,7 @@
 //! La superposición que lo muestra es una superficie de capa aparte
 //! (`windows_apps/clipboard.rs`), y el atajo llega por D-Bus (`dbus_service.rs`).
 
+mod globals;
 pub mod source;
 pub mod store;
 pub mod watcher;

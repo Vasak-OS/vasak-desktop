@@ -27,7 +27,7 @@ use wayland_protocols::ext::data_control::v1::client::{
     ext_data_control_offer_v1::{self, ExtDataControlOfferV1},
 };
 
-use crate::clipboard::store;
+use crate::clipboard::{globals, store};
 use crate::logger::{log_info, log_warning};
 
 /// Arranca el hilo que vigila el portapapeles. Silencioso si no hay compositor o
@@ -109,46 +109,12 @@ impl Dispatch<wl_registry::WlRegistry, ()> for WatchState {
         _: &Connection,
         qh: &QueueHandle<Self>,
     ) {
-        if let wl_registry::Event::Global {
-            name, interface, ..
-        } = event
-        {
-            match interface.as_str() {
-                "ext_data_control_manager_v1" if state.manager.is_none() => {
-                    state.manager = Some(registry.bind(name, 1, qh, ()));
-                }
-                "wl_seat" if state.seat.is_none() => {
-                    state.seat = Some(registry.bind(name, 1, qh, ()));
-                }
-                _ => {}
-            }
-        }
+        globals::bind_data_control(registry, event, qh, &mut state.manager, &mut state.seat);
     }
 }
 
-impl Dispatch<wl_seat::WlSeat, ()> for WatchState {
-    fn event(
-        _: &mut Self,
-        _: &wl_seat::WlSeat,
-        _: wl_seat::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<Self>,
-    ) {
-    }
-}
-
-impl Dispatch<ExtDataControlManagerV1, ()> for WatchState {
-    fn event(
-        _: &mut Self,
-        _: &ExtDataControlManagerV1,
-        _: <ExtDataControlManagerV1 as Proxy>::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<Self>,
-    ) {
-    }
-}
+globals::ignora_eventos!(WatchState, wl_seat::WlSeat);
+globals::ignora_eventos!(WatchState, ExtDataControlManagerV1);
 
 impl Dispatch<ExtDataControlDeviceV1, ()> for WatchState {
     fn event(

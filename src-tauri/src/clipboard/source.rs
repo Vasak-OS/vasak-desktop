@@ -16,13 +16,14 @@ use std::io::Write;
 use std::sync::Arc;
 
 use wayland_client::protocol::{wl_registry, wl_seat};
-use wayland_client::{Connection, Dispatch, Proxy, QueueHandle};
+use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_protocols::ext::data_control::v1::client::{
     ext_data_control_device_v1::{self, ExtDataControlDeviceV1},
     ext_data_control_manager_v1::ExtDataControlManagerV1,
     ext_data_control_source_v1::{self, ExtDataControlSourceV1},
 };
 
+use crate::clipboard::globals;
 use crate::clipboard::store::TEXT_MIMES;
 use crate::logger::log_warning;
 
@@ -100,46 +101,12 @@ impl Dispatch<wl_registry::WlRegistry, ()> for SourceState {
         _: &Connection,
         qh: &QueueHandle<Self>,
     ) {
-        if let wl_registry::Event::Global {
-            name, interface, ..
-        } = event
-        {
-            match interface.as_str() {
-                "ext_data_control_manager_v1" if state.manager.is_none() => {
-                    state.manager = Some(registry.bind(name, 1, qh, ()));
-                }
-                "wl_seat" if state.seat.is_none() => {
-                    state.seat = Some(registry.bind(name, 1, qh, ()));
-                }
-                _ => {}
-            }
-        }
+        globals::bind_data_control(registry, event, qh, &mut state.manager, &mut state.seat);
     }
 }
 
-impl Dispatch<wl_seat::WlSeat, ()> for SourceState {
-    fn event(
-        _: &mut Self,
-        _: &wl_seat::WlSeat,
-        _: wl_seat::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<Self>,
-    ) {
-    }
-}
-
-impl Dispatch<ExtDataControlManagerV1, ()> for SourceState {
-    fn event(
-        _: &mut Self,
-        _: &ExtDataControlManagerV1,
-        _: <ExtDataControlManagerV1 as Proxy>::Event,
-        _: &(),
-        _: &Connection,
-        _: &QueueHandle<Self>,
-    ) {
-    }
-}
+globals::ignora_eventos!(SourceState, wl_seat::WlSeat);
+globals::ignora_eventos!(SourceState, ExtDataControlManagerV1);
 
 impl Dispatch<ExtDataControlDeviceV1, ()> for SourceState {
     fn event(
