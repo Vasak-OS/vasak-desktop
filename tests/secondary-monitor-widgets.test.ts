@@ -53,12 +53,12 @@ describe('cada monitor guarda su layout por separado', () => {
 	});
 
 	/**
-	 * El secundario no arranca con la disposición de siempre (`allowDefault`
-	 * falso), para no duplicar el reloj y la música del principal en cada
-	 * pantalla.
+	 * Ningún monitor arranca con widgets (vasak-desktop#259): ya no hay un
+	 * default de fábrica que distinga al principal del secundario.
 	 */
-	test('el default de fábrica es sólo del principal', () => {
-		expect(WIDGET_LAYER).toContain('isPrimaryMonitor(monitor.value)');
-		expect(WIDGET_LAYER).toMatch(/resolveLayout\([\s\S]*?allowDefault\.value/);
+	test('ningún monitor arranca con widgets por omisión', () => {
+		expect(WIDGET_LAYER).not.toContain('isPrimaryMonitor');
+		expect(WIDGET_LAYER).not.toContain('allowDefault');
+		expect(WIDGET_LAYER).not.toContain('fromDefault');
 	});
 });

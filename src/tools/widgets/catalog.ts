@@ -130,87 +130,23 @@ export const WIDGETS: Record<WidgetType, WidgetDefinition> = {
 };
 
 /**
- * Con qué widgets arranca un escritorio que nunca se configuró.
- *
- * El reloj y la música van **arriba a la derecha**, calculado contra la
- * cuadrícula que hay. Antes iban en columnas fijas —la 5, o la 7 con los
- * archivos—, que en una pantalla de 14 columnas es un reloj flotando en el
- * medio, a la izquierda del centro. Los archivos, si la persona los tenía a la
- * vista, ocupan la izquierda, que es donde se buscan.
- *
- * Los tamaños son los del catálogo, no unos propios: la música iba de 3×2
- * cuando su tamaño de siempre es 4×1.
- */
-export function defaultLayout(
-	showFiles: boolean,
-	columns: number,
-	rows: number
-): WidgetPlacement[] {
-	const clockSize = WIDGETS.clock.default;
-	const musicSize = WIDGETS.music.default;
-	const column = Math.max(1, columns - Math.max(clockSize.w, musicSize.w) + 1);
-
-	const initial: WidgetPlacement[] = [
-		{ id: 'clock', type: 'clock', x: column, y: 1, ...clockSize },
-		{ id: 'music', type: 'music', x: column, y: 1 + clockSize.h, ...musicSize },
-	];
-
-	if (showFiles) {
-		initial.unshift({
-			id: 'files',
-			type: 'files',
-			x: 1,
-			y: 1,
-			// Angostos hasta donde empieza la columna de la derecha: con el ancho
-			// de siempre, en una pantalla chica los archivos dejaban dos columnas
-			// libres y el reloj y la música se descartaban por no entrar.
-			w: Math.max(WIDGETS.files.min.w, Math.min(WIDGETS.files.default.w, column - 1)),
-			h: Math.min(6, rows),
-		});
-	}
-
-	// En una pantalla angosta los archivos y la columna de la derecha se tocan:
-	// `fitAll` manda al que sobra al primer hueco en vez de dejarlo encima.
-	return fitAll(initial, columns, rows);
-}
-
-/**
  * Qué disposición toca mostrar, a partir de lo guardado.
  *
- * La distinción que importa es entre **nada guardado** y **una lista vacía**.
- * Nada guardado es un escritorio que nunca se configuró, y arranca con la
- * disposición de siempre. Una lista vacía es alguien que sacó todos los
- * widgets: el escritorio queda libre. Antes las dos cosas iban por el mismo
- * lado —`length > 0`—, así que sacar el último widget lo devolvía todo en
- * cuanto se releía la configuración.
- *
- * `fromDefault` dice cuál de las dos fue: la de siempre se recalcula cuando
- * cambia la pantalla, porque no es de nadie; la guardada se acomoda y se
- * respeta.
- *
- * `allowDefault` decide qué es «nada guardado». El monitor principal arranca con
- * la disposición de siempre (`true`); un monitor secundario arranca **vacío**
- * (`false`), para no duplicar en cada pantalla el reloj y la música del
- * principal: cada salida empieza limpia y la persona agrega lo que quiera.
+ * El escritorio **no trae widgets por omisión** (vasak-desktop#259): para no
+ * sobrecargar el sistema arranca libre, y cada widget —reloj, música, archivos,
+ * calendario…— se suma a mano desde el panel de edición, que sigue intacto.
+ * Por eso «nada guardado» y «una lista vacía» dan lo mismo: un escritorio sin
+ * widgets. Lo guardado se respeta y se acomoda a la cuadrícula que hay.
  */
-export function resolveLayout(
-	saved: unknown,
-	showFiles: boolean,
-	columns: number,
-	rows: number,
-	allowDefault = true
-): { placements: WidgetPlacement[]; fromDefault: boolean } {
-	if (!Array.isArray(saved)) {
-		if (!allowDefault) return { placements: [], fromDefault: false };
-		return { placements: defaultLayout(showFiles, columns, rows), fromDefault: true };
-	}
+export function resolveLayout(saved: unknown, columns: number, rows: number): WidgetPlacement[] {
+	if (!Array.isArray(saved)) return [];
 
 	const known = saved.filter(
 		(placement): placement is WidgetPlacement =>
 			typeof placement?.type === 'string' && Object.hasOwn(WIDGETS, placement.type)
 	);
 
-	return { placements: fitAll(known, columns, rows), fromDefault: false };
+	return fitAll(known, columns, rows);
 }
 
 /** Cuántas celdas entran en un área, descontando los márgenes. */

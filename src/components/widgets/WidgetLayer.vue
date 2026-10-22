@@ -27,12 +27,7 @@ import {
 	type WidgetPlacement,
 	type WidgetType,
 } from '@/tools/widgets/catalog';
-import {
-	isPrimaryMonitor,
-	monitorLabel,
-	readMonitorWidgets,
-	withMonitorWidgets,
-} from '@/tools/widgets/storage';
+import { monitorLabel, readMonitorWidgets, withMonitorWidgets } from '@/tools/widgets/storage';
 import { logError } from '@/utils/logger';
 
 /**
@@ -53,8 +48,6 @@ const props = defineProps<{ config: any; monitorId?: string }>();
 const { t } = useI18n();
 
 const monitor = computed(() => monitorLabel(props.monitorId));
-/** El principal arranca con la disposición de siempre; el secundario, vacío. */
-const allowDefault = computed(() => isPrimaryMonitor(monitor.value));
 
 const widgetComponents: Record<WidgetType, unknown> = {
 	clock: DesktopClockWidget,
@@ -72,16 +65,13 @@ const height = ref(0);
 const editing = ref(false);
 const panelOpen = ref(false);
 const placements = ref<WidgetPlacement[]>([]);
-/** Si lo que se ve es la disposición de siempre y no una guardada. */
-const fromDefault = ref(false);
 
 /**
  * Si ya se sabe cuánto mide la capa.
  *
- * Antes de medir, `gridSize(0, 0)` da una cuadrícula de 1×1, y acomodar ahí la
- * disposición de siempre dejaba un reloj de una celda en la esquina —la hora no
- * entraba y se cortaba— y descartaba la música por no tener lugar. Eso era lo
- * que veía un escritorio nuevo, porque nada lo volvía a leer después.
+ * Antes de medir, `gridSize(0, 0)` da una cuadrícula de 1×1, y acomodar ahí lo
+ * guardado dejaba cada widget encogido a una celda en la esquina —la hora no
+ * entraba y se cortaba— y descartaba el resto por no tener lugar.
  */
 const measured = computed(() => width.value > 0 && height.value > 0);
 
@@ -145,26 +135,20 @@ const options = computed<WidgetOption[]>(() => {
 });
 
 /**
- * Lo guardado, o la disposición de siempre para quien nunca configuró nada.
+ * Lo guardado, o un escritorio sin widgets para quien nunca configuró nada.
  *
  * Siempre acomodado a la cuadrícula que hay ahora: una disposición guardada en
  * una pantalla más grande traía widgets fuera de borde, y acomodar de a uno los
- * dejaba pisados. Una lista guardada vacía es un escritorio libre, no uno sin
- * configurar: ver `resolveLayout`.
+ * dejaba pisados. Ver `resolveLayout`.
  */
 function applyConfig() {
 	if (!measured.value) return;
 
-	const result = resolveLayout(
+	placements.value = resolveLayout(
 		readMonitorWidgets(props.config, monitor.value),
-		Boolean(props.config?.desktop?.showfiles),
 		grid.value.columns,
-		grid.value.rows,
-		allowDefault.value
+		grid.value.rows
 	);
-
-	placements.value = result.placements;
-	fromDefault.value = result.fromDefault;
 }
 
 /**
@@ -182,9 +166,6 @@ async function save() {
 		await writeConfig(
 			withMonitorWidgets(props.config, monitor.value, placements.value) as VSKConfig
 		);
-		// Desde acá la disposición es de la persona: aunque sea la de siempre
-		// tal cual, ya no se recalcula al cambiar la pantalla.
-		fromDefault.value = false;
 	} catch (error) {
 		logError(`No se pudo guardar la disposición de widgets: ${error}`);
 	}
@@ -197,9 +178,9 @@ function measure() {
 	width.value = box.width;
 	height.value = box.height;
 
-	// La de siempre no es de nadie: se vuelve a calcular para la pantalla que
-	// hay, en vez de acomodarla y guardarla como si alguien la hubiera elegido.
-	if (fromDefault.value || placements.value.length === 0) {
+	// Sin widgets (o sin medir todavía) se relee lo guardado, que puede haber
+	// llegado después de montar la capa.
+	if (placements.value.length === 0) {
 		applyConfig();
 		return;
 	}
@@ -368,10 +349,8 @@ onUnmounted(() => {
 });
 
 // Si la configuración cambia desde otro lado —Ajustes, otro monitor— se relee.
-// Los archivos también: la configuración llega después de montar, y sin mirar
-// `showfiles` la disposición de siempre se quedaba sin ellos.
 watch(
-	() => [readMonitorWidgets(props.config, monitor.value), props.config?.desktop?.showfiles],
+	() => readMonitorWidgets(props.config, monitor.value),
 	() => {
 		if (!editing.value) applyConfig();
 	}
