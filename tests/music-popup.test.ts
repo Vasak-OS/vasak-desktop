@@ -56,16 +56,62 @@ describe('la píldora del panel', () => {
 
 		expect(pill.element.tagName).toBe('BUTTON');
 		expect(view.findAll('button')).toHaveLength(1);
-		expect(view.find('[data-pill-label]').text()).toBe('Atardecer en la terraza del taller');
-		expect(view.find('[data-pill-label]').classes()).toContain('truncate');
+		expect(view.find('[data-music-title]').text()).toBe('Atardecer en la terraza del taller');
 		view.unmount();
+	});
+
+	/**
+	 * vasak-desktop#261: la píldora no pasa del ancho de unos cinco iconos del
+	 * panel —un título largo no se come la barra— y el título que no entra se
+	 * desliza en vez de cortarse con puntos suspensivos.
+	 */
+	test('tiene un ancho máximo de unos cinco iconos del panel', async () => {
+		const view = await mountPill();
+		const classes = view.find('[data-panel-pill]').classes();
+
+		expect(classes).toContain('max-w-44');
+		expect(classes).not.toContain('max-w-56');
+		view.unmount();
+	});
+
+	test('un título que entra queda quieto, cortado a una línea', async () => {
+		const view = await mountPill();
+		const inner = view.find('[data-music-title] > span');
+
+		expect(inner.classes()).not.toContain('marquee');
+		expect(inner.classes()).toContain('truncate');
+		view.unmount();
+	});
+
+	test('un título que no entra se desliza, y el texto sigue entero', async () => {
+		// En el DOM de prueba no hay maqueta: se miente el ancho para que el
+		// contenido (300) pase de la caja (100), como un título largo.
+		const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth');
+		const client = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+		Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, get: () => 300 });
+		Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 100 });
+
+		try {
+			const view = await mountPill();
+			const inner = view.find('[data-music-title] > span');
+
+			expect(inner.classes()).toContain('marquee');
+			expect(inner.attributes('style')).toContain('--marquee-shift: -200px');
+			expect(view.find('[data-music-title]').text()).toBe('Atardecer en la terraza del taller');
+			view.unmount();
+		} finally {
+			if (scroll) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', scroll);
+			else Reflect.deleteProperty(HTMLElement.prototype, 'scrollWidth');
+			if (client) Object.defineProperty(HTMLElement.prototype, 'clientWidth', client);
+			else Reflect.deleteProperty(HTMLElement.prototype, 'clientWidth');
+		}
 	});
 
 	test('debajo del título, chico, por dónde va: «01:36 / 04:05»', async () => {
 		// Como en el video de referencia (vasak-desktop#151). Con las cifras
 		// tabulares de la píldora, el número no baila al avanzar.
 		const view = await mountPill();
-		expect(view.find('[data-pill-caption]').text()).toBe('01:36 / 04:05');
+		expect(view.find('[data-music-timing]').text()).toBe('01:36 / 04:05');
 		expect(view.find('[data-panel-pill]').classes()).toContain('tabular-nums');
 		view.unmount();
 	});
@@ -73,8 +119,8 @@ describe('la píldora del panel', () => {
 	test('una radio en vivo, sin largo, no muestra posición', async () => {
 		music.info.value = { ...music.info.value, length: 0 };
 		const view = await mountPill();
-		expect(view.find('[data-pill-label]').exists()).toBe(true);
-		expect(view.find('[data-pill-caption]').exists()).toBe(false);
+		expect(view.find('[data-music-title]').exists()).toBe(true);
+		expect(view.find('[data-music-timing]').exists()).toBe(false);
 		view.unmount();
 	});
 
@@ -114,14 +160,14 @@ describe('la píldora del panel', () => {
 	test('con el panel a un costado queda la portada sola', async () => {
 		music.vertical.value = true;
 		const view = await mountPill();
-		expect(view.find('[data-pill-label]').exists()).toBe(false);
+		expect(view.find('[data-music-title]').exists()).toBe(false);
 		view.unmount();
 	});
 
 	test('sin nada sonando no hay título, y el botón igual tiene nombre', async () => {
 		music.info.value = { ...music.info.value, title: '', artist: '', status: 'Stopped' };
 		const view = await mountPill();
-		expect(view.find('[data-pill-label]').exists()).toBe(false);
+		expect(view.find('[data-music-title]').exists()).toBe(false);
 		expect(view.find('button').attributes('aria-label')).toBeTruthy();
 		view.unmount();
 	});
