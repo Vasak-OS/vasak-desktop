@@ -57,6 +57,7 @@ const {
 	style,
 	showWeather,
 	showMusic,
+	showKeyboard,
 	showWindows,
 	showWorkspaces,
 	barClasses,
@@ -411,7 +412,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
     </div>
     <div class="flex min-w-0 items-center gap-1.5 overflow-x-clip" :class="GROUP_CLASSES[position].end" data-panel-end>
       <TrayBarArea />
-      <KeyboardLayoutPill />
+      <KeyboardLayoutPill v-if="showKeyboard" />
       <TrayIconNetwork />
       <TrayIconBluetooth />
       <TrayIconSound />

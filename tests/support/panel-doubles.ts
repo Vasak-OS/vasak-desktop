@@ -49,9 +49,11 @@ export const panel = {
 	showNetworkName: ref(true),
 	showVolumeNumber: ref(true),
 	showBatteryNumber: ref(true),
+	showKeyboard: ref(true),
 	/** Las aplicaciones ancladas: por defecto las dos de siempre. */
 	pinnedApps: ref<readonly PinnedApp[]>(DEFAULT_PINNED),
 	failSwitch: false,
+	failFirstLayout: false,
 	handlers: new Map<string, Handler>(),
 	calls: [] as Array<{ name: string; args: unknown[] }>,
 	emit(name: string, payload: unknown) {
@@ -70,6 +72,7 @@ export const panel = {
 		this.showNetworkName.value = true;
 		this.showVolumeNumber.value = true;
 		this.showBatteryNumber.value = true;
+		this.showKeyboard.value = true;
 		this.pinnedApps.value = DEFAULT_PINNED;
 		battery.value = {
 			has_battery: true,
@@ -79,6 +82,7 @@ export const panel = {
 			is_charging: false,
 		};
 		this.failSwitch = false;
+		this.failFirstLayout = false;
 		density.value = 'full';
 		this.handlers.clear();
 		this.calls.length = 0;
@@ -94,7 +98,13 @@ export const switchWorkspace = async (index: number) => {
 	record('switchWorkspace', index);
 	if (panel.failSwitch) throw new Error('Wayfire no contesta');
 };
-export const getKeyboardLayout = async () => panel.layout.value;
+export const getKeyboardLayout = async () => {
+	if (panel.failFirstLayout) {
+		panel.failFirstLayout = false;
+		return null;
+	}
+	return panel.layout.value;
+};
 export const nextKeyboardLayout = async () => {
 	record('nextKeyboardLayout');
 	const current = panel.layout.value;

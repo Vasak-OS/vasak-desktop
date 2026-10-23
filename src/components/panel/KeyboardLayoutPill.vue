@@ -40,11 +40,21 @@ async function next(): Promise<void> {
 	}
 }
 
-onMounted(async () => {
+async function loadLayout(): Promise<void> {
 	try {
 		layout.value = await getKeyboardLayout();
 	} catch (error) {
 		logError('[panel] no se pudo leer la distribución de teclado:', error);
+	}
+}
+
+onMounted(async () => {
+	await loadLayout();
+	// Wayfire puede no estar listo cuando el panel arranca: si la primera
+	// lectura falló, una sola vuelta más alcanza. Si tampoco, queda en null
+	// y el pill no se muestra.
+	if (!layout.value) {
+		setTimeout(loadLayout, 2000);
 	}
 });
 
