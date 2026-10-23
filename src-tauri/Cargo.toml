@@ -102,6 +102,9 @@ tauri-plugin-vsk-journal = "2"
 # Sólo para el test que valida los catálogos de idioma.
 serde_yaml = "0.9"
 proptest = "1"
+# `test` habilita `tauri::test::mock_app`, el runtime de mentira con el que se
+# prueba el empuje de eventos del applet de recursos (#216) sin una ventana real.
+tauri = { version = "2", features = ["test"] }
 # Sólo en las pruebas: el almacén de calendario de mentira se sirve del otro
 # lado de un par de sockets (`commands/calendar.rs`), sin tocar el bus de la
 # sesión. El binario no lo necesita.
