@@ -15,8 +15,8 @@
 
 use std::collections::HashMap;
 use std::io::Read;
-use std::os::fd::{AsFd, FromRawFd, OwnedFd};
-use std::time::Duration;
+use std::os::fd::{AsFd, AsRawFd, FromRawFd, OwnedFd};
+use std::time::{Duration, Instant};
 
 use wayland_client::backend::ObjectId;
 use wayland_client::protocol::{wl_registry, wl_seat};
@@ -29,6 +29,15 @@ use wayland_protocols::ext::data_control::v1::client::{
 
 use crate::clipboard::{globals, store};
 use crate::logger::{log_info, log_warning};
+
+/// Cuánto se espera, como mucho, a que la app dueña escriba su contenido.
+///
+/// La lectura corre en el hilo del vigía, que mientras tanto no despacha nada: una
+/// app que se quede con la punta de escritura abierta sin escribir colgaría el
+/// vigía para siempre. Con un plazo total —no por lectura, así un goteo de a un
+/// byte tampoco lo estira— se corta y se sigue. Cinco segundos sobran para
+/// cualquier pegado real por un pipe local.
+const READ_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Arranca el hilo que vigila el portapapeles. Silencioso si no hay compositor o
 /// no ofrece data-control: en ese caso no hay historial y el resto sigue igual.
@@ -210,15 +219,108 @@ fn read_offer(
     // EOF, porque el pipe seguiría teniendo un escritor abierto (nosotros).
     drop(write_fd);
 
+    // Un byte más que el tope basta para que `decode_clipboard` distinga lo que
+    // justo entra de lo que se pasa (y se descarta, ni recortado).
+    let bytes = read_bounded(read_fd, store::MAX_BYTES + 1, READ_TIMEOUT)?;
+    store::decode_clipboard(bytes, store::MAX_BYTES)
+}
+
+/// Lee de `fd` hasta el EOF, `limit` bytes o que venza `timeout` —lo que llegue
+/// primero—, sin quedarse colgado si el otro extremo no escribe ni cierra.
+///
+/// El plazo es total y no por lectura: se calcula contra un `deadline` fijo, así
+/// un goteo lento no lo renueva. Devuelve `None` si vence el plazo o el pipe
+/// falla; si no, los bytes leídos (que pueden pasarse de `limit` por lo que entre
+/// en la última vuelta, y entonces `decode_clipboard` los descarta).
+fn read_bounded(fd: OwnedFd, limit: u64, timeout: Duration) -> Option<Vec<u8>> {
+    let deadline = Instant::now() + timeout;
+    let mut file = std::fs::File::from(fd);
     let mut buffer = Vec::new();
-    // Un byte más que el tope: con eso `decode_clipboard` distingue el pegado que
-    // justo entra del que se pasa (y que no se guarda ni recortado).
-    let mut reader = std::fs::File::from(read_fd).take(store::MAX_BYTES + 1);
-    if let Err(error) = reader.read_to_end(&mut buffer) {
-        log_warning(&format!(
-            "[portapapeles] no se pudo leer la oferta: {error}"
-        ));
-        return None;
+    let mut chunk = [0u8; 8192];
+
+    loop {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            log_warning("[portapapeles] el dueño no escribió a tiempo: se descarta");
+            return None;
+        }
+
+        let mut poll_fd = libc::pollfd {
+            fd: file.as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        };
+        let millis = remaining.as_millis().min(i32::MAX as u128) as i32;
+        // Seguro: `poll_fd` vive toda la llamada y es un único descriptor.
+        let ready = unsafe { libc::poll(&mut poll_fd, 1, millis) };
+        if ready < 0 {
+            let error = std::io::Error::last_os_error();
+            // Una señal cortó el poll: se reintenta sin estirar el plazo.
+            if error.kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            return None;
+        }
+        if ready == 0 {
+            log_warning("[portapapeles] el dueño no escribió a tiempo: se descarta");
+            return None;
+        }
+
+        match file.read(&mut chunk) {
+            Ok(0) => return Some(buffer),
+            Ok(read) => {
+                buffer.extend_from_slice(&chunk[..read]);
+                if buffer.len() as u64 >= limit {
+                    return Some(buffer);
+                }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => return None,
+        }
     }
-    store::decode_clipboard(buffer, store::MAX_BYTES)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    /// Un pipe con las dos puntas, como el que arma `read_offer`.
+    fn pipe() -> (OwnedFd, OwnedFd) {
+        let mut fds = [0_i32; 2];
+        assert_eq!(unsafe { libc::pipe2(fds.as_mut_ptr(), libc::O_CLOEXEC) }, 0);
+        unsafe { (OwnedFd::from_raw_fd(fds[0]), OwnedFd::from_raw_fd(fds[1])) }
+    }
+
+    #[test]
+    fn lee_lo_que_se_escribe_hasta_el_eof() {
+        let (read_fd, write_fd) = pipe();
+        let mut escritor = std::fs::File::from(write_fd);
+        escritor.write_all(b"hola mundo").expect("se escribe");
+        drop(escritor); // cerrar la escritura: EOF
+        let bytes = read_bounded(read_fd, 1024, Duration::from_secs(5)).expect("hay bytes");
+        assert_eq!(bytes, b"hola mundo");
+    }
+
+    #[test]
+    fn corta_por_el_plazo_si_el_dueno_no_escribe_ni_cierra() {
+        let (read_fd, write_fd) = pipe();
+        // La punta de escritura queda abierta y muda: sin plazo, la lectura colgaría
+        // el vigía para siempre.
+        let bytes = read_bounded(read_fd, 1024, Duration::from_millis(200));
+        assert!(bytes.is_none());
+        drop(write_fd);
+    }
+
+    #[test]
+    fn se_planta_al_llegar_al_tope() {
+        let (read_fd, write_fd) = pipe();
+        let mut escritor = std::fs::File::from(write_fd);
+        escritor.write_all(&[b'a'; 100]).expect("se escribe");
+        drop(escritor);
+        // Con el tope en 10 devuelve al menos eso; `decode_clipboard` después lo
+        // descarta por pasarse.
+        let bytes = read_bounded(read_fd, 10, Duration::from_secs(5)).expect("hay bytes");
+        assert!(bytes.len() >= 10);
+    }
 }
