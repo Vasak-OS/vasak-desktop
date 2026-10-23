@@ -10,6 +10,7 @@ import TrayIconMicrophone from '@/components/buttons/TrayIconMicrophone.vue';
 import TrayIconPrivacy from '@/components/buttons/TrayIconPrivacy.vue';
 import TrayIconTwingate from '@/components/buttons/TrayIconTwingate.vue';
 import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
+import SystemResourceControl from '@/components/controls/SystemResourceControl.vue';
 import TrayNetworkRateControl from '@/components/controls/TrayNetworkRateControl.vue';
 import TrayCountBadge from '@/components/indicators/TrayCountBadge.vue';
 import type { TrayItem } from '@/interfaces/tray';
@@ -53,7 +54,8 @@ import { logError, logWarning } from '@/utils/logger';
 
 // Qué partes del panel están encendidas, y de qué lado va la barra: a los
 // costados los iconos se apilan en lugar de alinearse.
-const { showTransfer, showTray, showPrivacy, vertical, hasSurface } = usePanelConfig();
+const { showTransfer, showResources, showTray, showPrivacy, vertical, hasSurface } =
+	usePanelConfig();
 
 const { t } = useI18n();
 
@@ -202,6 +204,7 @@ useSharedEvent('tray-update', refreshTrayItems);
       :class="vertical ? 'flex-col' : 'h-full'"
     >
       <TrayNetworkRateControl v-if="showTransfer" key="network-rate" data-tray-entry />
+      <SystemResourceControl v-if="showResources" key="system-resources" data-tray-entry />
       <div
         v-for="item in (showTray ? trayItems : [])"
         :key="item.service_name"
