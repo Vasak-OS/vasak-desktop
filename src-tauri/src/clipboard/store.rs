@@ -65,6 +65,16 @@ pub fn pick_text_mime(mimes: &[String]) -> Option<&'static str> {
         .find(|wanted| mimes.iter().any(|mime| mime == wanted))
 }
 
+/// Decide qué guardar con lo leído de una oferta: `None` si supera `max` —un
+/// pegado demasiado grande no se guarda ni recortado, porque elegir un prefijo
+/// pegaría texto a medias— o si no es UTF-8 válido, que no es texto para mostrar.
+pub fn decode_clipboard(bytes: Vec<u8>, max: u64) -> Option<String> {
+    if bytes.len() as u64 > max {
+        return None;
+    }
+    String::from_utf8(bytes).ok()
+}
+
 /// Mete `text` al frente del anillo, deduplicando y acotando a `cap`.
 ///
 /// - Vacío: nada.
@@ -226,6 +236,19 @@ mod tests {
         let mut id = 0;
         assert!(!insert(&mut ring, String::new(), 25, &mut id));
         assert!(ring.is_empty());
+    }
+
+    #[test]
+    fn decodificar_descarta_lo_gigante_y_lo_que_no_es_utf8() {
+        assert_eq!(
+            decode_clipboard(b"hola".to_vec(), 1024),
+            Some("hola".into())
+        );
+        // Justo en el tope entra; un byte más, no (ni recortado).
+        assert_eq!(decode_clipboard(vec![b'a'; 4], 4), Some("aaaa".into()));
+        assert_eq!(decode_clipboard(vec![b'a'; 5], 4), None);
+        // Bytes que no son UTF-8 no son texto para mostrar.
+        assert_eq!(decode_clipboard(vec![0xff, 0xfe], 1024), None);
     }
 
     #[test]

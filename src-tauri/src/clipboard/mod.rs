@@ -50,6 +50,43 @@ pub fn clipboard_clear() {
     store::clear();
 }
 
+#[cfg(test)]
+mod command_tests {
+    use super::*;
+
+    /// Un solo test: el historial es global, así que se ejerce en serie acá en vez
+    /// de en varios tests que correrían en paralelo pisándose.
+    #[test]
+    fn leer_elegir_y_limpiar_el_historial() {
+        store::clear();
+        assert!(clipboard_history().is_empty());
+
+        store::remember("alfa".into());
+        store::remember("beta".into());
+        let historial = clipboard_history();
+        assert_eq!(historial.len(), 2);
+        // La más reciente, al frente.
+        assert_eq!(historial[0].text, "beta");
+
+        let id_alfa = historial
+            .iter()
+            .find(|entry| entry.text == "alfa")
+            .expect("alfa está")
+            .id;
+        // Elegir una entrada que existe la sube al frente y no falla. Servir el
+        // portapapeles arranca un hilo aparte que, sin compositor, termina solo.
+        assert!(clipboard_pick(id_alfa).is_ok());
+        assert_eq!(clipboard_history()[0].text, "alfa");
+
+        // Una entrada que no existe: error, sin tocar el historial.
+        assert!(clipboard_pick(999_999).is_err());
+        assert_eq!(clipboard_history().len(), 2);
+
+        clipboard_clear();
+        assert!(clipboard_history().is_empty());
+    }
+}
+
 /// Contra el compositor de verdad, con la sesión andando. Se corre a mano
 /// —`cargo test -- --ignored copiar_se_guarda_y_elegir_vuelve`— porque necesita
 /// un Wayland que ofrezca data-control, que en una máquina de integración no

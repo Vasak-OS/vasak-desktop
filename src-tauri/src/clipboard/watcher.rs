@@ -211,9 +211,8 @@ fn read_offer(
     drop(write_fd);
 
     let mut buffer = Vec::new();
-    // Un byte más que el tope: si lo supera, es un pegado demasiado grande y no se
-    // guarda —ni siquiera un prefijo recortado, que al elegirlo pegaría texto a
-    // medias (lo dice el doc de `MAX_BYTES`)—.
+    // Un byte más que el tope: con eso `decode_clipboard` distingue el pegado que
+    // justo entra del que se pasa (y que no se guarda ni recortado).
     let mut reader = std::fs::File::from(read_fd).take(store::MAX_BYTES + 1);
     if let Err(error) = reader.read_to_end(&mut buffer) {
         log_warning(&format!(
@@ -221,8 +220,5 @@ fn read_offer(
         ));
         return None;
     }
-    if buffer.len() as u64 > store::MAX_BYTES {
-        return None;
-    }
-    String::from_utf8(buffer).ok()
+    store::decode_clipboard(buffer, store::MAX_BYTES)
 }
