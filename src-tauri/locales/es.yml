@@ -37,6 +37,10 @@ quickSettings:
   unavailable: No disponible
 
 views:
+  clipboard:
+    search: Buscar en el historial
+    clear: Limpiar el historial
+    empty: No hay nada en el historial del portapapeles
   privacyApplet:
     title: Cámara, micrófono y pantalla
     subtitle: Qué está usando cada cosa ahora mismo.

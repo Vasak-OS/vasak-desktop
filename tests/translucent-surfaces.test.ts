@@ -72,6 +72,7 @@ const SURFACES: Array<[string, string, RegExp, Blur]> = [
 	['el panel', 'src/views/PanelView.vue', /<nav\b[\s\S]*?class="([^"]*)"/, 'none'],
 	['el menú, los applets y la bandeja', 'src/components/layouts/AppletPopover.vue', /'(applet-popover [^']*)'/, 'none'],
 	['el centro de control', 'src/views/ControlCenterView.vue', /'([^']*h-screen w-screen[^']*)'/, 'none'],
+	['el historial del portapapeles', 'src/views/ClipboardView.vue', /class="([^"]*h-screen w-screen[^"]*)"/, 'none'],
 	['el menú de Connect', 'src/views/ConnectMenuView.vue', /'(flex h-screen[^']*)'/, 'none'],
 	['el OSD', 'src/views/apps/OsdPopupView.vue', /class="(w-screen h-screen[^"]*)"/, 'none'],
 	['la ventana de sesión', 'src/views/apps/SessionPopupView.vue', /'(h-screen w-screen[^']*)'/, 'none'],
