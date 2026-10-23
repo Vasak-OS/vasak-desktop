@@ -94,8 +94,13 @@ fn hottest() -> Option<f32> {
         })
 }
 
-#[tauri::command]
-pub fn system_stats() -> Result<SystemStats, String> {
+/// Una lectura cruda de `/proc` y `/sys`.
+///
+/// La comparten el comando —que pregunta el widget de escritorio mientras se
+/// ve— y el applet de recursos del panel (vasak-desktop#216), que la empuja por
+/// un evento. Una sola lectura para los dos: dos lecturas distintas de `/proc`
+/// se separan con el tiempo y mostrarían números que no coinciden.
+pub fn read() -> Result<SystemStats, String> {
     let (cpu_total, cpu_idle) = fs::read_to_string("/proc/stat")
         .map_err(|e| e.to_string())
         .and_then(|s| parse_cpu(&s).ok_or_else(|| "/proc/stat ilegible".to_string()))?;
@@ -109,6 +114,11 @@ pub fn system_stats() -> Result<SystemStats, String> {
         mem_available_kib,
         temperature_c: hottest(),
     })
+}
+
+#[tauri::command]
+pub fn system_stats() -> Result<SystemStats, String> {
+    read()
 }
 
 #[cfg(test)]
@@ -149,5 +159,22 @@ mod tests {
         let stats = system_stats().expect("lee /proc");
         assert!(stats.mem_total_kib > 0);
         assert!(stats.mem_available_kib <= stats.mem_total_kib);
+    }
+
+    #[test]
+    fn la_lectura_del_applet_lleva_las_claves_que_lee_la_interfaz() {
+        // El applet de recursos emite `read()` tal cual por `system-resources` y
+        // `system-stats.ts` lee estas cinco claves: renombrar una la dejaría en
+        // cero sin que nada avise.
+        let json = serde_json::to_value(read().expect("lee /proc")).unwrap();
+        for clave in [
+            "cpu_total",
+            "cpu_idle",
+            "mem_total_kib",
+            "mem_available_kib",
+            "temperature_c",
+        ] {
+            assert!(json.get(clave).is_some(), "falta la clave {clave}");
+        }
     }
 }

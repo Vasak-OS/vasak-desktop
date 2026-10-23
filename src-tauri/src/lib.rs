@@ -114,6 +114,7 @@ use applets::{
     network_rate::NetworkRateApplet,
     notifications::NotificationApplet,
     privacidad::PrivacidadApplet,
+    system_resources::SystemResourcesApplet,
     tray::TrayApplet,
 };
 
@@ -492,6 +493,9 @@ pub fn run() {
                 manager.register(BluetoothApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkRateApplet, AppletPriority::Deferred).await;
+                // CPU, memoria y temperatura al panel (#216): como la tasa de
+                // red, no hay nada en la primera pantalla que dependa de ella.
+                manager.register(SystemResourcesApplet, AppletPriority::Deferred).await;
                 // The phone service: nothing on screen depends on it, and most
                 // sessions never plug one in.
                 manager.register(ConnectApplet, AppletPriority::Deferred).await;

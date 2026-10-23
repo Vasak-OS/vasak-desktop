@@ -43,6 +43,7 @@ const BOOLEANS = [
 	['showNetworkName', 'networkName'],
 	['showVolumeNumber', 'volumeNumber'],
 	['showBatteryNumber', 'batteryNumber'],
+	['showResources', 'resources'],
 ] as const;
 
 describe('los interruptores del panel', () => {

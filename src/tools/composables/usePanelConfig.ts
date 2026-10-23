@@ -49,6 +49,8 @@ export function usePanelConfig() {
 		showWeather: computed(() => section.value.weather !== false),
 		showMusic: computed(() => section.value.music !== false),
 		showTransfer: computed(() => section.value.transfer !== false),
+		/** `true` salvo que `panel.resources` esté en `false`: la píldora de CPU, memoria y temperatura (#216). */
+		showResources: computed(() => section.value.resources !== false),
 		showTray: computed(() => section.value.tray !== false),
 		showPrivacy: computed(() => section.value.privacy !== false),
 		/** `true` salvo que `panel.workspaces` esté en `false`: la píldora de espacios de trabajo. */

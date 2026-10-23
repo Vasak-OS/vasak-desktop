@@ -549,6 +549,10 @@ components:
     noAuthNeeded: Sin autenticación
     authorize: Autorizar
     authorizing: Autorizando…
+  SystemResourceControl:
+    title: "Recursos: CPU, memoria y temperatura. Un clic abre el monitor"
+    cpu: CPU
+    memory: RAM
   TrayNetworkRateControl:
     title: "Transferencia de red: lo que baja y lo que sube"
   TrayWeatherControl:
