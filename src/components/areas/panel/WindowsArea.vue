@@ -93,7 +93,17 @@ const refreshLauncherEntries = async (): Promise<void> => {
  */
 const onWheel = (event: WheelEvent): void => {
 	const node = event.currentTarget as HTMLElement;
-	if (scrollWindowsPillOnWheel(node, vertical.value, event.deltaY, event.deltaX)) {
+	// La rueda llega en píxeles (deltaMode 0), líneas (1) o páginas (2); se
+	// normaliza a píxeles antes de desplazar, o una rueda por líneas movería unos
+	// pocos píxeles y la píldora casi no se correría. Una página es el alto/ancho
+	// visible según el eje que desplaza.
+	let unit = 1;
+	if (event.deltaMode === 1) {
+		unit = 16;
+	} else if (event.deltaMode === 2) {
+		unit = vertical.value ? node.clientHeight : node.clientWidth;
+	}
+	if (scrollWindowsPillOnWheel(node, vertical.value, event.deltaY * unit, event.deltaX * unit)) {
 		event.preventDefault();
 	}
 };
