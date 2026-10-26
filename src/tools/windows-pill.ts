@@ -82,3 +82,31 @@ export function windowsPillCapStyle(
 	if (layout === 'compact') return { maxWidth: cap };
 	return {};
 }
+
+/**
+ * Desplaza la píldora con la rueda, sobre el eje que la píldora desplaza.
+ *
+ * En horizontal lo que no entra se desplaza a lo largo (`overflow-x-auto`), pero
+ * una rueda vertical sobre un desbordamiento horizontal no hace nada por omisión
+ * en WebKitGTK (el mismo caso que las pestañas en `TabBar.vue` de vue-libvasak):
+ * sin un mouse con rueda horizontal, las ventanas de más quedaban inalcanzables.
+ * Acá la rueda vertical mueve el carril en su eje real. Devuelve si de verdad se
+ * movió, para que la vista llame a `preventDefault` sólo entonces —en el tope, o
+ * sin desbordamiento, el desplazamiento sigue hacia lo que haya debajo.
+ */
+export function scrollWindowsPillOnWheel(
+	node: { scrollLeft: number; scrollTop: number },
+	vertical: boolean,
+	deltaY: number,
+	deltaX: number
+): boolean {
+	const amount = deltaY || deltaX || 0;
+	if (vertical) {
+		const before = node.scrollTop;
+		node.scrollTop += amount;
+		return node.scrollTop !== before;
+	}
+	const before = node.scrollLeft;
+	node.scrollLeft += amount;
+	return node.scrollLeft !== before;
+}

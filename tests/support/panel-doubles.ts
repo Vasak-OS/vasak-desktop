@@ -12,7 +12,11 @@ import { DEFAULT_PINNED, type PinnedApp } from '../../src/tools/pinned-apps';
 export { calculateVolumePercentage, getVolumeIconName } from '../../src/utils/volume';
 // Las funciones puras de la píldora de ventanas y de los anclados son las de
 // verdad: lo que la prueba cambia es la configuración que las alimenta.
-export { windowsPillCapStyle, windowsPillClasses } from '../../src/tools/windows-pill';
+export {
+	scrollWindowsPillOnWheel,
+	windowsPillCapStyle,
+	windowsPillClasses,
+} from '../../src/tools/windows-pill';
 export { pinnedLabel } from '../../src/tools/pinned-apps';
 
 type Handler = (payload: unknown) => void;
