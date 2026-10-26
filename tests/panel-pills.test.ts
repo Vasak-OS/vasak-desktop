@@ -136,6 +136,32 @@ describe('la distribución de teclado', () => {
 		expect(view.find('[data-pill-label]').text()).toBe('US');
 		view.unmount();
 	});
+
+	test('si la primera lectura falló, reintenta y muestra el layout', async () => {
+		// Wayfire puede no estar listo cuando el panel arranca: la primera
+		// lectura devuelve null, pero el reintento a los 2 segundos lo consigue.
+		panel.failFirstLayout = true;
+		const layout = { short: 'LA', name: 'Spanish (Latin American)', index: 0, count: 1 };
+		const view = await render(Keyboard);
+
+		// Al principio no hay pill: la primera lectura falló.
+		expect(view.find('[data-panel-pill]').exists()).toBe(false);
+
+		// El reintento se ejecuta después de 2 segundos.
+		await new Promise((resolve) => setTimeout(resolve, 2100));
+		await settle();
+
+		// Ahora sí: el pill aparece con el layout correcto.
+		expect(view.find('[data-panel-pill]').exists()).toBe(true);
+		expect(view.find('[data-pill-label]').text()).toBe(layout.short);
+		view.unmount();
+	});
+
+	test('el widget se apaga desde la configuración', () => {
+		// La píldora de teclado depende de `showKeyboard`, como los demás.
+		const source = readFileSync(join(ROOT, 'src/views/PanelView.vue'), 'utf8');
+		expect(source).toContain('<KeyboardLayoutPill v-if="showKeyboard" />');
+	});
 });
 
 describe('la red', () => {
