@@ -13,7 +13,11 @@ import { getWindows } from '@/services/window.service';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { useSharedEvent } from '@/tools/event.bus';
 import { launcherForApp } from '@/tools/tray-item';
-import { windowsPillCapStyle, windowsPillClasses } from '@/tools/windows-pill';
+import {
+	scrollWindowsPillOnWheel,
+	windowsPillCapStyle,
+	windowsPillClasses,
+} from '@/tools/windows-pill';
 import { logError } from '@/utils/logger';
 
 interface WindowDelta {
@@ -81,6 +85,29 @@ const refreshLauncherEntries = async (): Promise<void> => {
 	}
 };
 
+/**
+ * La rueda desplaza la píldora en su eje (horizontal, o vertical de costado): sin
+ * esto, una rueda vertical sobre el desbordamiento horizontal no alcanza las
+ * ventanas de más. `currentTarget` es la propia píldora, que es el contenedor que
+ * desplaza. Ver `scrollWindowsPillOnWheel`.
+ */
+const onWheel = (event: WheelEvent): void => {
+	const node = event.currentTarget as HTMLElement;
+	// La rueda llega en píxeles (deltaMode 0), líneas (1) o páginas (2); se
+	// normaliza a píxeles antes de desplazar, o una rueda por líneas movería unos
+	// pocos píxeles y la píldora casi no se correría. Una página es el alto/ancho
+	// visible según el eje que desplaza.
+	let unit = 1;
+	if (event.deltaMode === 1) {
+		unit = 16;
+	} else if (event.deltaMode === 2) {
+		unit = vertical.value ? node.clientHeight : node.clientWidth;
+	}
+	if (scrollWindowsPillOnWheel(node, vertical.value, event.deltaY * unit, event.deltaX * unit)) {
+		event.preventDefault();
+	}
+};
+
 onMounted(async () => {
 	await refreshWindows();
 	await refreshLauncherEntries();
@@ -137,6 +164,7 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
     :class="windowsPillClasses(vertical, layout)"
     :style="windowsPillCapStyle(vertical, layout)"
     data-windows-pill
+    v-on="{ wheel: onWheel }"
   >
     <TransitionGroup
       move-class="transition-transform duration-300 ease-in-out" enter-active-class="transition-all duration-300 ease-in-out" leave-active-class="transition-all duration-300 ease-in-out" enter-from-class="opacity-0 translate-y-[30px]" leave-to-class="opacity-0 translate-y-[30px]"

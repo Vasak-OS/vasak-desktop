@@ -40,7 +40,7 @@
 		"vue-router": "^5.4.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.2",
+		"@biomejs/biome": "^2.6.3",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@tailwindcss/postcss": "^4.3.3",
 		"@tauri-apps/cli": "^2.12.4",
