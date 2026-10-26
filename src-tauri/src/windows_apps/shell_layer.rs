@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
+use crate::commands::webkit::reparent_webview;
 use crate::logger::log_error;
 
 // Layer-shell windows owned by the shell, keyed by window label.
@@ -265,31 +266,6 @@ pub fn spawn_layer_window(
     LAYER_WINDOWS.with(|windows| {
         windows.borrow_mut().insert(label.to_string(), layer_win);
     });
-
-    Ok(())
-}
-
-/// Moves the WebKit widget out of Tauri's toplevel and into the layer window.
-fn reparent_webview(
-    gtk_window: &gtk::ApplicationWindow,
-    layer_win: &gtk::Window,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let child = gtk_window
-        .child()
-        .ok_or("Tauri window has no child widget")?;
-
-    let container = child
-        .dynamic_cast_ref::<gtk::Container>()
-        .ok_or_else(|| format!("Tauri child {} is not a container", child.type_().name()))?;
-
-    let widget = container
-        .children()
-        .first()
-        .cloned()
-        .ok_or("Tauri container holds no webview")?;
-
-    container.remove(&widget);
-    layer_win.add(&widget);
 
     Ok(())
 }

@@ -1,7 +1,5 @@
 use crate::logger::{log_error, log_info};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// El directorio desde el que arranca una aplicación que abre el escritorio.
@@ -53,35 +51,58 @@ fn parse_exec_line(exec_line: &str) -> Result<(String, Vec<String>), String> {
     Ok((command, args))
 }
 
-#[allow(clippy::lines_filter_map_ok)]
+/// La ruta real del `.desktop` que pide `open_app`.
+///
+/// Configuración guarda lo anclado con el identificador del archivo
+/// (`firefox.desktop`), no con su ruta: un nombre suelto se busca en los
+/// directorios de aplicaciones (usuario primero). Una ruta que existe se usa tal cual.
+fn resolver_desktop(path: &str, directorios: &[PathBuf]) -> PathBuf {
+    let pedido = Path::new(path);
+    if pedido.is_absolute() && pedido.exists() {
+        return pedido.to_path_buf();
+    }
+    let Some(nombre) = pedido.file_name() else {
+        return pedido.to_path_buf();
+    };
+    directorios
+        .iter()
+        .map(|dir| dir.join(nombre))
+        .find(|candidato| candidato.exists())
+        .unwrap_or_else(|| pedido.to_path_buf())
+}
+
+/// La primera línea `Exec=` de un `.desktop`, sin el prefijo.
+fn exec_de(contenido: &str) -> Option<&str> {
+    contenido
+        .lines()
+        .find_map(|linea| linea.strip_prefix("Exec="))
+}
+
 #[tauri::command]
 pub async fn open_app(path: &str) -> Result<(), String> {
     log_info(&format!("Abriendo aplicación desde: {}", path));
-    let file = File::open(path).map_err(|e| {
+    let resuelto = resolver_desktop(path, &crate::menu_manager::applications_dirs());
+    let contenido = tokio::fs::read_to_string(&resuelto).await.map_err(|e| {
         log_error(&format!("Error al abrir archivo .desktop {}: {}", path, e));
         e.to_string()
     })?;
-    let reader = BufReader::new(file);
 
-    for line in reader.lines().flatten() {
-        if line.starts_with("Exec=") {
-            let exec_line = line.trim_start_matches("Exec=");
-            let (cmd, args) = parse_exec_line(exec_line).map_err(|e| {
-                log_error(&format!("Error parseando Exec en {}: {}", path, e));
-                e
-            })?;
+    if let Some(exec_line) = exec_de(&contenido) {
+        let (cmd, args) = parse_exec_line(exec_line).map_err(|e| {
+            log_error(&format!("Error parseando Exec en {}: {}", path, e));
+            e
+        })?;
 
-            log_info(&format!("Ejecutando comando: {} {:?}", cmd, args));
-            comando_de_aplicacion(&cmd, &args).spawn().map_err(|e| {
-                log_error(&format!(
-                    "Error al ejecutar comando {} {:?}: {}",
-                    cmd, args, e
-                ));
-                e.to_string()
-            })?;
+        log_info(&format!("Ejecutando comando: {} {:?}", cmd, args));
+        comando_de_aplicacion(&cmd, &args).spawn().map_err(|e| {
+            log_error(&format!(
+                "Error al ejecutar comando {} {:?}: {}",
+                cmd, args, e
+            ));
+            e.to_string()
+        })?;
 
-            return Ok(());
-        }
+        return Ok(());
     }
 
     log_error(&format!("No se encontró comando ejecutable en: {}", path));
@@ -234,5 +255,50 @@ mod tests_seccion {
             "una opción, no una sección"
         );
         assert!(!es_nombre_de_seccion(&"a".repeat(41)));
+    }
+}
+
+#[cfg(test)]
+mod tests_resolver {
+    use super::resolver_desktop;
+    use std::path::PathBuf;
+
+    #[test]
+    fn un_identificador_suelto_se_busca_en_los_directorios() {
+        let dir = std::env::temp_dir().join(format!("vsk-resolver-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("app-prueba.desktop"), "[Desktop Entry]").unwrap();
+
+        let resuelto = resolver_desktop(
+            "app-prueba.desktop",
+            &[PathBuf::from("/no/existe"), dir.clone()],
+        );
+        assert_eq!(resuelto, dir.join("app-prueba.desktop"));
+
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn una_ruta_inexistente_queda_como_vino() {
+        assert_eq!(
+            resolver_desktop("/no/existe/x.desktop", &[]),
+            PathBuf::from("/no/existe/x.desktop")
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests_exec {
+    use super::exec_de;
+
+    #[test]
+    fn toma_la_primera_linea_exec() {
+        let desktop = "[Desktop Entry]\nName=App\nExec=app --x %U\nExec=otra\n";
+        assert_eq!(exec_de(desktop), Some("app --x %U"));
+    }
+
+    #[test]
+    fn sin_exec_no_hay_comando() {
+        assert_eq!(exec_de("[Desktop Entry]\nName=App\n"), None);
     }
 }

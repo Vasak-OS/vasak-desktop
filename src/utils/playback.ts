@@ -80,6 +80,8 @@ export interface Sections {
 	album: boolean;
 	/** Volumen, aleatorio y repetición. */
 	extras: boolean;
+	/** El ecualizador, cuando sobra alto y ancho (vasak-desktop#269). */
+	equalizer: boolean;
 }
 
 /**
@@ -95,12 +97,22 @@ export interface Sections {
  * separadas por 12, así que un widget de una fila mide 120 y uno de dos, 252.
  * Los cortes están puestos entre esos dos números y no en cualquier lado.
  */
-export function sectionsFor(height: number): Sections {
+export function sectionsFor(height: number, width = Number.POSITIVE_INFINITY): Sections {
 	const available = Number.isFinite(height) ? height : 0;
+	// El ancho sólo quita: sin medir (infinito, o 0 antes de la primera medida)
+	// valen los cortes de siempre. Una
+	// pastilla o una fila de controles que no entra de ancho se corta o pisa al
+	// vecino, así que en vez de apretarla se la saca.
+	const measured = width > 0;
+	const roomy = !measured || width >= 260;
+	const wide = !measured || width >= 300;
 	return {
 		progress: available >= 150,
-		album: available >= 190,
-		extras: available >= 230,
+		album: available >= 190 && roomy,
+		extras: available >= 230 && wide,
+		// Tres filas de la cuadrícula miden 384: es el primer alto con sitio para
+		// las bandas sin comerle el lugar al disco y al transporte.
+		equalizer: available >= 380 && wide,
 	};
 }
 

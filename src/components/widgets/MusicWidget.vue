@@ -5,6 +5,8 @@ import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	ActionButton,
 	Chip,
+	Equalizer,
+	type EqualizerPreset,
 	PageDots,
 	SeekBar,
 	SliderControl,
@@ -12,6 +14,7 @@ import {
 	ToggleControl,
 } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useEqualizer } from '@/tools/composables/useEqualizer';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { activePlayerIndex, playerLabels } from '@/tools/music-players';
 import {
@@ -95,7 +98,8 @@ const dbusMessage = ref('');
  */
 const box = ref<HTMLElement | null>(null);
 const boxHeight = ref(0);
-const sections = computed(() => sectionsFor(boxHeight.value));
+const boxWidth = ref(0);
+const sections = computed(() => sectionsFor(boxHeight.value, boxWidth.value));
 
 /** El estado del disco: suena, pausa o detenido. */
 const state = computed(() => playbackStateOf(musicInfo.value.status));
@@ -143,6 +147,30 @@ const hasProgress = computed(() => musicInfo.value.length > 0);
 /** Si hay aleatorio, repetición o volumen que mostrar. */
 const hasExtras = computed(() => extrasOf(musicInfo.value));
 
+// ── El ecualizador ───────────────────────────────────────────────────────────
+// Aparece cuando hay lugar (`sections.equalizer`): se carga recién entonces, y
+// con las mismas piezas y textos que el applet del panel.
+
+const { state: equalizer, load: loadEqualizer, setGain, setPreset } = useEqualizer();
+
+function presetLabel(value: string): string {
+	const key = `views.musicApplet.equalizer.presetNames.${value}`;
+	const translated = t(key);
+	return translated && translated !== key ? translated : value;
+}
+
+const equalizerPresets = computed<EqualizerPreset[]>(() =>
+	equalizer.value.presets.map((value) => ({ value, label: presetLabel(value) }))
+);
+
+watch(
+	() => sections.value.equalizer,
+	(visible) => {
+		if (visible) void loadEqualizer();
+	},
+	{ immediate: true }
+);
+
 // ── Los reproductores ─────────────────────────────────────────────────────────
 
 /** El selector sólo tiene sentido con más de uno entre cuáles elegir. */
@@ -182,9 +210,11 @@ onMounted(() => {
 	if (!box.value) return;
 	boxObserver = new ResizeObserver(() => {
 		boxHeight.value = box.value?.clientHeight ?? 0;
+		boxWidth.value = box.value?.clientWidth ?? 0;
 	});
 	boxObserver.observe(box.value);
 	boxHeight.value = box.value.clientHeight;
+	boxWidth.value = box.value.clientWidth;
 });
 onUnmounted(() => boxObserver?.disconnect());
 
@@ -373,6 +403,28 @@ watch(
         />
       </div>
     </div>
+
+    <!-- El ecualizador, cuando la celda tiene alto y ancho de sobra. -->
+    <Equalizer
+      v-if="sections.equalizer"
+      class="relative min-h-0 shrink-0"
+      :frequencies="equalizer.frequencies"
+      :gains="equalizer.gains"
+      :range="equalizer.range"
+      :presets="equalizerPresets"
+      :preset="equalizer.preset"
+      :saved="equalizer.saved"
+      :enabled="equalizer.enabled"
+      :available="equalizer.service"
+      :title="t('views.musicApplet.equalizer.title')"
+      :saved-label="t('views.musicApplet.equalizer.saved')"
+      :unsaved-label="t('views.musicApplet.equalizer.unsaved')"
+      :unavailable-label="t('views.musicApplet.equalizer.unavailable')"
+      :presets-label="t('views.musicApplet.equalizer.presets')"
+      :custom-label="presetLabel('custom')"
+      @gain="setGain"
+      @preset="setPreset"
+    />
 
     <!-- Con más de un reproductor, un punto por cada uno; con uno solo nada.
          Igual que el applet del panel. -->

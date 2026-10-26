@@ -16,6 +16,15 @@ import { useSharedEvent } from '@/tools/event.bus';
 import { logError, logInfo, logWarning } from '@/utils/logger';
 import { fetchVideoBlob, VideoTooLargeError } from '@/utils/video-blob';
 
+// Un clic en el escritorio cierra applets, menú y centro de control: sus
+// superficies no toman foco de teclado, así que no hay pérdida de foco que los
+// cierre (vasak-desktop#262).
+const dismissPopups = () => {
+	invoke('dismiss_popups').catch(() => {});
+};
+onMounted(() => window.addEventListener('pointerdown', dismissPopups));
+onUnmounted(() => window.removeEventListener('pointerdown', dismissPopups));
+
 const route = useRoute();
 const { t } = useI18n();
 

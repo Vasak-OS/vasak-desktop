@@ -1,5 +1,6 @@
 use crate::commands::{
-    toggle_control_center, toggle_menu, toggle_session_popup, toggle_wallpaper_picker,
+    toggle_clipboard, toggle_control_center, toggle_menu, toggle_session_popup,
+    toggle_wallpaper_picker,
 };
 use crate::constants::DBUS_SERVICE_NAME;
 use crate::logger::{log_debug, log_error, log_info, log_warning};
@@ -77,6 +78,26 @@ impl DesktopService {
                             e
                         ));
                         Reply::Failed(format!("no se pudo alternar el centro de control: {}", e))
+                    }
+                }
+            }
+            "ToggleClipboard" | "OpenClipboard" => {
+                log_info("D-Bus: Abriendo historial del portapapeles");
+                // Igual que el centro de control: tiene que correr en el hilo
+                // principal, donde vive el registro thread-local de la superficie
+                // de capa. Desde este worker de D-Bus, el conmutador la buscaría
+                // en un mapa vacío y no haría nada.
+                let app_handle = self.app_handle.clone();
+                match self.app_handle.run_on_main_thread(move || {
+                    let _ = toggle_clipboard(app_handle);
+                }) {
+                    Ok(()) => Reply::Done,
+                    Err(e) => {
+                        log_error(&format!(
+                            "D-Bus: no se pudo alternar el portapapeles: {}",
+                            e
+                        ));
+                        Reply::Failed(format!("no se pudo alternar el portapapeles: {}", e))
                     }
                 }
             }

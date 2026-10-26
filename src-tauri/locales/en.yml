@@ -37,6 +37,10 @@ quickSettings:
   unavailable: Not available
 
 views:
+  clipboard:
+    search: Search history
+    clear: Clear history
+    empty: Nothing in the clipboard history yet
   privacyApplet:
     title: Camera, microphone and screen
     subtitle: What is using each one right now.
@@ -549,6 +553,10 @@ components:
     noAuthNeeded: No authentication
     authorize: Authorize
     authorizing: Authorizing…
+  SystemResourceControl:
+    title: "Resources: CPU, memory and temperature. Click to open the monitor"
+    cpu: CPU
+    memory: RAM
   TrayNetworkRateControl:
     title: "Network transfer: download and upload"
   TrayWeatherControl:
@@ -592,6 +600,25 @@ widgets:
     description: The forecast for your city
     extended: Extended
     today: Today only
+  calendar:
+    name: Calendar
+    description: The month with your events
+    noEventsToday: No events today
+    allDay: All day
+  system:
+    name: System
+    description: CPU, memory, network and temperature
+    cpu: CPU
+    memory: Memory
+    network: Network
+    temperature: Temperature
+  tasks:
+    name: Tasks due today
+    description: What is due today or overdue
+    heading: Due today
+    none: Nothing due today
+    unavailable: Tasks are not available
+    more: and {0} more
   files:
     name: Desktop files
     description: What you have in your Desktop folder

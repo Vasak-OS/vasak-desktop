@@ -19,6 +19,7 @@ mod bluetooth_audio_profile;
 /// `commands/calendar.rs` (el envoltorio fino de Tauri) para que sus funciones
 /// y sus pruebas cuenten para la cobertura; ver la cabecera del módulo.
 mod calendar_store;
+mod clipboard;
 mod commands;
 mod connect;
 mod dbus_service;
@@ -71,6 +72,7 @@ mod panel_autohide;
 mod panel_position;
 mod screen_time;
 mod session_lock;
+pub mod system_stats;
 mod tray;
 mod utils;
 mod window_manager;
@@ -113,6 +115,7 @@ use applets::{
     network_rate::NetworkRateApplet,
     notifications::NotificationApplet,
     privacidad::PrivacidadApplet,
+    system_resources::SystemResourcesApplet,
     tray::TrayApplet,
 };
 
@@ -189,6 +192,8 @@ pub fn run() {
             privacy_stop_screen,
             toggle_applet,
             dismiss_applet,
+            dismiss_popups,
+            system_stats::system_stats,
             weather_cached,
             weather_claim,
             weather_place,
@@ -201,6 +206,7 @@ pub fn run() {
             open_settings_section,
             open_calendar,
             calendar_occurrences,
+            calendar_tasks,
             calendar_locations,
             request_calendar_access_again,
             twingate_info,
@@ -256,6 +262,11 @@ pub fn run() {
             set_keep_awake,
             toggle_control_center,
             hide_control_center,
+            toggle_clipboard,
+            hide_clipboard,
+            clipboard::clipboard_history,
+            clipboard::clipboard_pick,
+            clipboard::clipboard_clear,
             toggle_wallpaper_picker,
             hide_wallpaper_picker,
             wallpaper_catalog,
@@ -411,6 +422,12 @@ pub fn run() {
             if let Err(error) = create_control_center_window(&handle) {
                 crate::logger::log_error(&format!("[control_center] no se pudo crear: {error}"));
             }
+            // El historial del portapapeles (vasak-desktop#217): la superposición se
+            // construye acá, escondida, y el vigía arranca su propio hilo.
+            if let Err(error) = create_clipboard_window(&handle) {
+                crate::logger::log_error(&format!("[clipboard] no se pudo crear: {error}"));
+            }
+            clipboard::start();
             watch_monitor_changes(&handle);
             // El modo juego no se recuerda; si el escritorio anterior se cayó con
             // él puesto, se deshace lo que dejó.
@@ -488,6 +505,9 @@ pub fn run() {
                 manager.register(BluetoothApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkApplet, AppletPriority::Deferred).await;
                 manager.register(NetworkRateApplet, AppletPriority::Deferred).await;
+                // CPU, memoria y temperatura al panel (#216): como la tasa de
+                // red, no hay nada en la primera pantalla que dependa de ella.
+                manager.register(SystemResourcesApplet, AppletPriority::Deferred).await;
                 // The phone service: nothing on screen depends on it, and most
                 // sessions never plug one in.
                 manager.register(ConnectApplet, AppletPriority::Deferred).await;

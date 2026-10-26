@@ -37,6 +37,10 @@ quickSettings:
   unavailable: No disponible
 
 views:
+  clipboard:
+    search: Buscar en el historial
+    clear: Limpiar el historial
+    empty: No hay nada en el historial del portapapeles
   privacyApplet:
     title: Cámara, micrófono y pantalla
     subtitle: Qué está usando cada cosa ahora mismo.
@@ -549,6 +553,10 @@ components:
     noAuthNeeded: Sin autenticación
     authorize: Autorizar
     authorizing: Autorizando…
+  SystemResourceControl:
+    title: "Recursos: CPU, memoria y temperatura. Un clic abre el monitor"
+    cpu: CPU
+    memory: RAM
   TrayNetworkRateControl:
     title: "Transferencia de red: lo que baja y lo que sube"
   TrayWeatherControl:
@@ -592,6 +600,25 @@ widgets:
     description: El tiempo de tu ciudad
     extended: Extendido
     today: Sólo hoy
+  calendar:
+    name: Calendario
+    description: El mes con tus eventos
+    noEventsToday: Hoy no tenés eventos
+    allDay: Todo el día
+  system:
+    name: Sistema
+    description: CPU, memoria, red y temperatura
+    cpu: CPU
+    memory: Memoria
+    network: Red
+    temperature: Temperatura
+  tasks:
+    name: Tareas del día
+    description: Lo que vence hoy o está atrasado
+    heading: Tareas de hoy
+    none: No hay tareas para hoy
+    unavailable: Las tareas no están disponibles
+    more: y {0} más
   files:
     name: Archivos del escritorio
     description: Lo que tenés en la carpeta Escritorio

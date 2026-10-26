@@ -1,5 +1,6 @@
 import { useConfigStore } from '@vasakgroup/plugin-config-manager';
 import { computed } from 'vue';
+import { resolveMenuIcon } from '@/tools/menu-icon';
 import {
 	hasSurface,
 	panelAnimation,
@@ -48,6 +49,8 @@ export function usePanelConfig() {
 		showWeather: computed(() => section.value.weather !== false),
 		showMusic: computed(() => section.value.music !== false),
 		showTransfer: computed(() => section.value.transfer !== false),
+		/** `true` salvo que `panel.resources` esté en `false`: la píldora de CPU, memoria y temperatura (#216). */
+		showResources: computed(() => section.value.resources !== false),
 		showTray: computed(() => section.value.tray !== false),
 		showPrivacy: computed(() => section.value.privacy !== false),
 		showKeyboard: computed(() => section.value.keyboard !== false),
@@ -65,6 +68,8 @@ export function usePanelConfig() {
 		 * Las aplicaciones ancladas: la lista de `panel.pinned`, o los dos por
 		 * defecto cuando está ausente (ver `resolvePinnedApps`).
 		 */
+		/** El icono del botón de menú: `panel.menuIcon`, o `start-here` si falta (#263). */
+		menuIcon: computed(() => resolveMenuIcon(section.value)),
 		pinnedApps: computed(() => resolvePinnedApps(section.value)),
 		position,
 		/** `true` cuando el panel es una columna, que es lo que más se pregunta. */

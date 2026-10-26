@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { PanelPill, SpinningCover } from '@vasakgroup/vue-libvasak';
+import { MarqueeText, PanelPill, SpinningCover } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import { toggleApplet } from '@/services/window.service';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
@@ -24,6 +24,14 @@ import { formatDuration, playbackStateOf } from '@/utils/playback';
  * reproductor era la portada de 22 píxeles (vasak-desktop#131).
  *
  * Con el panel a un costado no hay lugar para el título: queda la portada.
+ *
+ * **Ancho máximo y título deslizante** (vasak-desktop#261): la píldora no pasa
+ * de lo que miden unos cinco iconos del panel (`max-w-44`: cinco botones de
+ * 32 px con 4 de separación), para que no se coma la barra con un título
+ * largo. Si el título no entra en ese ancho se
+ * desliza solo (`MarqueeText` de la librería: mide con `ResizeObserver`, que en
+ * WebKitGTK sí avisa, y se apaga con `prefers-reduced-motion`) en vez de
+ * cortarse con puntos suspensivos; el título entero sigue en el globo.
  *
  * En el panel en píldoras (vasak-desktop#151) es una `PanelPill` como las
  * demás: la portada mini, el título cortado y, chico debajo, por dónde va
@@ -103,17 +111,17 @@ onMounted(async () => {
        reproductor está abierto y es el ancla de dónde se despliega. Adentro,
        la portada (`SpinningCover`, que se congela en pausa en vez de volver a
        cero y se queda quieta con menos movimiento) con el aro de avance, el
-       título cortado y la posición. -->
+       título —que se desliza si no entra— y la posición. -->
   <PanelPill
     ref="opener"
-    :label="showTitle ? musicInfo.title : ''"
-    :caption="timing"
     :expanded="isOpen"
     :title="summary"
     :accessible-label="accessibleName"
     :orientation="vertical ? 'vertical' : 'horizontal'"
     :flat="hasSurface"
-    class="max-w-56"
+    :flush="showTitle"
+    class="max-w-44"
+    :class="showTitle ? 'px-3' : ''"
     data-music-pill
     @click="openPlayer"
   >
@@ -128,5 +136,20 @@ onMounted(async () => {
         @error="onImgError"
       />
     </template>
+    <!-- El título va en la ranura y no en `label`: el de la píldora se corta
+         con puntos suspensivos, y acá tiene que deslizarse. Con `flush` la
+         píldora no pone relleno propio y se lo damos con `px-3`. -->
+    <span v-if="showTitle" class="flex min-w-0 flex-col items-start gap-0.5" data-music-text>
+      <MarqueeText
+        class="max-w-full text-label-s leading-none font-medium"
+        :text="musicInfo.title"
+        data-music-title
+      />
+      <span
+        v-if="timing"
+        class="max-w-full min-w-0 truncate text-label-xs leading-none text-tx-muted"
+        data-music-timing
+      >{{ timing }}</span>
+    </span>
   </PanelPill>
 </template>

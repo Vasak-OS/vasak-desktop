@@ -4,6 +4,7 @@ mod audio;
 mod batch;
 mod battery;
 mod calendar;
+mod clipboard;
 mod compositor;
 mod connect;
 mod control_center;
@@ -26,10 +27,11 @@ mod wallpaper_assets;
 mod wallpaper_colors;
 mod wallpaper_picker;
 mod weather;
+pub(crate) mod webkit;
 mod window_manager;
 
 pub use airplane_mode::{get_airplane_mode, set_airplane_mode, unblock_radios};
-pub use applets::{dismiss_applet, toggle_applet};
+pub use applets::{dismiss_applet, dismiss_popups, toggle_applet};
 pub use audio::{
     get_audio_devices, get_audio_input_devices, get_audio_outputs, get_audio_volume,
     get_microphone, set_audio_device, set_audio_input_device, set_audio_output, set_audio_volume,
@@ -37,7 +39,8 @@ pub use audio::{
 };
 pub use batch::batch_invoke;
 pub use battery::{battery_exists, battery_fetch_info, get_battery_info};
-pub use calendar::{calendar_locations, calendar_occurrences};
+pub use calendar::{calendar_locations, calendar_occurrences, calendar_tasks};
+pub use clipboard::{hide_clipboard, toggle_clipboard};
 pub use compositor::{
     get_keyboard_layout, get_workspaces, next_keyboard_layout, set_panel_input_region,
     switch_workspace,

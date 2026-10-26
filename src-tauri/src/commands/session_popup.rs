@@ -16,9 +16,13 @@ pub async fn toggle_session_popup(action: String, app: AppHandle) -> Result<(), 
             window.set_focus().map_err(|e| e.to_string())?;
         }
     } else {
-        create_session_popup_window(app, action)
+        create_session_popup_window(app.clone(), action)
             .await
             .map_err(|e| e.to_string())?;
+        // Recién creada: se afina su WebKit antes de que el diálogo quede a la vista.
+        if let Some(window) = app.get_webview_window("session_popup") {
+            crate::commands::webkit::tune_window(&window);
+        }
     }
     Ok(())
 }

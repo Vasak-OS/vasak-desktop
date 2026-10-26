@@ -102,13 +102,13 @@ describe('lo que entra en el widget', () => {
 	/** Una fila de la cuadrícula: 120 px. Es el tamaño por omisión del widget. */
 	test('en el de una fila queda lo que no puede faltar', () => {
 		const secciones = sectionsFor(120);
-		expect(secciones).toEqual({ progress: false, album: false, extras: false });
+		expect(secciones).toEqual({ progress: false, album: false, extras: false, equalizer: false });
 	});
 
 	/** Dos filas: 120 + 12 de separación + 120. */
 	test('en el de dos filas entra todo', () => {
 		const secciones = sectionsFor(252);
-		expect(secciones).toEqual({ progress: true, album: true, extras: true });
+		expect(secciones).toEqual({ progress: true, album: true, extras: true, equalizer: false });
 	});
 
 	test('y entremedio las filas aparecen de a una', () => {
@@ -121,5 +121,29 @@ describe('lo que entra en el widget', () => {
 	test('un alto que todavía no se midió no dibuja filas de más', () => {
 		expect(sectionsFor(0).progress).toBe(false);
 		expect(sectionsFor(Number.NaN).progress).toBe(false);
+	});
+});
+
+describe('qué secciones entran según el alto y el ancho', () => {
+	test('sin medir el ancho valen los cortes de siempre', () => {
+		expect(sectionsFor(252).extras).toBe(true);
+		expect(sectionsFor(252).equalizer).toBe(false);
+	});
+
+	test('un ancho sin medir (0) no saca nada', () => {
+		expect(sectionsFor(252, 0).extras).toBe(true);
+	});
+
+	test('el ecualizador pide tres filas y ancho de sobra', () => {
+		expect(sectionsFor(384, 400).equalizer).toBe(true);
+		expect(sectionsFor(252, 400).equalizer).toBe(false);
+		expect(sectionsFor(384, 280).equalizer).toBe(false);
+	});
+
+	test('en un widget angosto se sacan el álbum y los controles en vez de apretarlos', () => {
+		const angosto = sectionsFor(384, 240);
+		expect(angosto.album).toBe(false);
+		expect(angosto.extras).toBe(false);
+		expect(sectionsFor(384, 240).progress).toBe(true);
 	});
 });

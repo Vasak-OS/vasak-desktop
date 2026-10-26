@@ -47,6 +47,11 @@
           "name": "vasak-prism",
           "cmd": "/usr/bin/vasak-prism",
           "args": true
+        },
+        {
+          "name": "vasak-monitor",
+          "cmd": "/usr/bin/vasak-monitor",
+          "args": true
         }
       ]
     },

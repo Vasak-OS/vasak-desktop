@@ -65,6 +65,7 @@ const {
 	hasSurface,
 	animationClass,
 	autohide,
+	menuIcon,
 } = usePanelConfig();
 
 /**
@@ -361,7 +362,7 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
            la tecla Super (tests/menu-search-focus.test.ts). -->
       <PanelPill
         ref="menuButton"
-        icon="start-here"
+        :icon="menuIcon"
         icon-type="icon"
         :accessible-label="t('views.panel.menuAlt')"
         :title="t('views.panel.menuAlt')"
