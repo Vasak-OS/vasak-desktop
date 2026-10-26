@@ -178,7 +178,11 @@ describe('la ficha del calendario, montada', () => {
 		await settle();
 		const nextMonth = addMonths(thisMonth, 1);
 		expect(sheet.findAll('[data-in-month="true"]')[0]?.attributes('data-date')).toBe(`${nextMonth}-01`);
-		expect(sheet.findAll('[data-today]')).toHaveLength(0);
+		// Hoy no es un día *del mes* que se ve. La marca `data-today` puede seguir
+		// en la grilla —cuando hoy cae en la última semana, aparece como día
+		// adyacente del mes siguiente (p. ej. el lunes 26/10 abre la grilla de
+		// noviembre)—, pero nunca como día del mes navegado.
+		expect(sheet.findAll('[data-today][data-in-month="true"]')).toHaveLength(0);
 		expect(calendar.calls).toHaveLength(2);
 
 		await previous?.trigger('click');
