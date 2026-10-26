@@ -10,6 +10,7 @@ import {
 	AlertMessage,
 	EmptyState,
 	LoadingState,
+	RevealTransition,
 	SearchField,
 	SegmentedControl,
 	SettingRow,
@@ -172,12 +173,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Transition appear enter-active-class="enter-active">
+  <RevealTransition v-bind="{ appear: true }" scale>
     <div
-      :class="[
-        'flex h-screen min-w-0 flex-col gap-3 rounded-corner-m window-border bg-ui-shell p-4 text-tx-main',
-        { 'leave-active': leaving },
-      ]"
+      v-show="!leaving"
+      :class="['flex h-screen min-w-0 flex-col gap-3 rounded-corner-m window-border bg-ui-shell p-4 text-tx-main']"
     >
       <header class="flex min-w-0 items-center gap-3">
         <ThemeIcon name="smartphone" :size="32" />
@@ -257,40 +256,5 @@ onBeforeUnmount(() => {
         </SettingRow>
       </template>
     </div>
-  </Transition>
+  </RevealTransition>
 </template>
-
-<style scoped>
-/* The same open and close animation as the application menu. Defined here
-   because MenuView's copy is scoped to that component, so referencing its class
-   names from another view silently produced no animation at all. */
-@keyframes scale-in {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes scale-out {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-  to {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-}
-
-.enter-active {
-  animation: scale-in 200ms ease-out;
-}
-
-.leave-active {
-  animation: scale-out 200ms ease-in;
-}
-</style>

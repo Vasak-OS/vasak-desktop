@@ -3,7 +3,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: usados en la plantilla */
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { EmptyState, SearchField } from '@vasakgroup/vue-libvasak';
+import { EmptyState, RevealTransition, SearchField } from '@vasakgroup/vue-libvasak';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import FilterArea from '@/components/areas/menu/FilterArea.vue';
 import ClassicMenu from '@/components/areas/menu/layouts/ClassicMenu.vue';
@@ -197,7 +197,7 @@ const onKeydown = (event: KeyboardEvent) => {
         <MenuSessionActions v-if="menu.showSessionActions" :actions="sessionActions" />
       </div>
 
-      <transition enter-active-class="transition-opacity duration-200 ease-ui" leave-active-class="transition-opacity duration-150 ease-ui" enter-from-class="opacity-0" leave-to-class="opacity-0" mode="out-in">
+      <RevealTransition mode="out-in">
         <div v-if="isMenuEmpty" key="empty-state" class="flex flex-1 min-h-0 items-center justify-center">
           <EmptyState :title="t('views.menu.noApps')" icon="application-x-executable" />
         </div>
@@ -205,7 +205,7 @@ const onKeydown = (event: KeyboardEvent) => {
           <FilterArea :apps="appsFiltred" :selected-index="selectedIndex" />
         </div>
         <component :is="layoutComponent" v-else key="main-view" :controller="controller" :menu="menu" />
-      </transition>
+      </RevealTransition>
 
       <div v-if="menu.searchPosition === 'bottom'" class="mt-4 shrink-0">
         <SearchField

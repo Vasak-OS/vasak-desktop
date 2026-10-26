@@ -4,7 +4,7 @@
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ActionButton, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ActionButton, RevealTransition, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import {
@@ -147,9 +147,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Transition appear enter-active-class="enter-active">
+  <RevealTransition v-bind="{ appear: true }" scale>
     <div
-      :class="['h-screen w-screen flex items-center justify-center bg-ui-shell window-border rounded-corner-window overflow-hidden', { 'leave-active': leaving }]"
+      v-show="!leaving"
+      :class="['h-screen w-screen flex items-center justify-center bg-ui-shell window-border rounded-corner-window overflow-hidden']"
     >
       <div class="flex w-full max-w-[380px] min-w-0 flex-col">
         <div class="flex flex-col items-center gap-4 px-8 pt-8 pb-4">
@@ -183,37 +184,5 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
-  </Transition>
+  </RevealTransition>
 </template>
-
-<style scoped>
-@keyframes fade-scale-in {
-  from {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes fade-scale-out {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-  to {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-}
-
-.enter-active {
-  animation: fade-scale-in 200ms ease-out;
-}
-
-.leave-active {
-  animation: fade-scale-out 200ms ease-in;
-}
-</style>

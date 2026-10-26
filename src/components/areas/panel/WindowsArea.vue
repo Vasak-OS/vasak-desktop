@@ -166,9 +166,7 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
     data-windows-pill
     v-on="{ wheel: onWheel }"
   >
-    <TransitionGroup
-      move-class="transition-transform duration-300 ease-in-out" enter-active-class="transition-all duration-300 ease-in-out" leave-active-class="transition-all duration-300 ease-in-out" enter-from-class="opacity-0 translate-y-[30px]" leave-to-class="opacity-0 translate-y-[30px]"
-      tag="div"
+    <div
       class="flex items-center gap-0.5"
       :class="vertical ? 'flex-col' : ''"
     >
@@ -178,7 +176,7 @@ useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
         v-bind="window"
         :launcher="launcherForApp(launcherEntries, window.app_id)"
       />
-    </TransitionGroup>
+    </div>
   </PanelPill>
 </template>
 
