@@ -204,10 +204,11 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
   animation: applet-popover-in 200ms var(--ease-ui-out) both;
 }
 
-/* La salida, al revés y más corta. `forwards` la deja invisible hasta que el
-   backend esconde la superficie. */
+/* La salida, al revés y más corta. 150 ms es `macro-short`, «la salida de un
+   desplegable» (once-ui.md §2.8/§5.5); todo el sistema sale en ese tiempo.
+   `forwards` la deja invisible hasta que el backend esconde la superficie. */
 .applet-popover-leave {
-  animation: applet-popover-out 120ms ease-in forwards;
+  animation: applet-popover-out 150ms ease-in forwards;
 }
 
 .applet-popover-hidden {
