@@ -4,12 +4,14 @@
  * módulo de verdad; lo que habla con Tauri o con otras ventanas es un doble
  * que la prueba controla desde `music`.
  */
-import { computed, defineComponent, h, ref } from 'vue';
+import { computed, defineComponent, h, type Ref, ref } from 'vue';
 import { type EqualizerState, missingEqualizer } from '../../src/interfaces/equalizer';
 import type { MusicInfo, PlayerRef } from '../../src/interfaces/music';
+import type { ActivityProgress } from '../../src/tools/composables/useActivityProgress';
 
 export { currentOutput, outputIcon, outputLabel } from '../../src/tools/audio-outputs';
 export { activePlayerIndex, playerLabels } from '../../src/tools/music-players';
+export { progressPercent } from '../../src/tools/tray-item';
 export { formatDuration, playbackStateOf, sectionsFor } from '../../src/utils/playback';
 export {
 	coverRingProgress,
@@ -56,8 +58,11 @@ export const music = {
 	cover: ref(''),
 	vertical: ref(false),
 	equalizer: ref<EqualizerState>(missingEqualizer()),
+	/** La app con tarea en curso que ve la cápsula; `null`: ninguna (modo música). */
+	activity: ref<ActivityProgress | null>(null),
 	calls: [] as Array<{ name: string; args: unknown[] }>,
 	reset() {
+		this.activity.value = null;
 		this.info.value = blankInfo();
 		this.players.value = [];
 		this.devices.value = [];
@@ -97,6 +102,21 @@ export function useMusicPlayer() {
 		selectPlayer: async (player: string) => record('selectPlayer')(player),
 	};
 }
+
+/** Las apps con tarea en curso: lo que la prueba ponga en `music.activity`. */
+export function useActivityProgress(): {
+	topProgress: Ref<ActivityProgress | null>;
+	progressApps: Ref<ActivityProgress[]>;
+} {
+	return {
+		topProgress: music.activity,
+		progressApps: computed(() => (music.activity.value ? [music.activity.value] : [])),
+	};
+}
+
+export const toggleWindow = async (args: unknown) => {
+	record('toggleWindow')(args);
+};
 
 export function useEqualizer() {
 	return {
