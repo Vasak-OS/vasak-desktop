@@ -68,7 +68,7 @@ const select = (key: string) => {
       <FavoritesArea v-if="showFavorites" :apps="favoriteApps" class="shrink-0" />
       <ListCard custom-class="min-h-0 flex-1">
         <div class="h-full min-w-0 flex-1 overflow-y-auto">
-          <MenuArea :apps="appsOfCategory" />
+          <MenuArea :apps="appsOfCategory" :section-key="categorySelected" />
         </div>
       </ListCard>
     </div>
