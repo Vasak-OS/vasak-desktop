@@ -56,7 +56,7 @@ const onlyWidget = computed(() => showWidget.value && !showPlaces.value && !show
          que se apoya, el canto fino y el radio `l`. -->
     <ListCard custom-class="h-72 min-h-0 @3xl:h-full">
       <div class="h-full min-w-0 flex-1 overflow-y-auto">
-        <MenuArea :apps="appsOfCategory" />
+        <MenuArea :apps="appsOfCategory" :section-key="categorySelected" />
       </div>
     </ListCard>
 
