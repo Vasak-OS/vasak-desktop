@@ -289,6 +289,52 @@ describe('lo que se usa existe', () => {
 	});
 });
 
+/**
+ * `animate-<nombre>` y `animate-[<nombre>_…]`. Las de Tailwind (`pulse`, `spin`…)
+ * traen sus propios `@keyframes`; cualquier otra necesita uno declarado en el
+ * proyecto, o la clase no anima nada y no avisa (así quedaron la campana del
+ * panel y el ítem de bandeja que pide atención).
+ */
+const ANIMATE_CLASS = new RegExp(`(?<![\\w-])${VARIANTS}animate-(?:\\[([a-z][a-z0-9-]*)[_\\]]|([a-z][a-z0-9-]*)${END})`, 'g');
+const TAILWIND_ANIMATIONS = new Set(['spin', 'ping', 'pulse', 'bounce', 'none']);
+
+describe('las animaciones que se usan existen', () => {
+	test('cada animate-* de src/ tiene sus @keyframes', async () => {
+		const css = await Promise.all(sources('**/*.{vue,css}').map((file) => read(SOURCE + file)));
+		const keyframes = new Set(css.flatMap((text) => [...text.matchAll(/@keyframes\s+([a-z0-9-]+)/g)].map((m) => m[1])));
+		const classes = css.join('\n');
+
+		const dead = await findAll(sources('**/*.{vue,ts}'), ANIMATE_CLASS, (m) => {
+			// `animate-[nombre_2s_…]` nombra el keyframe; `animate-nombre` es una
+			// clase propia (`.animate-nombre`) o una variable `--animate-nombre`.
+			if (m[1]) return !keyframes.has(m[1]);
+			const name = m[2] as string;
+			return !TAILWIND_ANIMATIONS.has(name) && !classes.includes(`.animate-${name}`) && !classes.includes(`--animate-${name}`);
+		});
+
+		expect(dead).toEqual([]);
+	});
+
+	test('la campana se sacude y el ítem de bandeja late: sus @keyframes están y se siguen usando', async () => {
+		const css = await read(APP_CSS);
+		expect(css).toMatch(/@keyframes\s+bell-shake\s*\{/);
+		expect(css).toMatch(/\.animate-bell-shake\s*\{[^}]*animation:\s*bell-shake\b/);
+		expect(css).toMatch(/@keyframes\s+pulse-attention\s*\{/);
+
+		// Si la plantilla dejara de usarlas, el CSS sería código muerto.
+		expect(await read(`${SOURCE}views/PanelView.vue`)).toContain('animate-bell-shake');
+		expect(await read(`${SOURCE}components/areas/panel/TrayBarArea.vue`)).toContain('pulse-attention');
+	});
+
+	test('la guardia ve una animación sin @keyframes cuando la hay', () => {
+		const found = [...'animate-pulse hover:animate-wiggle animate-[halo_2s_infinite] animate-[var(--x)]'.matchAll(ANIMATE_CLASS)].map(
+			(m) => m[1] ?? m[2]
+		);
+
+		expect(found).toEqual(['pulse', 'wiggle', 'halo']);
+	});
+});
+
 describe('los colores salen del esquema', () => {
 	test('ningún color escrito a mano en los componentes', async () => {
 		expect(await findAll(sources('**/*.{vue,ts}'), LITERAL_COLOR)).toEqual([]);

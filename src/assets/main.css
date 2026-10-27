@@ -363,6 +363,55 @@
   animation: panel-beat 1.5s ease-in-out infinite;
 }
 
+/* ── Señales de atención ───────────────────────────────────────────────────
+   Dos avisos que ya se usaban en la plantilla (la campana del panel con
+   notificaciones nuevas, el ítem de bandeja que pide atención) pero cuyos
+   `@keyframes` no estaban definidos: sin ellos la clase no animaba nada, en
+   silencio. El bloque de `prefers-reduced-motion` de más abajo las corta a una
+   sola iteración. Sólo opacidad y `transform`, sin tocar la disposición. */
+
+/* La campana se sacude una vez cuando llega una notificación (sin `infinite`):
+   oscila desde su parte de arriba, como una campana colgada. */
+@keyframes bell-shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(-14deg);
+  }
+  30% {
+    transform: rotate(11deg);
+  }
+  45% {
+    transform: rotate(-8deg);
+  }
+  60% {
+    transform: rotate(5deg);
+  }
+  75% {
+    transform: rotate(-2deg);
+  }
+}
+.animate-bell-shake {
+  transform-origin: 50% 10%;
+  animation: bell-shake 0.9s ease-in-out;
+}
+
+/* El ítem de bandeja late mientras pide atención (la plantilla le pone
+   `2s infinite`): latido suave de opacidad y escala. */
+@keyframes pulse-attention {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.08);
+  }
+}
+
 /* La superficie en trapecio (`panel.style: trapezoid`) se recorta con
    `clip-path: path()` desde `usePanelTrapezoidClip` —no con una clase— porque la
    forma lleva cantos redondeados (scoop cóncavo en la parte ancha, convexo en la
