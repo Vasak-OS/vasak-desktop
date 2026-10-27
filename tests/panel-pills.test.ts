@@ -518,6 +518,36 @@ describe('las píldoras se aplanan cuando hay superficie', () => {
 		view.unmount();
 	});
 
+	test('una ventana que se cierra sale de la barra enseguida y una nueva entra, sin animar la fila', async () => {
+		// Las listas no animan sus filas (sin `TransitionGroup`): quitar una
+		// ventana no deja su botón a medio salir, ni espera a un `transitionend`.
+		const view = await render(Windows);
+		const delta = panel.handlers.get('window-delta') as (delta: unknown) => void;
+		const titles = () => view.findAll('[data-window]').map((button) => button.text());
+
+		delta({ added: [], removed: ['1'], modified: [] });
+		await settle();
+		expect(titles()).toEqual(['Terminal']);
+
+		delta({ added: [{ id: '3', title: 'Archivos', is_minimized: false, icon: 'folder', app_id: 'files' }], removed: [], modified: [] });
+		await settle();
+		expect(titles()).toEqual(['Terminal', 'Archivos']);
+		view.unmount();
+	});
+
+	test('la rueda desplaza la píldora y frena el scroll de la página sólo si se movió', async () => {
+		// Con la fila ya sin `TransitionGroup`, el `v-on="{ wheel }"` de la píldora
+		// sigue enganchado: la rueda vertical mueve `scrollLeft`.
+		const view = await render(Windows);
+		const pill = view.find('[data-windows-pill]').element as HTMLElement;
+		const wheel = new WheelEvent('wheel', { deltaY: 40, bubbles: true, cancelable: true });
+
+		pill.dispatchEvent(wheel);
+		expect(pill.scrollLeft).toBe(40);
+		expect(wheel.defaultPrevented).toBe(true);
+		view.unmount();
+	});
+
 	test('la píldora de ventanas también se aplana con superficie', async () => {
 		panel.hasSurface.value = true;
 		const view = await render(Windows);

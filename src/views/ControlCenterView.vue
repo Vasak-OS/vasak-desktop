@@ -17,7 +17,7 @@
  */
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ListRow, ThemeIcon, ToggleControl } from '@vasakgroup/vue-libvasak';
+import { ListRow, RevealTransition, ThemeIcon, ToggleControl } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
 import CalendarSheet from '@/components/areas/control-center/CalendarSheet.vue';
 import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
@@ -214,9 +214,10 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <Transition appear enter-active-class="enter-active">
+  <RevealTransition v-bind="{ appear: true }" from="right">
     <main
-      :class="['bg-ui-shell h-screen w-screen rounded-corner-m flex flex-col justify-between p-1 window-border overflow-hidden', { 'leave-active': leaving }]"
+      v-show="!leaving"
+      :class="['bg-ui-shell h-screen w-screen rounded-corner-m flex flex-col justify-between p-1 window-border overflow-hidden']"
       :data-mode="mode"
     >
       <!-- La cabecera —quién sos, la sesión y el teléfono— queda fija arriba:
@@ -347,37 +348,5 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </main>
-  </Transition>
+  </RevealTransition>
 </template>
-
-<style scoped>
-@keyframes slide-in-right {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes slide-out-right {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
-.enter-active {
-  animation: slide-in-right 200ms ease-out;
-}
-
-.leave-active {
-  animation: slide-out-right 200ms ease-in;
-}
-</style>

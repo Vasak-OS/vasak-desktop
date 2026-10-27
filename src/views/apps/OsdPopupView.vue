@@ -3,7 +3,7 @@
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ProgressBar, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import { ProgressBar, RevealTransition, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
@@ -97,7 +97,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<Transition name="osd">
+	<RevealTransition scale>
 		<div
 			v-if="visible"
 			class="w-screen h-screen flex flex-col items-center justify-center gap-3 bg-ui-shell window-border rounded-corner-window overflow-hidden px-8 py-6"
@@ -116,24 +116,5 @@ onUnmounted(() => {
 				size="xs"
 			/>
 		</div>
-	</Transition>
+	</RevealTransition>
 </template>
-
-<style scoped>
-.osd-enter-active {
-	transition: opacity 0.15s ease-out, transform 0.15s ease-out;
-}
-
-.osd-leave-active {
-	transition: opacity 0.2s ease-in;
-}
-
-.osd-enter-from {
-	opacity: 0;
-	transform: scale(0.9);
-}
-
-.osd-leave-to {
-	opacity: 0;
-}
-</style>
