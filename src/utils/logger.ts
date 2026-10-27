@@ -19,9 +19,29 @@ export enum LogLevel {
 type ConsoleMethod = 'log' | 'debug' | 'warn' | 'error';
 
 /**
+ * El backend del logger: las funciones de `core.service` que llegan al Rust.
+ * Se inyectan para poder probarlas sin pasar por el registro global de módulos,
+ * cuyo mock depende del orden en que la suite evalúa los archivos.
+ */
+export interface LoggerBackend {
+	logFromFrontend: typeof logFromFrontend;
+	getLogFilePath: typeof getLogFilePath;
+	readLogFile: typeof readLogFile;
+	getLastLogLines: typeof getLastLogLines;
+}
+
+/** Las funciones reales, las que usa el singleton de la aplicación. */
+const defaultBackend: LoggerBackend = {
+	logFromFrontend,
+	getLogFilePath,
+	readLogFile,
+	getLastLogLines,
+};
+
+/**
  * Interfaz para el logger de Vasak Desktop
  */
-class VasakLogger {
+export class VasakLogger {
 	private isDevelopment: boolean;
 
 	/**
@@ -39,7 +59,11 @@ class VasakLogger {
 	 */
 	private forwarding = false;
 
-	constructor() {
+	/** De dónde salen las llamadas al backend; inyectable para las pruebas. */
+	private readonly backend: LoggerBackend;
+
+	constructor(backend: LoggerBackend = defaultBackend) {
+		this.backend = backend;
 		this.isDevelopment = import.meta.env.DEV;
 		this.originalConsole = {
 			log: console.log.bind(console),
@@ -171,7 +195,7 @@ class VasakLogger {
 		// éste viajaba, que es justo lo que no se quiere perder.
 		this.forwarding = true;
 		try {
-			delivery = logFromFrontend({
+			delivery = this.backend.logFromFrontend({
 				level: level.toString(),
 				message: fullMessage,
 			});
@@ -222,7 +246,7 @@ class VasakLogger {
 	 */
 	async getLogFilePath(): Promise<string> {
 		try {
-			return await getLogFilePath();
+			return await this.backend.getLogFilePath();
 		} catch (error) {
 			// Por la vía propia y no por `console.error`, que está reemplazada
 			// por este mismo logger.
@@ -236,7 +260,7 @@ class VasakLogger {
 	 */
 	async readLogFile(): Promise<string> {
 		try {
-			return await readLogFile();
+			return await this.backend.readLogFile();
 		} catch (error) {
 			this.error('Error al leer el archivo de log', error);
 			return '';
@@ -248,7 +272,7 @@ class VasakLogger {
 	 */
 	async getLastLogLines(lines: number = 100): Promise<string[]> {
 		try {
-			return await getLastLogLines({ lines });
+			return await this.backend.getLastLogLines({ lines });
 		} catch (error) {
 			this.error('Error al obtener las últimas líneas del log', error);
 			return [];
