@@ -20,7 +20,7 @@
  * exactamente lo que hacía el escritorio.
  */
 
-import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test';
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 
 /** Dónde corta el simulado para que una regresión falle en vez de colgarse. */
 const MAX_ATTEMPTS = 50;
@@ -34,7 +34,14 @@ let deliver: () => Promise<unknown> = () => Promise.resolve();
 /** Lo que el logger dijo por la consola que guardó al construirse. */
 const throughOriginalConsole: string[] = [];
 
-mock.module('@/services/core.service', () => ({
+/**
+ * El backend simulado que se le inyecta al logger. Se inyecta en vez de
+ * `mock.module('@/services/core.service')`: ese mock es global y sólo
+ * intercepta si el módulo del logger se evalúa después de registrarlo, y en la
+ * suite completa otro archivo ya lo evaluó con el backend real. La inyección no
+ * depende de ningún orden.
+ */
+const backend = {
 	logFromFrontend: () => {
 		attempts += 1;
 		if (attempts > MAX_ATTEMPTS) {
@@ -45,7 +52,7 @@ mock.module('@/services/core.service', () => ({
 	getLogFilePath: () => Promise.reject(new Error('backend caído')),
 	readLogFile: () => Promise.reject(new Error('backend caído')),
 	getLastLogLines: () => Promise.reject(new Error('backend caído')),
-}));
+};
 
 const savedConsole = {
 	log: console.log,
@@ -71,6 +78,11 @@ beforeAll(async () => {
 	process.env.DEV = 'true';
 	(globalThis as any).window = { addEventListener: () => {} };
 
+	// Se evalúa el módulo ANTES de fijar `record`: es el orden adverso del CI,
+	// donde otro archivo ya construyó el singleton contra su propia consola.
+	// Así la prueba corre siempre en ese peor caso, sin depender de la suite.
+	const { VasakLogger } = await import('@/utils/logger');
+
 	// La consola que el logger va a guardar como «original» es ésta, así que
 	// lo que aparezca acá es lo que salió sin volver a entrar al logger.
 	const record = (...args: any[]) => {
@@ -81,7 +93,14 @@ beforeAll(async () => {
 	console.warn = record;
 	console.error = record;
 
-	logger = (await import('@/utils/logger')).default;
+	// Una instancia fresca, no el singleton: el `default` secuestra la consola
+	// en su construcción, que ocurre la primera vez que *cualquier* archivo
+	// importa `@/utils/logger`. Como medio repo importa `logError`, en la suite
+	// completa otro archivo lo construye primero —contra su consola, no la de
+	// acá— y el `import` cacheado ya no re-secuestra: el orden entre archivos,
+	// que cambia entre máquinas, decidía si esta prueba pasaba. Construir acá
+	// re-secuestra la consola contra `record`, siempre.
+	logger = new VasakLogger(backend);
 });
 
 afterAll(() => {
