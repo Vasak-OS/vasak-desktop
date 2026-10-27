@@ -39,7 +39,8 @@
       size="sm"
     />
 
-    <TransitionGroup move-class="transition-transform duration-300 ease-ui" enter-active-class="transition-[opacity,translate] duration-300 ease-ui-out" leave-active-class="transition-[opacity,translate] duration-200 ease-ui" enter-from-class="opacity-0 translate-x-4" leave-to-class="opacity-0 -translate-x-4" tag="div" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-1">
+    <!-- §5.5: la lista no anima sus filas al entrar; sólo move y leave. -->
+    <TransitionGroup move-class="transition-transform duration-300 ease-ui" leave-active-class="transition-[opacity,translate] duration-200 ease-ui" leave-to-class="opacity-0 -translate-x-4" tag="div" class="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto overflow-x-hidden pr-1">
       <NotificationGroupCard
         v-for="group in groupedNotifications"
         :key="group.app_name"

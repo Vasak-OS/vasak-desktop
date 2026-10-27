@@ -28,11 +28,12 @@
         <span aria-hidden="true" class="w-6 shrink-0" />
       </template>
 
+      <!-- §5.5: la lista no anima sus filas al entrar (en la primera apertura
+           las notificaciones llegan async y entraban en cascada); sólo move y
+           leave. -->
       <TransitionGroup
         move-class="transition-transform duration-300 ease-ui"
-        enter-active-class="transition-[opacity,translate] duration-300 ease-ui-out"
         leave-active-class="transition-[opacity,translate] duration-200 ease-ui"
-        enter-from-class="opacity-0 translate-x-4"
         leave-to-class="opacity-0 -translate-x-4"
         tag="div"
         class="-m-2 flex flex-col"

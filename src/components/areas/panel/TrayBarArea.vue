@@ -193,11 +193,12 @@ useSharedEvent('tray-update', refreshTrayItems);
     :class="vertical ? 'py-1' : 'px-1'"
     data-tray-pill
   >
+    <!-- §5.5: la lista no anima sus filas al entrar; sólo reordenar (move) y
+         salir (leave). Entrar cada ícono con su propia escala era el ejemplo
+         que el spec marca como lo que no hay que hacer. -->
     <TransitionGroup
       :move-class="shouldAnimate ? 'transition-transform duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
-      :enter-active-class="shouldAnimate ? 'transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.25,1)]' : ''"
       :leave-active-class="shouldAnimate ? 'transition-all duration-300 ease-[cubic-bezier(0.55,0,0.45,1)]' : ''"
-      :enter-from-class="shouldAnimate ? 'opacity-0 -translate-x-5 scale-80 -rotate-12' : ''"
       :leave-to-class="shouldAnimate ? 'opacity-0 translate-x-5 scale-80 rotate-12' : ''"
       tag="div"
       class="flex items-center gap-0.5"
