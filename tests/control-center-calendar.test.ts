@@ -7,15 +7,15 @@
  * la vista, montada con sus componentes doblados.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { addMonths, monthOf, toIsoDate } from '@vasakgroup/vue-libvasak';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { nextTick } from 'vue';
-import { compileScript, parse } from 'vue/compiler-sfc';
 import type { CalendarOccurrence } from '../src/services/calendar.service';
 import { localeTag, marksFromReply, weekStartFor } from '../src/tools/calendar-sheet';
 import { CALENDAR_CHANGED, calendar, sharedEvents } from './support/calendar-doubles';
+import { loadControlCenterView } from './support/load-control-center-view';
 import { loadComponent, ROOT, useDom } from './support/mount-sfc';
 
 const DOUBLES = join(import.meta.dir, 'support', 'calendar-doubles.ts');
@@ -288,58 +288,40 @@ describe('la fecha de la tarjeta', () => {
 	});
 });
 
-/**
- * Compila la vista con cada `@/…` mandado a los dobles.
- *
- * Cada componente del escritorio es el doble de su nombre, o un doble mudo si
- * la prueba no lo conoce: la vista suma controles seguido (la luz nocturna, el
- * micrófono…) y esta prueba no tiene por qué romperse con cada uno. Lo que se
- * importa por nombre sale del mismo módulo de dobles.
- */
-async function loadView() {
-	const file = join(ROOT, 'src/views/ControlCenterView.vue');
-	const { descriptor } = parse(read('src/views/ControlCenterView.vue'), { filename: file });
-	const compiled = compileScript(descriptor, { id: 'ControlCenterView', inlineTemplate: true });
-	const code = `import * as __doubles from ${JSON.stringify(DOUBLES)};\n${compiled.content
-		.replace(/import\s+type\s+\{[^}]*\}\s+from\s+(['"])@\/[^'"]+\1;?/g, '')
-		.replace(
-			/import\s+(\w+)\s+from\s+(['"])@\/[^'"]+\.vue\2;?/g,
-			"const $1 = __doubles.$1 ?? __doubles.silent('$1');"
-		)
-		.replace(
-			/import\s+\{([^}]*)\}\s+from\s+(['"])@\/[^'"]+\2;?/g,
-			(_all, names: string) =>
-				`const {${names.replace(/\btype\s+\w+\s*,?/g, '').replace(/\s+as\s+/g, ': ')}} = __doubles;`
-		)}`;
-	const out = join(dom.workdir(), 'ControlCenterView.ts');
-	writeFileSync(out, code);
-	return (await import(out)).default;
-}
-
 describe('el centro, con el calendario', () => {
 	let View: any;
 	beforeAll(async () => {
-		View = await loadView();
+		View = await loadControlCenterView(dom.workdir(), DOUBLES);
 	}, 60_000);
 
 	test('tocar la fecha abre el calendario en lugar de lo de abajo, y «Volver» lo deja como estaba', async () => {
 		const center = mount(View, { attachTo: document.body });
 		await settle();
 		const notifications = () => center.find('[data-fake-notifications]').element as HTMLElement;
+		const track = () => center.find('[data-track]');
 		expect(center.find('[data-calendar-sheet]').exists()).toBe(false);
-		expect(notifications().style.display).not.toBe('none');
+		expect(track().attributes('inert')).toBeUndefined();
+		const mounted = notifications();
 
 		await center.find('[data-user-date]').trigger('click');
 		await settle();
 		expect(center.find('[data-calendar-sheet]').exists()).toBe(true);
 		expect(center.find('[data-user-date]').attributes('aria-expanded')).toBe('true');
-		// Las notificaciones siguen montadas, escondidas: no se vuelven a pedir.
-		expect(notifications().style.display).toBe('none');
+		// La ficha tapa el escenario como un overlay (z-10) hermano del carril,
+		// no dentro de él, y lo de abajo queda `inert`: fuera del foco y de los
+		// lectores, pero montado —las notificaciones no se vuelven a pedir—.
+		const sheet = center.find('[data-calendar-sheet]');
+		expect(center.find('[data-stage]').element.contains(sheet.element)).toBe(true);
+		expect(track().element.contains(sheet.element)).toBe(false);
+		expect(sheet.classes()).toContain('z-10');
+		expect(track().attributes('inert')).toBeDefined();
+		expect(notifications() === mounted).toBe(true);
 
 		await center.find('[data-calendar-back]').trigger('click');
 		await settle();
 		expect(center.find('[data-calendar-sheet]').exists()).toBe(false);
-		expect(notifications().style.display).not.toBe('none');
+		expect(track().attributes('inert')).toBeUndefined();
+		expect(notifications() === mounted).toBe(true);
 		// El foco vuelve a la fecha que lo abrió.
 		// Se compara por identidad: el diff de dos nodos del DOM son millones de líneas.
 		expect(document.activeElement === center.find('[data-user-date]').element).toBe(true);

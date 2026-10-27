@@ -222,7 +222,7 @@ onBeforeUnmount(() => {
     >
       <!-- La cabecera —quién sos, la sesión y el teléfono— queda fija arriba:
            no se desliza aunque la grilla de ajustes o las notificaciones no
-           entren. Lo que se desplaza es sólo el bloque de abajo, así nunca se
+           entren. Lo que se desliza es sólo el escenario de abajo, así nunca se
            mueve la parte con tu foto. -->
       <div class="flex min-h-0 flex-1 flex-col w-full gap-2 p-2" data-top>
         <div class="flex shrink-0 flex-col gap-2" data-header>
@@ -234,62 +234,134 @@ onBeforeUnmount(() => {
           <PhoneControlCenterCard />
         </div>
 
-        <!-- Lo que se desliza: el calendario, las notificaciones (A) o la grilla
-             de ajustes (B). `min-h-0` deja que se achique por debajo de su
-             contenido y `overflow-y-auto` lo desplaza; la cabecera de arriba y
-             los controles de abajo quedan quietos. Sin él, un hijo flexible no
-             se deja achicar y la lista o la grilla empujaban a lo de abajo fuera
-             de la pantalla. La lista tiene además un mínimo de unas dos tarjetas
-             (`min-h-40`). -->
-        <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto" data-scroll>
-          <!-- El calendario del mes, abierto desde la fecha: una ficha con
-               «Volver» en lugar de lo de abajo. Lo de abajo sigue montado. -->
-          <CalendarSheet v-if="calendarOpen" @back="closeCalendar" />
+        <!-- El escenario del cross-slide: A (notificaciones) y B (ajustes) son dos
+             paneles lado a lado en un carril del doble de ancho que se traslada
+             —-50 % en B— mientras los dos se deslizan a la vez. Los dos paneles
+             siempre están montados (la lista de notificaciones no se desmonta y
+             es la que cuenta para la línea resumen); el que no se ve queda
+             `inert`, fuera del foco y de los lectores. Con movimiento reducido
+             el cambio es instantáneo: la transición se apaga, el transform
+             queda. El calendario del mes tapa el escenario como una ficha con
+             «Volver»; lo de abajo sigue montado. -->
+        <div class="relative min-h-0 flex-1 overflow-hidden" data-stage>
+          <CalendarSheet v-if="calendarOpen" class="absolute inset-0 z-10" @back="closeCalendar" />
 
-          <!-- A: la lista, con el alto entero que sobra y nunca menos que unas dos
-               tarjetas. Escondida con `v-show` en B: sigue montada, y es la que
-               cuenta para la línea resumen. -->
-          <NotificationArea
-            v-show="!showsSettings && !calendarOpen"
-            class="min-h-40 flex-1"
-            data-notifications
-            @summary="onSummary"
-          />
-
-          <!-- B: las notificaciones en una línea que las vuelve a abrir. Nunca
-               desaparecen. -->
-          <ListRow
-            v-if="showsSettings && !calendarOpen"
-            class="shrink-0"
-            role="button"
-            icon="preferences-desktop-notification"
-            icon-type="symbol"
-            :title="summaryLabel"
-            aria-expanded="false"
-            truncate
-            data-notification-summary
-            @click="showNotifications"
+          <div
+            :class="[
+              'flex h-full w-full transition-transform duration-200 ease-ui-out motion-reduce:transition-none',
+              showsSettings ? '-translate-x-full' : 'translate-x-0',
+            ]"
+            :inert="calendarOpen ? true : undefined"
+            data-track
           >
-            <template #trailing>
-              <ThemeIcon name="go-down" type="symbol" :size="16" alt="" />
-            </template>
-          </ListRow>
+            <!-- A: la lista, con el alto entero que sobra y nunca menos que unas
+                 dos tarjetas (`min-h-40`), la fila de interruptores redondos con
+                 «más» y el brillo. `min-h-0` + `overflow-y-auto` desplazan la
+                 lista; los controles de abajo quedan quietos. -->
+            <section
+              class="flex min-h-0 w-full shrink-0 flex-col gap-2"
+              :inert="showsSettings ? true : undefined"
+              data-panel="notifications"
+            >
+              <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto" data-scroll>
+                <NotificationArea
+                  class="min-h-40 flex-1"
+                  data-notifications
+                  @summary="onSummary"
+                />
+              </div>
 
-          <QuickSettingsPanel
-            v-if="tilesMounted"
-            v-show="showsSettings && !calendarOpen"
-            v-model:detail="detail"
-            class="flex-1"
-            :bluetooth="bluetoothInitialized"
-          />
+              <div class="shrink-0 p-2">
+                <!-- Los interruptores redondos y «más». Se parten en renglones en
+                     vez de salirse cuando el centro es angosto. En B están en los
+                     mosaicos. -->
+                <div class="flex w-full flex-wrap justify-between gap-2" data-quick-toggles>
+                  <NetworkControl />
+                  <BluetoothControl v-if="bluetoothInitialized" />
+                  <DoNotDisturbToggle />
+                  <NightLightToggle />
+                  <ThemeToggle />
+                  <ToggleControl
+                    name="go-up"
+                    type="symbol"
+                    :label="t('views.controlCenter.more')"
+                    aria-expanded="false"
+                    aria-controls="control-center-quick-settings"
+                    data-more
+                    @click="showSettings"
+                  />
+                </div>
+                <div class="flex flex-col gap-2 w-full mt-4">
+                  <!-- Un solo brillo, el del monitor principal. -->
+                  <div data-primary-brightness-box>
+                    <BrightnessControl />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- B: las notificaciones en una línea que las vuelve a abrir (nunca
+                 desaparecen) y el bloque de mosaicos; debajo, el micrófono y el
+                 brillo por monitor con el perfil de energía. Los mosaicos no
+                 existen hasta que B se ve por primera vez con el centro
+                 abierto. -->
+            <section
+              class="flex min-h-0 w-full shrink-0 flex-col gap-2"
+              :inert="showsSettings ? undefined : true"
+              data-panel="settings"
+            >
+              <div class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto" data-scroll>
+                <ListRow
+                  class="shrink-0"
+                  role="button"
+                  icon="preferences-desktop-notification"
+                  icon-type="symbol"
+                  :title="summaryLabel"
+                  aria-expanded="false"
+                  truncate
+                  data-notification-summary
+                  @click="showNotifications"
+                >
+                  <template #trailing>
+                    <ThemeIcon name="go-down" type="symbol" :size="16" alt="" />
+                  </template>
+                </ListRow>
+
+                <QuickSettingsPanel
+                  v-if="tilesMounted"
+                  v-model:detail="detail"
+                  class="flex-1"
+                  :bluetooth="bluetoothInitialized"
+                />
+              </div>
+
+              <div class="shrink-0 p-2">
+                <div class="flex flex-col gap-2 w-full mt-4">
+                  <!-- El micrófono, componente propio. -->
+                  <MicrophoneControl
+                    v-if="tilesMounted"
+                    @open-devices="openSheet('audio-input')"
+                  />
+                  <!-- Un brillo por monitor y el perfil de energía (issue 189 de
+                       vasak-desktop). -->
+                  <div v-if="tilesMounted" class="flex flex-col gap-2" data-display-power>
+                    <MonitorBrightnessList />
+                    <PowerProfileControl />
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
+
+      <!-- La barra de abajo, compartida por A y B: la música y el volumen no
+           pueden vivir en el carril que se desliza. -->
       <div class="flex shrink-0 flex-wrap w-full justify-around items-end p-2">
         <!-- La caja va afuera y no como clase del widget: por dentro es
              `h-full` —se adapta con consultas de contenedor— y una clase de
              alto puesta desde acá compite con esa y pierde. Sin una altura
-             resuelta, la carátula se estira hasta tapar el brillo y el
-             volumen.
+             resuelta, la carátula se estira hasta tapar el volumen.
 
              `v-show` y no `v-if`: el widget es quien escucha a MPRIS y avisa
              si hay algo sonando, así que tiene que seguir montado aunque no se
@@ -297,54 +369,8 @@ onBeforeUnmount(() => {
         <div v-show="musicActive" class="h-24 w-full" data-music-box>
           <MusicWidget class="w-full" @presence="musicActive = $event" />
         </div>
-        <!-- A: los interruptores redondos y «más». Se parten en renglones en
-             vez de salirse cuando el centro es angosto. En B están en los
-             mosaicos. -->
-        <div
-          v-show="!showsSettings"
-          class="flex w-full flex-wrap justify-between gap-2"
-          data-quick-toggles
-        >
-          <NetworkControl />
-          <BluetoothControl v-if="bluetoothInitialized" />
-          <DoNotDisturbToggle />
-          <NightLightToggle />
-          <ThemeToggle />
-          <ToggleControl
-            name="go-up"
-            type="symbol"
-            :label="t('views.controlCenter.more')"
-            aria-expanded="false"
-            aria-controls="control-center-quick-settings"
-            data-more
-            @click="showSettings"
-          />
-        </div>
         <div class="flex flex-col gap-2 w-full mt-4">
-          <!-- A: un solo brillo, el del monitor principal. -->
-          <div v-show="!showsSettings" data-primary-brightness-box>
-            <BrightnessControl />
-          </div>
           <VolumeControl devices @open-devices="openSheet('audio-output')" />
-          <!-- B: el micrófono, componente propio, entre el volumen y la caja de
-               brillo y energía. -->
-          <MicrophoneControl
-            v-if="tilesMounted"
-            v-show="showsSettings"
-            @open-devices="openSheet('audio-input')"
-          />
-          <!-- B: debajo del volumen, un brillo por monitor y el perfil de
-               energía (issue 189 de vasak-desktop). Como los mosaicos, no existen hasta
-               que B se ve por primera vez con el centro abierto. -->
-          <div
-            v-if="tilesMounted"
-            v-show="showsSettings"
-            class="flex flex-col gap-2"
-            data-display-power
-          >
-            <MonitorBrightnessList />
-            <PowerProfileControl />
-          </div>
         </div>
       </div>
     </main>

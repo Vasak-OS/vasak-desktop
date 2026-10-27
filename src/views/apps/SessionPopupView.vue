@@ -76,11 +76,16 @@ const descriptionText = computed(() => {
 	}
 });
 
+// El cierre va tras la animación; se guarda el timer para cancelarlo al
+// desmontar. Sin esto, en las pruebas el timer dispara `currentWindow.close()`
+// después de que se quitó el stub de Tauri y el error cae sobre otra prueba.
+let closeTimeout: ReturnType<typeof setTimeout> | null = null;
+
 const closeAfterAnimation = () => {
 	if (closing.value) return;
 	closing.value = true;
 	leaving.value = true;
-	setTimeout(() => {
+	closeTimeout = setTimeout(() => {
 		try {
 			currentWindow.close();
 		} catch {
@@ -141,6 +146,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+	if (closeTimeout !== null) clearTimeout(closeTimeout);
 	document.removeEventListener('keydown', onKeydown);
 	unlistenAction?.();
 });
