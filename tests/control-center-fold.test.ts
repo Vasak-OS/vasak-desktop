@@ -8,10 +8,10 @@
  * mosaicos y la lista de notificaciones, montados con dobles; la vista, por su
  * texto, porque montarla entera arrastra a medio escritorio.
  */
-import { beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { mount } from '@vue/test-utils';
+import { mount, type VueWrapper } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import {
 	modeOnCountChange,
@@ -21,9 +21,12 @@ import {
 } from '../src/tools/control-center-mode';
 import { availableTiles, CONTROL_CENTER_TILES } from '../src/tools/control-center-tiles';
 import { center } from './support/control-center-doubles';
+import { sharedEvents } from './support/cross-slide-doubles';
+import { loadControlCenterView } from './support/load-control-center-view';
 import { loadComponent, ROOT, useDom } from './support/mount-sfc';
 
 const DOUBLES = join(import.meta.dir, 'support', 'control-center-doubles.ts');
+const VIEW_DOUBLES = join(import.meta.dir, 'support', 'cross-slide-doubles.ts');
 const dom = useDom();
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
 
@@ -285,9 +288,31 @@ describe('la lista de notificaciones avisa cuántas hay', () => {
 
 describe('la vista', () => {
 	const VIEW = read('src/views/ControlCenterView.vue');
+	let View: any;
+	let view: VueWrapper | null = null;
+	beforeAll(async () => {
+		View = await loadControlCenterView(dom.workdir(), VIEW_DOUBLES);
+	}, 60_000);
+	afterEach(() => {
+		view?.unmount();
+		view = null;
+	});
+	const open = async () => {
+		view = mount(View, { attachTo: document.body });
+		await settle();
+		return view;
+	};
 
-	test('A: la lista con todo el alto que sobra y un mínimo de unas dos tarjetas', () => {
-		expect(VIEW).toMatch(/<NotificationArea\s+v-show="!showsSettings && !calendarOpen"\s+class="min-h-40 flex-1"/);
+	test('A: la lista con todo el alto que sobra y un mínimo de unas dos tarjetas', async () => {
+		const mounted = await open();
+		// La lista vive en el panel A y siempre está montada, también viendo B:
+		// ya no se esconde con `v-show`, el panel que no se ve queda `inert`.
+		const list = mounted.find('[data-panel="notifications"] [data-notifications]');
+		expect(list.exists()).toBe(true);
+		expect(list.classes()).toEqual(expect.arrayContaining(['min-h-40', 'flex-1']));
+		await mounted.find('[data-more]').trigger('click');
+		await settle();
+		expect(mounted.find('[data-panel="notifications"] [data-notifications]').exists()).toBe(true);
 		// La lista se desplaza sola: con muchas notificaciones el mínimo se
 		// respeta y lo de abajo no se va de la pantalla.
 		const area = read('src/components/areas/control-center/NotificationArea.vue');
@@ -306,10 +331,22 @@ describe('la vista', () => {
 		expect(header).toContain('<UserControlCenterCard');
 	});
 
-	test('B: la línea resumen reabre las notificaciones, que nunca desaparecen', () => {
-		expect(VIEW).toMatch(/<ListRow\s+v-if="showsSettings && !calendarOpen"[\s\S]*?data-notification-summary\s+@click="showNotifications"/);
-		expect(VIEW).toContain(':title="summaryLabel"');
-		expect(VIEW).toContain("mode.value = 'notifications'");
+	test('B: la línea resumen reabre las notificaciones, que nunca desaparecen', async () => {
+		const mounted = await open();
+		// La línea está siempre montada, en el panel B, y reabre A al tocarla.
+		const row = mounted.find('[data-panel="settings"] [data-notification-summary]');
+		expect(row.exists()).toBe(true);
+		expect(mounted.find('[data-panel="notifications"] [data-notification-summary]').exists()).toBe(false);
+		await mounted.find('[data-more]').trigger('click');
+		await settle();
+		expect(mounted.find('main').attributes('data-mode')).toBe('settings');
+		expect(mounted.find('[data-panel="settings"]').attributes('inert')).toBeUndefined();
+		// Las notificaciones no desaparecen: siguen montadas detrás de la línea.
+		expect(mounted.find('[data-fake-notifications]').exists()).toBe(true);
+		await mounted.find('[data-notification-summary]').trigger('click');
+		await settle();
+		expect(mounted.find('main').attributes('data-mode')).toBe('notifications');
+		expect(mounted.find('[data-panel="notifications"]').attributes('inert')).toBeUndefined();
 	});
 
 	test('«más» abre B; los interruptores se parten en renglones si no entran', () => {
@@ -317,8 +354,21 @@ describe('la vista', () => {
 		expect(VIEW).toMatch(/class="flex w-full flex-wrap justify-between gap-2"\s+data-quick-toggles/);
 	});
 
-	test('los mosaicos no se montan hasta ver B con el centro abierto', () => {
-		expect(VIEW).toMatch(/<QuickSettingsPanel\s+v-if="tilesMounted"\s+v-show="showsSettings && !calendarOpen"/);
+	test('los mosaicos no se montan hasta ver B con el centro abierto', async () => {
+		const mounted = await open();
+		const tiles = () => mounted.find('[data-panel="settings"] [data-stub-QuickSettingsPanel]').exists();
+		// Ver B con el centro todavía escondido no los monta.
+		await mounted.find('[data-more]').trigger('click');
+		await settle();
+		expect(tiles()).toBe(false);
+		await mounted.find('[data-notification-summary]').trigger('click');
+		sharedEvents.get('window-shown')?.();
+		await settle();
+		// Abierto pero en A: tampoco.
+		expect(tiles()).toBe(false);
+		await mounted.find('[data-more]').trigger('click');
+		await settle();
+		expect(tiles()).toBe(true);
 		expect(VIEW).toContain('if (settings && shown) tilesMounted.value = true;');
 		// Empieza escondido: el centro se crea al iniciar la sesión.
 		expect(VIEW).toContain('const visible = ref(false);');

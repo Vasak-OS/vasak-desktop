@@ -14,9 +14,12 @@ import { join } from 'node:path';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import { getMicrophoneIconName } from '../src/utils/volume';
+import { sharedEvents } from './support/cross-slide-doubles';
+import { loadControlCenterView } from './support/load-control-center-view';
 import { loadComponent, ROOT, useDom } from './support/mount-sfc';
 
 const DOUBLES = join(import.meta.dir, 'support', 'microphone-doubles.ts');
+const VIEW_DOUBLES = join(import.meta.dir, 'support', 'cross-slide-doubles.ts');
 const dom = useDom();
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
 
@@ -353,13 +356,28 @@ describe('el icono del micrófono', () => {
 
 describe('en la vista', () => {
 	const VIEW = read('src/views/ControlCenterView.vue');
+	let View: any;
+	beforeAll(async () => {
+		View = await loadControlCenterView(dom.workdir(), VIEW_DOUBLES);
+	}, 60_000);
 
-	test('el micrófono va en B, debajo del volumen, y no se monta hasta ver B', () => {
-		const template = VIEW.slice(VIEW.indexOf('<template>'));
-		expect(template).toMatch(/<MicrophoneControl\s+v-if="tilesMounted"\s+v-show="showsSettings"/);
-		expect(template.indexOf('<VolumeControl')).toBeLessThan(template.indexOf('<MicrophoneControl'));
-		// Y arriba de la caja de brillo por monitor y energía (vasak-desktop#189).
-		expect(template.indexOf('<MicrophoneControl')).toBeLessThan(template.indexOf('data-display-power'));
+	test('el micrófono va en B, el volumen en la barra compartida, y el micrófono no se monta hasta ver B', async () => {
+		const mounted = mount(View, { attachTo: document.body });
+		await settle();
+		const microphone = () => mounted.find('[data-panel="settings"] [data-stub-MicrophoneControl]');
+		expect(microphone().exists()).toBe(false);
+
+		sharedEvents.get('window-shown')?.();
+		await mounted.find('[data-more]').trigger('click');
+		await settle();
+		expect(microphone().exists()).toBe(true);
+		// El volumen no es del panel B: va en la barra de abajo, fuera del carril.
+		const volume = mounted.find('[data-stub-VolumeControl]').element;
+		expect(mounted.find('[data-track]').element.contains(volume)).toBe(false);
+		// Y el micrófono queda arriba de la caja de brillo por monitor y energía (vasak-desktop#189).
+		const power = mounted.find('[data-panel="settings"] [data-display-power]').element;
+		expect(microphone().element.compareDocumentPosition(power) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		mounted.unmount();
 	});
 
 	test('las dos flechas abren su ficha dentro del bloque, pasando a B', () => {

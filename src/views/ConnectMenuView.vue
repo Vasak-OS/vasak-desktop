@@ -115,10 +115,14 @@ const close = async (app: ConnectApp) => {
 	running.value = await listConnectRunning();
 };
 
+// Se guarda el timer del cierre para cancelarlo al desmontar: sin esto dispara
+// `menuWindow.hide()` después de que las pruebas quitaron el stub de Tauri.
+let closeTimeout: ReturnType<typeof setTimeout> | null = null;
+
 const closeAfterAnimation = () => {
 	if (leaving.value) return;
 	leaving.value = true;
-	setTimeout(() => {
+	closeTimeout = setTimeout(() => {
 		menuWindow.hide().catch(() => {
 			/* already gone */
 		});
@@ -167,6 +171,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	if (closeTimeout !== null) clearTimeout(closeTimeout);
 	document.removeEventListener('keydown', onKeydown);
 	for (const un of unlisteners) un();
 });

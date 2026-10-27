@@ -20,9 +20,12 @@ import {
 	monitorName,
 	primaryMonitor,
 } from '../src/tools/display-brightness';
+import { sharedEvents } from './support/cross-slide-doubles';
+import { loadControlCenterView } from './support/load-control-center-view';
 import { loadComponent, ROOT, useDom } from './support/mount-sfc';
 
 const DOUBLES = join(import.meta.dir, 'support', 'display-power-doubles.ts');
+const VIEW_DOUBLES = join(import.meta.dir, 'support', 'cross-slide-doubles.ts');
 const dom = useDom();
 const read = (path: string) => readFileSync(join(ROOT, path), 'utf8');
 
@@ -544,20 +547,49 @@ describe('el perfil de energía', () => {
 });
 
 describe('dónde van en el centro', () => {
-	const view = read('src/views/ControlCenterView.vue');
+	let View: any;
+	let center: VueWrapper | null = null;
+	beforeAll(async () => {
+		View = await loadControlCenterView(dom.workdir(), VIEW_DOUBLES);
+	}, 60_000);
+	afterEach(() => {
+		center?.unmount();
+		center = null;
+	});
+	const open = async () => {
+		center = mount(View, { attachTo: document.body });
+		await settle();
+		return center;
+	};
 
-	test('en B, debajo del volumen, y sólo después de ver B', () => {
-		const box = view.slice(view.indexOf('data-display-power') - 200);
-		expect(view.indexOf('<VolumeControl')).toBeLessThan(view.indexOf('<MonitorBrightnessList'));
-		expect(view.indexOf('<MonitorBrightnessList')).toBeLessThan(view.indexOf('<PowerProfileControl'));
-		expect(box).toContain('v-if="tilesMounted"');
-		expect(box).toContain('v-show="showsSettings"');
+	test('en B, con el brillo por monitor antes que el perfil, y sólo después de ver B', async () => {
+		const mounted = await open();
+		const box = () => mounted.find('[data-panel="settings"] [data-display-power]');
+		expect(box().exists()).toBe(false);
+
+		sharedEvents.get('window-shown')?.();
+		await mounted.find('[data-more]').trigger('click');
+		await settle();
+		expect(box().exists()).toBe(true);
+		const brightness = box().find('[data-stub-MonitorBrightnessList]').element;
+		const profile = box().find('[data-stub-PowerProfileControl]').element;
+		expect(brightness.compareDocumentPosition(profile) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		// El volumen ya no está en el panel B: pasó a la barra compartida de abajo.
+		expect(mounted.find('[data-panel="settings"] [data-stub-VolumeControl]').exists()).toBe(false);
+		expect(mounted.find('[data-stub-VolumeControl]').exists()).toBe(true);
 	});
 
-	test('en A, un solo brillo que se esconde en B', () => {
-		const a = view.slice(view.indexOf('data-primary-brightness-box') - 60, view.indexOf('<VolumeControl'));
-		expect(a).toContain('v-show="!showsSettings"');
-		expect(a).toContain('<BrightnessControl');
+	test('en A, un solo brillo, el del monitor principal; en B no hay otro', async () => {
+		const mounted = await open();
+		const primary = mounted.find('[data-panel="notifications"] [data-primary-brightness-box]');
+		expect(primary.exists()).toBe(true);
+		expect(primary.find('[data-stub-BrightnessControl]').exists()).toBe(true);
+		expect(mounted.findAll('[data-primary-brightness-box]')).toHaveLength(1);
+		expect(mounted.find('[data-panel="settings"] [data-stub-BrightnessControl]').exists()).toBe(false);
+		// En B el panel de A queda inert: el brillo primario no se enfoca ni se lee.
+		await mounted.find('[data-more]').trigger('click');
+		await settle();
+		expect(mounted.find('[data-panel="notifications"]').attributes('inert')).toBeDefined();
 	});
 });
 
