@@ -3,7 +3,7 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { MarqueeText, PanelPill, SpinningCover, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
-import { toggleApplet, toggleWindow } from '@/services/window.service';
+import { presentWindow, toggleApplet } from '@/services/window.service';
 import { useActivityProgress } from '@/tools/composables/useActivityProgress';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
@@ -44,8 +44,14 @@ const { musicInfo, imgSrc, position, progress, onImgError, initIcons, initMusicI
 
 const { topProgress } = useActivityProgress();
 
-/** Mientras algo suena, la cápsula es el reproductor; si no, la tarea en curso. */
-const musicActive = computed(() => Boolean(musicInfo.value.title));
+/**
+ * Mientras algo suena, la cápsula es el reproductor; si no, la tarea en curso.
+ * Un stream que reporta `Playing` sin título igual es música: si no, la cápsula
+ * le robaría la píldora al reproductor que está sonando.
+ */
+const musicActive = computed(
+	() => Boolean(musicInfo.value.title) || playbackStateOf(musicInfo.value.status) === 'playing'
+);
 const showingProgress = computed(() => !musicActive.value && topProgress.value !== null);
 
 /** El avance de la tarea en curso, entero de 0 a 100. */
@@ -129,7 +135,7 @@ async function onActivate(): Promise<void> {
 		const target = topProgress.value;
 		if (!target) return;
 		try {
-			await toggleWindow({ windowId: target.id });
+			await presentWindow({ windowId: target.id });
 		} catch (error) {
 			logError('[TrayMusicControl] no se pudo ir a la aplicación:', error);
 		}

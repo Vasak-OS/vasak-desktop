@@ -118,6 +118,10 @@ export const toggleWindow = async (args: unknown) => {
 	record('toggleWindow')(args);
 };
 
+export const presentWindow = async (args: unknown) => {
+	record('presentWindow')(args);
+};
+
 export function useEqualizer() {
 	return {
 		state: music.equalizer,

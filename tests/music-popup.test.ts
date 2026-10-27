@@ -180,7 +180,8 @@ describe('la píldora del panel', () => {
 describe('la cápsula de actividad', () => {
 	const copy = { id: 'win-7', title: 'Copiando fotos', icon: 'folder-copy', progress: 0.456 };
 	const silence = () => {
-		music.info.value = { ...music.info.value, title: '', artist: '', album: '', length: 0 };
+		// Sin música es sin título y sin reproducción: un `Playing` sin título sigue siendo música.
+		music.info.value = { ...music.info.value, title: '', artist: '', album: '', length: 0, status: 'Stopped' };
 	};
 	const callsOf = (name: string) => music.calls.filter((entry) => entry.name === name);
 
@@ -202,10 +203,50 @@ describe('la cápsula de actividad', () => {
 		await view.find('button').trigger('click');
 		await settle();
 
-		expect(callsOf('toggleWindow')).toEqual([{ name: 'toggleWindow', args: [{ windowId: 'win-7' }] }]);
+		expect(callsOf('presentWindow')).toEqual([{ name: 'presentWindow', args: [{ windowId: 'win-7' }] }]);
 		expect(callsOf('toggleApplet')).toHaveLength(0);
 		view.unmount();
 	});
+
+	// En Wayland `toggle_window` minimiza una ventana ya enfocada: tocar la cápsula tiene que
+	// mostrarla siempre, nunca esconderla.
+	test('tocarla nunca alterna la ventana: no la minimiza si ya está enfocada', async () => {
+		silence();
+		music.activity.value = copy;
+		const view = await mountPill();
+		await view.find('button').trigger('click');
+		await settle();
+
+		expect(callsOf('toggleWindow')).toHaveLength(0);
+		view.unmount();
+	});
+
+	test('una reproducción sin título sigue siendo música y la cápsula no le roba la píldora', async () => {
+		music.info.value = { ...music.info.value, title: '', artist: '', album: '', status: 'Playing' };
+		music.activity.value = copy;
+		const view = await mountPill();
+
+		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('music');
+		expect(view.find('[data-spinning-cover]').exists()).toBe(true);
+
+		await view.find('button').trigger('click');
+		await settle();
+		expect(callsOf('toggleApplet')).toHaveLength(1);
+		expect(callsOf('presentWindow')).toHaveLength(0);
+		view.unmount();
+	});
+
+	for (const status of ['Paused', 'Stopped']) {
+		test(`sin título y en «${status}», con una tarea en curso, muestra la tarea`, async () => {
+			music.info.value = { ...music.info.value, title: '', artist: '', album: '', status };
+			music.activity.value = copy;
+			const view = await mountPill();
+
+			expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('progress');
+			expect(view.find('[data-music-title]').text()).toBe('Copiando fotos');
+			view.unmount();
+		});
+	}
 
 	test('con música y una tarea a la vez, manda la música y tocarla abre el applet', async () => {
 		music.activity.value = copy;
