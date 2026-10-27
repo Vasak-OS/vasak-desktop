@@ -201,6 +201,7 @@ pub fn run() {
             weather_store,
             get_windows,
             toggle_window,
+            present_window,
             open_app,
             open_settings,
             open_settings_section,

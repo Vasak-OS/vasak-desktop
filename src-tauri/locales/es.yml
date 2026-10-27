@@ -535,6 +535,7 @@ components:
     progress: Avance de la pista
     openPlayer: Abrir el reproductor
     nothingPlaying: No hay nada sonando
+    goToApp: Ir a la aplicación
   VolumeControl:
     volume: Volumen
     mute: Silenciar

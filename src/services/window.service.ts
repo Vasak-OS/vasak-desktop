@@ -46,6 +46,16 @@ export const toggleWindow = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('toggle_window', args);
 };
 
+/**
+ * Trae la ventana al frente sin minimizarla nunca: restaura la que está
+ * minimizada y enfoca la que ya se ve. Es lo que quiere «ir a la aplicación»
+ * desde la cápsula de actividad, donde `toggleWindow` escondería una ventana ya
+ * enfocada.
+ */
+export const presentWindow = <T = any>(args?: any): Promise<T> => {
+	return invoke<T>('present_window', args);
+};
+
 export const toggleControlCenter = <T = any>(args?: any): Promise<T> => {
 	return invoke<T>('toggle_control_center', args);
 };

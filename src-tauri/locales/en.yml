@@ -535,6 +535,7 @@ components:
     progress: Track progress
     openPlayer: Open the player
     nothingPlaying: Nothing is playing
+    goToApp: Go to the app
   VolumeControl:
     volume: Volume
     mute: Mute
