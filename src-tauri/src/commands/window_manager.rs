@@ -1,6 +1,6 @@
-use crate::window_manager::WindowInfo;
+use crate::logger::{log_debug, log_error, log_info};
 use crate::structs::WMState;
-use crate::logger::{log_info, log_error, log_debug};
+use crate::window_manager::WindowInfo;
 use std::time::Duration;
 
 /// Maximum age for cached window state to be considered valid on lock timeout.
@@ -52,7 +52,10 @@ const TOGGLE_LOCK_TIMEOUT: Duration = Duration::from_millis(100);
 const LOCK_RETRY_INTERVAL: Duration = Duration::from_millis(10);
 
 #[tauri::command]
-pub async fn toggle_window(window_id: String, state: tauri::State<'_, WMState>) -> Result<(), String> {
+pub async fn toggle_window(
+    window_id: String,
+    state: tauri::State<'_, WMState>,
+) -> Result<(), String> {
     log_info(&format!("Alternando ventana: {}", window_id));
 
     // Try non-blocking read first (Requirement 13.4, 13.6)
@@ -83,6 +86,57 @@ pub async fn toggle_window(window_id: String, state: tauri::State<'_, WMState>) 
             ));
             return Err(format!(
                 "Window manager busy, could not toggle window {} within {:?}",
+                window_id, TOGGLE_LOCK_TIMEOUT
+            ));
+        }
+    }
+}
+
+// Traer al frente, nunca minimizar: para «ir a la aplicación» desde la cápsula de
+// actividad. `toggle_window` escondería una ventana ya enfocada (en Wayland la
+// minimiza), y acá el clic siempre tiene que mostrarla. Misma espera del lock que
+// `toggle_window`, cambiando sólo la operación.
+#[tauri::command]
+pub async fn present_window(
+    window_id: String,
+    state: tauri::State<'_, WMState>,
+) -> Result<(), String> {
+    log_info(&format!("Trayendo al frente la ventana: {}", window_id));
+
+    // Try non-blocking read first (Requirement 13.4, 13.6)
+    if let Ok(wm) = state.window_manager.try_read() {
+        return wm.present_window(&window_id).map_err(|e| {
+            log_error(&format!(
+                "Error al traer al frente la ventana {}: {}",
+                window_id, e
+            ));
+            e.to_string()
+        });
+    }
+
+    // Lock is contended — retry with short sleeps up to 100ms (Requirement 13.6)
+    log_debug("present_window: lock contended, retrying with timeout");
+    let start = std::time::Instant::now();
+    loop {
+        tokio::time::sleep(LOCK_RETRY_INTERVAL).await;
+
+        if let Ok(wm) = state.window_manager.try_read() {
+            return wm.present_window(&window_id).map_err(|e| {
+                log_error(&format!(
+                    "Error al traer al frente la ventana {}: {}",
+                    window_id, e
+                ));
+                e.to_string()
+            });
+        }
+
+        if start.elapsed() >= TOGGLE_LOCK_TIMEOUT {
+            log_error(&format!(
+                "present_window: lock timeout after {:?} for window {}",
+                TOGGLE_LOCK_TIMEOUT, window_id
+            ));
+            return Err(format!(
+                "Window manager busy, could not present window {} within {:?}",
                 window_id, TOGGLE_LOCK_TIMEOUT
             ));
         }

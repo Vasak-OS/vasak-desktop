@@ -1,41 +1,38 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { MarqueeText, PanelPill, SpinningCover } from '@vasakgroup/vue-libvasak';
+import { MarqueeText, PanelPill, SpinningCover, ThemeIcon } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
-import { toggleApplet } from '@/services/window.service';
+import { presentWindow, toggleApplet } from '@/services/window.service';
+import { useActivityProgress } from '@/tools/composables/useActivityProgress';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
 import { usePanelDensity } from '@/tools/composables/usePanelDensity';
 import { showsNames } from '@/tools/panel-density';
+import { progressPercent } from '@/tools/tray-item';
 import { logError } from '@/utils/logger';
 import { formatDuration, playbackStateOf } from '@/utils/playback';
 
 /**
- * El control de música del panel: un indicador que abre el reproductor.
+ * La cápsula de actividad del panel: un indicador que muestra lo que está
+ * pasando ahora.
  *
- * La píldora entera es un botón —la portada que gira con su aro de avance y el
- * título corto al lado— y tocarla despliega el reproductor anclado debajo
- * (`MusicAppletView`, el applet `music` de `APPLETS`), con el mismo mecanismo
- * que los demás applets del panel (#134). Los comandos —anterior, reproducir,
- * siguiente, la barra, la salida— viven **en el reproductor**, no acá: hasta
- * 1.23 aparecían en el panel al pasar el puntero, y lo único que abría el
- * reproductor era la portada de 22 píxeles (vasak-desktop#131).
+ * Nació como el control de música (vasak-desktop#131, #261) y ése sigue siendo su
+ * caso principal: la portada que gira con su aro de avance y el título corto, y
+ * tocarla despliega el reproductor anclado (`MusicAppletView`, el applet `music`).
+ * Cuando no suena nada, la misma píldora pasa a mostrar la aplicación que tiene
+ * una tarea en curso —una copia, una descarga, una exportación, lo que publica por
+ * `LauncherEntry` (vasak-desktop#281)—: su icono, su título y el porcentaje, con la
+ * misma forma. Tocarla ahí trae esa ventana al frente.
  *
- * Con el panel a un costado no hay lugar para el título: queda la portada.
+ * La música manda: mientras algo suena, eso es lo que se ve. El reproductor y sus
+ * comandos siguen viviendo en el applet, no acá. El toggle del panel es el mismo
+ * (`panel.music`): apaga la cápsula entera.
  *
- * **Ancho máximo y título deslizante** (vasak-desktop#261): la píldora no pasa
- * de lo que miden unos cinco iconos del panel (`max-w-44`: cinco botones de
- * 32 px con 4 de separación), para que no se coma la barra con un título
- * largo. Si el título no entra en ese ancho se
- * desliza solo (`MarqueeText` de la librería: mide con `ResizeObserver`, que en
- * WebKitGTK sí avisa, y se apaga con `prefers-reduced-motion`) en vez de
- * cortarse con puntos suspensivos; el título entero sigue en el globo.
- *
- * En el panel en píldoras (vasak-desktop#151) es una `PanelPill` como las
- * demás: la portada mini, el título cortado y, chico debajo, por dónde va
- * —«01:42 / 04:19»—, como en el video de referencia. Sigue sin comandos.
+ * **Ancho máximo y título deslizante** (vasak-desktop#261): la píldora no pasa de
+ * lo que miden unos cinco iconos del panel (`max-w-44`), y un título que no entra
+ * se desliza (`MarqueeText`) en vez de cortarse. El título entero sigue en el globo.
  */
 
 const { t } = useI18n();
@@ -45,10 +42,31 @@ const density = usePanelDensity();
 const { musicInfo, imgSrc, position, progress, onImgError, initIcons, initMusicInfo } =
 	useMusicPlayer();
 
+const { topProgress } = useActivityProgress();
+
 /**
- * Lo que dice el globo: qué suena, de quién, de qué disco y por dónde va.
+ * Mientras algo suena, la cápsula es el reproductor; si no, la tarea en curso.
+ * Un stream que reporta `Playing` sin título igual es música: si no, la cápsula
+ * le robaría la píldora al reproductor que está sonando.
  */
-const summary = computed(() => {
+const musicActive = computed(
+	() => Boolean(musicInfo.value.title) || playbackStateOf(musicInfo.value.status) === 'playing'
+);
+const showingProgress = computed(() => !musicActive.value && topProgress.value !== null);
+
+/** El avance de la tarea en curso, entero de 0 a 100. */
+const pct = computed(() => (topProgress.value ? progressPercent(topProgress.value.progress) : 0));
+
+/** El título que se muestra: la pista, o la aplicación que trabaja. */
+const currentTitle = computed(() =>
+	showingProgress.value ? (topProgress.value?.title ?? '') : musicInfo.value.title
+);
+
+/**
+ * Lo que dice el globo del reproductor: qué suena, de quién, de qué disco y por
+ * dónde va.
+ */
+const musicSummary = computed(() => {
 	const info = musicInfo.value;
 	if (!info.title) return t('components.TrayMusicControl.nothingPlaying');
 
@@ -61,8 +79,24 @@ const summary = computed(() => {
 	return lines.join('\n');
 });
 
-/** El nombre del botón: qué hace y qué suena, para quien no ve la portada. */
+/** El globo de la tarea en curso: qué aplicación, y cuánto lleva. */
+const progressSummary = computed(() => {
+	const target = topProgress.value;
+	if (!target) return '';
+	return `${target.title}\n${pct.value} %`;
+});
+
+const summary = computed(() =>
+	showingProgress.value ? progressSummary.value : musicSummary.value
+);
+
+/** El nombre del botón: qué hace y sobre qué, para quien no ve el icono. */
 const accessibleName = computed(() => {
+	if (showingProgress.value) {
+		const target = topProgress.value;
+		if (!target) return '';
+		return `${t('components.TrayMusicControl.goToApp')}: ${target.title} ${pct.value} %`;
+	}
 	const open = t('components.TrayMusicControl.openPlayer');
 	const info = musicInfo.value;
 	if (!info.title) return open;
@@ -72,27 +106,41 @@ const accessibleName = computed(() => {
 /** Si suena, está en pausa o no hay nada: el disco gira, se congela o se queda quieto. */
 const state = computed(() => playbackStateOf(musicInfo.value.status));
 
-// En un panel angosto queda la portada sola: el título entero sigue en el globo.
+// En un panel angosto queda el icono solo: el título entero sigue en el globo.
 const showTitle = computed(
-	() => !vertical.value && showsNames(density.value) && Boolean(musicInfo.value.title)
+	() => !vertical.value && showsNames(density.value) && Boolean(currentTitle.value)
 );
 
 /**
- * «01:42 / 04:19», con los minutos en dos cifras como en el video de
- * referencia; con horas queda como viene («1:02:03»). Sin largo conocido (una
- * radio en vivo), nada.
+ * La sub-línea: «01:42 / 04:19» para la música —con los minutos en dos cifras—,
+ * o «45 %» para la tarea en curso. Sin largo conocido (una radio en vivo), nada.
  */
 const clock = (micros: number) => formatDuration(micros).padStart(5, '0');
 const timing = computed(() => {
+	if (!showTitle.value) return '';
+	if (showingProgress.value) return `${pct.value} %`;
 	const info = musicInfo.value;
-	if (!showTitle.value || info.length <= 0) return '';
+	if (info.length <= 0) return '';
 	return `${clock(position.value)} / ${clock(info.length)}`;
 });
 
 const opener = ref<unknown>(null);
 const { isOpen } = useOpenApplet('music');
 
-async function openPlayer(): Promise<void> {
+/** La tarea en curso no tiene applet: la píldora no queda realzada por ella. */
+const expanded = computed(() => (showingProgress.value ? false : isOpen.value));
+
+async function onActivate(): Promise<void> {
+	if (showingProgress.value) {
+		const target = topProgress.value;
+		if (!target) return;
+		try {
+			await presentWindow({ windowId: target.id });
+		} catch (error) {
+			logError('[TrayMusicControl] no se pudo ir a la aplicación:', error);
+		}
+		return;
+	}
 	try {
 		await toggleApplet('music', opener.value);
 	} catch (error) {
@@ -108,13 +156,12 @@ onMounted(async () => {
 
 <template>
   <!-- La píldora es un botón entero: se apunta entera, se realza mientras el
-       reproductor está abierto y es el ancla de dónde se despliega. Adentro,
-       la portada (`SpinningCover`, que se congela en pausa en vez de volver a
-       cero y se queda quieta con menos movimiento) con el aro de avance, el
-       título —que se desliza si no entra— y la posición. -->
+       reproductor está abierto y es el ancla de dónde se despliega. Adentro, la
+       portada que gira (música) o el icono de la aplicación que trabaja
+       (progreso), el título —que se desliza si no entra— y la sub-línea. -->
   <PanelPill
     ref="opener"
-    :expanded="isOpen"
+    :expanded="expanded"
     :title="summary"
     :accessible-label="accessibleName"
     :orientation="vertical ? 'vertical' : 'horizontal'"
@@ -123,10 +170,12 @@ onMounted(async () => {
     class="max-w-44"
     :class="showTitle ? 'px-3' : ''"
     data-music-pill
-    @click="openPlayer"
+    :data-activity-mode="showingProgress ? 'progress' : 'music'"
+    @click="onActivate"
   >
     <template #leading>
       <SpinningCover
+        v-if="!showingProgress"
         class="size-6 shrink-0"
         :src="imgSrc"
         :alt="musicInfo.title"
@@ -135,14 +184,23 @@ onMounted(async () => {
         :progress-label="t('components.TrayMusicControl.progress')"
         @error="onImgError"
       />
+      <!-- La tarea en curso: el icono de la aplicación, ya resuelto por el
+           backend. El porcentaje va en la sub-línea, como el tiempo de la pista. -->
+      <ThemeIcon
+        v-else
+        class="shrink-0"
+        :name="topProgress?.icon ?? ''"
+        :size="24"
+        :alt="currentTitle"
+      />
     </template>
-    <!-- El título va en la ranura y no en `label`: el de la píldora se corta
-         con puntos suspensivos, y acá tiene que deslizarse. Con `flush` la
-         píldora no pone relleno propio y se lo damos con `px-3`. -->
+    <!-- El título va en la ranura y no en `label`: el de la píldora se corta con
+         puntos suspensivos, y acá tiene que deslizarse. Con `flush` la píldora no
+         pone relleno propio y se lo damos con `px-3`. -->
     <span v-if="showTitle" class="flex min-w-0 flex-col items-start gap-0.5" data-music-text>
       <MarqueeText
         class="max-w-full text-label-s leading-none font-medium"
-        :text="musicInfo.title"
+        :text="currentTitle"
         data-music-title
       />
       <span

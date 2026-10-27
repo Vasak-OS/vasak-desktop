@@ -83,4 +83,4 @@ pub use wallpaper_picker::{
 pub use weather::{
     weather_cached, weather_claim, weather_place, weather_release, weather_store, WeatherCache,
 };
-pub use window_manager::{get_windows, toggle_window};
+pub use window_manager::{get_windows, present_window, toggle_window};

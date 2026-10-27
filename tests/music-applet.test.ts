@@ -35,7 +35,7 @@ describe('el reproductor desplegable', () => {
 		// Y el control se realza mientras está abierto, como los demás: la
 		// píldora lo dice con `expanded` (vasak-desktop#151).
 		expect(CONTROL).toContain("useOpenApplet('music')");
-		expect(CONTROL).toContain(':expanded="isOpen"');
+		expect(CONTROL).toContain(':expanded="expanded"');
 	});
 
 	test('es un applet anclado, con su ventana en la capability', () => {
