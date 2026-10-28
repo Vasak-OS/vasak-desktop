@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.80.3",
+	"version": "1.80.4",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
@@ -32,7 +32,7 @@
 		"@vasakgroup/plugin-vicons": "^2.2.2",
 		"@vasakgroup/plugin-vsk-contextual-menu": "^2.0.3",
 		"@vasakgroup/plugin-vsk-journal": "^2.0.1",
-		"@vasakgroup/plugin-vsk-store": "0.3.0",
+		"@vasakgroup/plugin-vsk-store": "0.4.0",
 		"@vasakgroup/tauri-plugin-i18n": "^2.3.1",
 		"@vasakgroup/vue-libvasak": "^2.21.1",
 		"pinia": "^3.0.4",
