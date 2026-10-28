@@ -5248,9 +5248,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-vsk-store"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15c640c1829575c8f6ce60f9705e05493cfb3f11e348f598c048f4b643a221ef"
+checksum = "6909982052fbeb1961f7c5982bb0f994d410fd5a4b165ec9de98fa2e26cc8bf6"
 dependencies = [
  "futures-util",
  "serde",
@@ -5909,7 +5909,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "vasak-desktop"
-version = "1.80.1"
+version = "1.80.2"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
