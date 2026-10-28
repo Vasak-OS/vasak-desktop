@@ -328,6 +328,39 @@ describe('el centro, con el calendario', () => {
 		center.unmount();
 	});
 
+	test('con el calendario abierto el carril deja de pintarse, sigue montado, y vuelve con «Volver»', async () => {
+		const center = mount(View, { attachTo: document.body });
+		await settle();
+		const track = () => center.find('[data-track]');
+		const notifications = () => center.find('[data-fake-notifications]').element as HTMLElement;
+		const mounted = notifications();
+		expect(track().classes()).not.toContain('invisible');
+
+		await center.find('[data-user-date]').trigger('click');
+		await settle();
+		// `invisible`: la ficha es translúcida y lo de abajo no debe transparentarse.
+		expect(track().classes()).toContain('invisible');
+		expect(track().attributes('inert')).toBeDefined();
+		expect(notifications() === mounted).toBe(true);
+
+		await center.find('[data-calendar-back]').trigger('click');
+		await settle();
+		expect(track().classes()).not.toContain('invisible');
+		expect(track().attributes('inert')).toBeUndefined();
+		expect(notifications() === mounted).toBe(true);
+		center.unmount();
+	});
+
+	test('el calendario entra y sale con el deslizamiento de la casa, no de golpe', () => {
+		const source = read('src/views/ControlCenterView.vue');
+		const template = source.slice(source.indexOf('<template>'));
+		expect(source).toMatch(/import\s*\{[^}]*\bSlideTransition\b[^}]*\}\s*from\s*'@vasakgroup\/vue-libvasak'/);
+		// `SlideTransition` rodea a la ficha: la ficha queda entre su apertura y su cierre.
+		expect(template).toMatch(/<SlideTransition\b[^>]*>\s*<CalendarSheet\b[\s\S]*?<\/SlideTransition>/);
+		// Sin una transición propia aparte.
+		expect(template).not.toMatch(/<Transition\b/);
+	});
+
 	test('al volver a abrir el centro, el calendario está cerrado', async () => {
 		const center = mount(View, { attachTo: document.body });
 		await settle();
