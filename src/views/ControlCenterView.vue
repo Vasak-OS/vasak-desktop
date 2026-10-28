@@ -17,7 +17,13 @@
  */
 import { isBluetoothPluginInitialized } from '@vasakgroup/plugin-bluetooth-manager';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { ListRow, RevealTransition, ThemeIcon, ToggleControl } from '@vasakgroup/vue-libvasak';
+import {
+	ListRow,
+	RevealTransition,
+	SlideTransition,
+	ThemeIcon,
+	ToggleControl,
+} from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, onBeforeUnmount, onMounted, type Ref, ref, watch } from 'vue';
 import CalendarSheet from '@/components/areas/control-center/CalendarSheet.vue';
 import NotificationArea from '@/components/areas/control-center/NotificationArea.vue';
@@ -241,15 +247,29 @@ onBeforeUnmount(() => {
              es la que cuenta para la línea resumen); el que no se ve queda
              `inert`, fuera del foco y de los lectores. Con movimiento reducido
              el cambio es instantáneo: la transición se apaga, el transform
-             queda. El calendario del mes tapa el escenario como una ficha con
-             «Volver»; lo de abajo sigue montado. -->
+             queda. El calendario del mes entra como una página aparte que
+             reemplaza el escenario (ver abajo); lo de abajo sigue montado. -->
         <div class="relative min-h-0 flex-1 overflow-hidden" data-stage>
-          <CalendarSheet v-if="calendarOpen" class="absolute inset-0 z-10" @back="closeCalendar" />
+          <!-- El calendario del mes es una página más del centro: entra y sale
+               con el deslizamiento de la casa (`SlideTransition`, §5.5), no
+               apareciendo de golpe encima. Mientras se ve, el carril de abajo
+               queda `invisible` además de `inert` —sigue montado, así las
+               notificaciones no se vuelven a pedir, pero no se transparenta
+               debajo del mes—, de modo que la página no se superpone con lo que
+               había. -->
+          <SlideTransition direction="right">
+            <CalendarSheet
+              v-if="calendarOpen"
+              class="absolute inset-0 z-10 overflow-y-auto"
+              @back="closeCalendar"
+            />
+          </SlideTransition>
 
           <div
             :class="[
               'flex h-full w-full transition-transform duration-200 ease-ui-out motion-reduce:transition-none',
               showsSettings ? '-translate-x-full' : 'translate-x-0',
+              calendarOpen ? 'invisible' : '',
             ]"
             :inert="calendarOpen ? true : undefined"
             data-track
