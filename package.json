@@ -34,7 +34,7 @@
 		"@vasakgroup/plugin-vsk-journal": "^2.0.1",
 		"@vasakgroup/plugin-vsk-store": "0.3.0",
 		"@vasakgroup/tauri-plugin-i18n": "^2.3.1",
-		"@vasakgroup/vue-libvasak": "^2.21.0",
+		"@vasakgroup/vue-libvasak": "^2.21.1",
 		"pinia": "^3.0.4",
 		"vue": "^3.5.44",
 		"vue-router": "^5.4.0"
