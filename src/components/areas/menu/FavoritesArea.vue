@@ -58,7 +58,9 @@ const onContextMenu = (event: MouseEvent) => {
       class="min-w-0 flex-col items-center gap-1 text-center [&>span]:w-full"
       @select="launch(app)"
     >
-      <ThemeIcon :name="app.icon" :size="48" alt="" />
+      <!-- `mx-auto`: el icono es un `<img>` (bloque), y `text-center` sólo centra
+           el nombre; sin esto el icono queda pegado a la izquierda. -->
+      <ThemeIcon :name="app.icon" :size="48" alt="" class="mx-auto" />
       <MarqueeText :text="app.name" class="text-label-xs text-tx-main" />
     </DropdownMenuItem>
   </div>
