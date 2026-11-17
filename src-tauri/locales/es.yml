@@ -536,6 +536,8 @@ components:
     openPlayer: Abrir el reproductor
     nothingPlaying: No hay nada sonando
     goToApp: Ir a la aplicación
+    activityGroup: "Actividad, {0} en curso"
+    moreActivities: "{0} actividades más"
   VolumeControl:
     volume: Volumen
     mute: Silenciar
