@@ -1,7 +1,13 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import { MarqueeText, PanelPill, SpinningCover, ThemeIcon } from '@vasakgroup/vue-libvasak';
+import {
+	ActionButton,
+	MarqueeText,
+	PanelPill,
+	SpinningCover,
+	ThemeIcon,
+} from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import { presentWindow, toggleApplet } from '@/services/window.service';
 import {
@@ -32,9 +38,12 @@ import { formatDuration, playbackStateOf } from '@/utils/playback';
  * música, o sólo una tarea— la píldora es ésa, con su portada o icono, el título
  * que se desliza y la sub-línea. Cuando hay dos o más conviven como una fila de
  * iconos: la música primero y después las tareas por avance, cada una tocable
- * —la música abre el reproductor, la tarea trae su ventana al frente—. La fila no
- * pasa de cuatro ranuras: con más, se muestran tres y un `+N` que dice cuántas
- * quedan. El toggle del panel es el mismo (`panel.music`): apaga la cápsula entera.
+ * —la música abre el reproductor, la tarea trae su ventana al frente—, cada una un
+ * `ActionButton` de sólo icono. La fila no pasa de cuatro ranuras: con más, se
+ * muestran tres y un `+N` que dice cuántas quedan. En la fila cada actividad es su
+ * icono —el del reproductor o el de la app—; el avance exacto queda en el globo y en
+ * la vista de una sola. El toggle del panel es el mismo (`panel.music`): apaga la
+ * cápsula entera.
  *
  * **Ancho máximo y título deslizante** (vasak-desktop#261): con una sola actividad
  * la píldora no pasa de lo que miden unos cinco iconos del panel (`max-w-44`), y un
@@ -88,6 +97,7 @@ const activities = computed<ActivityEntry[]>(() => {
 			kind: 'music',
 			title: musicInfo.value.title,
 			progress: musicRing.value,
+			icon: musicInfo.value.desktopEntry || 'applications-multimedia',
 		});
 	}
 	for (const app of progressApps.value) {
@@ -320,53 +330,30 @@ onMounted(async () => {
       >{{ timing }}</span>
     </span>
 
-    <!-- Dos o más: la fila de iconos. La música con su portada y su aro; cada
-         tarea con su icono del tema y el mismo aro de avance. El `+N` cierra la
-         fila cuando hay más de las que entran. -->
+    <!-- Dos o más: la fila de iconos. Cada actividad es un `ActionButton` de sólo
+         icono —el del reproductor o el de la app—; los botones de la fila son los
+         de la librería (no uno a mano) y por eso la píldora deja de serlo. El `+N`
+         cierra la fila cuando hay más de las que entran. -->
     <div
       v-if="multi"
       class="flex items-center gap-1"
       :class="vertical ? 'flex-col' : ''"
       data-activity-row
     >
-      <template v-for="entry in shownActivities" :key="entry.key">
-        <SpinningCover
-          v-if="entry.kind === 'music'"
-          class="size-7 shrink-0"
-          :src="imgSrc"
-          :alt="musicInfo.title"
-          :state="state"
-          :progress="musicRing"
-          :progress-label="t('components.TrayMusicControl.progress')"
-          interactive
-          :label="entryName(entry)"
-          :title="entryTitle(entry)"
-          data-activity-icon
-          data-activity-kind="music"
-          @click="onActivityClick(entry)"
-          @error="onImgError"
-        />
-        <button
-          v-else
-          type="button"
-          class="relative grid size-7 shrink-0 place-items-center rounded-corner-full transition-colors duration-200 ease-ui hover:bg-ui-hover active:bg-ui-pressed"
-          :title="entryTitle(entry)"
-          :aria-label="entryName(entry)"
-          data-activity-icon
-          data-activity-kind="task"
-          @click="onActivityClick(entry)"
-        >
-          <!-- El aro de avance, el mismo de `SpinningCover`/`ProgressRing`: un
-               degradado cónico del primario recortado en anillo con una máscara.
-               Los colores salen del esquema; sin SVG propio. -->
-          <span
-            aria-hidden="true"
-            class="absolute inset-0 rounded-corner-full bg-[conic-gradient(var(--use-primary)_var(--ring-value),color-mix(in_srgb,var(--use-text-main)_16%,transparent)_0)] [-webkit-mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),currentColor_calc(100%_-_3.5px))] [mask:radial-gradient(farthest-side,transparent_calc(100%_-_4px),currentColor_calc(100%_-_3.5px))]"
-            :style="{ '--ring-value': `${Math.round(entry.progress ?? 0)}%` }"
-          />
-          <ThemeIcon class="relative" :name="entry.icon ?? ''" :size="18" :alt="entry.title" />
-        </button>
-      </template>
+      <ActionButton
+        v-for="entry in shownActivities"
+        :key="entry.key"
+        variant="ghost"
+        size="sm"
+        label=""
+        :icon="entry.icon ?? ''"
+        icon-type="icon"
+        :icon-alt="entryName(entry)"
+        :title="entryTitle(entry)"
+        data-activity-icon
+        :data-activity-kind="entry.kind"
+        @click="onActivityClick(entry)"
+      />
 
       <!-- Las que no entran: un contador, con el globo que dice cuántas. -->
       <span
