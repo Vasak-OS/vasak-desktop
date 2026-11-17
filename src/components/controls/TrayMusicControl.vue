@@ -34,7 +34,7 @@ import { formatDuration, playbackStateOf } from '@/utils/playback';
  * descarga, una exportación, lo que publica por `LauncherEntry`
  * (vasak-desktop#281)—: su icono con su aro y su porcentaje.
  *
- * **Una o varias** (vasak-desktop#295): mientras hay una sola actividad —sólo la
+ * **Una o varias**: mientras hay una sola actividad —sólo la
  * música, o sólo una tarea— la píldora es ésa, con su portada o icono, el título
  * que se desliza y la sub-línea. Cuando hay dos o más conviven como una fila de
  * iconos: la música primero y después las tareas por avance, cada una tocable
