@@ -2,7 +2,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
-	ActionButton,
+	ActivityIcon,
 	MarqueeText,
 	PanelPill,
 	SpinningCover,
@@ -39,11 +39,9 @@ import { formatDuration, playbackStateOf } from '@/utils/playback';
  * que se desliza y la sub-línea. Cuando hay dos o más conviven como una fila de
  * iconos: la música primero y después las tareas por avance, cada una tocable
  * —la música abre el reproductor, la tarea trae su ventana al frente—, cada una un
- * `ActionButton` de sólo icono. La fila no pasa de cuatro ranuras: con más, se
- * muestran tres y un `+N` que dice cuántas quedan. En la fila cada actividad es su
- * icono —el del reproductor o el de la app—; el avance exacto queda en el globo y en
- * la vista de una sola. El toggle del panel es el mismo (`panel.music`): apaga la
- * cápsula entera.
+ * `ActivityIcon` de la librería: su icono con el avance en un aro alrededor. La fila
+ * no pasa de cuatro ranuras: con más, se muestran tres y un `+N` que dice cuántas
+ * quedan. El toggle del panel es el mismo (`panel.music`): apaga la cápsula entera.
  *
  * **Ancho máximo y título deslizante** (vasak-desktop#261): con una sola actividad
  * la píldora no pasa de lo que miden unos cinco iconos del panel (`max-w-44`), y un
@@ -198,11 +196,14 @@ const entryTitle = (entry: ActivityEntry) =>
 		? musicSummary.value
 		: `${entry.title}\n${Math.round(entry.progress ?? 0)} %`;
 
-/** El nombre de un icono de la fila, para quien no lo ve. */
+/**
+ * El nombre de un icono de la fila, para quien no lo ve. Sin el avance: lo suma
+ * `ActivityIcon` a partir de `progress`, así no queda duplicado.
+ */
 const entryName = (entry: ActivityEntry) =>
 	entry.kind === 'music'
 		? accessibleName.value
-		: `${t('components.TrayMusicControl.goToApp')}: ${entry.title} ${Math.round(entry.progress ?? 0)} %`;
+		: `${t('components.TrayMusicControl.goToApp')}: ${entry.title}`;
 
 /** Si suena, está en pausa o no hay nada: el disco gira, se congela o se queda quieto. */
 const state = computed(() => playbackStateOf(musicInfo.value.status));
@@ -330,9 +331,9 @@ onMounted(async () => {
       >{{ timing }}</span>
     </span>
 
-    <!-- Dos o más: la fila de iconos. Cada actividad es un `ActionButton` de sólo
-         icono —el del reproductor o el de la app—; los botones de la fila son los
-         de la librería (no uno a mano) y por eso la píldora deja de serlo. El `+N`
+    <!-- Dos o más: la fila de iconos. Cada actividad es un `ActivityIcon` de la
+         librería —el icono del reproductor o el de la app, con su avance en un aro
+         alrededor—; al no ser un botón a mano, la píldora deja de serlo. El `+N`
          cierra la fila cuando hay más de las que entran. -->
     <div
       v-if="multi"
@@ -340,17 +341,14 @@ onMounted(async () => {
       :class="vertical ? 'flex-col' : ''"
       data-activity-row
     >
-      <ActionButton
+      <ActivityIcon
         v-for="entry in shownActivities"
         :key="entry.key"
-        variant="ghost"
         size="sm"
-        label=""
         :icon="entry.icon ?? ''"
-        icon-type="icon"
-        :icon-alt="entryName(entry)"
+        :label="entryName(entry)"
+        :progress="entry.progress"
         :title="entryTitle(entry)"
-        data-activity-icon
         :data-activity-kind="entry.kind"
         @click="onActivityClick(entry)"
       />
