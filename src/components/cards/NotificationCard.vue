@@ -132,9 +132,12 @@ function formatTime(timestamp: number): string {
 
 async function handleAction(action_key: string) {
 	try {
+		// `actionKey`, no `action_key`: Tauri convierte el nombre del argumento a
+		// camelCase, así que con la clave en snake_case el comando no lo recibe y
+		// falla antes de llegar al demonio — ni el clic ni los botones accionaban.
 		await invokeNotificationAction({
 			id: props.notification.id,
-			action_key,
+			actionKey: action_key,
 		});
 	} catch (error) {
 		logError('Error ejecutando acción de notificación:', error);
