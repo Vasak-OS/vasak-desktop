@@ -301,6 +301,37 @@ describe('la fila de varias actividades', () => {
 		view.unmount();
 	});
 
+	test('cada icono es un botón de la librería con su nombre y el avance dicho una sola vez', async () => {
+		music.activity.value = task(1, 0.5);
+		const view = await mountPill();
+		const [song, work] = icons(view);
+
+		expect(song.element.tagName).toBe('BUTTON');
+		expect(work.element.tagName).toBe('BUTTON');
+		expect(work.attributes('type')).toBe('button');
+		// El nombre no trae el «%» (lo suma ActivityIcon desde `progress`): dos veces sería ruido.
+		const spoken = work.attributes('aria-label') ?? '';
+		expect(spoken).toContain('Tarea 1');
+		expect((spoken.match(/50/g) ?? []).length).toBe(1);
+		view.unmount();
+	});
+
+	test('el icono de la música lleva su aro cuando hay largo, y sin largo no', async () => {
+		music.activity.value = task(1);
+		let view = await mountPill();
+		const withRing = icons(view)[0].attributes('aria-label') ?? '';
+		view.unmount();
+
+		music.info.value = { ...music.info.value, length: 0 };
+		view = await mountPill();
+		const withoutRing = icons(view)[0].attributes('aria-label') ?? '';
+		view.unmount();
+
+		// Sin aro (progress nulo) el nombre no suma ningún avance.
+		expect(withRing).not.toBe(withoutRing);
+		expect(withRing.length).toBeGreaterThan(withoutRing.length);
+	});
+
 	test('la píldora de la fila no es un botón: no se anidan botones', async () => {
 		music.activity.value = task(1);
 		const view = await mountPill();
@@ -339,6 +370,7 @@ describe('la fila de varias actividades', () => {
 		const view = await mountPill();
 
 		expect(icons(view)).toHaveLength(4);
+		expect(icons(view).map((icon) => icon.attributes('data-activity-kind'))).toEqual(['music', 'task', 'task', 'task']);
 		expect(view.find('[data-activity-overflow]').exists()).toBe(false);
 		view.unmount();
 	});
