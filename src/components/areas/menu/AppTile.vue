@@ -36,7 +36,9 @@ onBeforeUnmount(() => item.value?.$el?.removeEventListener('contextmenu', onCont
     :title="app.name"
     class="h-full min-w-0 flex-col items-center justify-center gap-1 text-center [&>span]:w-full"
     @select="launch(app)">
-    <ThemeIcon :name="app.icon" :size="size === 'lg' ? 56 : 48" alt="" />
+    <!-- `mx-auto`: el icono es un `<img>` (bloque), y `text-center` del ítem sólo
+         centra el nombre; sin esto el icono queda pegado a la izquierda. -->
+    <ThemeIcon :name="app.icon" :size="size === 'lg' ? 56 : 48" alt="" class="mx-auto" />
     <MarqueeText :text="app.name" class="text-label-xs text-tx-main" />
   </DropdownMenuItem>
 </template>
