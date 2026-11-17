@@ -60,9 +60,12 @@ export const music = {
 	equalizer: ref<EqualizerState>(missingEqualizer()),
 	/** La app con tarea en curso que ve la cápsula; `null`: ninguna (modo música). */
 	activity: ref<ActivityProgress | null>(null),
+	/** Más apps con tarea en curso, detrás de `activity`, para la fila de varias actividades. */
+	tasks: ref<ActivityProgress[]>([]),
 	calls: [] as Array<{ name: string; args: unknown[] }>,
 	reset() {
 		this.activity.value = null;
+		this.tasks.value = [];
 		this.info.value = blankInfo();
 		this.players.value = [];
 		this.devices.value = [];
@@ -110,7 +113,7 @@ export function useActivityProgress(): {
 } {
 	return {
 		topProgress: music.activity,
-		progressApps: computed(() => (music.activity.value ? [music.activity.value] : [])),
+		progressApps: computed(() => [...(music.activity.value ? [music.activity.value] : []), ...music.tasks.value]),
 	};
 }
 

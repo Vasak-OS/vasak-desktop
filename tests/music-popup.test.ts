@@ -175,7 +175,7 @@ describe('la píldora del panel', () => {
 
 /**
  * La cápsula de actividad (vasak-desktop#281): sin música, la misma píldora
- * muestra la aplicación con una tarea en curso; la música manda sobre ella.
+ * muestra la aplicación con una tarea en curso; con la música a la vez se arma la fila (ver más abajo).
  */
 describe('la cápsula de actividad', () => {
 	const copy = { id: 'win-7', title: 'Copiando fotos', icon: 'folder-copy', progress: 0.456 };
@@ -221,9 +221,8 @@ describe('la cápsula de actividad', () => {
 		view.unmount();
 	});
 
-	test('una reproducción sin título sigue siendo música y la cápsula no le roba la píldora', async () => {
+	test('una reproducción sin título sigue siendo música: se ve la portada y tocarla abre el applet', async () => {
 		music.info.value = { ...music.info.value, title: '', artist: '', album: '', status: 'Playing' };
-		music.activity.value = copy;
 		const view = await mountPill();
 
 		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('music');
@@ -233,6 +232,15 @@ describe('la cápsula de actividad', () => {
 		await settle();
 		expect(callsOf('toggleApplet')).toHaveLength(1);
 		expect(callsOf('presentWindow')).toHaveLength(0);
+		view.unmount();
+	});
+
+	test('una reproducción sin título más una tarea son dos actividades: fila', async () => {
+		music.info.value = { ...music.info.value, title: '', artist: '', album: '', status: 'Playing' };
+		music.activity.value = copy;
+		const view = await mountPill();
+
+		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('multi');
 		view.unmount();
 	});
 
@@ -248,25 +256,125 @@ describe('la cápsula de actividad', () => {
 		});
 	}
 
-	test('con música y una tarea a la vez, manda la música y tocarla abre el applet', async () => {
-		music.activity.value = copy;
-		const view = await mountPill();
-
-		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('music');
-		expect(view.find('[data-music-title]').text()).toBe('Atardecer en la terraza del taller');
-		expect(view.find('[data-music-timing]').text()).toBe('01:36 / 04:05');
-
-		await view.find('button').trigger('click');
-		await settle();
-		expect(callsOf('toggleApplet')).toHaveLength(1);
-		expect(callsOf('toggleWindow')).toHaveLength(0);
-		view.unmount();
-	});
-
 	test('sin música ni tarea queda en modo música, como siempre', async () => {
 		silence();
 		const view = await mountPill();
 		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('music');
+		view.unmount();
+	});
+});
+
+/**
+ * Varias actividades a la vez (vasak-desktop#295): la música y las tareas ya no
+ * se pisan; con dos o más la píldora es una fila de iconos, cada uno tocable.
+ */
+describe('la fila de varias actividades', () => {
+	const task = (n: number, progress = 0.5) => ({ id: `win-${n}`, title: `Tarea ${n}`, icon: `icono-${n}`, progress });
+	const silence = () => {
+		music.info.value = { ...music.info.value, title: '', artist: '', album: '', length: 0, status: 'Stopped' };
+	};
+	const callsOf = (name: string) => music.calls.filter((entry) => entry.name === name);
+	const icons = (view: ReturnType<typeof mount>) => view.findAll('[data-activity-icon]');
+
+	test('con música y una tarea a la vez ya no se pisan: es una fila con la música primero', async () => {
+		music.activity.value = task(1);
+		const view = await mountPill();
+		const pill = view.find('[data-panel-pill]');
+
+		expect(pill.attributes('data-activity-mode')).toBe('multi');
+		expect(pill.attributes('role')).toBe('group');
+		expect(view.find('[data-activity-row]').exists()).toBe(true);
+		expect(icons(view).map((icon) => icon.attributes('data-activity-kind'))).toEqual(['music', 'task']);
+		expect(view.find('[data-music-title]').exists()).toBe(false);
+		view.unmount();
+	});
+
+	test('dos tareas sin música también forman la fila, la más avanzada primero', async () => {
+		silence();
+		music.activity.value = task(1, 0.9);
+		music.tasks.value = [task(2, 0.2)];
+		const view = await mountPill();
+
+		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('multi');
+		expect(icons(view).map((icon) => icon.attributes('data-activity-kind'))).toEqual(['task', 'task']);
+		expect(icons(view).map((icon) => icon.attributes('title'))).toEqual(['Tarea 1\n90 %', 'Tarea 2\n20 %']);
+		view.unmount();
+	});
+
+	test('la píldora de la fila no es un botón: no se anidan botones', async () => {
+		music.activity.value = task(1);
+		const view = await mountPill();
+
+		expect(view.find('[data-panel-pill]').element.tagName).not.toBe('BUTTON');
+		view.unmount();
+	});
+
+	test('tocar el icono de la música abre el applet music', async () => {
+		music.activity.value = task(1);
+		const view = await mountPill();
+		await icons(view)[0].trigger('click');
+		await settle();
+
+		expect(callsOf('toggleApplet')).toHaveLength(1);
+		expect(callsOf('toggleApplet')[0].args[0]).toBe('music');
+		expect(callsOf('presentWindow')).toHaveLength(0);
+		view.unmount();
+	});
+
+	test('tocar el icono de una tarea trae su ventana al frente, sin abrir el reproductor', async () => {
+		music.activity.value = task(1);
+		music.tasks.value = [task(2, 0.1)];
+		const view = await mountPill();
+		await icons(view)[2].trigger('click');
+		await settle();
+
+		expect(callsOf('presentWindow')).toEqual([{ name: 'presentWindow', args: [{ windowId: 'win-2' }] }]);
+		expect(callsOf('toggleApplet')).toHaveLength(0);
+		view.unmount();
+	});
+
+	test('con cuatro actividades entran todas, sin contador', async () => {
+		music.activity.value = task(1, 0.9);
+		music.tasks.value = [task(2, 0.5), task(3, 0.1)];
+		const view = await mountPill();
+
+		expect(icons(view)).toHaveLength(4);
+		expect(view.find('[data-activity-overflow]').exists()).toBe(false);
+		view.unmount();
+	});
+
+	test('con más de cuatro se ven tres iconos y un «+N» con lo que sobra', async () => {
+		music.activity.value = task(1, 0.9);
+		music.tasks.value = [task(2, 0.8), task(3, 0.7), task(4, 0.6), task(5, 0.5)];
+		const view = await mountPill();
+
+		// música + 5 tareas = 6 actividades: 3 iconos y «+3».
+		expect(icons(view)).toHaveLength(3);
+		expect(view.find('[data-activity-overflow]').text()).toBe('+3');
+		expect(icons(view).map((icon) => icon.attributes('data-activity-kind'))).toEqual(['music', 'task', 'task']);
+		view.unmount();
+	});
+
+	test('con cinco justas queda «+2»', async () => {
+		music.activity.value = task(1, 0.9);
+		music.tasks.value = [task(2, 0.8), task(3, 0.7), task(4, 0.6)];
+		const view = await mountPill();
+
+		expect(icons(view)).toHaveLength(3);
+		expect(view.find('[data-activity-overflow]').text()).toBe('+2');
+		view.unmount();
+	});
+
+	test('si la música se detiene, la fila vuelve a la vista de una sola tarea', async () => {
+		music.activity.value = task(1);
+		const view = await mountPill();
+		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('multi');
+
+		silence();
+		await settle();
+		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('progress');
+		expect(view.find('[data-activity-row]').exists()).toBe(false);
+		expect(view.find('[data-music-title]').text()).toBe('Tarea 1');
 		view.unmount();
 	});
 });
