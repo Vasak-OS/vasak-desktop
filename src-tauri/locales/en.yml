@@ -536,6 +536,8 @@ components:
     openPlayer: Open the player
     nothingPlaying: Nothing is playing
     goToApp: Go to the app
+    activityGroup: "Activity, {0} in progress"
+    moreActivities: "{0} more activities"
   VolumeControl:
     volume: Volume
     mute: Mute
