@@ -93,12 +93,12 @@ pub fn pixmap_to_png_base64(pixmap: &Pixmap) -> Option<String> {
     }
     let (width, height, data) = pixmap;
     let mut rgba = Vec::with_capacity(data.len());
-    for chunk in data.chunks_exact(4) {
+    for chunk in data.as_chunks::<4>().0 {
         rgba.extend_from_slice(&[chunk[1], chunk[2], chunk[3], chunk[0]]);
     }
     // Un mapa de bits todo transparente es lo que manda Chromium cuando no
     // tiene icono que poner: dibujarlo es dibujar un hueco.
-    if rgba.chunks_exact(4).all(|px| px[3] == 0) {
+    if rgba.as_chunks::<4>().0.iter().all(|px| px[3] == 0) {
         return None;
     }
     let img = image::RgbaImage::from_raw(*width as u32, *height as u32, rgba)?;

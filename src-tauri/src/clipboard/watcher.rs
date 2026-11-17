@@ -161,11 +161,9 @@ impl Dispatch<ExtDataControlDeviceV1, ()> for WatchState {
             // historial; sólo se libera su oferta, que el compositor crea por cada
             // texto resaltado en cualquier app. Sin esto se filtra un objeto de
             // protocolo por cada resaltado.
-            ext_data_control_device_v1::Event::PrimarySelection { id } => {
-                if let Some(offer) = id {
-                    state.offers.remove(&offer.id());
-                    offer.destroy();
-                }
+            ext_data_control_device_v1::Event::PrimarySelection { id: Some(offer) } => {
+                state.offers.remove(&offer.id());
+                offer.destroy();
             }
             _ => {}
         }
