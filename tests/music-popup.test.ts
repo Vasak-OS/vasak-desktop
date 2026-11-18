@@ -15,7 +15,7 @@ import { beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
-import { loadComponent, useDom } from './support/mount-sfc';
+import { loadComponent, tauriCalls, useDom } from './support/mount-sfc';
 import { music } from './support/music-doubles';
 
 const DOUBLES = join(import.meta.dir, 'support', 'music-doubles.ts');
@@ -31,7 +31,10 @@ beforeAll(async () => {
 	// máquina cargada pasa de los cinco segundos de un gancho.
 }, 60_000);
 
-beforeEach(() => music.reset());
+beforeEach(() => {
+	music.reset();
+	tauriCalls.length = 0;
+});
 
 const settle = async () => {
 	for (let i = 0; i < 4; i++) await nextTick();
@@ -407,6 +410,106 @@ describe('la fila de varias actividades', () => {
 		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('progress');
 		expect(view.find('[data-activity-row]').exists()).toBe(false);
 		expect(view.find('[data-music-title]').text()).toBe('Tarea 1');
+		view.unmount();
+	});
+});
+
+/**
+ * Las descargas del navegador (vasak-desktop#297): tareas sin ventana y sin
+ * porcentaje; tocarlas abre la carpeta de descargas, no una ventana.
+ */
+describe('las descargas en la cápsula', () => {
+	const download = (name = 'ubuntu.iso') => ({
+		id: `${name}.crdownload`,
+		title: name,
+		dir: '/home/u/Descargas',
+	});
+	const silence = () => {
+		music.info.value = { ...music.info.value, title: '', artist: '', album: '', length: 0, status: 'Stopped' };
+	};
+	const callsOf = (name: string) => music.calls.filter((entry) => entry.name === name);
+	const opened = () => tauriCalls.filter((call) => call.cmd === 'plugin:opener|open_path').map((call) => call.args);
+
+	test('una descarga sola es la tarea de la cápsula: su nombre y ningún porcentaje', async () => {
+		silence();
+		music.downloads.value = [download()];
+		const view = await mountPill();
+
+		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('progress');
+		expect(view.find('[data-music-title]').text()).toBe('ubuntu.iso');
+		expect(view.find('[data-music-timing]').exists()).toBe(false);
+		expect(view.find('[data-panel-pill]').text()).not.toContain('%');
+		view.unmount();
+	});
+
+	test('tocarla abre la carpeta de descargas y no trae ninguna ventana ni el reproductor', async () => {
+		silence();
+		music.downloads.value = [download()];
+		const view = await mountPill();
+		await view.find('button').trigger('click');
+		await settle();
+
+		expect(opened()).toEqual([expect.objectContaining({ path: '/home/u/Descargas' })]);
+		expect(callsOf('presentWindow')).toHaveLength(0);
+		expect(callsOf('toggleApplet')).toHaveLength(0);
+		view.unmount();
+	});
+
+	test('su nombre accesible dice que abre la carpeta de descargas, no «ir a la app»', async () => {
+		silence();
+		music.downloads.value = [download()];
+		const view = await mountPill();
+		const name = view.find('button').attributes('aria-label') ?? '';
+
+		expect(name).toContain('ubuntu.iso');
+		expect(name).toContain('openDownloads');
+		expect(name).not.toContain('goToApp');
+		view.unmount();
+	});
+
+	test('con música a la vez forman la fila, y el icono de la descarga abre la carpeta', async () => {
+		music.downloads.value = [download()];
+		const view = await mountPill();
+		const icons = view.findAll('[data-activity-icon]');
+
+		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('multi');
+		expect(icons.map((icon) => icon.attributes('data-activity-kind'))).toEqual(['music', 'task']);
+		// Sin porcentaje en el globo: sólo el nombre.
+		expect(icons[1].attributes('title')).toBe('ubuntu.iso');
+
+		await icons[1].trigger('click');
+		await settle();
+		expect(opened()).toEqual([expect.objectContaining({ path: '/home/u/Descargas' })]);
+		expect(callsOf('toggleApplet')).toHaveLength(0);
+		view.unmount();
+	});
+
+	test('junto a una tarea con ventana, cada icono va a lo suyo: la ventana o la carpeta', async () => {
+		silence();
+		music.activity.value = { id: 'win-1', title: 'Copiando', icon: 'folder-copy', progress: 0.5 };
+		music.downloads.value = [download()];
+		const view = await mountPill();
+		const icons = view.findAll('[data-activity-icon]');
+		expect(icons).toHaveLength(2);
+
+		await icons[0].trigger('click');
+		await settle();
+		expect(callsOf('presentWindow')).toEqual([{ name: 'presentWindow', args: [{ windowId: 'win-1' }] }]);
+		expect(opened()).toHaveLength(0);
+
+		await icons[1].trigger('click');
+		await settle();
+		expect(opened()).toHaveLength(1);
+		view.unmount();
+	});
+
+	test('dos descargas son dos iconos', async () => {
+		silence();
+		music.downloads.value = [download('a.iso'), download('b.iso')];
+		const view = await mountPill();
+
+		expect(view.find('[data-panel-pill]').attributes('data-activity-mode')).toBe('multi');
+		expect(view.findAll('[data-activity-icon]')).toHaveLength(2);
 		view.unmount();
 	});
 });

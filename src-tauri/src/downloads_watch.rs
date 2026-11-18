@@ -151,3 +151,188 @@ pub fn watch_downloads(app: &AppHandle) {
         }
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const GRACE_T: Duration = Duration::from_secs(3);
+
+    fn scan(items: &[(&str, u64)]) -> Vec<(String, u64)> {
+        items.iter().map(|(n, s)| (n.to_string(), *s)).collect()
+    }
+
+    #[test]
+    fn el_titulo_pierde_el_sufijo_del_parcial() {
+        assert_eq!(
+            partial_title("ubuntu.iso.crdownload").as_deref(),
+            Some("ubuntu.iso")
+        );
+        assert_eq!(
+            partial_title("video.mkv.part").as_deref(),
+            Some("video.mkv")
+        );
+        assert_eq!(
+            partial_title("foto.png.partial").as_deref(),
+            Some("foto.png")
+        );
+    }
+
+    #[test]
+    fn un_nombre_sin_sufijo_o_con_base_vacia_no_es_un_parcial() {
+        assert_eq!(partial_title("ubuntu.iso"), None);
+        assert_eq!(partial_title(".part"), None);
+        assert_eq!(partial_title(".crdownload"), None);
+        assert_eq!(partial_title("notas.partido"), None);
+    }
+
+    #[test]
+    fn un_parcial_recien_visto_no_cuenta_hasta_verlo_crecer() {
+        let base = Instant::now();
+        let mut tracker = Tracker::default();
+        let primera = scan(&[("viejo.iso.part", 100)]);
+        assert!(tracker.active(&primera, base, GRACE_T).is_empty());
+        // Mismo tamaño en la vuelta siguiente: sigue colgado.
+        assert!(tracker
+            .active(&primera, base + Duration::from_secs(1), GRACE_T)
+            .is_empty());
+    }
+
+    #[test]
+    fn un_parcial_que_crece_esta_activo() {
+        let base = Instant::now();
+        let mut tracker = Tracker::default();
+        tracker.active(&scan(&[("a.iso.part", 100)]), base, GRACE_T);
+        let activos = tracker.active(
+            &scan(&[("a.iso.part", 200)]),
+            base + Duration::from_secs(1),
+            GRACE_T,
+        );
+        assert_eq!(activos, vec!["a.iso.part".to_string()]);
+    }
+
+    #[test]
+    fn deja_de_mostrarse_cuando_pasa_la_gracia_sin_crecer() {
+        let base = Instant::now();
+        let mut tracker = Tracker::default();
+        tracker.active(&scan(&[("a.part", 1)]), base, GRACE_T);
+        let creció = base + Duration::from_secs(1);
+        assert_eq!(
+            tracker
+                .active(&scan(&[("a.part", 2)]), creció, GRACE_T)
+                .len(),
+            1
+        );
+        // Justo en el límite todavía cuenta.
+        let limite = creció + GRACE_T;
+        assert_eq!(
+            tracker
+                .active(&scan(&[("a.part", 2)]), limite, GRACE_T)
+                .len(),
+            1
+        );
+        // Un instante después se cae.
+        let tarde = limite + Duration::from_millis(1);
+        assert!(tracker
+            .active(&scan(&[("a.part", 2)]), tarde, GRACE_T)
+            .is_empty());
+    }
+
+    #[test]
+    fn un_parcial_que_desaparece_se_olvida_y_no_reaparece_como_crecido() {
+        let base = Instant::now();
+        let mut tracker = Tracker::default();
+        tracker.active(&scan(&[("a.part", 1)]), base, GRACE_T);
+        let t1 = base + Duration::from_secs(1);
+        assert_eq!(
+            tracker.active(&scan(&[("a.part", 2)]), t1, GRACE_T).len(),
+            1
+        );
+        // Desaparece (terminó o se canceló).
+        let t2 = base + Duration::from_secs(2);
+        assert!(tracker.active(&[], t2, GRACE_T).is_empty());
+        // Vuelve con el mismo tamaño: es nuevo, no cuenta como crecido.
+        let t3 = base + Duration::from_secs(3);
+        assert!(tracker
+            .active(&scan(&[("a.part", 2)]), t3, GRACE_T)
+            .is_empty());
+    }
+
+    #[test]
+    fn la_salida_va_ordenada_alfabeticamente() {
+        let base = Instant::now();
+        let mut tracker = Tracker::default();
+        tracker.active(
+            &scan(&[("z.part", 1), ("a.part", 1), ("m.part", 1)]),
+            base,
+            GRACE_T,
+        );
+        let activos = tracker.active(
+            &scan(&[("z.part", 2), ("a.part", 2), ("m.part", 2)]),
+            base + Duration::from_secs(1),
+            GRACE_T,
+        );
+        assert_eq!(activos, vec!["a.part", "m.part", "z.part"]);
+    }
+
+    #[test]
+    fn cada_parcial_se_juzga_por_su_propio_crecimiento() {
+        let base = Instant::now();
+        let mut tracker = Tracker::default();
+        tracker.active(&scan(&[("a.part", 1), ("b.part", 1)]), base, GRACE_T);
+        let activos = tracker.active(
+            &scan(&[("a.part", 2), ("b.part", 1)]),
+            base + Duration::from_secs(1),
+            GRACE_T,
+        );
+        assert_eq!(activos, vec!["a.part".to_string()]);
+    }
+
+    /// Carpeta temporal única que se borra sola, sin sumar dependencias.
+    struct Carpeta(std::path::PathBuf);
+    impl Carpeta {
+        fn nueva(tag: &str) -> Self {
+            let dir = std::env::temp_dir().join(format!(
+                "vasak-downloads-{tag}-{}-{:?}",
+                std::process::id(),
+                std::thread::current().id()
+            ));
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).unwrap();
+            Carpeta(dir)
+        }
+    }
+    impl Drop for Carpeta {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn el_escaneo_devuelve_solo_los_parciales_con_su_tamano() {
+        let carpeta = Carpeta::nueva("scan");
+        std::fs::write(carpeta.0.join("a.iso.crdownload"), [0u8; 10]).unwrap();
+        std::fs::write(carpeta.0.join("b.mkv.part"), [0u8; 20]).unwrap();
+        std::fs::write(carpeta.0.join("c.png.partial"), [0u8; 30]).unwrap();
+        std::fs::write(carpeta.0.join("terminado.iso"), [0u8; 99]).unwrap();
+        // Un directorio con sufijo de parcial no es una descarga.
+        std::fs::create_dir(carpeta.0.join("carpeta.part")).unwrap();
+
+        let mut resultado = scan_partials(&carpeta.0);
+        resultado.sort();
+        assert_eq!(
+            resultado,
+            scan(&[
+                ("a.iso.crdownload", 10),
+                ("b.mkv.part", 20),
+                ("c.png.partial", 30)
+            ])
+        );
+    }
+
+    #[test]
+    fn el_escaneo_de_una_carpeta_inexistente_es_vacio() {
+        let carpeta = Carpeta::nueva("falta");
+        assert!(scan_partials(&carpeta.0.join("no-existe")).is_empty());
+    }
+}

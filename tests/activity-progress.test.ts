@@ -159,3 +159,50 @@ describe('las apps con una tarea en curso', () => {
 		view.unmount();
 	});
 });
+
+describe('las descargas del navegador', () => {
+	const emitDownloads = (payload: unknown) =>
+		callbacks.get(listeners.get('downloads-update') ?? -1)?.({ event: 'downloads-update', id: 1, payload });
+
+	test('arrancan vacías, sin depender de ninguna ventana', async () => {
+		const { view, activity } = await mountActivity();
+		expect(activity.downloads.value).toEqual([]);
+		view.unmount();
+	});
+
+	test('lo que avisa el backend por downloads-update se ve sin recargar', async () => {
+		const { view, activity } = await mountActivity();
+		const list = [{ id: 'ubuntu.iso.crdownload', title: 'ubuntu.iso', dir: '/home/u/Descargas' }];
+
+		emitDownloads(list);
+		await settle();
+		expect(activity.downloads.value).toEqual(list);
+
+		emitDownloads([]);
+		await settle();
+		expect(activity.downloads.value).toEqual([]);
+		view.unmount();
+	});
+
+	test('un aviso que no es una lista se toma como sin descargas', async () => {
+		const { view, activity } = await mountActivity();
+		emitDownloads([{ id: 'a.part', title: 'a', dir: '/d' }]);
+		await settle();
+		emitDownloads(null);
+		await settle();
+		expect(activity.downloads.value).toEqual([]);
+		view.unmount();
+	});
+
+	test('no se mezclan con las apps que publican avance por LauncherEntry', async () => {
+		windows = [win('a', 'org.app.uno')];
+		entries = [{ desktop_id: 'org.app.uno', progress: 0.5 }];
+		const { view, activity } = await mountActivity();
+		emitDownloads([{ id: 'x.part', title: 'x', dir: '/d' }]);
+		await settle();
+
+		expect(ids(activity.progressApps.value)).toEqual(['a']);
+		expect(activity.downloads.value).toHaveLength(1);
+		view.unmount();
+	});
+});
