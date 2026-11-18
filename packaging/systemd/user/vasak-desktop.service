@@ -11,7 +11,7 @@
 #      14,3 s, el escritorio a los 15,3 s, todo el inicio automático a los 16,0 s
 #      y el escritorio recién terminando de inicializar a los 32,0 s. El mismo
 #      binario tarda 467 ms con la máquina tranquila y 16.700 ms peleándola con
-#      Claude, Twingate y compañía. En un equipo con Steam en el inicio
+#      Claude, Phoenix y compañía. En un equipo con Steam en el inicio
 #      automático, Steam se dibujaba antes que el fondo.
 #   2. **Arrancaba antes de que el entorno estuviera exportado.** `uwsm finalize`
 #      terminó a los 16,0 s y el escritorio había arrancado a los 15,3 s. Andaba

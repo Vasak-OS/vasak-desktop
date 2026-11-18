@@ -5,7 +5,7 @@
 //! El escritorio es una unidad `Type=notify` ordenada delante de
 //! `xdg-desktop-autostart.target`: mientras no diga que está listo, el inicio
 //! automático no arranca. Sin eso, todo lo que abre al iniciar sesión —Claude,
-//! Twingate, Steam en algunos equipos— sale un segundo después del compositor y
+//! Phoenix, Steam en algunos equipos— sale un segundo después del compositor y
 //! le pelea la máquina al escritorio justo mientras inicializa GTK y WebKit.
 //!
 //! Lo que costaba, medido: el mismo binario tarda **467 ms** con el sistema

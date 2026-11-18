@@ -1,4 +1,4 @@
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { LauncherEntryView } from '@/interfaces/tray';
 import type { WindowInfo } from '@/interfaces/window';
 import { getActiveDownloads } from '@/services/downloads.service';
@@ -75,17 +75,35 @@ export function useActivityProgress() {
 		downloads.value = Array.isArray(snapshot.items) ? snapshot.items : [];
 	};
 
+	// `get_windows` puede contestar una lista fresca o una caché de hasta cinco
+	// segundos, y el `window-delta` dispara otra lectura en paralelo: nada ordena
+	// las respuestas. Se numera cada pedido y se aplica sólo si sigue siendo el
+	// último, para que una respuesta vieja no pise a una nueva.
+	let windowRequest = 0;
 	const refreshWindows = async (): Promise<void> => {
+		const request = ++windowRequest;
 		try {
-			windows.value = await getWindows();
+			const next = await getWindows();
+			if (request === windowRequest) {
+				windows.value = next;
+			}
 		} catch (error) {
 			logError('[Activity] no se pudieron leer las ventanas:', error);
 		}
 	};
 
+	// La lectura inicial de LauncherEntry puede resolver después de un
+	// `launcher-entry-update` que ya trajo entradas más nuevas. Se cuenta cada
+	// aviso, y la lectura se descarta si llegó uno mientras estaba en vuelo: así no
+	// reemplaza lo nuevo con la foto vieja.
+	let launcherVersion = 0;
 	const refreshEntries = async (): Promise<void> => {
+		const seen = launcherVersion;
 		try {
-			launcherEntries.value = await getLauncherEntries();
+			const next = await getLauncherEntries();
+			if (seen === launcherVersion) {
+				launcherEntries.value = next;
+			}
 		} catch (error) {
 			logError('[Activity] no se pudo leer LauncherEntry:', error);
 		}
@@ -117,10 +135,11 @@ export function useActivityProgress() {
 	// publicó la app. El refresco de ventanas es completo —la lista es corta— para
 	// no duplicar acá el `applyDelta` del panel.
 	// shortcut: refetch completo de ventanas por cada delta; pasar a delta si pesara.
-	useSharedEvent('window-delta', () => {
+	const windowFeed = useSharedEvent('window-delta', () => {
 		void refreshWindows();
 	});
-	useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
+	const launcherFeed = useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
+		launcherVersion++;
 		launcherEntries.value = Array.isArray(entries) ? entries : [];
 	});
 	// El backend emite cuando cambia la lista de descargas en curso. Sin ventana
@@ -128,7 +147,21 @@ export function useActivityProgress() {
 	// orden entre este evento y la consulta inicial no dependa de quién llega antes.
 	useSharedEvent<DownloadsSnapshot>('downloads-update', applyDownloads);
 
+	// La espera al enganche es asíncrona: el componente puede desmontarse antes de
+	// que resuelva. Vue no cancela el `onMounted` ya suspendido, así que se marca el
+	// desarme para no arrancar las lecturas de una instancia que ya no está.
+	let disposed = false;
+	onUnmounted(() => {
+		disposed = true;
+	});
+
 	onMounted(async () => {
+		// Esperar a que los listeners estén enganchados antes de la lectura inicial:
+		// si no, un evento emitido entre la suscripción y el enganche se perdería y
+		// la vista quedaría atrasada hasta el próximo cambio. Con esto la lectura ve
+		// el estado ya enganchado y lo posterior llega por el evento.
+		await Promise.all([windowFeed.ready, launcherFeed.ready]);
+		if (disposed) return;
 		await Promise.all([refreshWindows(), refreshEntries(), refreshDownloads()]);
 	});
 

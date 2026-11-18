@@ -527,10 +527,10 @@ components:
   TrayIconSound:
     level: "Volume: {0} %"
     muted: Sound muted
-  TrayIconTwingate:
-    connected: "Twingate: {0} resources"
-    disconnected: "Twingate: disconnected"
-    pending: "Twingate: {0} resources to authorize"
+  TrayIconPhoenix:
+    connected: "Phoenix: {0} resources"
+    disconnected: "Phoenix: disconnected"
+    pending: "Phoenix: {0} resources to authorize"
   TrayMusicControl:
     progress: Track progress
     openPlayer: Open the player
@@ -544,14 +544,14 @@ components:
     mute: Mute
     unmute: Unmute
     devices: Choose the audio output
-  TwingateArea:
+  PhoenixArea:
     resourceCount: "{0} resources"
     disconnected: Disconnected
     pendingCount: "{0} to authorize"
     loading: Checking the resources…
     empty: No resources available
-    notInstalled: The Twingate client is not installed
-    failed: Could not check the Twingate status
+    notInstalled: The Phoenix client is not installed
+    failed: Could not check the Phoenix status
     needsAuth: Needs authorization
     expiresIn: "Expires in {0}"
     noAuthNeeded: No authentication

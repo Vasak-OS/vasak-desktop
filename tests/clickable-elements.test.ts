@@ -147,7 +147,7 @@ describe('los botones del panel se anuncian con nombre', () => {
 	 * Bluetooth, el volumen, la música, el reloj— pasaron a ser `PanelPill`, y
 	 * los espacios de trabajo `WorkspaceSwitcher`. `TrayIconButton` queda para
 	 * los iconos chicos que viven adentro de una píldora: privacidad, Bloq
-	 * Mayús, micrófono, Twingate, el botón de cada ventana y los accesos fijos
+	 * Mayús, micrófono, Phoenix, el botón de cada ventana y los accesos fijos
 	 * (Configuración y Archivos).
 	 */
 	test('el de la bandeja ya no tiene copia acá', () => {

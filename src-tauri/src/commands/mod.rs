@@ -16,13 +16,13 @@ mod music;
 mod notifications;
 pub mod osd;
 mod panel;
+mod phoenix;
 mod privacy;
 pub mod runner;
 mod session;
 mod session_popup;
 mod store_access;
 mod tray;
-mod twingate;
 mod wallpaper_assets;
 mod wallpaper_colors;
 mod wallpaper_picker;
@@ -64,6 +64,7 @@ pub use notifications::{
 };
 pub use osd::show_osd;
 pub use panel::show_panel;
+pub use phoenix::{phoenix_authorize, phoenix_info};
 pub use privacy::{privacy_in_use, privacy_stop_screen};
 pub use runner::{open_app, open_calendar, open_settings, open_settings_section};
 pub use session::{detect_display_server, logout, reboot, shutdown, suspend};
@@ -74,7 +75,6 @@ pub use tray::{
     load_dbus_menu_level, open_tray_popup, tray_item_activate, tray_item_secondary_activate,
     tray_menu_item_click, tray_popup_click,
 };
-pub use twingate::{twingate_authorize, twingate_info};
 pub use wallpaper_assets::allow_wallpaper_asset;
 pub use wallpaper_colors::wallpaper_pixels;
 pub use wallpaper_picker::{

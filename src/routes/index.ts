@@ -46,8 +46,8 @@ const routes = [
 				component: () => import('@/views/applets/PrivacyAppletView.vue'),
 			},
 			{
-				path: 'twingate',
-				component: () => import('@/views/applets/TwingateAppletView.vue'),
+				path: 'phoenix',
+				component: () => import('@/views/applets/PhoenixAppletView.vue'),
 			},
 			{
 				path: 'music',

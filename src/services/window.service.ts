@@ -9,7 +9,7 @@ export type AppletId =
 	| 'audio'
 	| 'tray'
 	| 'privacy'
-	| 'twingate'
+	| 'phoenix'
 	| 'music'
 	| 'date'
 	| 'menu'

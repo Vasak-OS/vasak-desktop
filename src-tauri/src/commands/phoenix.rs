@@ -1,6 +1,6 @@
-//! Los recursos de Twingate, para el applet de red.
+//! Los recursos de Phoenix, para el applet de red.
 //!
-//! Twingate no habla por NetworkManager —de ahí que el panel lo detecte por su
+//! Phoenix no habla por NetworkManager —de ahí que el panel lo detecte por su
 //! interfaz `tun`— y no expone ni D-Bus ni un socket documentado: lo que hay es
 //! su cliente de línea de comandos, que le pregunta al demonio local y contesta
 //! en 30 milisegundos. Por eso se lo llama en el momento en que se abre el
@@ -8,7 +8,7 @@
 //!
 //! Lo que se lee es una tabla de columnas separadas por tabulaciones, con un
 //! encabezado por grupo. El formato no está documentado como interfaz estable,
-//! así que el estado de autorización se guarda **también en crudo**: si Twingate
+//! así que el estado de autorización se guarda **también en crudo**: si Phoenix
 //! agrega un estado que no conocemos, el applet muestra ese texto tal cual en
 //! vez de decir algo equivocado.
 
@@ -17,23 +17,23 @@ use std::time::Duration;
 use serde::Serialize;
 use tokio::process::Command;
 
-const BINARY: &str = "twingate";
+const BINARY: &str = "phoenix";
 
 /// El comando habla con un demonio local, así que esto no es «cuánto tarda la
 /// red» sino «cuánto se espera antes de dar por colgado al demonio».
 const TIMEOUT: Duration = Duration::from_secs(5);
 
-/// Lo que contesta Twingate cuando no hay sesión: no es un error, es el estado
+/// Lo que contesta Phoenix cuando no hay sesión: no es un error, es el estado
 /// normal de una máquina desconectada.
-const NO_CONECTADO: &str = "Twingate must be connected to display available resources.";
+const NO_CONECTADO: &str = "Phoenix must be connected to display available resources.";
 
 #[derive(Serialize, Debug, Clone, PartialEq)]
-pub struct TwingateResource {
+pub struct PhoenixResource {
     pub name: String,
     pub address: String,
     /// El nombre corto con el que se lo puede llamar, cuando tiene uno.
     pub alias: Option<String>,
-    /// `MAIN`, `KUBERNETES` o `BACKGROUND`, tal como los agrupa Twingate.
+    /// `MAIN`, `KUBERNETES` o `BACKGROUND`, tal como los agrupa Phoenix.
     pub group: String,
     /// El texto de estado sin interpretar, para poder mostrarlo si no lo
     /// entendemos.
@@ -43,24 +43,24 @@ pub struct TwingateResource {
     /// Hace falta autorizarlo para poder entrar.
     pub needs_auth: bool,
     /// Cuánto falta para que se venza la autorización, en las palabras de
-    /// Twingate («2 days», «over a week», «under 1 minute»).
+    /// Phoenix («2 days», «over a week», «under 1 minute»).
     pub expires_in: Option<String>,
 }
 
 #[derive(Serialize, Debug, Clone, PartialEq)]
-pub struct TwingateInfo {
+pub struct PhoenixInfo {
     /// Si el cliente está instalado. Sin esto, el applet no muestra la sección.
     pub installed: bool,
-    /// `online`, `offline`… lo que conteste `twingate status`, en crudo.
+    /// `online`, `offline`… lo que conteste `phoenix status`, en crudo.
     pub status: String,
     pub connected: bool,
-    pub resources: Vec<TwingateResource>,
+    pub resources: Vec<PhoenixResource>,
 }
 
 fn instalado() -> bool {
     // Sin PATH heredado del entorno gráfico esto podría fallar aunque el
     // cliente esté; `which` sigue las mismas reglas que el `Command` de abajo.
-    std::path::Path::new("/usr/bin/twingate").exists()
+    std::path::Path::new("/usr/bin/phoenix").exists()
         || std::env::var_os("PATH")
             .map(|rutas| std::env::split_paths(&rutas).any(|dir| dir.join(BINARY).exists()))
             .unwrap_or(false)
@@ -130,7 +130,7 @@ fn interpretar_estado(estado: &str) -> (bool, bool, Option<String>) {
     (false, false, None)
 }
 
-pub fn parse_resources(salida: &str) -> Vec<TwingateResource> {
+pub fn parse_resources(salida: &str) -> Vec<PhoenixResource> {
     let mut recursos = Vec::new();
     let mut grupo = String::from("MAIN");
 
@@ -160,7 +160,7 @@ pub fn parse_resources(salida: &str) -> Vec<TwingateResource> {
         let estado = columnas.get(3).copied().unwrap_or("");
         let (usable, needs_auth, expires_in) = interpretar_estado(estado);
 
-        recursos.push(TwingateResource {
+        recursos.push(PhoenixResource {
             name: columnas[0].to_string(),
             address: columnas[1].to_string(),
             alias: match columnas[2] {
@@ -179,9 +179,9 @@ pub fn parse_resources(salida: &str) -> Vec<TwingateResource> {
 }
 
 #[tauri::command]
-pub async fn twingate_info() -> TwingateInfo {
+pub async fn phoenix_info() -> PhoenixInfo {
     if !instalado() {
-        return TwingateInfo {
+        return PhoenixInfo {
             installed: false,
             status: String::new(),
             connected: false,
@@ -202,7 +202,7 @@ pub async fn twingate_info() -> TwingateInfo {
         match correr(&["resources", "-d"]).await {
             Ok(salida) => parse_resources(&salida),
             Err(error) => {
-                eprintln!("[twingate] {error}");
+                eprintln!("[phoenix] {error}");
                 Vec::new()
             }
         }
@@ -210,7 +210,7 @@ pub async fn twingate_info() -> TwingateInfo {
         Vec::new()
     };
 
-    TwingateInfo {
+    PhoenixInfo {
         installed: true,
         status,
         connected,
@@ -218,13 +218,13 @@ pub async fn twingate_info() -> TwingateInfo {
     }
 }
 
-/// Un nombre de recurso es lo que imprime `twingate resources`.
+/// Un nombre de recurso es lo que imprime `phoenix resources`.
 ///
 /// El argumento no pasa por una shell —va como un elemento propio de `argv`—
 /// así que esto no es una barrera de inyección, sino la forma de no arrastrar
 /// hasta el cliente algo que claramente no es un nombre de recurso.
 fn es_nombre_de_recurso(valor: &str) -> bool {
-    // Que no empiece con guion no es cosmético: `twingate auth --print-commands`
+    // Que no empiece con guion no es cosmético: `phoenix auth --print-commands`
     // trataría el argumento como una opción del cliente en vez de como el
     // recurso a autorizar.
     !valor.is_empty()
@@ -241,7 +241,7 @@ fn es_nombre_de_recurso(valor: &str) -> bool {
 /// esto no espera el final: deja el proceso corriendo y vuelve. El applet
 /// vuelve a preguntar el estado cuando la persona lo abre de nuevo.
 #[tauri::command]
-pub async fn twingate_authorize(resource: String) -> Result<(), String> {
+pub async fn phoenix_authorize(resource: String) -> Result<(), String> {
     if !es_nombre_de_recurso(&resource) {
         return Err(format!("«{resource}» no parece un nombre de recurso"));
     }
@@ -260,7 +260,7 @@ mod tests {
 
     /// Una salida real, recortada: dos grupos, un alias ausente, un estado
     /// vacío y uno sin autenticar.
-    const SALIDA: &str = "MAIN RESOURCES\nRESOURCE NAME\tADDRESS\tALIAS\tAUTH STATUS\nack-service\tack-service.private.svc\tack-service.twingate\tAuth expires in 2 days\nprod-database\tprod.rds.amazonaws.com\t-\t\nprod-jenkins\t10.0.0.27\tjenkins.pickitlabs.ar\tNot authenticated\n\nKUBERNETES RESOURCES\nRESOURCE NAME\tADDRESS\tALIAS\tAUTH STATUS\ntest-cluster\tkubernetes.default.svc\tpickit-test-cluster.int\tAuth expires in over a week\n";
+    const SALIDA: &str = "MAIN RESOURCES\nRESOURCE NAME\tADDRESS\tALIAS\tAUTH STATUS\nack-service\tack-service.private.svc\tack-service.phoenix\tAuth expires in 2 days\nprod-database\tprod.rds.amazonaws.com\t-\t\nprod-jenkins\t10.0.0.27\tjenkins.corp.example\tNot authenticated\n\nKUBERNETES RESOURCES\nRESOURCE NAME\tADDRESS\tALIAS\tAUTH STATUS\ntest-cluster\tkubernetes.default.svc\tstaging.corp.example\tAuth expires in over a week\n";
 
     #[test]
     fn lee_las_filas_de_los_dos_grupos() {
@@ -340,9 +340,9 @@ mod tests {
 
     #[test]
     fn los_nombres_de_recurso_reales_pasan_el_filtro() {
-        assert!(es_nombre_de_recurso("preprod-ms-retailer-integrations"));
+        assert!(es_nombre_de_recurso("preprod-service-integrations"));
         assert!(es_nombre_de_recurso("test-cluster"));
-        assert!(es_nombre_de_recurso("prod-pickit-read-replica"));
+        assert!(es_nombre_de_recurso("main-read-replica"));
     }
 
     #[test]
