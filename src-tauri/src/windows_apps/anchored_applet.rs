@@ -123,7 +123,7 @@ pub const APPLETS: &[AppletSpec] = &[
     AppletSpec { id: "privacy", route: "privacy", size: (420.0, 420.0) },
     // Setenta recursos no entran igual, pero los que piden autorización sí, y
     // de eso se trata la pantalla.
-    AppletSpec { id: "twingate", route: "twingate", size: (480.0, 560.0) },
+    AppletSpec { id: "phoenix", route: "phoenix", size: (480.0, 560.0) },
     // El reproductor que se despliega desde el control de música: el disco,
     // los datos de la pista, la barra, el transporte y el ecualizador de
     // sistema. Cuatrocientos de ancho como en la referencia; el alto es el del

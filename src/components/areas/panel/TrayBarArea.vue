@@ -7,8 +7,8 @@ import { computed, onMounted, ref } from 'vue';
 import TrayIconCapsLock from '@/components/buttons/TrayIconCapsLock.vue';
 import TrayIconDoNotDisturb from '@/components/buttons/TrayIconDoNotDisturb.vue';
 import TrayIconMicrophone from '@/components/buttons/TrayIconMicrophone.vue';
+import TrayIconPhoenix from '@/components/buttons/TrayIconPhoenix.vue';
 import TrayIconPrivacy from '@/components/buttons/TrayIconPrivacy.vue';
-import TrayIconTwingate from '@/components/buttons/TrayIconTwingate.vue';
 import TrayItemButton from '@/components/buttons/TrayItemButton.vue';
 import SystemResourceControl from '@/components/controls/SystemResourceControl.vue';
 import TrayNetworkRateControl from '@/components/controls/TrayNetworkRateControl.vue';
@@ -40,7 +40,7 @@ import { logError, logWarning } from '@/utils/logger';
  * La píldora de la bandeja (vasak-desktop#151): los iconos de las
  * aplicaciones (StatusNotifierItem) y los indicadores chicos que sólo aparecen
  * cuando hay algo que decir —la tasa de la red, la cámara o el micrófono en
- * uso, Bloq Mayús, el micrófono silenciado, Twingate—, juntos en una sola
+ * uso, Bloq Mayús, el micrófono silenciado, Phoenix—, juntos en una sola
  * píldora como en el video de referencia.
  *
  * La red, el Bluetooth, el volumen y la batería tienen cada uno su píldora
@@ -259,7 +259,7 @@ useSharedEvent('tray-update', refreshTrayItems);
       <TrayIconCapsLock key="icon-capslock" data-tray-entry />
       <TrayIconDoNotDisturb key="icon-do-not-disturb" data-tray-entry />
       <TrayIconMicrophone key="icon-micmute" data-tray-entry />
-      <TrayIconTwingate key="icon-twingate" data-tray-entry />
+      <TrayIconPhoenix key="icon-phoenix" data-tray-entry />
     </TransitionGroup>
   </PanelPill>
 </template>

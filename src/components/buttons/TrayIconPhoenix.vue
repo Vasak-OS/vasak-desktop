@@ -2,14 +2,14 @@
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import { TrayIconButton } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
-import { getTwingateInfo, type TwingateInfo } from '@/services/twingate.service';
+import { getPhoenixInfo, type PhoenixInfo } from '@/services/phoenix.service';
 import { toggleApplet } from '@/services/window.service';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { useSharedEvent } from '@/tools/event.bus';
 import { logError } from '@/utils/logger';
 
 /**
- * Twingate en el panel: un icono, y nada de texto.
+ * Phoenix en el panel: un icono, y nada de texto.
  *
  * Antes había una etiqueta de hasta 176 píxeles con el nombre del perfil al lado
  * del icono de red, que repetía en la franja más escasa de la pantalla algo que
@@ -21,22 +21,22 @@ import { logError } from '@/utils/logger';
  */
 const { t } = useI18n();
 
-const info = ref<TwingateInfo | null>(null);
+const info = ref<PhoenixInfo | null>(null);
 
 const icon = computed(() => (info.value?.connected ? 'network-vpn' : 'network-vpn-disconnected'));
 
 const load = async () => {
 	try {
-		info.value = await getTwingateInfo();
+		info.value = await getPhoenixInfo();
 	} catch (error) {
-		logError('[twingate] No se pudo leer el estado:', error);
+		logError('[phoenix] No se pudo leer el estado:', error);
 		info.value = null;
 	}
 };
 
 onMounted(load);
 
-// Lo que mueve este icono es que Twingate se conecte o se caiga, y eso llega
+// Lo que mueve este icono es que Phoenix se conecte o se caiga, y eso llega
 // como un cambio de VPN: la interfaz `tun` aparece o desaparece.
 useSharedEvent('vpn-changed', load);
 
@@ -45,25 +45,25 @@ const pendingAuth = computed(
 );
 
 const tooltip = computed(() => {
-	if (!info.value?.connected) return t('components.TrayIconTwingate.disconnected');
+	if (!info.value?.connected) return t('components.TrayIconPhoenix.disconnected');
 	if (pendingAuth.value > 0) {
-		return t('components.TrayIconTwingate.pending').replace('{0}', String(pendingAuth.value));
+		return t('components.TrayIconPhoenix.pending').replace('{0}', String(pendingAuth.value));
 	}
 
-	return t('components.TrayIconTwingate.connected').replace(
+	return t('components.TrayIconPhoenix.connected').replace(
 		'{0}',
 		String(info.value.resources.length)
 	);
 });
 
 const button = ref<unknown>(null);
-const { openClasses } = useOpenApplet('twingate');
+const { openClasses } = useOpenApplet('phoenix');
 
-const toggleTwingateApplet = async () => {
+const togglePhoenixApplet = async () => {
 	try {
-		await toggleApplet('twingate', button.value);
+		await toggleApplet('phoenix', button.value);
 	} catch (error) {
-		logError('[twingate] No se pudo abrir el applet:', error);
+		logError('[phoenix] No se pudo abrir el applet:', error);
 	}
 };
 </script>
@@ -77,7 +77,7 @@ const toggleTwingateApplet = async () => {
     :tooltip="tooltip"
     :custom-class="{ relative: true, ...openClasses }"
     :icon-class="{ 'filter brightness-90': !info.connected }"
-    @click="toggleTwingateApplet"
+    @click="togglePhoenixApplet"
   >
     <!-- Un punto y no un número: lo que hace falta saber de un vistazo es que
          hay algo que autorizar; cuántos, lo dice el applet. -->

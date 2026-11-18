@@ -258,7 +258,7 @@ describe('AppletPopover', () => {
 			'NetworkAppletView',
 			'PrivacyAppletView',
 			'TrayPopupView',
-			'TwingateAppletView',
+			'PhoenixAppletView',
 		]) {
 			const source = read(`src/views/applets/${view}.vue`);
 			expect(source).toContain('<AppletPopover applet="');

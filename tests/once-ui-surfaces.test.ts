@@ -44,7 +44,7 @@ describe('cada superficie pide sus piezas a la librería', () => {
 		['components/areas/control-center/NotificationArea.vue', ['<ActionButton', '<EmptyState']],
 		['components/cards/UserControlCenterCard.vue', ['<Avatar']],
 		['views/applets/PrivacyAppletView.vue', ['<ListRow', '<ActionButton']],
-		['views/applets/TwingateAppletView.vue', ['<ListRow', '<StatusDot', '<Badge', '<ActionButton']],
+		['views/applets/PhoenixAppletView.vue', ['<ListRow', '<StatusDot', '<Badge', '<ActionButton']],
 		['components/controls/AudioDeviceSelector.vue', ['<OptionGroup', '<LoadingState']],
 		['views/applets/MusicAppletView.vue', ['<OptionGroup', '<Chip', '<PageDots', '<ActionButton']],
 		['components/controls/TrayMusicControl.vue', ['<SpinningCover', '<PanelPill']],
@@ -79,7 +79,7 @@ describe('lo que dibujaban a mano no vuelve', () => {
 		for (const file of [
 			'components/cards/NotificationGroupCard.vue',
 			'components/cards/NotificationCard.vue',
-			'views/applets/TwingateAppletView.vue',
+			'views/applets/PhoenixAppletView.vue',
 		]) {
 			expect(template(file)).not.toMatch(/text-\[\d+px\]/);
 		}
