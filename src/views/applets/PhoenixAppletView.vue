@@ -4,20 +4,20 @@ import { ActionButton, Badge, ListRow, StatusDot } from '@vasakgroup/vue-libvasa
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import AppletPopover from '@/components/layouts/AppletPopover.vue';
 import {
-	authorizeTwingateResource,
-	getTwingateInfo,
-	type TwingateInfo,
-	type TwingateResource,
-} from '@/services/twingate.service';
+	authorizePhoenixResource,
+	getPhoenixInfo,
+	type PhoenixInfo,
+	type PhoenixResource,
+} from '@/services/phoenix.service';
 import { logError } from '@/utils/logger';
 
 /**
- * Los recursos de Twingate.
+ * Los recursos de Phoenix.
  *
- * El indicador del panel decía «Twingate» y nada más: que la VPN estaba
+ * El indicador del panel decía «Phoenix» y nada más: que la VPN estaba
  * levantada, no a qué se podía entrar. Lo que hace falta saber es otra cosa
  * —qué recursos están habilitados, cuánto les falta para vencerse y cuáles hay
- * que autorizar— y eso Twingate lo sabe: se le pregunta a su cliente, que
+ * que autorizar— y eso Phoenix lo sabe: se le pregunta a su cliente, que
  * contesta en milisegundos porque habla con el demonio local.
  *
  * Se pide al abrir el applet y no en un temporizador de fondo: los vencimientos
@@ -29,12 +29,12 @@ import { logError } from '@/utils/logger';
  */
 const { t } = useI18n();
 
-const info = ref<TwingateInfo | null>(null);
+const info = ref<PhoenixInfo | null>(null);
 const loading = ref(true);
 const authorizing = ref<string | null>(null);
 
 /**
- * Que el puente con Rust haya fallado no es lo mismo que no tener Twingate
+ * Que el puente con Rust haya fallado no es lo mismo que no tener Phoenix
  * instalado, y decir lo segundo cuando pasó lo primero manda a buscar un
  * paquete que ya está puesto.
  */
@@ -42,10 +42,10 @@ const failed = ref(false);
 
 const load = async () => {
 	try {
-		info.value = await getTwingateInfo();
+		info.value = await getPhoenixInfo();
 		failed.value = false;
 	} catch (error) {
-		logError('[twingate] No se pudo leer el estado:', error);
+		logError('[phoenix] No se pudo leer el estado:', error);
 		info.value = null;
 		failed.value = true;
 	} finally {
@@ -63,7 +63,7 @@ const reload = () => {
 };
 
 /** Los que hay que autorizar van primero: es lo único que pide una acción. */
-const sorted = computed<TwingateResource[]>(() => {
+const sorted = computed<PhoenixResource[]>(() => {
 	const list = [...(info.value?.resources ?? [])];
 
 	return list.sort((a, b) => {
@@ -75,16 +75,16 @@ const sorted = computed<TwingateResource[]>(() => {
 const pendingAuth = computed(() => sorted.value.filter((r) => r.needs_auth));
 
 /** El alias es con lo que se lo llama; si no tiene, la dirección. */
-const displayName = (resource: TwingateResource) => resource.alias || resource.address;
+const displayName = (resource: PhoenixResource) => resource.alias || resource.address;
 
-const statusDetail = (resource: TwingateResource) => {
-	if (resource.needs_auth) return t('components.TwingateArea.needsAuth');
+const statusDetail = (resource: PhoenixResource) => {
+	if (resource.needs_auth) return t('components.PhoenixArea.needsAuth');
 	if (resource.expires_in) {
-		return t('components.TwingateArea.expiresIn').replace('{0}', resource.expires_in);
+		return t('components.PhoenixArea.expiresIn').replace('{0}', resource.expires_in);
 	}
 	// Un recurso sin autenticación no tiene nada que decir, y uno con un estado
 	// que no conocemos se muestra con sus propias palabras.
-	return resource.status || t('components.TwingateArea.noAuthNeeded');
+	return resource.status || t('components.PhoenixArea.noAuthNeeded');
 };
 
 /** Cada cuánto se vuelve a preguntar mientras se espera la autorización. */
@@ -102,18 +102,18 @@ onUnmounted(() => {
 /**
  * La autorización no termina cuando el comando vuelve.
  *
- * `twingate auth` abre el navegador y el trámite sigue del otro lado, así que lo
+ * `phoenix auth` abre el navegador y el trámite sigue del otro lado, así que lo
  * único que sabemos al volver es que el cliente arrancó. Sin esto el recurso
  * seguía diciendo «hay que autorizarlo» hasta que alguien cerrara y abriera el
- * applet: ahora se vuelve a preguntar hasta que Twingate diga que ya está.
+ * applet: ahora se vuelve a preguntar hasta que Phoenix diga que ya está.
  */
-const authorize = async (resource: TwingateResource) => {
+const authorize = async (resource: PhoenixResource) => {
 	authorizing.value = resource.name;
 
 	try {
-		await authorizeTwingateResource(resource.name);
+		await authorizePhoenixResource(resource.name);
 	} catch (error) {
-		logError('[twingate] No se pudo pedir la autorización:', error);
+		logError('[phoenix] No se pudo pedir la autorización:', error);
 		authorizing.value = null;
 		return;
 	}
@@ -136,19 +136,19 @@ const authorize = async (resource: TwingateResource) => {
 </script>
 
 <template>
-	<AppletPopover applet="twingate" @shown="reload">
+	<AppletPopover applet="phoenix" @shown="reload">
 		<div class="flex h-full min-h-0 flex-col gap-3">
 			<header class="flex items-center justify-between gap-2">
 				<div class="min-w-0">
-					<h2 class="text-lg font-medium text-tx-main">Twingate</h2>
+					<h2 class="text-lg font-medium text-tx-main">Phoenix</h2>
 					<p class="truncate text-label-xs text-tx-muted">
 						{{
 							info?.connected
-								? t('components.TwingateArea.resourceCount').replace(
+								? t('components.PhoenixArea.resourceCount').replace(
 										'{0}',
 										String(sorted.length)
 									)
-								: t('components.TwingateArea.disconnected')
+								: t('components.PhoenixArea.disconnected')
 						}}
 					</p>
 				</div>
@@ -156,24 +156,24 @@ const authorize = async (resource: TwingateResource) => {
 				<Badge
 					v-if="pendingAuth.length > 0"
 					tone="warning"
-					:label="t('components.TwingateArea.pendingCount').replace('{0}', String(pendingAuth.length))"
+					:label="t('components.PhoenixArea.pendingCount').replace('{0}', String(pendingAuth.length))"
 				/>
 			</header>
 
 			<p v-if="loading" class="text-label-m text-tx-muted">
-				{{ t('components.TwingateArea.loading') }}
+				{{ t('components.PhoenixArea.loading') }}
 			</p>
 
 			<p v-else-if="failed" class="text-label-m text-status-error">
-				{{ t('components.TwingateArea.failed') }}
+				{{ t('components.PhoenixArea.failed') }}
 			</p>
 
 			<p v-else-if="!info?.installed" class="text-label-m text-tx-muted">
-				{{ t('components.TwingateArea.notInstalled') }}
+				{{ t('components.PhoenixArea.notInstalled') }}
 			</p>
 
 			<p v-else-if="sorted.length === 0" class="text-label-m text-tx-muted">
-				{{ t('components.TwingateArea.empty') }}
+				{{ t('components.PhoenixArea.empty') }}
 			</p>
 
 			<!-- La lista es lo único que crece: el encabezado queda fijo y acá
@@ -194,8 +194,8 @@ const authorize = async (resource: TwingateResource) => {
 							<ActionButton
 								:label="
 									authorizing === resource.name
-										? t('components.TwingateArea.authorizing')
-										: t('components.TwingateArea.authorize')
+										? t('components.PhoenixArea.authorizing')
+										: t('components.PhoenixArea.authorize')
 								"
 								size="sm"
 								:loading="authorizing === resource.name"
