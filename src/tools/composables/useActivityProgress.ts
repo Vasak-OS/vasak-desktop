@@ -20,6 +20,20 @@ export interface ActivityProgress {
 }
 
 /**
+ * Una descarga del navegador en curso, sin ventana propia. El avance es
+ * indeterminado (el parcial no trae el total), así que no lleva porcentaje: se
+ * muestra que hay una descarga. La manda el backend por `downloads-update`.
+ */
+export interface DownloadActivity {
+	/** El nombre del archivo parcial, estable mientras dura la descarga. */
+	id: string;
+	/** El nombre final, sin el sufijo del parcial. */
+	title: string;
+	/** La carpeta de descargas, para abrirla al tocar la actividad. */
+	dir: string;
+}
+
+/**
  * Las aplicaciones con una tarea en curso, para la cápsula de actividad.
  *
  * Una «actividad» es una ventana cuya aplicación publica por
@@ -36,6 +50,7 @@ export interface ActivityProgress {
 export function useActivityProgress() {
 	const windows = ref<WindowInfo[]>([]);
 	const launcherEntries = ref<LauncherEntryView[]>([]);
+	const downloads = ref<DownloadActivity[]>([]);
 
 	const refreshWindows = async (): Promise<void> => {
 		try {
@@ -77,10 +92,15 @@ export function useActivityProgress() {
 	useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
 		launcherEntries.value = Array.isArray(entries) ? entries : [];
 	});
+	// El backend sólo emite cuando cambia la lista de descargas en curso, así que
+	// se usa tal cual. Sin ventana que cruzar: es una actividad por sí misma.
+	useSharedEvent<DownloadActivity[]>('downloads-update', (list) => {
+		downloads.value = Array.isArray(list) ? list : [];
+	});
 
 	onMounted(async () => {
 		await Promise.all([refreshWindows(), refreshEntries()]);
 	});
 
-	return { progressApps, topProgress };
+	return { progressApps, topProgress, downloads };
 }
