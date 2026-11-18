@@ -1,6 +1,7 @@
 import { computed, onMounted, ref } from 'vue';
 import type { LauncherEntryView } from '@/interfaces/tray';
 import type { WindowInfo } from '@/interfaces/window';
+import { getActiveDownloads } from '@/services/downloads.service';
 import { getLauncherEntries } from '@/services/tray.service';
 import { getWindows } from '@/services/window.service';
 import { useSharedEvent } from '@/tools/event.bus';
@@ -68,6 +69,14 @@ export function useActivityProgress() {
 		}
 	};
 
+	const refreshDownloads = async (): Promise<void> => {
+		try {
+			downloads.value = await getActiveDownloads();
+		} catch (error) {
+			logError('[Activity] no se pudieron leer las descargas:', error);
+		}
+	};
+
 	/** Las apps con tarea en curso, la más avanzada —la que está por terminar— primero. */
 	const progressApps = computed<ActivityProgress[]>(() => {
 		const out: ActivityProgress[] = [];
@@ -99,7 +108,7 @@ export function useActivityProgress() {
 	});
 
 	onMounted(async () => {
-		await Promise.all([refreshWindows(), refreshEntries()]);
+		await Promise.all([refreshWindows(), refreshEntries(), refreshDownloads()]);
 	});
 
 	return { progressApps, topProgress, downloads };

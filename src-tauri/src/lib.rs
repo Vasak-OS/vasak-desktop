@@ -319,7 +319,8 @@ pub fn run() {
             connect_webcam_state,
             toggle_connect_menu,
             screen_time::screen_time_range,
-            screen_time::screen_time_clear
+            screen_time::screen_time_clear,
+            downloads_watch::active_downloads
         ])
         .setup(move |app| {
             // El puente de `log` se instala **acá**, después de los plugins, y

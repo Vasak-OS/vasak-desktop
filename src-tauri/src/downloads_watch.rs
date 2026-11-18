@@ -22,8 +22,9 @@ use crate::logger::{log_info, log_warning};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 /// Cada cuánto se mira la carpeta.
 const POLL: Duration = Duration::from_secs(1);
@@ -94,12 +95,13 @@ impl Tracker {
     }
 }
 
-/// Los parciales de la carpeta con su tamaño actual. Un archivo ilegible se
-/// ignora, no corta la vuelta.
-fn scan_partials(dir: &Path) -> Vec<(String, u64)> {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return Vec::new();
-    };
+/// Los parciales de la carpeta con su tamaño actual, o `None` si la carpeta no
+/// se pudo leer. Distinguir el fallo del vacío importa: un `read_dir` que falla
+/// una vuelta (la carpeta desapareció un instante, un error pasajero) no es «no
+/// hay descargas»; vaciar el seguimiento ahí ocultaría una descarga en curso y
+/// la trataría como nueva al volver. Un archivo suelto ilegible sí se ignora.
+fn scan_partials(dir: &Path) -> Option<Vec<(String, u64)>> {
+    let entries = std::fs::read_dir(dir).ok()?;
     let mut out = Vec::new();
     for entry in entries.flatten() {
         let name = entry.file_name().to_string_lossy().to_string();
@@ -112,13 +114,30 @@ fn scan_partials(dir: &Path) -> Vec<(String, u64)> {
             }
         }
     }
-    out
+    Some(out)
+}
+
+/// La última lista de descargas emitida, para que una vista que recién montó la
+/// pida de entrada: el bus de eventos no reenvía lo que ya pasó, así que una
+/// descarga que ya estaba en curso cuando se (re)abrió el panel no se vería
+/// hasta el próximo cambio. La misma idea que `get_windows`/`get_launcher_entries`.
+#[derive(Default)]
+pub struct ActiveDownloads(pub Mutex<Vec<DownloadActivity>>);
+
+/// Las descargas en curso ahora mismo. La vista la llama al montar; después se
+/// mantiene sola por el evento `downloads-update`.
+#[tauri::command]
+pub fn active_downloads(state: tauri::State<'_, ActiveDownloads>) -> Vec<DownloadActivity> {
+    state.0.lock().map(|held| held.clone()).unwrap_or_default()
 }
 
 /// Vigila la carpeta de descargas y le avisa al panel qué descargas hay en curso
 /// por el evento `downloads-update`. Sin carpeta de descargas XDG no hace nada.
 pub fn watch_downloads(app: &AppHandle) {
     let app = app.clone();
+    // El estado que lee el comando `active_downloads`, siempre presente —aunque no
+    // haya carpeta de descargas queda vacío— para que el comando no falle.
+    app.manage(ActiveDownloads::default());
     let Some(dir) = dirs::download_dir() else {
         log_info("Sin carpeta de descargas XDG; la cápsula no mostrará descargas.");
         return;
@@ -129,7 +148,11 @@ pub fn watch_downloads(app: &AppHandle) {
         let mut tracker = Tracker::default();
         let mut last: Vec<String> = Vec::new();
         loop {
-            let scan = scan_partials(&dir);
+            // Un `read_dir` fallido no toca el seguimiento: se saltea la vuelta.
+            let Some(scan) = scan_partials(&dir) else {
+                std::thread::sleep(POLL);
+                continue;
+            };
             let active = tracker.active(&scan, Instant::now(), GRACE);
             if active != last {
                 let payload: Vec<DownloadActivity> = active
@@ -140,6 +163,11 @@ pub fn watch_downloads(app: &AppHandle) {
                         dir: dir_str.clone(),
                     })
                     .collect();
+                if let Some(state) = app.try_state::<ActiveDownloads>() {
+                    if let Ok(mut held) = state.0.lock() {
+                        *held = payload.clone();
+                    }
+                }
                 if let Err(error) = app.emit("downloads-update", payload) {
                     log_warning(&format!(
                         "[Downloads] No se pudo avisar a la vista: {error}"
@@ -318,7 +346,7 @@ mod tests {
         // Un directorio con sufijo de parcial no es una descarga.
         std::fs::create_dir(carpeta.0.join("carpeta.part")).unwrap();
 
-        let mut resultado = scan_partials(&carpeta.0);
+        let mut resultado = scan_partials(&carpeta.0).expect("la carpeta existe");
         resultado.sort();
         assert_eq!(
             resultado,
@@ -331,8 +359,10 @@ mod tests {
     }
 
     #[test]
-    fn el_escaneo_de_una_carpeta_inexistente_es_vacio() {
+    fn el_escaneo_de_una_carpeta_ilegible_es_none_y_no_vacio() {
         let carpeta = Carpeta::nueva("falta");
-        assert!(scan_partials(&carpeta.0.join("no-existe")).is_empty());
+        assert_eq!(scan_partials(&carpeta.0.join("no-existe")), None);
+        // Una carpeta legible sin parciales sí es «vacío», distinto del fallo.
+        assert_eq!(scan_partials(&carpeta.0), Some(vec![]));
     }
 }

@@ -15,6 +15,7 @@ type Win = { id: string; title: string; is_minimized: boolean; icon: string; app
 
 let windows: Win[] = [];
 let entries: Array<{ desktop_id: string; progress?: number }> = [];
+let activeDownloads: unknown = [];
 const callbacks = new Map<number, (event: unknown) => void>();
 const listeners = new Map<string, number>();
 let nextCallback = 1;
@@ -38,6 +39,7 @@ beforeAll(() => {
 		invoke: async (cmd: string, args: { event?: string; handler?: number }) => {
 			if (cmd === 'get_windows') return windows;
 			if (cmd === 'get_launcher_entries') return entries;
+			if (cmd === 'active_downloads') return activeDownloads;
 			if (cmd === 'plugin:event|listen' && args.event && args.handler !== undefined) {
 				listeners.set(args.event, args.handler);
 				return args.handler;
@@ -58,6 +60,7 @@ afterAll(() => {
 beforeEach(() => {
 	windows = [];
 	entries = [];
+	activeDownloads = [];
 	listeners.clear();
 });
 
@@ -167,6 +170,15 @@ describe('las descargas del navegador', () => {
 	test('arrancan vacías, sin depender de ninguna ventana', async () => {
 		const { view, activity } = await mountActivity();
 		expect(activity.downloads.value).toEqual([]);
+		view.unmount();
+	});
+
+	test('al montar ya traen las descargas en curso, sin esperar un aviso', async () => {
+		const list = [{ id: 'ubuntu.iso.crdownload', title: 'ubuntu.iso', dir: '/home/u/Descargas' }];
+		activeDownloads = list;
+		const { view, activity } = await mountActivity();
+
+		expect(activity.downloads.value).toEqual(list);
 		view.unmount();
 	});
 
