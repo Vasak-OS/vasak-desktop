@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
+
+import { openPath } from '@tauri-apps/plugin-opener';
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
 import {
 	ActivityIcon,
@@ -10,10 +12,7 @@ import {
 } from '@vasakgroup/vue-libvasak';
 import { computed, onMounted, ref } from 'vue';
 import { presentWindow, toggleApplet } from '@/services/window.service';
-import {
-	type ActivityProgress,
-	useActivityProgress,
-} from '@/tools/composables/useActivityProgress';
+import { useActivityProgress } from '@/tools/composables/useActivityProgress';
 import { useMusicPlayer } from '@/tools/composables/useMusicPlayer';
 import { useOpenApplet } from '@/tools/composables/useOpenApplet';
 import { usePanelConfig } from '@/tools/composables/usePanelConfig';
@@ -62,8 +61,10 @@ interface ActivityEntry {
 	progress: number | null;
 	/** El nombre de icono del tema, sólo para las tareas. */
 	icon?: string;
-	/** El id de la ventana, para traerla al frente; sólo para las tareas. */
+	/** El id de la ventana, para traerla al frente; sólo para las tareas con ventana. */
 	windowId?: string;
+	/** La carpeta a abrir, para una tarea sin ventana (una descarga). */
+	dir?: string;
 }
 
 const { t } = useI18n();
@@ -73,7 +74,7 @@ const density = usePanelDensity();
 const { musicInfo, imgSrc, position, progress, onImgError, initIcons, initMusicInfo } =
 	useMusicPlayer();
 
-const { progressApps } = useActivityProgress();
+const { progressApps, downloads } = useActivityProgress();
 
 /**
  * Si algo suena, la música es una actividad más. Un stream que reporta `Playing`
@@ -108,17 +109,26 @@ const activities = computed<ActivityEntry[]>(() => {
 			windowId: app.id,
 		});
 	}
+	// Las descargas del navegador: tareas sin ventana, con avance indeterminado.
+	for (const download of downloads.value) {
+		list.push({
+			key: `download:${download.id}`,
+			kind: 'task',
+			title: download.title,
+			progress: null,
+			icon: 'folder-download',
+			dir: download.dir,
+		});
+	}
 	return list;
 });
 
 /** Con dos o más, la píldora pasa a ser la fila de iconos. */
 const multi = computed(() => activities.value.length >= 2);
 
-/** La única actividad, cuando hay una; sin ninguna, la música en reposo. */
-const topProgress = computed<ActivityProgress | null>(() =>
-	activities.value.length === 1 && activities.value[0].kind === 'task'
-		? progressApps.value[0]
-		: null
+/** La única actividad, cuando hay exactamente una. */
+const single = computed<ActivityEntry | null>(() =>
+	activities.value.length === 1 ? activities.value[0] : null
 );
 
 /** La fila: hasta `MAX_ICONS`; con más, deja lugar para el `+N`. */
@@ -129,14 +139,17 @@ const shownActivities = computed(() =>
 /** Cuántas actividades quedan fuera de la fila, para el `+N`. */
 const overflow = computed(() => activities.value.length - shownActivities.value.length);
 
-const showingProgress = computed(() => !musicActive.value && topProgress.value !== null);
+/** Con una sola actividad que es una tarea (no la música): su icono y su avance. */
+const showingProgress = computed(() => single.value?.kind === 'task');
 
-/** El avance de la tarea en curso, entero de 0 a 100. */
-const pct = computed(() => (topProgress.value ? progressPercent(topProgress.value.progress) : 0));
+/** El avance de la tarea única, de 0 a 100, o `null` si es indeterminado (una descarga). */
+const pct = computed(() =>
+	typeof single.value?.progress === 'number' ? Math.round(single.value.progress) : null
+);
 
 /** El título que se muestra: la pista, o la aplicación que trabaja. */
 const currentTitle = computed(() =>
-	showingProgress.value ? (topProgress.value?.title ?? '') : musicInfo.value.title
+	showingProgress.value ? (single.value?.title ?? '') : musicInfo.value.title
 );
 
 /**
@@ -158,21 +171,26 @@ const musicSummary = computed(() => {
 
 /** El globo de la tarea en curso: qué aplicación, y cuánto lleva. */
 const progressSummary = computed(() => {
-	const target = topProgress.value;
-	if (!target) return '';
-	return `${target.title}\n${pct.value} %`;
+	const target = single.value;
+	if (target?.kind !== 'task') return '';
+	return pct.value === null ? target.title : `${target.title}\n${pct.value} %`;
 });
 
 const summary = computed(() =>
 	showingProgress.value ? progressSummary.value : musicSummary.value
 );
 
+/** El nombre accesible de una tarea: ir a su ventana, o abrir la carpeta de descargas. */
+const taskLabel = (entry: ActivityEntry) =>
+	`${t(`components.TrayMusicControl.${entry.windowId ? 'goToApp' : 'openDownloads'}`)}: ${entry.title}`;
+
 /** El nombre del botón: qué hace y sobre qué, para quien no ve el icono. */
 const accessibleName = computed(() => {
 	if (showingProgress.value) {
-		const target = topProgress.value;
+		const target = single.value;
 		if (!target) return '';
-		return `${t('components.TrayMusicControl.goToApp')}: ${target.title} ${pct.value} %`;
+		const base = taskLabel(target);
+		return pct.value === null ? base : `${base} ${pct.value} %`;
 	}
 	const open = t('components.TrayMusicControl.openPlayer');
 	const info = musicInfo.value;
@@ -191,19 +209,18 @@ const overflowLabel = computed(() =>
 );
 
 /** El globo de un icono de la fila: la música con su resumen, o la tarea y su avance. */
-const entryTitle = (entry: ActivityEntry) =>
-	entry.kind === 'music'
-		? musicSummary.value
-		: `${entry.title}\n${Math.round(entry.progress ?? 0)} %`;
+const entryTitle = (entry: ActivityEntry) => {
+	if (entry.kind === 'music') return musicSummary.value;
+	// Una descarga no trae porcentaje: sólo el nombre.
+	return entry.progress === null ? entry.title : `${entry.title}\n${Math.round(entry.progress)} %`;
+};
 
 /**
  * El nombre de un icono de la fila, para quien no lo ve. Sin el avance: lo suma
  * `ActivityIcon` a partir de `progress`, así no queda duplicado.
  */
 const entryName = (entry: ActivityEntry) =>
-	entry.kind === 'music'
-		? accessibleName.value
-		: `${t('components.TrayMusicControl.goToApp')}: ${entry.title}`;
+	entry.kind === 'music' ? accessibleName.value : taskLabel(entry);
 
 /** Si suena, está en pausa o no hay nada: el disco gira, se congela o se queda quieto. */
 const state = computed(() => playbackStateOf(musicInfo.value.status));
@@ -220,7 +237,7 @@ const showTitle = computed(
 const clock = (micros: number) => formatDuration(micros).padStart(5, '0');
 const timing = computed(() => {
 	if (!showTitle.value) return '';
-	if (showingProgress.value) return `${pct.value} %`;
+	if (showingProgress.value) return pct.value === null ? '' : `${pct.value} %`;
 	const info = musicInfo.value;
 	if (info.length <= 0) return '';
 	return `${clock(position.value)} / ${clock(info.length)}`;
@@ -250,20 +267,35 @@ async function goToWindow(windowId: string): Promise<void> {
 	}
 }
 
-/** El clic de la píldora entera (una sola actividad): el reproductor o la ventana. */
+/** Abrir una tarea: su ventana al frente, o la carpeta de descargas si no tiene ventana. */
+async function activateTask(entry: ActivityEntry): Promise<void> {
+	if (entry.windowId) {
+		await goToWindow(entry.windowId);
+		return;
+	}
+	if (entry.dir) {
+		try {
+			await openPath(entry.dir);
+		} catch (error) {
+			logError('[TrayMusicControl] no se pudo abrir la carpeta de descargas:', error);
+		}
+	}
+}
+
+/** El clic de la píldora entera (una sola actividad): el reproductor o la tarea. */
 async function onActivate(): Promise<void> {
 	if (multi.value) return;
-	if (showingProgress.value) {
-		if (topProgress.value) await goToWindow(topProgress.value.id);
+	if (showingProgress.value && single.value) {
+		await activateTask(single.value);
 		return;
 	}
 	await openPlayer();
 }
 
-/** El clic de un icono de la fila: la música abre el reproductor, la tarea su ventana. */
+/** El clic de un icono de la fila: la música abre el reproductor, la tarea su destino. */
 async function onActivityClick(entry: ActivityEntry): Promise<void> {
 	if (entry.kind === 'music') return openPlayer();
-	if (entry.windowId) await goToWindow(entry.windowId);
+	await activateTask(entry);
 }
 
 onMounted(async () => {
@@ -309,7 +341,7 @@ onMounted(async () => {
       <ThemeIcon
         v-else
         class="shrink-0"
-        :name="topProgress?.icon ?? ''"
+        :name="single?.icon ?? ''"
         :size="24"
         :alt="currentTitle"
       />

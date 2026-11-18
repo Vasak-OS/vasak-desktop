@@ -61,6 +61,7 @@ fn default_locale() -> String {
 }
 
 mod desktop_watcher;
+mod downloads_watch;
 mod gtk_utils;
 mod inotify_rafaga;
 mod menu_display;
@@ -318,7 +319,8 @@ pub fn run() {
             connect_webcam_state,
             toggle_connect_menu,
             screen_time::screen_time_range,
-            screen_time::screen_time_clear
+            screen_time::screen_time_clear,
+            downloads_watch::active_downloads
         ])
         .setup(move |app| {
             // El puente de `log` se instala **acá**, después de los plugins, y
@@ -444,6 +446,9 @@ pub fn run() {
             // La carpeta del escritorio, para que el widget de archivos deje de
             // releerla cada diez segundos sin motivo.
             desktop_watcher::watch_desktop_dir(&handle);
+            // Las descargas del navegador, por el parcial que crece en la carpeta
+            // de descargas (no publican LauncherEntry).
+            downloads_watch::watch_downloads(&handle);
 
             // Retry in the background instead of aborting startup.
             //

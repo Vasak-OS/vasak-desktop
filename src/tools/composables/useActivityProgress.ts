@@ -1,6 +1,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { LauncherEntryView } from '@/interfaces/tray';
 import type { WindowInfo } from '@/interfaces/window';
+import { getActiveDownloads } from '@/services/downloads.service';
 import { getLauncherEntries } from '@/services/tray.service';
 import { getWindows } from '@/services/window.service';
 import { useSharedEvent } from '@/tools/event.bus';
@@ -20,6 +21,31 @@ export interface ActivityProgress {
 }
 
 /**
+ * Una descarga del navegador en curso, sin ventana propia. El avance es
+ * indeterminado (el parcial no trae el total), así que no lleva porcentaje: se
+ * muestra que hay una descarga. La manda el backend por `downloads-update`.
+ */
+export interface DownloadActivity {
+	/** El nombre del archivo parcial, estable mientras dura la descarga. */
+	id: string;
+	/** El nombre final, sin el sufijo del parcial. */
+	title: string;
+	/** La carpeta de descargas, para abrirla al tocar la actividad. */
+	dir: string;
+}
+
+/**
+ * La lista de descargas con su número de versión. La consulta `active_downloads`
+ * y el evento `downloads-update` comparten la cuenta, así que la vista aplica
+ * siempre el `seq` más alto: una respuesta vieja de la consulta no pisa un evento
+ * más nuevo, ni al revés.
+ */
+export interface DownloadsSnapshot {
+	seq: number;
+	items: DownloadActivity[];
+}
+
+/**
  * Las aplicaciones con una tarea en curso, para la cápsula de actividad.
  *
  * Una «actividad» es una ventana cuya aplicación publica por
@@ -36,6 +62,18 @@ export interface ActivityProgress {
 export function useActivityProgress() {
 	const windows = ref<WindowInfo[]>([]);
 	const launcherEntries = ref<LauncherEntryView[]>([]);
+	const downloads = ref<DownloadActivity[]>([]);
+	// La última versión aplicada. El backend numera cada snapshot (la consulta y
+	// el evento comparten la cuenta), así que sólo se aplica el más nuevo y nunca
+	// uno viejo pisa a uno reciente. -1 para que el primero —aun el vacío, seq 0—
+	// entre.
+	let appliedDownloadsSeq = -1;
+
+	const applyDownloads = (snapshot: DownloadsSnapshot | null): void => {
+		if (!snapshot || snapshot.seq <= appliedDownloadsSeq) return;
+		appliedDownloadsSeq = snapshot.seq;
+		downloads.value = Array.isArray(snapshot.items) ? snapshot.items : [];
+	};
 
 	// `get_windows` puede contestar una lista fresca o una caché de hasta cinco
 	// segundos, y el `window-delta` dispara otra lectura en paralelo: nada ordena
@@ -71,6 +109,14 @@ export function useActivityProgress() {
 		}
 	};
 
+	const refreshDownloads = async (): Promise<void> => {
+		try {
+			applyDownloads(await getActiveDownloads());
+		} catch (error) {
+			logError('[Activity] no se pudieron leer las descargas:', error);
+		}
+	};
+
 	/** Las apps con tarea en curso, la más avanzada —la que está por terminar— primero. */
 	const progressApps = computed<ActivityProgress[]>(() => {
 		const out: ActivityProgress[] = [];
@@ -96,6 +142,10 @@ export function useActivityProgress() {
 		launcherVersion++;
 		launcherEntries.value = Array.isArray(entries) ? entries : [];
 	});
+	// El backend emite cuando cambia la lista de descargas en curso. Sin ventana
+	// que cruzar: es una actividad por sí misma. Se aplica por `seq` para que el
+	// orden entre este evento y la consulta inicial no dependa de quién llega antes.
+	useSharedEvent<DownloadsSnapshot>('downloads-update', applyDownloads);
 
 	// La espera al enganche es asíncrona: el componente puede desmontarse antes de
 	// que resuelva. Vue no cancela el `onMounted` ya suspendido, así que se marca el
@@ -112,8 +162,8 @@ export function useActivityProgress() {
 		// el estado ya enganchado y lo posterior llega por el evento.
 		await Promise.all([windowFeed.ready, launcherFeed.ready]);
 		if (disposed) return;
-		await Promise.all([refreshWindows(), refreshEntries()]);
+		await Promise.all([refreshWindows(), refreshEntries(), refreshDownloads()]);
 	});
 
-	return { progressApps, topProgress };
+	return { progressApps, topProgress, downloads };
 }

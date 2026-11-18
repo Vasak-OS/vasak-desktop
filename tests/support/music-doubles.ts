@@ -7,7 +7,7 @@
 import { computed, defineComponent, h, type Ref, ref } from 'vue';
 import { type EqualizerState, missingEqualizer } from '../../src/interfaces/equalizer';
 import type { MusicInfo, PlayerRef } from '../../src/interfaces/music';
-import type { ActivityProgress } from '../../src/tools/composables/useActivityProgress';
+import type { ActivityProgress, DownloadActivity } from '../../src/tools/composables/useActivityProgress';
 
 export { currentOutput, outputIcon, outputLabel } from '../../src/tools/audio-outputs';
 export { activePlayerIndex, playerLabels } from '../../src/tools/music-players';
@@ -62,8 +62,11 @@ export const music = {
 	activity: ref<ActivityProgress | null>(null),
 	/** Más apps con tarea en curso, detrás de `activity`, para la fila de varias actividades. */
 	tasks: ref<ActivityProgress[]>([]),
+	/** Las descargas del navegador en curso (`downloads-update`): tareas sin ventana. */
+	downloads: ref<DownloadActivity[]>([]),
 	calls: [] as Array<{ name: string; args: unknown[] }>,
 	reset() {
+		this.downloads.value = [];
 		this.activity.value = null;
 		this.tasks.value = [];
 		this.info.value = blankInfo();
@@ -110,10 +113,12 @@ export function useMusicPlayer() {
 export function useActivityProgress(): {
 	topProgress: Ref<ActivityProgress | null>;
 	progressApps: Ref<ActivityProgress[]>;
+	downloads: Ref<DownloadActivity[]>;
 } {
 	return {
 		topProgress: music.activity,
 		progressApps: computed(() => [...(music.activity.value ? [music.activity.value] : []), ...music.tasks.value]),
+		downloads: music.downloads,
 	};
 }
 
