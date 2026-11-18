@@ -69,29 +69,33 @@ pub fn is_video_path(path: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Qué fondos lista el selector: los oficiales, los de la carpeta propia
-/// (vasak-settings#148) y, si no es ninguno de ellos, el que está puesto ahora,
-/// **primero** —el carrusel abre centrado en él y así queda en una punta, no
-/// perdido en el medio—.
+/// Qué fondos lista el selector: los oficiales, los de la biblioteca propia, los
+/// de la carpeta propia (vasak-settings#148) y, si no es ninguno de ellos, el
+/// que está puesto ahora, **primero** —el carrusel abre centrado en él y así
+/// queda en una punta, no perdido en el medio—.
 ///
 /// Un fondo elegido antes desde Configuración (una foto propia, un video) no se
-/// pierde por abrir el selector: sigue en la fila mientras sea el aplicado. Las
-/// imágenes de la carpeta propia van después de las oficiales, y sin repetir si
+/// pierde por abrir el selector: sigue en la fila mientras sea el aplicado. La
+/// biblioteca y la carpeta propia van después de los oficiales, y sin repetir si
 /// una ya estaba.
 pub fn merge_catalog(
     official: Vec<String>,
+    library: Vec<String>,
     custom: Vec<String>,
     current: Option<&str>,
 ) -> Vec<String> {
-    let mut paths: Vec<String> = Vec::with_capacity(official.len() + custom.len() + 1);
+    let mut paths: Vec<String> =
+        Vec::with_capacity(official.len() + library.len() + custom.len() + 1);
 
     if let Some(current) = current.map(str::trim).filter(|current| !current.is_empty()) {
-        if !official.contains(&current.to_string()) && !custom.contains(&current.to_string()) {
-            paths.push(current.to_string());
+        let current = current.to_string();
+        if !official.contains(&current) && !library.contains(&current) && !custom.contains(&current)
+        {
+            paths.push(current);
         }
     }
 
-    for path in official.into_iter().chain(custom) {
+    for path in official.into_iter().chain(library).chain(custom) {
         if !paths.contains(&path) {
             paths.push(path);
         }
@@ -174,6 +178,17 @@ pub async fn wallpaper_catalog(
             Vec::new()
         });
 
+    // Los fondos propios ya importados (biblioteca gestionada): el selector los
+    // muestra junto a los oficiales. `merge_catalog` los ordena y deduplica.
+    let library = ask_settings::<Vec<String>>(&["library"])
+        .await
+        .unwrap_or_else(|error| {
+            log_warning(&format!(
+                "[wallpaper_picker] sin la biblioteca de fondos propios: {error}"
+            ));
+            Vec::new()
+        });
+
     let custom = match custom_folder_arg(custom_folder.as_deref()) {
         Some(folder) => ask_settings::<Vec<String>>(&["folder", &folder])
             .await
@@ -186,7 +201,7 @@ pub async fn wallpaper_catalog(
         None => Vec::new(),
     };
 
-    let paths = merge_catalog(official, custom, current.as_deref());
+    let paths = merge_catalog(official, library, custom, current.as_deref());
     if paths.is_empty() {
         return Ok(Vec::new());
     }
@@ -291,6 +306,7 @@ mod tests {
         let merged = merge_catalog(
             paths(&["/o/1.jpg", "/o/2.jpg"]),
             Vec::new(),
+            Vec::new(),
             Some("/home/p/video.mp4"),
         );
         assert_eq!(
@@ -303,6 +319,7 @@ mod tests {
     fn un_fondo_oficial_no_se_repite() {
         let merged = merge_catalog(
             paths(&["/o/1.jpg", "/o/2.jpg"]),
+            Vec::new(),
             Vec::new(),
             Some("/o/2.jpg"),
         );
@@ -318,6 +335,7 @@ mod tests {
         // oficial.
         let merged = merge_catalog(
             paths(&["/o/1.jpg", "/o/2.jpg"]),
+            Vec::new(),
             paths(&["/c/a.png", "/o/2.jpg", "/c/b.mp4"]),
             Some("/c/b.mp4"),
         );
@@ -328,11 +346,27 @@ mod tests {
     }
 
     #[test]
+    fn la_biblioteca_va_entre_las_oficiales_y_la_carpeta_propia_sin_repetir() {
+        // Los fondos de la biblioteca propia se suman detrás de los oficiales y
+        // delante de la carpeta propia; uno que ya es oficial no se repite. El
+        // actual, cuando ya está en el catálogo (acá en la biblioteca), queda en
+        // su lugar.
+        let merged = merge_catalog(
+            paths(&["/o/1.jpg"]),
+            paths(&["/lib/a.webp", "/o/1.jpg"]),
+            paths(&["/c/x.png"]),
+            Some("/lib/a.webp"),
+        );
+        assert_eq!(merged, paths(&["/o/1.jpg", "/lib/a.webp", "/c/x.png"]));
+    }
+
+    #[test]
     fn un_fondo_de_afuera_del_catalogo_va_primero() {
         // Una foto suelta que no está ni en los oficiales ni en la carpeta
         // propia sí va primero, para no quedar perdida.
         let merged = merge_catalog(
             paths(&["/o/1.jpg"]),
+            Vec::new(),
             paths(&["/c/a.png"]),
             Some("/home/p/suelta.png"),
         );
@@ -345,12 +379,12 @@ mod tests {
     #[test]
     fn sin_configuracion_queda_al_menos_el_actual() {
         assert_eq!(
-            merge_catalog(Vec::new(), Vec::new(), Some("/home/p/foto.png")),
+            merge_catalog(Vec::new(), Vec::new(), Vec::new(), Some("/home/p/foto.png")),
             paths(&["/home/p/foto.png"])
         );
-        assert!(merge_catalog(Vec::new(), Vec::new(), None).is_empty());
+        assert!(merge_catalog(Vec::new(), Vec::new(), Vec::new(), None).is_empty());
         assert!(
-            merge_catalog(Vec::new(), Vec::new(), Some("  ")).is_empty(),
+            merge_catalog(Vec::new(), Vec::new(), Vec::new(), Some("  ")).is_empty(),
             "un fondo vacío no es un fondo"
         );
     }
