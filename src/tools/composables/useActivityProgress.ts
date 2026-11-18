@@ -71,14 +71,19 @@ export function useActivityProgress() {
 	// publicó la app. El refresco de ventanas es completo —la lista es corta— para
 	// no duplicar acá el `applyDelta` del panel.
 	// shortcut: refetch completo de ventanas por cada delta; pasar a delta si pesara.
-	useSharedEvent('window-delta', () => {
+	const windowFeed = useSharedEvent('window-delta', () => {
 		void refreshWindows();
 	});
-	useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
+	const launcherFeed = useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
 		launcherEntries.value = Array.isArray(entries) ? entries : [];
 	});
 
 	onMounted(async () => {
+		// Esperar a que los listeners estén enganchados antes de la lectura inicial:
+		// si no, un evento emitido entre la suscripción y el enganche se perdería y
+		// la vista quedaría atrasada hasta el próximo cambio. Con esto la lectura ve
+		// el estado ya enganchado y lo posterior llega por el evento.
+		await Promise.all([windowFeed.ready, launcherFeed.ready]);
 		await Promise.all([refreshWindows(), refreshEntries()]);
 	});
 

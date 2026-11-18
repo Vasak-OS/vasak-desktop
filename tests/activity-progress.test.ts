@@ -18,6 +18,9 @@ let entries: Array<{ desktop_id: string; progress?: number }> = [];
 const callbacks = new Map<number, (event: unknown) => void>();
 const listeners = new Map<string, number>();
 let nextCallback = 1;
+// Si hay una compuerta, el `listen` nativo no engancha hasta que se abre.
+let listenGate: Promise<void> | null = null;
+let windowReads = 0;
 
 const win = (id: string, app_id?: string): Win => ({
 	id,
@@ -36,9 +39,13 @@ beforeAll(() => {
 			return id;
 		},
 		invoke: async (cmd: string, args: { event?: string; handler?: number }) => {
-			if (cmd === 'get_windows') return windows;
+			if (cmd === 'get_windows') {
+				windowReads++;
+				return windows;
+			}
 			if (cmd === 'get_launcher_entries') return entries;
 			if (cmd === 'plugin:event|listen' && args.event && args.handler !== undefined) {
+				await listenGate;
 				listeners.set(args.event, args.handler);
 				return args.handler;
 			}
@@ -59,6 +66,8 @@ beforeEach(() => {
 	windows = [];
 	entries = [];
 	listeners.clear();
+	listenGate = null;
+	windowReads = 0;
 });
 
 const settle = async () => {
@@ -156,6 +165,39 @@ describe('las apps con una tarea en curso', () => {
 
 		expect(activity.topProgress.value?.id).toBe('a');
 		expect(activity.topProgress.value?.progress).toBe(0.75);
+		view.unmount();
+	});
+});
+
+describe('la lectura inicial espera al enganche de los listeners', () => {
+	test('no lee hasta que los listeners engancharon, y lo que cambió en el hueco no se pierde', async () => {
+		let openGate!: () => void;
+		listenGate = new Promise<void>((resolve) => {
+			openGate = resolve;
+		});
+		let exposed!: ReturnType<typeof useActivityProgress>;
+		const view = mount(
+			defineComponent({
+				setup() {
+					exposed = useActivityProgress();
+					return () => h('div');
+				},
+			})
+		);
+		await settle();
+
+		// Listeners sin enganchar: todavía no hay lectura inicial.
+		expect(windowReads).toBe(0);
+
+		// El estado cambia en el hueco (sin listener, ese evento se perdería).
+		windows = [win('a', 'org.app.uno')];
+		entries = [{ desktop_id: 'org.app.uno', progress: 0.4 }];
+		openGate();
+		await settle();
+
+		expect(windowReads).toBe(1);
+		expect(exposed.topProgress.value?.id).toBe('a');
+		expect(exposed.topProgress.value?.progress).toBe(0.4);
 		view.unmount();
 	});
 });

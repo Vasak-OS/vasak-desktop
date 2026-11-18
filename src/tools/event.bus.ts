@@ -14,6 +14,10 @@ interface ListenerEntry {
 	throttleTimer: ReturnType<typeof setTimeout> | null;
 	throttlePending: unknown;
 	debounceTimer: ReturnType<typeof setTimeout> | null;
+	/** Se resuelve cuando el `listen()` nativo quedó enganchado (o falló del todo). */
+	ready: Promise<void>;
+	/** Resuelve `ready`. Idempotente: llamarla de más no hace nada. */
+	markReady: () => void;
 }
 
 class SharedEventBus {
@@ -43,6 +47,10 @@ class SharedEventBus {
 			}
 			entry.handlers.add(handler as unknown as (payload: unknown) => void);
 		} else {
+			let markReady!: () => void;
+			const ready = new Promise<void>((resolve) => {
+				markReady = resolve;
+			});
 			const newEntry: ListenerEntry = {
 				unlisten: null,
 				handlers: new Set([handler as unknown as (payload: unknown) => void]),
@@ -51,12 +59,26 @@ class SharedEventBus {
 				throttleTimer: null,
 				throttlePending: null as unknown,
 				debounceTimer: null,
+				ready,
+				markReady,
 			};
 			this.listeners.set(event, newEntry);
 			this.ensureListener(event, options ?? {});
 		}
 
 		return () => this.unsubscribe(event, handler as unknown as (payload: unknown) => void);
+	}
+
+	/**
+	 * Una promesa que se resuelve cuando el listener nativo del evento ya está
+	 * enganchado. Un consumidor que hace una lectura inicial del estado y después
+	 * se apoya en los eventos debe esperar esto antes de leer: así un evento
+	 * emitido entre `subscribe` y el enganche —el `listen()` es asíncrono— no se
+	 * pierde, porque la lectura ve su efecto y lo posterior llega por el evento.
+	 * Sin suscripción previa no hay nada que esperar: resuelve enseguida.
+	 */
+	whenReady(event: string): Promise<void> {
+		return this.listeners.get(event)?.ready ?? Promise.resolve();
 	}
 
 	/**
@@ -77,6 +99,9 @@ class SharedEventBus {
 				const currentEntry = this.listeners.get(event);
 				if (currentEntry === entry) {
 					entry.unlisten = unlisten;
+					// El listener ya está enganchado: quien esperaba `whenReady` puede
+					// hacer su lectura inicial sin perderse eventos de acá en adelante.
+					entry.markReady();
 				} else {
 					// The original entry was removed (and possibly replaced).
 					// Stale registration has no business assigning to the current entry.
@@ -105,6 +130,9 @@ class SharedEventBus {
 								`${failEntry.handlers.size} subscriber(s) will not receive events.`
 						);
 					}
+					// No hubo enganche, pero igual se resuelve `ready`: quien espera no
+					// debe quedar colgado para siempre; sigue, degradado, con su lectura.
+					entry.markReady();
 				}
 			}
 		};
@@ -229,15 +257,26 @@ export function useSharedEvent<T>(
 	event: string,
 	handler: (payload: T) => void,
 	options?: EventBusOptions
-): void {
+): { ready: Promise<void> } {
 	let unsubscribe: (() => void) | null = null;
+	let resolveReady!: () => void;
+	// `ready` se resuelve cuando el listener quedó enganchado. Un consumidor que
+	// lee el estado al montar la espera antes de leer para no perderse un evento
+	// emitido en el hueco entre la suscripción y el enganche. Quien sólo escucha
+	// puede ignorar el valor de retorno, como hasta ahora.
+	const ready = new Promise<void>((resolve) => {
+		resolveReady = resolve;
+	});
 
 	onMounted(() => {
 		unsubscribe = eventBus.subscribe<T>(event, handler, options);
+		void eventBus.whenReady(event).then(resolveReady);
 	});
 
 	onUnmounted(() => {
 		unsubscribe?.();
 		unsubscribe = null;
 	});
+
+	return { ready };
 }
