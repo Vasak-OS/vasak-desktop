@@ -1,7 +1,7 @@
 {
 	"name": "vasak-desktop",
 	"private": true,
-	"version": "1.81.2",
+	"version": "1.82.0",
 	"type": "module",
 	"engines": {
 		"bun": ">=1.2.21"
