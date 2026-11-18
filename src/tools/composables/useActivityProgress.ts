@@ -35,6 +35,17 @@ export interface DownloadActivity {
 }
 
 /**
+ * La lista de descargas con su número de versión. La consulta `active_downloads`
+ * y el evento `downloads-update` comparten la cuenta, así que la vista aplica
+ * siempre el `seq` más alto: una respuesta vieja de la consulta no pisa un evento
+ * más nuevo, ni al revés.
+ */
+export interface DownloadsSnapshot {
+	seq: number;
+	items: DownloadActivity[];
+}
+
+/**
  * Las aplicaciones con una tarea en curso, para la cápsula de actividad.
  *
  * Una «actividad» es una ventana cuya aplicación publica por
@@ -52,6 +63,17 @@ export function useActivityProgress() {
 	const windows = ref<WindowInfo[]>([]);
 	const launcherEntries = ref<LauncherEntryView[]>([]);
 	const downloads = ref<DownloadActivity[]>([]);
+	// La última versión aplicada. El backend numera cada snapshot (la consulta y
+	// el evento comparten la cuenta), así que sólo se aplica el más nuevo y nunca
+	// uno viejo pisa a uno reciente. -1 para que el primero —aun el vacío, seq 0—
+	// entre.
+	let appliedDownloadsSeq = -1;
+
+	const applyDownloads = (snapshot: DownloadsSnapshot | null): void => {
+		if (!snapshot || snapshot.seq <= appliedDownloadsSeq) return;
+		appliedDownloadsSeq = snapshot.seq;
+		downloads.value = Array.isArray(snapshot.items) ? snapshot.items : [];
+	};
 
 	const refreshWindows = async (): Promise<void> => {
 		try {
@@ -71,7 +93,7 @@ export function useActivityProgress() {
 
 	const refreshDownloads = async (): Promise<void> => {
 		try {
-			downloads.value = await getActiveDownloads();
+			applyDownloads(await getActiveDownloads());
 		} catch (error) {
 			logError('[Activity] no se pudieron leer las descargas:', error);
 		}
@@ -101,11 +123,10 @@ export function useActivityProgress() {
 	useSharedEvent<LauncherEntryView[]>('launcher-entry-update', (entries) => {
 		launcherEntries.value = Array.isArray(entries) ? entries : [];
 	});
-	// El backend sólo emite cuando cambia la lista de descargas en curso, así que
-	// se usa tal cual. Sin ventana que cruzar: es una actividad por sí misma.
-	useSharedEvent<DownloadActivity[]>('downloads-update', (list) => {
-		downloads.value = Array.isArray(list) ? list : [];
-	});
+	// El backend emite cuando cambia la lista de descargas en curso. Sin ventana
+	// que cruzar: es una actividad por sí misma. Se aplica por `seq` para que el
+	// orden entre este evento y la consulta inicial no dependa de quién llega antes.
+	useSharedEvent<DownloadsSnapshot>('downloads-update', applyDownloads);
 
 	onMounted(async () => {
 		await Promise.all([refreshWindows(), refreshEntries(), refreshDownloads()]);

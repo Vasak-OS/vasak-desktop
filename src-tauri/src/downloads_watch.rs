@@ -47,6 +47,16 @@ pub struct DownloadActivity {
     pub dir: String,
 }
 
+/// La lista de descargas con un número de versión que crece en cada cambio. La
+/// consulta `active_downloads` y el evento `downloads-update` comparten la misma
+/// cuenta, así que la vista aplica siempre la más nueva (mayor `seq`): una
+/// respuesta vieja de la consulta no pisa un evento más reciente, ni al revés.
+#[derive(Debug, Clone, Default, Serialize, PartialEq)]
+pub struct DownloadsSnapshot {
+    pub seq: u64,
+    pub items: Vec<DownloadActivity>,
+}
+
 /// El nombre que se muestra: el del archivo sin el sufijo del parcial, o `None`
 /// si el nombre no es el de una descarga a medio bajar.
 pub fn partial_title(name: &str) -> Option<String> {
@@ -117,17 +127,19 @@ fn scan_partials(dir: &Path) -> Option<Vec<(String, u64)>> {
     Some(out)
 }
 
-/// La última lista de descargas emitida, para que una vista que recién montó la
-/// pida de entrada: el bus de eventos no reenvía lo que ya pasó, así que una
-/// descarga que ya estaba en curso cuando se (re)abrió el panel no se vería
-/// hasta el próximo cambio. La misma idea que `get_windows`/`get_launcher_entries`.
+/// El último snapshot emitido, para que una vista que recién montó lo pida de
+/// entrada: el bus de eventos no reenvía lo que ya pasó, así que una descarga que
+/// ya estaba en curso cuando se (re)abrió el panel no se vería hasta el próximo
+/// cambio. La misma idea que `get_windows`/`get_launcher_entries`. El `seq` deja
+/// que la vista ordene esta consulta contra los eventos que llegan.
 #[derive(Default)]
-pub struct ActiveDownloads(pub Mutex<Vec<DownloadActivity>>);
+pub struct ActiveDownloads(pub Mutex<DownloadsSnapshot>);
 
-/// Las descargas en curso ahora mismo. La vista la llama al montar; después se
-/// mantiene sola por el evento `downloads-update`.
+/// El snapshot de las descargas en curso ahora mismo. La vista lo llama al
+/// montar; después se mantiene sola por el evento `downloads-update`. El `seq`
+/// la deja descartar esta respuesta si ya aplicó un evento más nuevo.
 #[tauri::command]
-pub fn active_downloads(state: tauri::State<'_, ActiveDownloads>) -> Vec<DownloadActivity> {
+pub fn active_downloads(state: tauri::State<'_, ActiveDownloads>) -> DownloadsSnapshot {
     state.0.lock().map(|held| held.clone()).unwrap_or_default()
 }
 
@@ -147,6 +159,7 @@ pub fn watch_downloads(app: &AppHandle) {
         let dir_str = dir.to_string_lossy().to_string();
         let mut tracker = Tracker::default();
         let mut last: Vec<String> = Vec::new();
+        let mut seq: u64 = 0;
         loop {
             // Un `read_dir` fallido no toca el seguimiento: se saltea la vuelta.
             let Some(scan) = scan_partials(&dir) else {
@@ -155,20 +168,26 @@ pub fn watch_downloads(app: &AppHandle) {
             };
             let active = tracker.active(&scan, Instant::now(), GRACE);
             if active != last {
-                let payload: Vec<DownloadActivity> = active
-                    .iter()
-                    .map(|name| DownloadActivity {
-                        id: name.clone(),
-                        title: partial_title(name).unwrap_or_else(|| name.clone()),
-                        dir: dir_str.clone(),
-                    })
-                    .collect();
+                seq += 1;
+                let snapshot = DownloadsSnapshot {
+                    seq,
+                    items: active
+                        .iter()
+                        .map(|name| DownloadActivity {
+                            id: name.clone(),
+                            title: partial_title(name).unwrap_or_else(|| name.clone()),
+                            dir: dir_str.clone(),
+                        })
+                        .collect(),
+                };
+                // Primero el estado, después el evento: así una consulta que
+                // llega entre medio nunca ve un `seq` más viejo que el del evento.
                 if let Some(state) = app.try_state::<ActiveDownloads>() {
                     if let Ok(mut held) = state.0.lock() {
-                        *held = payload.clone();
+                        *held = snapshot.clone();
                     }
                 }
-                if let Err(error) = app.emit("downloads-update", payload) {
+                if let Err(error) = app.emit("downloads-update", snapshot) {
                     log_warning(&format!(
                         "[Downloads] No se pudo avisar a la vista: {error}"
                     ));

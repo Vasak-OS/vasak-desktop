@@ -15,7 +15,7 @@ type Win = { id: string; title: string; is_minimized: boolean; icon: string; app
 
 let windows: Win[] = [];
 let entries: Array<{ desktop_id: string; progress?: number }> = [];
-let activeDownloads: unknown = [];
+let activeDownloads: unknown = { seq: 0, items: [] };
 const callbacks = new Map<number, (event: unknown) => void>();
 const listeners = new Map<string, number>();
 let nextCallback = 1;
@@ -60,7 +60,7 @@ afterAll(() => {
 beforeEach(() => {
 	windows = [];
 	entries = [];
-	activeDownloads = [];
+	activeDownloads = { seq: 0, items: [] };
 	listeners.clear();
 });
 
@@ -175,7 +175,7 @@ describe('las descargas del navegador', () => {
 
 	test('al montar ya traen las descargas en curso, sin esperar un aviso', async () => {
 		const list = [{ id: 'ubuntu.iso.crdownload', title: 'ubuntu.iso', dir: '/home/u/Descargas' }];
-		activeDownloads = list;
+		activeDownloads = { seq: 1, items: list };
 		const { view, activity } = await mountActivity();
 
 		expect(activity.downloads.value).toEqual(list);
@@ -186,21 +186,21 @@ describe('las descargas del navegador', () => {
 		const { view, activity } = await mountActivity();
 		const list = [{ id: 'ubuntu.iso.crdownload', title: 'ubuntu.iso', dir: '/home/u/Descargas' }];
 
-		emitDownloads(list);
+		emitDownloads({ seq: 1, items: list });
 		await settle();
 		expect(activity.downloads.value).toEqual(list);
 
-		emitDownloads([]);
+		emitDownloads({ seq: 2, items: [] });
 		await settle();
 		expect(activity.downloads.value).toEqual([]);
 		view.unmount();
 	});
 
-	test('un aviso que no es una lista se toma como sin descargas', async () => {
+	test('un aviso cuyas descargas no son una lista se toma como sin descargas', async () => {
 		const { view, activity } = await mountActivity();
-		emitDownloads([{ id: 'a.part', title: 'a', dir: '/d' }]);
+		emitDownloads({ seq: 1, items: [{ id: 'a.part', title: 'a', dir: '/d' }] });
 		await settle();
-		emitDownloads(null);
+		emitDownloads({ seq: 2, items: null });
 		await settle();
 		expect(activity.downloads.value).toEqual([]);
 		view.unmount();
@@ -210,11 +210,63 @@ describe('las descargas del navegador', () => {
 		windows = [win('a', 'org.app.uno')];
 		entries = [{ desktop_id: 'org.app.uno', progress: 0.5 }];
 		const { view, activity } = await mountActivity();
-		emitDownloads([{ id: 'x.part', title: 'x', dir: '/d' }]);
+		emitDownloads({ seq: 1, items: [{ id: 'x.part', title: 'x', dir: '/d' }] });
 		await settle();
 
 		expect(ids(activity.progressApps.value)).toEqual(['a']);
 		expect(activity.downloads.value).toHaveLength(1);
+		view.unmount();
+	});
+
+	const item = (id: string) => [{ id: `${id}.part`, title: id, dir: '/d' }];
+
+	test('un aviso más nuevo gana a la consulta inicial que responde tarde', async () => {
+		let answer!: (value: unknown) => void;
+		activeDownloads = new Promise((resolve) => {
+			answer = resolve;
+		});
+		const { view, activity } = await mountActivity();
+
+		emitDownloads({ seq: 5, items: item('nuevo') });
+		await settle();
+		answer({ seq: 3, items: item('viejo') });
+		await settle();
+
+		expect(activity.downloads.value).toEqual(item('nuevo'));
+		view.unmount();
+	});
+
+	test('un aviso más nuevo gana a la consulta inicial que responde antes', async () => {
+		activeDownloads = { seq: 3, items: item('consulta') };
+		const { view, activity } = await mountActivity();
+		expect(activity.downloads.value).toEqual(item('consulta'));
+
+		emitDownloads({ seq: 4, items: item('aviso') });
+		await settle();
+
+		expect(activity.downloads.value).toEqual(item('aviso'));
+		view.unmount();
+	});
+
+	test('un snapshot con seq menor no pisa al ya aplicado', async () => {
+		const { view, activity } = await mountActivity();
+		emitDownloads({ seq: 5, items: item('cinco') });
+		await settle();
+		emitDownloads({ seq: 4, items: item('cuatro') });
+		await settle();
+
+		expect(activity.downloads.value).toEqual(item('cinco'));
+		view.unmount();
+	});
+
+	test('un snapshot con el mismo seq no pisa al ya aplicado', async () => {
+		const { view, activity } = await mountActivity();
+		emitDownloads({ seq: 5, items: item('primero') });
+		await settle();
+		emitDownloads({ seq: 5, items: item('repetido') });
+		await settle();
+
+		expect(activity.downloads.value).toEqual(item('primero'));
 		view.unmount();
 	});
 });
