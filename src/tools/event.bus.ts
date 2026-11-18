@@ -76,6 +76,11 @@ class SharedEventBus {
 	 * emitido entre `subscribe` y el enganche —el `listen()` es asíncrono— no se
 	 * pierde, porque la lectura ve su efecto y lo posterior llega por el evento.
 	 * Sin suscripción previa no hay nada que esperar: resuelve enseguida.
+	 *
+	 * Ojo: resolverse NO garantiza que haya listener. Si el `listen()` falló y se
+	 * agotó el reintento, esto igual resuelve —para no colgar a quien espera—, pero
+	 * los eventos no llegarán. Sirve para ordenar la lectura inicial, no como prueba
+	 * de que la suscripción quedó viva.
 	 */
 	whenReady(event: string): Promise<void> {
 		return this.listeners.get(event)?.ready ?? Promise.resolve();
@@ -263,7 +268,9 @@ export function useSharedEvent<T>(
 	// `ready` se resuelve cuando el listener quedó enganchado. Un consumidor que
 	// lee el estado al montar la espera antes de leer para no perderse un evento
 	// emitido en el hueco entre la suscripción y el enganche. Quien sólo escucha
-	// puede ignorar el valor de retorno, como hasta ahora.
+	// puede ignorar el valor de retorno, como hasta ahora. Como en `whenReady`,
+	// resolverse no prueba que haya listener: si el enganche falló del todo, igual
+	// resuelve para no colgar a quien espera.
 	const ready = new Promise<void>((resolve) => {
 		resolveReady = resolve;
 	});

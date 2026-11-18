@@ -9,6 +9,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h, nextTick } from 'vue';
+import { useSharedEvent } from '../src/tools/event.bus';
 import { type ActivityProgress, useActivityProgress } from '../src/tools/composables/useActivityProgress';
 
 type Win = { id: string; title: string; is_minimized: boolean; icon: string; app_id?: string };
@@ -20,7 +21,22 @@ const listeners = new Map<string, number>();
 let nextCallback = 1;
 // Si hay una compuerta, el `listen` nativo no engancha hasta que se abre.
 let listenGate: Promise<void> | null = null;
+// Compuertas por evento, para engancharlos de a uno.
+const eventGates = new Map<string, Promise<void>>();
 let windowReads = 0;
+let entryReads = 0;
+// Respuestas encoladas a mano: cada lectura toma la siguiente, así una prueba
+// decide en qué orden resuelven. Sin cola, se contesta con `windows`/`entries`.
+let windowReplies: Array<Promise<Win[]>> = [];
+let entryReplies: Array<Promise<Array<{ desktop_id: string; progress?: number }>>> = [];
+
+const deferred = <T>() => {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((done) => {
+		resolve = done;
+	});
+	return { promise, resolve };
+};
 
 const win = (id: string, app_id?: string): Win => ({
 	id,
@@ -41,11 +57,15 @@ beforeAll(() => {
 		invoke: async (cmd: string, args: { event?: string; handler?: number }) => {
 			if (cmd === 'get_windows') {
 				windowReads++;
-				return windows;
+				return windowReplies.shift() ?? windows;
 			}
-			if (cmd === 'get_launcher_entries') return entries;
+			if (cmd === 'get_launcher_entries') {
+				entryReads++;
+				return entryReplies.shift() ?? entries;
+			}
 			if (cmd === 'plugin:event|listen' && args.event && args.handler !== undefined) {
 				await listenGate;
+				await eventGates.get(args.event);
 				listeners.set(args.event, args.handler);
 				return args.handler;
 			}
@@ -67,7 +87,11 @@ beforeEach(() => {
 	entries = [];
 	listeners.clear();
 	listenGate = null;
+	eventGates.clear();
 	windowReads = 0;
+	entryReads = 0;
+	windowReplies = [];
+	entryReplies = [];
 });
 
 const settle = async () => {
@@ -90,6 +114,9 @@ async function mountActivity() {
 	await settle();
 	return { view, activity: exposed };
 }
+
+const emitLauncher = (payload: unknown) =>
+	callbacks.get(listeners.get('launcher-entry-update') ?? -1)?.({ event: 'launcher-entry-update', id: 1, payload });
 
 const ids = (apps: ActivityProgress[]) => apps.map((app) => app.id);
 
@@ -188,6 +215,7 @@ describe('la lectura inicial espera al enganche de los listeners', () => {
 
 		// Listeners sin enganchar: todavía no hay lectura inicial.
 		expect(windowReads).toBe(0);
+		expect(entryReads).toBe(0);
 
 		// El estado cambia en el hueco (sin listener, ese evento se perdería).
 		windows = [win('a', 'org.app.uno')];
@@ -196,8 +224,113 @@ describe('la lectura inicial espera al enganche de los listeners', () => {
 		await settle();
 
 		expect(windowReads).toBe(1);
+		expect(entryReads).toBe(1);
 		expect(exposed.topProgress.value?.id).toBe('a');
 		expect(exposed.topProgress.value?.progress).toBe(0.4);
 		view.unmount();
+	});
+
+	test('espera a los dos feeds: con uno solo enganchado no lee, sea cual sea', async () => {
+		for (const [first, second] of [
+			['window-delta', 'launcher-entry-update'],
+			['launcher-entry-update', 'window-delta'],
+		]) {
+			windowReads = 0;
+			entryReads = 0;
+			eventGates.clear();
+			const firstGate = deferred<void>();
+			const secondGate = deferred<void>();
+			eventGates.set(first, firstGate.promise);
+			eventGates.set(second, secondGate.promise);
+			const view = mount(
+				defineComponent({
+					setup() {
+						useActivityProgress();
+						return () => h('div');
+					},
+				})
+			);
+			await settle();
+
+			firstGate.resolve();
+			await settle();
+			expect(windowReads).toBe(0);
+			expect(entryReads).toBe(0);
+
+			secondGate.resolve();
+			await settle();
+			expect(windowReads).toBe(1);
+			expect(entryReads).toBe(1);
+			view.unmount();
+		}
+	});
+});
+
+describe('las lecturas que resuelven fuera de orden', () => {
+	test('una lectura de ventanas vieja no pisa a la más nueva', async () => {
+		const old = deferred<Win[]>();
+		const recent = deferred<Win[]>();
+		windowReplies = [old.promise, recent.promise];
+		entries = [
+			{ desktop_id: 'org.app.uno', progress: 0.3 },
+			{ desktop_id: 'org.app.dos', progress: 0.6 },
+		];
+		const { view, activity } = await mountActivity();
+		// Lectura de montar (vieja) en vuelo; el window-delta dispara la nueva.
+		callbacks.get(listeners.get('window-delta') ?? -1)?.({ event: 'window-delta', id: 2, payload: {} });
+		await settle();
+		expect(windowReads).toBe(2);
+
+		// Resuelve primero la nueva y después la vieja.
+		recent.resolve([win('nueva', 'org.app.dos')]);
+		await settle();
+		old.resolve([win('vieja', 'org.app.uno')]);
+		await settle();
+
+		expect(ids(activity.progressApps.value)).toEqual(['nueva']);
+		view.unmount();
+	});
+
+	test('un launcher-entry-update que llegó durante la lectura inicial no se pisa con la foto vieja', async () => {
+		const snapshot = deferred<Array<{ desktop_id: string; progress?: number }>>();
+		entryReplies = [snapshot.promise];
+		windows = [win('a', 'org.app.uno')];
+		const { view, activity } = await mountActivity();
+		expect(entryReads).toBe(1);
+
+		emitLauncher([{ desktop_id: 'org.app.uno', progress: 0.8 }]);
+		await settle();
+		snapshot.resolve([{ desktop_id: 'org.app.uno', progress: 0.1 }]);
+		await settle();
+
+		expect(activity.topProgress.value?.progress).toBe(0.8);
+		view.unmount();
+	});
+});
+
+describe('el desmontaje durante la espera al enganche', () => {
+	test('si se desmonta antes de que enganchen los listeners, no arranca ninguna lectura', async () => {
+		const gate = deferred<void>();
+		listenGate = gate.promise;
+		// Otro suscriptor (el panel, en la app real) mantiene vivos los listeners
+		// compartidos: así el enganche sí resuelve después de desmontar la cápsula.
+		const keeper = mount(
+			defineComponent({
+				setup() {
+					useSharedEvent('window-delta', () => {});
+					useSharedEvent('launcher-entry-update', () => {});
+					return () => h('div');
+				},
+			})
+		);
+		const { view } = await mountActivity();
+		view.unmount();
+
+		gate.resolve();
+		await settle();
+
+		expect(windowReads).toBe(0);
+		expect(entryReads).toBe(0);
+		keeper.unmount();
 	});
 });
