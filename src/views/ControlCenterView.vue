@@ -42,7 +42,7 @@ import PowerProfileControl from '@/components/controls/PowerProfileControl.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
-import { hideControlCenter } from '@/services/window.service';
+import { hideControlCenter, surfaceIsShown } from '@/services/window.service';
 import {
 	type ControlCenterMode,
 	modeOnCountChange,
@@ -187,7 +187,12 @@ const onBlur = () => {
 // not re-run and the animation state survives from the last dismissal — without
 // this the centre comes back mid-fade and `leaving` keeps closeAfterAnimation
 // short-circuited for good.
-useSharedEvent('window-shown', () => {
+//
+// Salvo cuando sí se recargó: al reabrir tras matar su proceso, el webview vuelve
+// a cargar y este evento se emite antes de que el componente remontado se
+// suscriba, así que se pierde. Para ese caso se consulta el estado al montar
+// (`onMounted`) y se aplica lo mismo.
+function applyShown(): void {
 	if (closeTimeout !== null) {
 		clearTimeout(closeTimeout);
 		closeTimeout = null;
@@ -199,12 +204,16 @@ useSharedEvent('window-shown', () => {
 	// No se recuerda entre aperturas: decide si hay notificaciones.
 	if (summary.value.loaded) mode.value = modeOnOpen(summary.value.count);
 	else pendingDecision = true;
-});
+}
+useSharedEvent('window-shown', applyShown);
 
 onMounted(async () => {
 	bluetoothInitialized.value = await isBluetoothPluginInitialized();
 	document.addEventListener('keydown', onKeydown);
 	window.addEventListener('blur', onBlur);
+	// Si la página se recargó porque se la volvió a mostrar, el `window-shown` se
+	// perdió en la carrera con el remonte: se consulta el estado y se aplica.
+	if (await surfaceIsShown('control_center')) applyShown();
 });
 
 onBeforeUnmount(() => {

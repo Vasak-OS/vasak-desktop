@@ -3,14 +3,22 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::commands::surface_lifecycle::{
     cancel_terminate, clear_terminated, reload_surface, toggle_action, was_terminated, ToggleAction,
 };
-use crate::logger::log_info;
+use crate::logger::{log_info, log_warning};
 use crate::windows_apps::control_center::CONTROL_CENTER_LABEL;
 use crate::windows_apps::shell_layer::{
-    hide_layer_window, layer_window_visible, show_layer_window,
+    hide_layer_window, layer_window_exists, layer_window_visible, show_layer_window,
 };
 
 #[tauri::command]
 pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
+    // Construida una vez al iniciar, sobre el hilo principal de GTK. Si eso
+    // falló, no existe: no hay nada que mostrar, y seguir arrancaría la luz
+    // nocturna sobre una superficie que nunca va a emitir un `hide`.
+    if !layer_window_exists(CONTROL_CENTER_LABEL) {
+        log_warning("[control_center] la superficie no existe; no se pudo crear al iniciar");
+        return Ok(());
+    }
+
     // Visibility is a property of the layer surface, not of Tauri's window: the
     // webview was reparented into it, and the toplevel Tauri built is hidden
     // for good. Asking the wrong one is how the toggle got out of step with

@@ -102,6 +102,17 @@ pub(crate) fn reload_surface(app: &AppHandle, label: &str) {
     }
 }
 
+/// ¿La superficie `label` está a la vista? La consulta la página al montar para
+/// saber si ponerse en estado «mostrada»: tras matar su proceso y recargarla, el
+/// `window-shown` que se emite al mostrarla corre contra el remonte de Vue y se
+/// pierde, así que la página recargada lo pregunta en vez de esperarlo. Corre en
+/// el hilo principal de GTK —como los `toggle_*`, que leen el registro igual—,
+/// donde vive el registro de capas.
+#[tauri::command]
+pub fn surface_is_shown(label: String) -> bool {
+    crate::windows_apps::shell_layer::layer_window_visible(&label).unwrap_or(false)
+}
+
 /// Programa matar el proceso de `label` tras [`GRACE`] escondida. Reemplaza
 /// cualquier muerte ya pendiente para esa superficie. Seguro desde cualquier
 /// hilo: marshala al hilo principal de GTK.

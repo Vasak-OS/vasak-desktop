@@ -3,10 +3,10 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::commands::surface_lifecycle::{
     cancel_terminate, clear_terminated, reload_surface, toggle_action, was_terminated, ToggleAction,
 };
-use crate::logger::log_info;
+use crate::logger::{log_info, log_warning};
 use crate::windows_apps::clipboard::CLIPBOARD_LABEL;
 use crate::windows_apps::shell_layer::{
-    hide_layer_window, layer_window_visible, show_layer_window,
+    hide_layer_window, layer_window_exists, layer_window_visible, show_layer_window,
 };
 
 /// Abre o cierra la superposición del historial del portapapeles.
@@ -17,6 +17,13 @@ use crate::windows_apps::shell_layer::{
 /// mostrarse se cancela, y se recarga si la muerte ya corrió.
 #[tauri::command]
 pub fn toggle_clipboard(app: AppHandle) -> Result<(), ()> {
+    // Construida una vez al iniciar; si eso falló, no existe y no hay nada que
+    // mostrar.
+    if !layer_window_exists(CLIPBOARD_LABEL) {
+        log_warning("[clipboard] la superficie no existe; no se pudo crear al iniciar");
+        return Ok(());
+    }
+
     let visible = layer_window_visible(CLIPBOARD_LABEL).unwrap_or(false);
 
     match toggle_action(visible, was_terminated(CLIPBOARD_LABEL)) {
@@ -47,7 +54,7 @@ pub fn toggle_clipboard(app: AppHandle) -> Result<(), ()> {
 /// perder el foco cierra, y el conmutador la encontraría escondida y la abriría
 /// de nuevo.
 #[tauri::command]
-pub fn hide_clipboard(_app: AppHandle) -> Result<(), ()> {
+pub fn hide_clipboard() -> Result<(), ()> {
     // Esconder dispara `on_hide`, que programa matar el WebKitWebProcess.
     hide_layer_window(CLIPBOARD_LABEL);
     Ok(())
