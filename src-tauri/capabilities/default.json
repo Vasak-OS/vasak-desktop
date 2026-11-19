@@ -7,6 +7,7 @@
     "panel",
     "connect",
     "control_center",
+    "clipboard",
     "applet_bluetooth",
     "applet_network",
     "applet_audio",

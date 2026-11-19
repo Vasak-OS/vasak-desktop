@@ -17,8 +17,11 @@
 //! crece con el uso (vasak-desktop#264).
 
 const APPLET: &str = include_str!("../src/windows_apps/anchored_applet.rs");
+const CLIPBOARD: &str = include_str!("../src/commands/clipboard.rs");
 const CONNECT: &str = include_str!("../src/commands/connect.rs");
 const CONTROL_CENTER: &str = include_str!("../src/commands/control_center.rs");
+const CLIPBOARD_WINDOW: &str = include_str!("../src/windows_apps/clipboard.rs");
+const CONTROL_CENTER_WINDOW: &str = include_str!("../src/windows_apps/control_center.rs");
 const WEBKIT: &str = include_str!("../src/commands/webkit.rs");
 
 /// El cuerpo de la primera función `fn <nombre>` del archivo, hasta su llave de
@@ -88,6 +91,49 @@ fn el_centro_de_control_se_esconde_al_cerrarse() {
         !destroys_a_surface(body),
         "`toggle_control_center` no debe destruir la superficie: se esconde y se reusa."
     );
+}
+
+#[test]
+fn el_centro_y_el_portapapeles_programan_matar_su_proceso_en_on_hide() {
+    // vasak-desktop#307: escondidos dejaban su WebKitWebProcess vivo toda la
+    // sesión. El cierre normal es por pérdida de foco (`dismiss_on_unfocus`), que
+    // esconde la ventana sin pasar por el comando: por eso el armado va en el
+    // `on_hide` de la superficie, que salta en toda forma de esconder. Los
+    // comandos sólo cancelan al mostrar y no destruyen (vasak-desktop#264).
+    for (window_source, create, command_source, toggle) in [
+        (
+            CONTROL_CENTER_WINDOW,
+            "fn create_control_center_window",
+            CONTROL_CENTER,
+            "fn toggle_control_center",
+        ),
+        (
+            CLIPBOARD_WINDOW,
+            "fn create_clipboard_window",
+            CLIPBOARD,
+            "fn toggle_clipboard",
+        ),
+    ] {
+        let create_body = body_of(window_source, create);
+        assert!(
+            create_body.contains("on_hide: {") && create_body.contains("arm_terminate_after_hide"),
+            "`{create}` tiene que cablear `on_hide` con `arm_terminate_after_hide`: \
+             sin eso el cierre por pérdida de foco no programa matar el proceso"
+        );
+        assert!(
+            !destroys_a_surface(create_body),
+            "`{create}` no debe destruir la superficie"
+        );
+        let toggle_body = body_of(command_source, toggle);
+        assert!(
+            toggle_body.contains("cancel_terminate"),
+            "`{toggle}` tiene que cancelar el temporizador al mostrar"
+        );
+        assert!(
+            !destroys_a_surface(toggle_body),
+            "`{toggle}` no debe destruir en línea: va diferido"
+        );
+    }
 }
 
 #[test]

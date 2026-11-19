@@ -46,6 +46,19 @@ pub fn create_clipboard_window(app: &AppHandle) -> Result<(), Box<dyn std::error
             keyboard: KeyboardMode::OnDemand,
             start_hidden: true,
             dismiss_on_unfocus: true,
+            // Al esconderse —la esconda el panel, la página, Escape o la pérdida
+            // de foco— se programa matar su WebKitWebProcess (vasak-desktop#307).
+            // Va acá y no en el comando porque el cierre normal es por pérdida de
+            // foco, que esconde la superficie sin pasar por el comando.
+            on_hide: {
+                let app = app.clone();
+                Some(Box::new(move || {
+                    crate::commands::surface_lifecycle::arm_terminate_after_hide(
+                        &app,
+                        CLIPBOARD_LABEL,
+                    )
+                }))
+            },
             ..Default::default()
         },
     )
