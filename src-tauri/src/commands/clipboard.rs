@@ -1,5 +1,8 @@
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::commands::surface_lifecycle::{
+    cancel_terminate, clear_terminated, reload_surface, toggle_action, was_terminated, ToggleAction,
+};
 use crate::logger::{log_info, log_warning};
 use crate::windows_apps::clipboard::CLIPBOARD_LABEL;
 use crate::windows_apps::shell_layer::{
@@ -8,30 +11,40 @@ use crate::windows_apps::shell_layer::{
 
 /// Abre o cierra la superposición del historial del portapapeles.
 ///
-/// Igual que el centro de control: la superficie se construye una vez al iniciar,
-/// sobre el hilo principal de GTK, y acá sólo se muestra o se esconde. La
-/// visibilidad es de la superficie de capa, no de la ventana de Tauri (el webview
-/// se reparentó dentro de ella).
+/// Igual que el centro de control: la superficie arranca construida y escondida,
+/// y acá se muestra o se esconde sobre el hilo principal de GTK. Al esconderse se
+/// programa matar su WebKitWebProcess para no dejarlo vivo toda la sesión; al
+/// mostrarse se cancela, y se recarga si la muerte ya corrió.
 #[tauri::command]
 pub fn toggle_clipboard(app: AppHandle) -> Result<(), ()> {
+    // Construida una vez al iniciar; si eso falló, no existe y no hay nada que
+    // mostrar.
     if !layer_window_exists(CLIPBOARD_LABEL) {
         log_warning("[clipboard] la superficie no existe; no se pudo crear al iniciar");
         return Ok(());
     }
 
-    if layer_window_visible(CLIPBOARD_LABEL).unwrap_or(false) {
-        log_info("[clipboard] ocultando");
-        hide_layer_window(CLIPBOARD_LABEL);
-        return Ok(());
-    }
+    let visible = layer_window_visible(CLIPBOARD_LABEL).unwrap_or(false);
 
-    log_info("[clipboard] mostrando");
-    // La vista se refresca con este aviso en vez de rehacerse: la ventana se
-    // esconde, nunca se destruye, así que Vue no se vuelve a montar.
-    if let Some(webview) = app.get_webview_window(CLIPBOARD_LABEL) {
-        let _ = webview.emit("window-shown", ());
+    match toggle_action(visible, was_terminated(CLIPBOARD_LABEL)) {
+        ToggleAction::Hide => {
+            log_info("[clipboard] ocultando");
+            // Esconder dispara `on_hide`, que programa matar su WebKitWebProcess.
+            hide_layer_window(CLIPBOARD_LABEL);
+        }
+        ToggleAction::Show { reload } => {
+            cancel_terminate(CLIPBOARD_LABEL);
+            if reload {
+                reload_surface(&app, CLIPBOARD_LABEL);
+                clear_terminated(CLIPBOARD_LABEL);
+            }
+            log_info("[clipboard] mostrando");
+            if let Some(webview) = app.get_webview_window(CLIPBOARD_LABEL) {
+                let _ = webview.emit("window-shown", ());
+            }
+            show_layer_window(CLIPBOARD_LABEL);
+        }
     }
-    show_layer_window(CLIPBOARD_LABEL);
     Ok(())
 }
 
@@ -42,6 +55,7 @@ pub fn toggle_clipboard(app: AppHandle) -> Result<(), ()> {
 /// de nuevo.
 #[tauri::command]
 pub fn hide_clipboard() -> Result<(), ()> {
+    // Esconder dispara `on_hide`, que programa matar el WebKitWebProcess.
     hide_layer_window(CLIPBOARD_LABEL);
     Ok(())
 }

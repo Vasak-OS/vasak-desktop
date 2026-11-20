@@ -21,7 +21,7 @@ import {
 } from '../src/tools/control-center-mode';
 import { availableTiles, CONTROL_CENTER_TILES } from '../src/tools/control-center-tiles';
 import { center } from './support/control-center-doubles';
-import { sharedEvents } from './support/cross-slide-doubles';
+import { sharedEvents, surface } from './support/cross-slide-doubles';
 import { loadControlCenterView } from './support/load-control-center-view';
 import { loadComponent, ROOT, useDom } from './support/mount-sfc';
 
@@ -374,8 +374,30 @@ describe('la vista', () => {
 		expect(VIEW).toContain('const visible = ref(false);');
 	});
 
+	test('si la página se recargó con la superficie ya mostrada, queda abierta aunque se perdiera `window-shown`', async () => {
+		// Rust ya la mostró: el evento se emitió antes de que el componente se suscribiera.
+		surface.shown = true;
+		try {
+			const mounted = await open();
+			// Mostrada y viendo los ajustes: sólo así se montan los mosaicos.
+			await mounted.find('[data-more]').trigger('click');
+			await settle();
+			expect(mounted.find('[data-panel="settings"] [data-stub-QuickSettingsPanel]').exists()).toBe(true);
+		} finally {
+			surface.shown = false;
+		}
+	});
+
+	test('si la superficie no está mostrada al montar, no se abre sola', async () => {
+		surface.shown = false;
+		const mounted = await open();
+		await mounted.find('[data-more]').trigger('click');
+		await settle();
+		expect(mounted.find('[data-panel="settings"] [data-stub-QuickSettingsPanel]').exists()).toBe(false);
+	});
+
 	test('cada apertura decide de nuevo y cierra la ficha que hubiera', () => {
-		const shown = VIEW.slice(VIEW.indexOf("useSharedEvent('window-shown'"));
+		const shown = VIEW.slice(VIEW.indexOf('function applyShown'));
 		expect(shown).toContain('detail.value = null;');
 		expect(shown).toContain('mode.value = modeOnOpen(summary.value.count)');
 	});

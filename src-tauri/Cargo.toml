@@ -1,6 +1,6 @@
 [package]
 name = "vasak-desktop"
-version = "1.83.0"
+version = "1.84.0"
 description = "A Vasak Application (template)"
 authors = ["Vasak Group", "Joaquin (Pato) Decima"]
 edition = "2021"
@@ -33,7 +33,7 @@ glib = "0.18"
 # Afinado de WebKit por superficie (cache_model, extras de desarrollo, gestos):
 # baja el piso de memoria de cada WebKitWebProcess residente (vasak-desktop#265).
 # Ya estaba en el candado por `wry`; acá se usa directo.
-webkit2gtk = "2.0"
+webkit2gtk = { version = "2.0", features = ["v2_34"] }
 gtk-layer-shell = { version = "0.8", features = ["v0_6"] }
 base64 = "0.23"
 #tauri-plugin-vicons = {path = "../../tauri-plugin-vicons"}

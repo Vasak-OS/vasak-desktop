@@ -53,6 +53,9 @@ export function useSharedEvent(name: string, handler: () => void) {
 	sharedEvents.set(name, handler);
 }
 export const hideControlCenter = async () => {};
+/** Lo que contesta Rust al montar: `true` si la superficie ya está mostrada. */
+export const surface = { shown: false };
+export const surfaceIsShown = async (_label: string) => surface.shown;
 export const toggleSessionPopup = async () => {};
 
 const stub = (name: string) =>

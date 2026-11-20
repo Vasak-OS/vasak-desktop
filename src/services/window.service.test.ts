@@ -4,6 +4,7 @@ import {
 	dismissApplet,
 	dismissMenu,
 	reportMenuButton,
+	surfaceIsShown,
 	toggleApplet,
 	toggleMenu,
 } from './window.service';
@@ -117,5 +118,21 @@ describe('el menú de aplicaciones', () => {
 		await reportMenuButton('top', null);
 
 		expect(calls).toEqual([]);
+	});
+});
+
+describe('consultar si la superficie está a la vista', () => {
+	test('nombra la superficie y devuelve lo que responde el backend', async () => {
+		// La página recargada lo pregunta al montar, porque el `window-shown`
+		// emitido al mostrarla se pierde en la carrera con el remonte de Vue.
+		mockIPC((cmd, args) => {
+			calls.push({ cmd, args });
+			return cmd === 'surface_is_shown';
+		});
+
+		const shown = await surfaceIsShown('control_center');
+
+		expect(shown).toBe(true);
+		expect(calls).toEqual([{ cmd: 'surface_is_shown', args: { label: 'control_center' } }]);
 	});
 });

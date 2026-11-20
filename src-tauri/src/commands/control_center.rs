@@ -1,5 +1,8 @@
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::commands::surface_lifecycle::{
+    cancel_terminate, clear_terminated, reload_surface, toggle_action, was_terminated, ToggleAction,
+};
 use crate::logger::{log_info, log_warning};
 use crate::windows_apps::control_center::CONTROL_CENTER_LABEL;
 use crate::windows_apps::shell_layer::{
@@ -8,9 +11,9 @@ use crate::windows_apps::shell_layer::{
 
 #[tauri::command]
 pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
-    // Built once at startup on the GTK main thread. Building it here instead
-    // would mean touching GTK from whatever thread the command landed on, which
-    // is not thread-safe and killed the process.
+    // Construida una vez al iniciar, sobre el hilo principal de GTK. Si eso
+    // falló, no existe: no hay nada que mostrar, y seguir arrancaría la luz
+    // nocturna sobre una superficie que nunca va a emitir un `hide`.
     if !layer_window_exists(CONTROL_CENTER_LABEL) {
         log_warning("[control_center] la superficie no existe; no se pudo crear al iniciar");
         return Ok(());
@@ -20,24 +23,35 @@ pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
     // webview was reparented into it, and the toplevel Tauri built is hidden
     // for good. Asking the wrong one is how the toggle got out of step with
     // what was on screen.
-    if layer_window_visible(CONTROL_CENTER_LABEL).unwrap_or(false) {
-        log_info("[control_center] ocultando");
-        hide_layer_window(CONTROL_CENTER_LABEL);
-        crate::night_light::unwatch(&app);
-        return Ok(());
-    }
+    let visible = layer_window_visible(CONTROL_CENTER_LABEL).unwrap_or(false);
 
-    log_info("[control_center] mostrando");
-    // The view refreshes on this rather than on being rebuilt: the window is
-    // hidden, never destroyed, so the page is not reloaded and Vue does not
-    // re-run.
-    if let Some(webview) = app.get_webview_window(CONTROL_CENTER_LABEL) {
-        let _ = webview.emit("window-shown", ());
+    match toggle_action(visible, was_terminated(CONTROL_CENTER_LABEL)) {
+        ToggleAction::Hide => {
+            log_info("[control_center] ocultando");
+            // Esconder dispara `on_hide`, que programa matar su WebKitWebProcess
+            // a los pocos segundos (vasak-desktop#307).
+            hide_layer_window(CONTROL_CENTER_LABEL);
+            crate::night_light::unwatch(&app);
+        }
+        ToggleAction::Show { reload } => {
+            cancel_terminate(CONTROL_CENTER_LABEL);
+            // Si la muerte pendiente ya se llevó el proceso, se recarga para que
+            // WebKit lo vuelva a levantar; la página se monta de nuevo y vuelve a
+            // pedir su estado.
+            if reload {
+                reload_surface(&app, CONTROL_CENTER_LABEL);
+                clear_terminated(CONTROL_CENTER_LABEL);
+            }
+            log_info("[control_center] mostrando");
+            if let Some(webview) = app.get_webview_window(CONTROL_CENTER_LABEL) {
+                let _ = webview.emit("window-shown", ());
+            }
+            show_layer_window(CONTROL_CENTER_LABEL);
+            // La luz nocturna se sigue sólo con el centro a la vista: las señales
+            // de systemd no le sirven a nadie con el centro cerrado.
+            crate::night_light::watch(&app);
+        }
     }
-    show_layer_window(CONTROL_CENTER_LABEL);
-    // La luz nocturna se sigue sólo con el centro a la vista: las señales de
-    // systemd no le sirven a nadie con el centro cerrado.
-    crate::night_light::watch(&app);
 
     Ok(())
 }
@@ -49,6 +63,7 @@ pub fn toggle_control_center(app: AppHandle) -> Result<(), ()> {
 /// it, and the toggle then finds it hidden and opens it again.
 #[tauri::command]
 pub fn hide_control_center(app: AppHandle) -> Result<(), ()> {
+    // Esconder dispara `on_hide`, que programa matar el WebKitWebProcess.
     hide_layer_window(CONTROL_CENTER_LABEL);
     crate::night_light::unwatch(&app);
     Ok(())

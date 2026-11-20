@@ -42,7 +42,7 @@ import PowerProfileControl from '@/components/controls/PowerProfileControl.vue';
 import ThemeToggle from '@/components/controls/ThemeToggle.vue';
 import VolumeControl from '@/components/controls/VolumeControl.vue';
 import MusicWidget from '@/components/widgets/MusicWidget.vue';
-import { hideControlCenter } from '@/services/window.service';
+import { hideControlCenter, surfaceIsShown } from '@/services/window.service';
 import {
 	type ControlCenterMode,
 	modeOnCountChange,
@@ -77,6 +77,13 @@ const summaryLabel = computed(() => summaryText(t, summary.value.count, summary.
 const visible = ref(false);
 /** Abrió antes de que llegara la primera cuenta: decide cuando llegue. */
 let pendingDecision = false;
+/**
+ * Si `window-shown` o un cierre ya decidieron el estado de apertura. La consulta
+ * de `onMounted` es sólo un respaldo para la página recargada que se perdió el
+ * evento: si éste llega mientras esa consulta espera (p. ej. el bluetooth),
+ * volver a aplicar cerraría el calendario o la ficha que el usuario ya abrió.
+ */
+let openingSettled = false;
 
 /** Los mosaicos se montan la primera vez que B se ve, y ya no se desmontan. */
 const tilesMounted = ref(false);
@@ -150,6 +157,9 @@ let closeTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const closeAfterAnimation = () => {
 	if (leaving.value) return; // Prevent double-close
+	// Un cierre también decide el estado: el respaldo de `onMounted` no debe
+	// reabrir lo que el usuario acaba de cerrar.
+	openingSettled = true;
 	leaving.value = true;
 
 	// Cancel entrance animation if still running
@@ -187,7 +197,13 @@ const onBlur = () => {
 // not re-run and the animation state survives from the last dismissal — without
 // this the centre comes back mid-fade and `leaving` keeps closeAfterAnimation
 // short-circuited for good.
-useSharedEvent('window-shown', () => {
+//
+// Salvo cuando sí se recargó: al reabrir tras matar su proceso, el webview vuelve
+// a cargar y este evento se emite antes de que el componente remontado se
+// suscriba, así que se pierde. Para ese caso se consulta el estado al montar
+// (`onMounted`) y se aplica lo mismo.
+function applyShown(): void {
+	openingSettled = true;
 	if (closeTimeout !== null) {
 		clearTimeout(closeTimeout);
 		closeTimeout = null;
@@ -199,12 +215,21 @@ useSharedEvent('window-shown', () => {
 	// No se recuerda entre aperturas: decide si hay notificaciones.
 	if (summary.value.loaded) mode.value = modeOnOpen(summary.value.count);
 	else pendingDecision = true;
-});
+}
+useSharedEvent('window-shown', applyShown);
 
 onMounted(async () => {
 	bluetoothInitialized.value = await isBluetoothPluginInitialized();
 	document.addEventListener('keydown', onKeydown);
 	window.addEventListener('blur', onBlur);
+	// Si la página se recargó porque se la volvió a mostrar, el `window-shown` se
+	// perdió en la carrera con el remonte: se consulta el estado y se aplica.
+	// Sólo si nada más lo decidió —el evento sí llegó, o el usuario ya cerró—, y
+	// se vuelve a chequear después del `await` por si eso pasó mientras tanto.
+	if (!openingSettled) {
+		const shown = await surfaceIsShown('control_center');
+		if (shown && !openingSettled) applyShown();
+	}
 });
 
 onBeforeUnmount(() => {

@@ -22,6 +22,8 @@ pub mod runner;
 mod session;
 mod session_popup;
 mod store_access;
+pub(crate) mod surface_lifecycle;
+pub use surface_lifecycle::surface_is_shown;
 mod tray;
 mod wallpaper_assets;
 mod wallpaper_colors;

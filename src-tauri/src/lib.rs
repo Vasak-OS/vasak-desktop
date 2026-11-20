@@ -266,6 +266,7 @@ pub fn run() {
             hide_control_center,
             toggle_clipboard,
             hide_clipboard,
+            surface_is_shown,
             clipboard::clipboard_history,
             clipboard::clipboard_pick,
             clipboard::clipboard_clear,

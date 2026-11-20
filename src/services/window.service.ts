@@ -71,6 +71,17 @@ export const hideControlCenter = <T = any>(): Promise<T> => {
 	return invoke<T>('hide_control_center');
 };
 
+/**
+ * ¿La superficie de capa está a la vista?
+ *
+ * La página recargada lo pregunta al montar: al reabrir una superficie cuyo
+ * proceso se mató, el `window-shown` que se emite al mostrarla corre contra el
+ * remonte de Vue y se pierde, así que el estado «mostrada» se consulta en vez de
+ * esperarlo.
+ */
+export const surfaceIsShown = (label: string): Promise<boolean> =>
+	invoke<boolean>('surface_is_shown', { label });
+
 /** Launches the separate vasak-settings application. */
 export const openSettings = <T = any>(): Promise<T> => {
 	return invoke<T>('open_settings');
