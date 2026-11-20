@@ -70,6 +70,16 @@ pub struct LayerSpec {
     /// (`Inferior`), que no son salidas de verdad.
     pub on_pointer_enter: Option<Box<dyn Fn()>>,
     pub on_pointer_leave: Option<Box<dyn Fn()>>,
+    /// Darle a esta superficie su propio proceso de WebKit, aislándola de las
+    /// demás. Se consigue con un `data_directory` propio: en Tauri/wry el
+    /// `WebContext` —y por debajo el `WebKitWebProcess`— se comparte entre las
+    /// ventanas con el mismo `data_directory`, y las que no lo fijan comparten el
+    /// de por omisión. Sólo lo piden las superficies cuyo proceso se mata al
+    /// esconderse (`surface_lifecycle`): `terminate_web_process()` baja el proceso
+    /// entero, no una sola webview, así que sin aislar se llevaría puestas las
+    /// otras superficies que compartían ese proceso (los applets, el menú, el
+    /// popup de sesión, el menú del tray — vasak-desktop#309).
+    pub isolated_process: bool,
 }
 
 impl Default for LayerSpec {
@@ -88,6 +98,7 @@ impl Default for LayerSpec {
             input_region: None,
             on_pointer_enter: None,
             on_pointer_leave: None,
+            isolated_process: false,
         }
     }
 }
@@ -168,14 +179,35 @@ pub fn spawn_layer_window(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let (width, height) = size;
 
-    let webview = WebviewWindowBuilder::new(app, label, WebviewUrl::App(route.into()))
+    let mut builder = WebviewWindowBuilder::new(app, label, WebviewUrl::App(route.into()))
         .title(format!("Vasak {}", label))
         .decorations(false)
         .transparent(true)
         .inner_size(width, height)
         .visible(false)
-        .skip_taskbar(true)
-        .build()?;
+        .skip_taskbar(true);
+    if spec.isolated_process {
+        // Un `data_directory` propio le da a esta ventana su propio `WebContext`
+        // y, por debajo, su propio `WebKitWebProcess` (ver
+        // `LayerSpec::isolated_process`): dos ventanas comparten proceso sólo si
+        // comparten `data_directory`.
+        //
+        // La ruta va ABSOLUTA y con la etiqueta adentro. El método
+        // `data_directory` del builder guarda la ruta tal cual —a diferencia de
+        // la que viene de `tauri.conf.json`, no le une la etiqueta—, así que un
+        // nombre fijo haría caer a todas las superficies aisladas en la misma
+        // clave y volverían a compartir proceso entre sí; y una ruta relativa se
+        // crearía contra el cwd del proceso. Bajo `app_local_data_dir/<label>`
+        // cada una cae en la suya.
+        //
+        // Si la ruta no se puede resolver se propaga el error en vez de seguir:
+        // sin `data_directory` la ventana caería al `WebContext` por omisión —el
+        // que comparten las demás—, y como igual se le programa matar el proceso
+        // al esconderse, volvería el bug de llevarse puestas a las co-alojadas.
+        let base = app.path().app_local_data_dir()?;
+        builder = builder.data_directory(base.join(label).join("webkit"));
+    }
+    let webview = builder.build()?;
 
     let gtk_window = webview.gtk_window()?;
 
@@ -512,5 +544,15 @@ mod input_rects_tests {
         // Una medición que falla no puede dejar al panel sin poder tocarse.
         assert!(input_rects(&[]).is_none());
         assert!(input_rects(&[(0, 0, 0, 0)]).is_none());
+    }
+}
+
+#[cfg(test)]
+mod layer_spec_tests {
+    use super::LayerSpec;
+
+    #[test]
+    fn ninguna_superficie_se_aisla_si_no_lo_pide() {
+        assert!(!LayerSpec::default().isolated_process);
     }
 }

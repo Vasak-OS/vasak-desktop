@@ -59,6 +59,9 @@ pub fn create_clipboard_window(app: &AppHandle) -> Result<(), Box<dyn std::error
                     )
                 }))
             },
+            // Su propio WebKitWebProcess: lo matamos al esconderla, y no debe
+            // arrastrar a las superficies que compartían ese proceso (#309).
+            isolated_process: true,
             ..Default::default()
         },
     );
