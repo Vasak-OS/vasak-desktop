@@ -33,21 +33,28 @@ fn spawn_body() -> &'static str {
 #[test]
 fn el_data_directory_solo_se_aplica_bajo_isolated_process() {
     let body = spawn_body();
-    let guard = body
-        .find("if spec.isolated_process")
+    let abre = "if spec.isolated_process {";
+    let inicio = body
+        .find(abre)
         .expect("`spawn_layer_window` debe condicionar el aislamiento a `spec.isolated_process`");
-    let data_dir = body
-        .find("data_directory(")
-        .expect("`spawn_layer_window` debe fijar un `data_directory` para aislar el proceso");
+    let desde = inicio + abre.len();
+    // El bloque cierra en la primera llave a cuatro espacios de sangría (la del
+    // `if`, dentro de la función). Se mira qué queda dentro y qué fuera, no el
+    // orden del texto: así no pasa si el bloque quedara vacío y el
+    // `data_directory(` corriera después, aislando todas las superficies.
+    let largo = body[desde..]
+        .find("\n    }")
+        .expect("no se encontró el cierre del `if spec.isolated_process`");
+    let dentro = &body[desde..desde + largo];
+    let fuera = format!("{}{}", &body[..inicio], &body[desde + largo..]);
     assert!(
-        data_dir > guard,
-        "`data_directory(` debe quedar detrás del `if spec.isolated_process`: \
-         aplicarlo siempre aislaría todas las superficies (un proceso extra cada una)"
+        dentro.contains("data_directory("),
+        "`data_directory(` debe estar DENTRO del `if spec.isolated_process`: aplicarlo siempre \
+         aislaría todas las superficies (un proceso extra cada una)"
     );
-    assert_eq!(
-        body.matches("data_directory(").count(),
-        1,
-        "un único `data_directory`, el condicionado"
+    assert!(
+        !fuera.contains("data_directory("),
+        "no debe quedar ningún `data_directory(` fuera del `if spec.isolated_process`"
     );
 }
 

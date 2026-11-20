@@ -199,9 +199,13 @@ pub fn spawn_layer_window(
         // clave y volverían a compartir proceso entre sí; y una ruta relativa se
         // crearía contra el cwd del proceso. Bajo `app_local_data_dir/<label>`
         // cada una cae en la suya.
-        if let Ok(base) = app.path().app_local_data_dir() {
-            builder = builder.data_directory(base.join(label).join("webkit"));
-        }
+        //
+        // Si la ruta no se puede resolver se propaga el error en vez de seguir:
+        // sin `data_directory` la ventana caería al `WebContext` por omisión —el
+        // que comparten las demás—, y como igual se le programa matar el proceso
+        // al esconderse, volvería el bug de llevarse puestas a las co-alojadas.
+        let base = app.path().app_local_data_dir()?;
+        builder = builder.data_directory(base.join(label).join("webkit"));
     }
     let webview = builder.build()?;
 
