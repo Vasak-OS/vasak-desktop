@@ -63,7 +63,7 @@ pub fn create_control_center_window(app: &AppHandle) -> Result<(), Box<dyn std::
         WIDTH, height
     ));
 
-    spawn_layer_window(
+    let result = spawn_layer_window(
         app,
         CONTROL_CENTER_LABEL,
         "index.html#/control_center",
@@ -98,7 +98,14 @@ pub fn create_control_center_window(app: &AppHandle) -> Result<(), Box<dyn std::
             },
             ..Default::default()
         },
-    )
+    );
+    // Nace escondida: si nadie la abre, su proceso no tiene por qué vivir toda la
+    // sesión. Se programa igual que un `hide`, y la primera apertura lo cancela o
+    // —si ya corrió— recarga para revivirlo (vasak-desktop#307).
+    if result.is_ok() {
+        crate::commands::surface_lifecycle::arm_terminate_after_hide(app, CONTROL_CENTER_LABEL);
+    }
+    result
 }
 
 /// Aparta el centro de control del panel, esté donde esté ahora.

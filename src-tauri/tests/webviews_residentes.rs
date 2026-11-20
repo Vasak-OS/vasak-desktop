@@ -148,3 +148,37 @@ fn el_reparenteo_afina_el_webkit_de_la_superficie() {
          re-parentearla, o cada superficie residente vuelve a los defaults."
     );
 }
+
+/// Tras `if result.is_ok() {` del cuerpo, la llamada de arranque a
+/// `arm_terminate_after_hide(app, <label>)`; `None` si falta la rama o la llamada.
+fn boot_arm<'a>(body: &'a str, label: &str) -> Option<&'a str> {
+    let after_ok = body.split("if result.is_ok() {").nth(1)?;
+    let call = format!("arm_terminate_after_hide(app, {label})");
+    after_ok.contains(&call).then_some(after_ok)
+}
+
+#[test]
+fn el_centro_y_el_portapapeles_programan_matar_su_proceso_ya_al_crearse() {
+    // vasak-desktop#307: la superficie nace escondida y `on_hide` no salta si
+    // nadie la abre nunca; sin el armado de arranque su WebKitWebProcess (~240 MB)
+    // vivía toda la sesión. Sólo se arma si la superficie se creó bien.
+    for (source, create, label) in [
+        (
+            CONTROL_CENTER_WINDOW,
+            "fn create_control_center_window",
+            "CONTROL_CENTER_LABEL",
+        ),
+        (
+            CLIPBOARD_WINDOW,
+            "fn create_clipboard_window",
+            "CLIPBOARD_LABEL",
+        ),
+    ] {
+        let body = body_of(source, create);
+        assert!(
+            boot_arm(body, label).is_some(),
+            "`{create}` tiene que programar la terminación al arranque: \
+             `if result.is_ok() {{ arm_terminate_after_hide(app, {label}) }}`"
+        );
+    }
+}

@@ -26,7 +26,7 @@ pub fn create_clipboard_window(app: &AppHandle) -> Result<(), Box<dyn std::error
         "[clipboard] anclado abajo y centrado, {WIDTH}x{HEIGHT}"
     ));
 
-    spawn_layer_window(
+    let result = spawn_layer_window(
         app,
         CLIPBOARD_LABEL,
         "index.html#/clipboard",
@@ -61,5 +61,12 @@ pub fn create_clipboard_window(app: &AppHandle) -> Result<(), Box<dyn std::error
             },
             ..Default::default()
         },
-    )
+    );
+    // Nace escondida: si nadie la abre, su proceso no tiene por qué vivir toda la
+    // sesión. Se programa igual que un `hide`, y la primera apertura lo cancela o
+    // —si ya corrió— recarga para revivirlo (vasak-desktop#307).
+    if result.is_ok() {
+        crate::commands::surface_lifecycle::arm_terminate_after_hide(app, CLIPBOARD_LABEL);
+    }
+    result
 }
