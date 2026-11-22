@@ -394,6 +394,25 @@ describe('el id de la conversación', () => {
 		expect(called('assistantChatTurn')[0]?.args[0]).toBe('conv-guardada');
 	});
 
+	test('con un fallo temporal del historial aparece reintentar, y reintenta con el mismo id', async () => {
+		localStorage.setItem(STORAGE_KEY, 'conv-guardada');
+		assistant.historyError = 'Unavailable: ocupado';
+		const view = await render();
+
+		expect(view.find('[data-retry]').exists()).toBe(true);
+
+		assistant.historyError = null;
+		assistant.history = [{ role: 'assistant', content: 'mensaje recuperado' }];
+		await view.find('[data-retry]').trigger('click');
+		await settle();
+
+		const ids = called('assistantHistory').map((call) => call.args[0]);
+		expect(ids).toEqual(['conv-guardada', 'conv-guardada']);
+		expect(called('assistantNewConversation')).toHaveLength(0);
+		expect(view.text()).toContain('mensaje recuperado');
+		expect(view.find('[data-retry]').exists()).toBe(false);
+	});
+
 	test('sin id (no se pudo abrir una conversación) no se manda y aparece reintentar', async () => {
 		assistant.newGate = Promise.reject('Unavailable: sin servicio');
 		const view = await render();
