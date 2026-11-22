@@ -263,6 +263,22 @@ views:
       "95": Thunderstorm
       "96": Thunderstorm with light hail
       "99": Thunderstorm with heavy hail
+  assistant:
+    title: Lince
+    close: Close
+    local: On your computer
+    leavesBox: "Your messages and the replies leave this computer for {0}."
+    unavailable: The assistant is not available
+    loading: Opening the conversation…
+    empty: Write a message to start.
+    thinking: Thinking…
+    placeholder: Message Lince
+    send: Send
+    confirmTitle: Confirm the action
+    confirm: Confirm
+    cancel: Cancel
+    mailTo: To
+    mailSubject: Subject
   controlCenter:
     calendar: Month calendar
     openCalendar: "Open the calendar: {0}"

@@ -1,5 +1,6 @@
 mod airplane_mode;
 mod applets;
+pub(crate) mod assistant;
 mod audio;
 mod batch;
 mod battery;
@@ -34,6 +35,7 @@ mod window_manager;
 
 pub use airplane_mode::{get_airplane_mode, set_airplane_mode, unblock_radios};
 pub use applets::{dismiss_applet, dismiss_popups, toggle_applet};
+pub use assistant::{hide_assistant, toggle_assistant};
 pub use audio::{
     get_audio_devices, get_audio_input_devices, get_audio_outputs, get_audio_volume,
     get_microphone, set_audio_device, set_audio_input_device, set_audio_output, set_audio_volume,

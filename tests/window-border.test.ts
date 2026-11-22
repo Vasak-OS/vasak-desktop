@@ -64,6 +64,7 @@ function classesAround(file: string, anchor: string): string[] {
 const OUTER: Array<[string, string]> = [
 	['views/ControlCenterView.vue', 'bg-ui-shell h-screen w-screen'],
 	['views/ClipboardView.vue', 'bg-ui-shell h-screen w-screen'],
+	['views/AssistantChatView.vue', 'bg-ui-shell window-border'],
 	['views/ConnectMenuView.vue', 'flex h-screen min-w-0 flex-col gap-3'],
 	['views/apps/OsdPopupView.vue', 'w-screen h-screen flex flex-col'],
 	['views/apps/SessionPopupView.vue', 'h-screen w-screen flex items-center justify-center'],

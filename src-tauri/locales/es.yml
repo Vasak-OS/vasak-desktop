@@ -263,6 +263,22 @@ views:
       "95": Tormenta
       "96": Tormenta con granizo leve
       "99": Tormenta con granizo intenso
+  assistant:
+    title: Lince
+    close: Cerrar
+    local: En tu equipo
+    leavesBox: "Tus mensajes y sus respuestas salen de este equipo hacia {0}."
+    unavailable: El asistente no está disponible
+    loading: Abriendo la conversación…
+    empty: Escribí un mensaje para empezar.
+    thinking: Pensando…
+    placeholder: Escribile a Lince
+    send: Enviar
+    confirmTitle: Confirmar la acción
+    confirm: Confirmar
+    cancel: Cancelar
+    mailTo: Para
+    mailSubject: Asunto
   controlCenter:
     calendar: Calendario del mes
     openCalendar: "Abrir el calendario: {0}"

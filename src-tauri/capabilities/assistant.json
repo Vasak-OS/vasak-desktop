@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "assistant",
+  "description": "Capability acotada para la superficie de chat de Lince. Es la única que dibuja texto del modelo/servicio (entrada no confiable), así que NO lleva shell:allow-spawn, fs:scope, opener, ni los gestores de red/bluetooth: sólo lo que el chat necesita (sus comandos de app, i18n, iconos, config del esquema, eventos y ventana). Así, si alguna vez se cuela una inyección, la superficie de ataque es mínima.",
+  "windows": ["assistant"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:default",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "vicons:default",
+    "config-manager:default",
+    "i18n:allow-load-translations",
+    "i18n:allow-get-available-locales",
+    "i18n:allow-get-locale",
+    "i18n:allow-set-locale"
+  ]
+}

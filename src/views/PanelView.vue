@@ -24,6 +24,7 @@ import type {
 	Notification as AppNotification,
 	NotificationDelta,
 } from '@/interfaces/notifications';
+import { assistantAvailable, toggleAssistant } from '@/services/assistant.service';
 import { listConnectDevices, toggleConnectMenu } from '@/services/connect.service';
 import { getAllNotifications } from '@/services/notification.service';
 import { reportMenuButton, toggleControlCenter, toggleMenu } from '@/services/window.service';
@@ -204,6 +205,39 @@ const phoneNeedsAuth = computed(() =>
 const refreshConnectDevices = async () => {
 	connectDevices.value = await listConnectDevices();
 };
+
+/**
+ * Si Lince está encendido. La píldora sólo existe mientras lo está: se
+ * re-consulta cada tanto para que aparezca o desaparezca al encenderlo o
+ * apagarlo desde Configuración, sin reiniciar el panel.
+ */
+const assistantOn = ref(false);
+const ASSISTANT_POLL_MS = 10_000;
+let assistantPoll: ReturnType<typeof setInterval> | null = null;
+
+const refreshAssistant = async () => {
+	try {
+		assistantOn.value = await assistantAvailable();
+	} catch {
+		assistantOn.value = false;
+	}
+};
+
+const openAssistant = async () => {
+	try {
+		await toggleAssistant();
+	} catch (error) {
+		logError('Error al abrir el asistente:', error);
+	}
+};
+
+onMounted(() => {
+	refreshAssistant();
+	assistantPoll = setInterval(refreshAssistant, ASSISTANT_POLL_MS);
+});
+onBeforeUnmount(() => {
+	if (assistantPoll !== null) clearInterval(assistantPoll);
+});
 
 const openPhoneMenu = async () => {
 	try {
@@ -402,6 +436,19 @@ useSharedEvent<NotificationDelta>('notification-delta', (delta) => {
           class="absolute top-0.5 right-0.5 size-2 rounded-corner-full bg-status-warning"
         ></span>
       </PanelPill>
+      <!-- Sólo con el asistente encendido (`assistant_available`). -->
+      <PanelPill
+        v-if="assistantOn"
+        icon="internet-chat"
+        icon-type="icon"
+        :accessible-label="t('views.assistant.title')"
+        :title="t('views.assistant.title')"
+        :orientation="vertical ? 'vertical' : 'horizontal'"
+        :flat="hasSurface"
+        class="shrink-0"
+        data-assistant-pill
+        @click="openAssistant"
+      />
       <WorkspacesPill v-if="showWorkspaces" />
       <TrayMusicControl v-if="showMusic" />
       <WindowsArea v-if="showWindows && !windowsFirst" />

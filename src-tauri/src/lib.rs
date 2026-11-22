@@ -11,6 +11,7 @@ mod structs;
 mod airplane_mode;
 mod applets;
 mod artwork;
+mod assistant;
 mod audio;
 mod audio_input;
 mod audio_native;
@@ -79,6 +80,10 @@ mod utils;
 mod window_manager;
 mod windows_apps;
 
+use assistant::{
+    assistant_available, assistant_cancel_action, assistant_capabilities, assistant_chat_turn,
+    assistant_confirm_action, assistant_history, assistant_new_conversation, assistant_status,
+};
 use commands::*;
 use connect::{
     connect_launch_app, connect_list_apps, connect_list_cameras, connect_list_devices,
@@ -264,6 +269,16 @@ pub fn run() {
             set_keep_awake,
             toggle_control_center,
             hide_control_center,
+            toggle_assistant,
+            hide_assistant,
+            assistant_available,
+            assistant_status,
+            assistant_capabilities,
+            assistant_new_conversation,
+            assistant_history,
+            assistant_chat_turn,
+            assistant_confirm_action,
+            assistant_cancel_action,
             toggle_clipboard,
             hide_clipboard,
             surface_is_shown,
@@ -425,6 +440,12 @@ pub fn run() {
             // down the first time the button was pressed.
             if let Err(error) = create_control_center_window(&handle) {
                 crate::logger::log_error(&format!("[control_center] no se pudo crear: {error}"));
+            }
+            // La superficie de chat de Lince (vasak-assistant): residente,
+            // escondida hasta que se la abre, en el hilo principal como el centro
+            // de control. Su proceso de WebKit se mata mientras está escondida.
+            if let Err(error) = create_assistant_window(&handle) {
+                crate::logger::log_error(&format!("[assistant] no se pudo crear: {error}"));
             }
             // El historial del portapapeles (vasak-desktop#217): la superposición se
             // construye acá, escondida, y el vigía arranca su propio hilo.
@@ -618,6 +639,10 @@ fn follow_panel_position(app: tauri::AppHandle) {
                 relocate_panel(&app, current);
                 if position_changed {
                     relocate_control_center(&app, current);
+                    // La superficie del asistente se ancla igual al borde
+                    // derecho y se aparta del panel a mano, así que se reacomoda
+                    // con él.
+                    relocate_assistant(&app, current);
                 }
             });
         }
