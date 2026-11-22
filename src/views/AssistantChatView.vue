@@ -56,6 +56,10 @@ const loading = ref(true);
 const thinking = ref(false);
 const acting = ref(false);
 const errorMessage = ref('');
+// Hubo un fallo cargando la conversación/historial. Habilita «Reintentar» aunque el
+// id se haya conservado (un fallo temporal del historial deja `hasConversation` en
+// true, pero igual hay que poder reintentar la carga).
+const loadError = ref(false);
 let conversationId = '';
 
 const visibleMessages = computed(() => messages.value.filter((m) => m.role !== 'system'));
@@ -125,6 +129,7 @@ function load(): Promise<void> {
 async function doLoad(): Promise<void> {
 	loading.value = true;
 	errorMessage.value = '';
+	loadError.value = false;
 	try {
 		status.value = await assistantStatus();
 	} catch (error) {
@@ -157,6 +162,7 @@ async function doLoad(): Promise<void> {
 		}
 	} catch (error) {
 		errorMessage.value = describe(error);
+		loadError.value = true;
 	} finally {
 		hasConversation.value = conversationId !== '';
 		loading.value = false;
@@ -315,7 +321,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
       <AlertMessage v-if="errorMessage" tone="error" class="shrink-0">{{ errorMessage }}</AlertMessage>
       <ActionButton
-        v-if="!hasConversation"
+        v-if="!hasConversation || loadError"
         :label="t('views.assistant.retry')"
         variant="secondary"
         class="shrink-0 self-end"
