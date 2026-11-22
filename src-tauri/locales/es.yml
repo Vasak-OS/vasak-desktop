@@ -279,6 +279,8 @@ views:
     cancel: Cancelar
     mailTo: Para
     mailSubject: Asunto
+    retry: Reintentar
+    pendingLost: "Se perdió una acción pendiente de confirmar. No se ejecutó; pedísela de nuevo a Lince."
   controlCenter:
     calendar: Calendario del mes
     openCalendar: "Abrir el calendario: {0}"

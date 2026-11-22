@@ -352,3 +352,119 @@ describe('los errores no rompen el chat', () => {
 		expect(called('hideAssistant')).toHaveLength(1);
 	});
 });
+
+describe('la carga se coalesce', () => {
+	test('montar y `window-shown` a la vez crean una sola conversación', async () => {
+		const gate = deferred<void>();
+		assistant.newGate = gate.promise;
+		const view = mount(View, { attachTo: document.body });
+		mounted.push(view);
+		await settle();
+		// La primera carga espera a `assistantNewConversation`; llega `window-shown`.
+		assistant.handlers.get('window-shown')?.();
+		await settle();
+		gate.resolve();
+		await settle();
+
+		expect(called('assistantNewConversation')).toHaveLength(1);
+		expect(called('assistantStatus')).toHaveLength(1);
+		expect(localStorage.getItem(STORAGE_KEY)).toBe('conv-nueva');
+	});
+
+	test('terminada una carga, la siguiente vuelve a correr', async () => {
+		await render();
+		assistant.handlers.get('window-shown')?.();
+		await settle();
+
+		expect(called('assistantStatus')).toHaveLength(2);
+	});
+});
+
+describe('el id de la conversación', () => {
+	test('un error temporal del historial conserva el id, lo muestra y no abre otra conversación', async () => {
+		localStorage.setItem(STORAGE_KEY, 'conv-guardada');
+		assistant.historyError = 'Unavailable: ocupado';
+		const view = await render();
+
+		expect(called('assistantNewConversation')).toHaveLength(0);
+		expect(localStorage.getItem(STORAGE_KEY)).toBe('conv-guardada');
+		expect(view.text()).toContain('Unavailable: ocupado');
+		// El id sigue siendo el de siempre: se puede escribir con él.
+		await type(view, 'hola');
+		expect(called('assistantChatTurn')[0]?.args[0]).toBe('conv-guardada');
+	});
+
+	test('sin id (no se pudo abrir una conversación) no se manda y aparece reintentar', async () => {
+		assistant.newGate = Promise.reject('Unavailable: sin servicio');
+		const view = await render();
+
+		expect(view.find('[data-retry]').exists()).toBe(true);
+		await type(view, 'hola');
+		expect(called('assistantChatTurn')).toHaveLength(0);
+		expect(view.find('[data-send]').attributes('disabled')).toBeDefined();
+	});
+
+	test('Reintentar vuelve a cargar y, con el servicio de vuelta, se puede escribir', async () => {
+		assistant.newGate = Promise.reject('Unavailable: sin servicio');
+		const view = await render();
+		assistant.newGate = null;
+		await view.find('[data-retry]').trigger('click');
+		await settle();
+
+		expect(called('assistantNewConversation')).toHaveLength(2);
+		expect(view.find('[data-retry]').exists()).toBe(false);
+		await type(view, 'hola');
+		expect(called('assistantChatTurn')[0]?.args[0]).toBe('conv-nueva');
+	});
+});
+
+describe('la acción pendiente que se pierde si muere WebKit', () => {
+	const PENDING_KEY = 'vasak.assistant.pending';
+	const withAction = async () => {
+		assistant.turn = async () => ({ text: 'ok', pending: [pendingMail()] });
+		const view = await render();
+		await type(view, 'mandalo');
+		return view;
+	};
+
+	test('al recibir una acción se guarda su id', async () => {
+		await withAction();
+		expect(localStorage.getItem(PENDING_KEY)).toBe('act-1');
+	});
+
+	test('al confirmar o cancelar se borra', async () => {
+		let view = await withAction();
+		await view.find('[data-confirm]').trigger('click');
+		await settle();
+		expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+
+		view.unmount();
+		view = await withAction();
+		await view.find('[data-cancel]').trigger('click');
+		await settle();
+		expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+	});
+
+	test('un turno sin acción también lo borra', async () => {
+		localStorage.setItem(PENDING_KEY, 'act-vieja');
+		const view = await render();
+		localStorage.setItem(PENDING_KEY, 'act-1');
+		await type(view, 'hola');
+
+		expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+	});
+
+	test('si al cargar hay clave y ninguna pendiente en memoria, avisa y la limpia', async () => {
+		localStorage.setItem(PENDING_KEY, 'act-perdida');
+		const view = await render();
+
+		expect(view.text()).toContain('views.assistant.pendingLost');
+		expect(localStorage.getItem(PENDING_KEY)).toBeNull();
+		expect(view.find('[data-confirmation]').exists()).toBe(false);
+	});
+
+	test('sin clave no hay aviso', async () => {
+		const view = await render();
+		expect(view.text()).not.toContain('views.assistant.pendingLost');
+	});
+});

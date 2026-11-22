@@ -40,6 +40,7 @@ import { useSharedEvent } from '@/tools/event.bus';
 const { t } = useI18n();
 
 const STORAGE_KEY = 'vasak.assistant.conversation';
+const PENDING_KEY = 'vasak.assistant.pending';
 
 const root = ref<HTMLElement | null>(null);
 const list = ref<HTMLElement | null>(null);
@@ -59,7 +60,11 @@ let conversationId = '';
 
 const visibleMessages = computed(() => messages.value.filter((m) => m.role !== 'system'));
 const busy = computed(() => thinking.value || acting.value || loading.value);
-const canSend = computed(() => !busy.value && pending.value === null && draft.value.trim() !== '');
+// Sin id de conversación (la inicialización falló) no se envía: `retry` vuelve a `load()`.
+const hasConversation = ref(false);
+const canSend = computed(
+	() => hasConversation.value && !busy.value && pending.value === null && draft.value.trim() !== ''
+);
 /** Las respuestas salen de la máquina hacia otro host. */
 const leavesBox = computed(() => status.value !== null && !status.value.model.local);
 
@@ -78,6 +83,22 @@ const storeId = (id: string) => {
 	}
 };
 
+const markPending = (id: string | null) => {
+	try {
+		if (id) localStorage.setItem(PENDING_KEY, id);
+		else localStorage.removeItem(PENDING_KEY);
+	} catch {
+		/* sin almacenamiento: no hay aviso tras la recarga */
+	}
+};
+const hadLostPending = (): boolean => {
+	try {
+		return localStorage.getItem(PENDING_KEY) !== null;
+	} catch {
+		return false;
+	}
+};
+
 const describe = (error: unknown): string => (typeof error === 'string' ? error : String(error));
 
 const scrollToEnd = async () => {
@@ -87,10 +108,21 @@ const scrollToEnd = async () => {
 
 const push = (role: AssistantMessage['role'], content: string) => {
 	messages.value.push({ role, content });
-	scrollToEnd();
+	void scrollToEnd();
 };
 
-async function load(): Promise<void> {
+const isNotFound = (error: unknown): boolean => /NotFound/.test(describe(error));
+
+let loadInFlight: Promise<void> | null = null;
+/** Coalesce: el montaje y `window-shown` pueden llamarla a la vez; la segunda espera a la primera. */
+function load(): Promise<void> {
+	loadInFlight ??= doLoad().finally(() => {
+		loadInFlight = null;
+	});
+	return loadInFlight;
+}
+
+async function doLoad(): Promise<void> {
 	loading.value = true;
 	errorMessage.value = '';
 	try {
@@ -104,8 +136,10 @@ async function load(): Promise<void> {
 		if (conversationId) {
 			try {
 				messages.value = await assistantHistory(conversationId);
-			} catch {
-				// El id guardado ya no existe en el servicio: se empieza otra.
+			} catch (error) {
+				// Sólo un `NotFound` confirma que el id es inusable; otro error (temporal)
+				// conserva el id y la conversación, y se reintenta.
+				if (!isNotFound(error)) throw error;
 				conversationId = '';
 			}
 		}
@@ -114,13 +148,27 @@ async function load(): Promise<void> {
 			storeId(conversationId);
 			messages.value = [];
 		}
+		// c1 (v1): la acción pendiente vive sólo en este componente y el servicio no
+		// lista pendientes. Si WebKit murió con una sin resolver, la tarjeta no vuelve:
+		// se avisa. Es seguro: nunca corre sin confirmar y vence por TTL en el servidor.
+		if (pending.value === null && hadLostPending()) {
+			markPending(null);
+			errorMessage.value = t('views.assistant.pendingLost');
+		}
 	} catch (error) {
 		errorMessage.value = describe(error);
 	} finally {
+		hasConversation.value = conversationId !== '';
 		loading.value = false;
-		scrollToEnd();
+		void scrollToEnd();
 	}
 }
+
+const retry = () => {
+	load().catch(() => {
+		/* doLoad deja el error en `errorMessage` */
+	});
+};
 
 async function send(): Promise<void> {
 	if (!canSend.value) return;
@@ -133,6 +181,7 @@ async function send(): Promise<void> {
 		const reply = await assistantChatTurn(conversationId, content);
 		if (reply.text) push('assistant', reply.text);
 		pending.value = reply.pending[0] ?? null;
+		markPending(pending.value?.id ?? null);
 	} catch (error) {
 		errorMessage.value = describe(error);
 	} finally {
@@ -147,6 +196,7 @@ async function confirm(): Promise<void> {
 	try {
 		push('assistant', await assistantConfirmAction(pending.value.id));
 		pending.value = null;
+		markPending(null);
 	} catch (error) {
 		errorMessage.value = describe(error);
 	} finally {
@@ -161,6 +211,7 @@ async function cancel(): Promise<void> {
 	try {
 		await assistantCancelAction(pending.value.id);
 		pending.value = null;
+		markPending(null);
 	} catch (error) {
 		errorMessage.value = describe(error);
 	} finally {
@@ -181,16 +232,20 @@ const onKeydown = (event: KeyboardEvent) => {
 const onInputKeydown = (event: KeyboardEvent) => {
 	if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
 		event.preventDefault();
-		send();
+		send().catch(() => {
+			/* send deja el error en `errorMessage` */
+		});
 	}
 };
 
 // Se vuelve a mostrar sin recargar: se refresca el estado y el historial.
-useSharedEvent('window-shown', load);
+const { ready: shownReady } = useSharedEvent('window-shown', retry);
 
 onMounted(async () => {
 	document.addEventListener('keydown', onKeydown);
-	// Recarga de WebKit: el `window-shown` se perdió, se consulta el estado.
+	// Se espera el enganche del listener antes de leer: un `show` entre la lectura
+	// y el enganche no se pierde. Tras una recarga de WebKit el `window-shown` ya pasó.
+	await shownReady;
 	if (await surfaceIsShown('assistant')) await load();
 	else loading.value = false;
 });
@@ -259,6 +314,14 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
       </ul>
 
       <AlertMessage v-if="errorMessage" tone="error" class="shrink-0">{{ errorMessage }}</AlertMessage>
+      <ActionButton
+        v-if="!hasConversation"
+        :label="t('views.assistant.retry')"
+        variant="secondary"
+        class="shrink-0 self-end"
+        data-retry
+        @click="retry"
+      />
 
       <!-- La acción que el asistente propone: nada se ejecuta sin este botón. -->
       <section

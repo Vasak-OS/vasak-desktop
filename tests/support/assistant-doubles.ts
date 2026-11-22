@@ -37,6 +37,8 @@ export const assistant = {
 	/** Si no es `null`, `assistantHistory` rechaza con esto (id viejo). */
 	historyError: null as unknown,
 	newId: 'conv-nueva',
+	/** Si no es `null`, `assistantNewConversation` espera esta promesa (y falla si rechaza). */
+	newGate: null as Promise<void> | null,
 	/** Lo que contesta el turno; la prueba lo puede cambiar por una promesa a mano. */
 	turn: (): Promise<AssistantReply> => Promise.resolve({ text: 'hola', pending: [] }),
 	confirm: (): Promise<string> => Promise.resolve('Listo'),
@@ -49,6 +51,7 @@ export const assistant = {
 		this.history = [];
 		this.historyError = null;
 		this.newId = 'conv-nueva';
+		this.newGate = null;
 		this.turn = () => Promise.resolve({ text: 'hola', pending: [] });
 		this.confirm = () => Promise.resolve('Listo');
 		this.cancel = () => Promise.resolve();
@@ -66,6 +69,7 @@ export const assistantStatus = async () => {
 };
 export const assistantNewConversation = async () => {
 	record('assistantNewConversation');
+	if (assistant.newGate) await assistant.newGate;
 	return assistant.newId;
 };
 export const assistantHistory = async (id: string) => {
@@ -92,6 +96,7 @@ export const surfaceIsShown = async () => assistant.shown;
 export const useBoxSize = () => ({ width: ref(600), height: ref(500) });
 export const useSharedEvent = (name: string, handler: () => void) => {
 	assistant.handlers.set(name, handler);
+	return { ready: Promise.resolve() };
 };
 
 export type { AssistantPendingAction };

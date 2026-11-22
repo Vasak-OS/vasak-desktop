@@ -279,6 +279,8 @@ views:
     cancel: Cancel
     mailTo: To
     mailSubject: Subject
+    retry: Retry
+    pendingLost: "A pending action awaiting confirmation was lost. It was not run; ask Lince again."
   controlCenter:
     calendar: Month calendar
     openCalendar: "Open the calendar: {0}"

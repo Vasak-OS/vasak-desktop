@@ -232,7 +232,7 @@ const openAssistant = async () => {
 };
 
 onMounted(() => {
-	refreshAssistant();
+	void refreshAssistant(); // no rechaza: captura su propio error
 	assistantPoll = setInterval(refreshAssistant, ASSISTANT_POLL_MS);
 });
 onBeforeUnmount(() => {
