@@ -69,6 +69,16 @@ pub(crate) async fn toggle_if_available(app: AppHandle) {
     }
 }
 
+/// Lo llama el método D-Bus `OpenAssistant` (el atajo de Wayfire), que no es
+/// async: marshala el toggle con su puerta de apagado a una tarea. Con el
+/// asistente apagado no abre nada (lo decide [`toggle_if_available`]).
+pub(crate) fn open_from_dbus(app: AppHandle) {
+    log_info("D-Bus: abriendo el asistente");
+    tauri::async_runtime::spawn(async move {
+        toggle_if_available(app).await;
+    });
+}
+
 /// Abre o cierra la superficie del asistente, si está encendido. Lo llama la
 /// píldora del panel; con el asistente apagado no hace nada (y la píldora ni
 /// siquiera se muestra, ver `assistant_available`).

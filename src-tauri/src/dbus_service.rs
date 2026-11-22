@@ -102,15 +102,9 @@ impl DesktopService {
                 }
             }
             "OpenAssistant" => {
-                log_info("D-Bus: abriendo el asistente");
-                // La disponibilidad se comprueba por D-Bus (async) y el toggle
-                // se marshala al hilo principal, los dos dentro de
-                // `toggle_if_available`. Con el asistente apagado no abre nada:
-                // el atajo no puede abrir la superficie de un servicio apagado.
-                let app_handle = self.app_handle.clone();
-                tauri::async_runtime::spawn(async move {
-                    crate::commands::assistant::toggle_if_available(app_handle).await;
-                });
+                // Todo el trabajo (puerta de apagado, async, hilo principal) vive
+                // en `commands::assistant`; acá sólo se delega.
+                crate::commands::assistant::open_from_dbus(self.app_handle.clone());
                 Reply::Done
             }
             // La búsqueda global ya no vive acá: se fue a `vasak-prism`, que
