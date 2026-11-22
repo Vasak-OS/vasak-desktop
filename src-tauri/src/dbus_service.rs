@@ -101,6 +101,12 @@ impl DesktopService {
                     }
                 }
             }
+            "OpenAssistant" => {
+                // Todo el trabajo (puerta de apagado, async, hilo principal) vive
+                // en `commands::assistant`; acá sólo se delega.
+                crate::commands::assistant::open_from_dbus(self.app_handle.clone());
+                Reply::Done
+            }
             // La búsqueda global ya no vive acá: se fue a `vasak-prism`, que
             // como aplicación aparte puede crecer y quedarse residente, que es
             // lo que la hace instantánea.

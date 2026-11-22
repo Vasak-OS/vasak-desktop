@@ -19,6 +19,10 @@ const routes = [
 		component: () => import('@/views/ControlCenterView.vue'),
 	},
 	{
+		path: '/assistant',
+		component: () => import('@/views/AssistantChatView.vue'),
+	},
+	{
 		path: '/clipboard',
 		component: () => import('@/views/ClipboardView.vue'),
 	},

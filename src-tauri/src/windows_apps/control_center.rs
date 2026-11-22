@@ -27,7 +27,10 @@ const ANCHORS: (bool, bool, bool, bool) = (false, true, true, true);
 ///
 /// Con el panel a la izquierda no hay nada que esquivar: el centro de control
 /// vive pegado al borde derecho.
-fn margins_and_height(position: PanelPosition, monitor_height: f64) -> ((i32, i32, i32, i32), f64) {
+pub(crate) fn margins_and_height(
+    position: PanelPosition,
+    monitor_height: f64,
+) -> ((i32, i32, i32, i32), f64) {
     let clearance =
         |side: PanelPosition| MARGIN + if position == side { PANEL_THICKNESS } else { 0 };
     let top = clearance(PanelPosition::Top);

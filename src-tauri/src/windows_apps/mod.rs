@@ -1,5 +1,6 @@
 pub mod anchored_applet;
 pub mod applications;
+pub mod assistant;
 pub mod clipboard;
 pub mod connect;
 pub mod control_center;
@@ -10,6 +11,7 @@ pub mod shell_layer;
 pub mod wallpaper_picker;
 
 pub use applications::{create_osd_window, create_session_popup_window};
+pub use assistant::{create_assistant_window, relocate_assistant};
 pub use clipboard::create_clipboard_window;
 pub use connect::create_connect_window;
 pub use control_center::{create_control_center_window, relocate_control_center};
