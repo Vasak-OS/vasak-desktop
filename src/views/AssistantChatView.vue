@@ -314,8 +314,8 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
               : 'self-start bg-ui-surface/70 border border-ui-line text-tx-main',
           ]"
         >{{ message.content }}</li>
-        <li v-if="thinking" class="self-start text-tx-muted" role="status" data-thinking>
-          {{ t('views.assistant.thinking') }}
+        <li v-if="thinking" class="self-start text-tx-muted" data-thinking>
+          <output>{{ t('views.assistant.thinking') }}</output>
         </li>
       </ul>
 
