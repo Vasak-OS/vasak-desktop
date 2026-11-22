@@ -96,6 +96,9 @@ pub fn create_control_center_window(app: &AppHandle) -> Result<(), Box<dyn std::
                     )
                 }))
             },
+            // Su propio WebKitWebProcess: lo matamos al esconderla, y no debe
+            // arrastrar a las superficies que compartían ese proceso (#309).
+            isolated_process: true,
             ..Default::default()
         },
     );

@@ -776,6 +776,10 @@ fn spawn_applet(
             // El auto-ocultar por cruce del puntero es sólo del panel.
             on_pointer_enter: None,
             on_pointer_leave: None,
+            // Los applets comparten el proceso de WebKit por defecto y su proceso
+            // nunca se mata; no hace falta aislarlos (y aislar cada uno costaría
+            // un proceso extra por applet).
+            isolated_process: false,
         },
     )
 }
