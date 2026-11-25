@@ -3,7 +3,7 @@
 /** biome-ignore-all lint/correctness/noUnusedVariables: <Use in template> */
 
 import { useI18n } from '@vasakgroup/tauri-plugin-i18n';
-import {
+import PasswordField, {
 	ActionButton,
 	Dialog,
 	DialogContent,
@@ -11,12 +11,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 	ListCard,
-	PasswordField,
 	ThemeIcon,
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref } from 'vue';
 import {
 	connectToWifi,
+	deleteWifiConnection,
+	getSavedWifiNetworks,
 	type NetworkInfo,
 	type WiFiConnectionConfig,
 } from '@/services/network.service';
@@ -28,11 +29,49 @@ const showModal = ref(false);
 const password = ref('');
 const connecting = ref(false);
 const errorMsg = ref('');
+const hasSavedProfile = ref(false);
+const savedProfileSecurity = ref<'none' | string>('none');
 
 const connectToNetwork = async () => {
 	if (props.is_connected) return;
-	showModal.value = true;
-	await nextTick();
+
+	// Verificar si hay perfil guardado con secrets
+	const savedNetworks = await getSavedWifiNetworks();
+	const saved = savedNetworks.find((n) => n.ssid === props.ssid);
+
+	if (saved && saved.security_type !== 'none') {
+		// Perfil guardado con contraseña: conectar directo
+		hasSavedProfile.value = true;
+		savedProfileSecurity.value = saved.security_type;
+		await connectUsingSavedProfile();
+	} else {
+		// Sin perfil guardado o red abierta: pedir contraseña
+		hasSavedProfile.value = false;
+		showModal.value = true;
+		await nextTick();
+	}
+};
+
+const connectUsingSavedProfile = async () => {
+	connecting.value = true;
+	errorMsg.value = '';
+	try {
+		// connect_to_wifi sin password usa el perfil guardado
+		await connectToWifi({
+			ssid: props.ssid,
+			security_type: savedProfileSecurity.value as WiFiConnectionConfig['security_type'],
+		} as WiFiConnectionConfig);
+	} catch (error) {
+		errorMsg.value = t('components.NetworkWiFiCard.connectError').replace(
+			'{0}',
+			String((error as any)?.message)
+		);
+		// Si falla, caer a pedir contraseña
+		showModal.value = true;
+		await nextTick();
+	} finally {
+		connecting.value = false;
+	}
 };
 
 const confirmConnect = async () => {
@@ -56,6 +95,18 @@ const confirmConnect = async () => {
 	}
 };
 
+const forgetNetwork = async () => {
+	try {
+		await deleteWifiConnection(props.ssid);
+		showModal.value = false;
+	} catch (error) {
+		errorMsg.value = t('components.NetworkWiFiCard.connectError').replace(
+			'{0}',
+			String((error as any)?.message)
+		);
+	}
+};
+
 const securityLabelMap: Record<string, string> = {
 	wep: 'WEP',
 	'wpa-psk': 'WPA-PSK',
@@ -74,10 +125,6 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
 </script>
 
 <template>
-  <!-- La tarjeta de la librería tal cual —su superficie, su canto y su radio—:
-       antes se le pisaban el fondo, el borde y el radio con `custom-class`, y
-       dos clases de fondo pelean por el orden en que Tailwind las emite. La
-       conectada suma un anillo del color del éxito, que no pisa nada. -->
   <ListCard
     :clickable="true"
     :custom-class="props.is_connected ? 'flex-wrap ring-1 ring-status-success/40' : 'flex-wrap'"
@@ -111,7 +158,6 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         ></div>
       </div>
 
-      <!-- El candado es el del tema, no uno dibujado acá. -->
       <ThemeIcon
         v-if="props.security_type && String(props.security_type) !== 'none'"
         name="changes-prevent"
@@ -128,9 +174,6 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
     </div>
   </ListCard>
 
-  <!-- La contraseña se pide en el diálogo de la librería: su velo, su panel
-       flotante, su foco atrapado y Escape para cerrarlo, en lugar de una caja
-       fija sobre un velo negro escrito acá. -->
   <Dialog v-model:open="showModal">
     <DialogContent>
       <DialogHeader>
@@ -139,10 +182,11 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         </DialogTitle>
       </DialogHeader>
       <div class="flex flex-col gap-3">
-        <!-- `ariaLabel` además del marcador: un marcador no es un nombre —se
-             borra al escribir, y un lector de pantalla no tiene por qué leerlo—,
-             así que este campo no tenía ninguno. -->
+        <div v-if="hasSavedProfile" class="text-tx-muted text-label-m">
+          {{ t('components.NetworkWiFiCard.usingSavedProfile') }}
+        </div>
         <PasswordField
+          v-if="!hasSavedProfile || props.security_type === 'none'"
           v-model="password"
           autocomplete="current-password"
           :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
@@ -154,10 +198,16 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
       <DialogFooter>
         <ActionButton :label="t('common.cancel')" variant="secondary" @click="showModal = false" />
         <ActionButton
-          :label="t('components.NetworkWiFiCard.connectAction')"
+          v-if="hasSavedProfile && props.security_type !== 'none'"
+          :label="t('components.NetworkWiFiCard.forgetNetwork')"
+          variant="secondary"
+          @click="forgetNetwork"
+        />
+        <ActionButton
+          :label="hasSavedProfile && props.security_type !== 'none' ? t('components.NetworkWiFiCard.connectAction') : t('components.NetworkWiFiCard.connectAction')"
           :loading="connecting"
-          :disabled="!password"
-          @click="confirmConnect"
+          :disabled="!hasSavedProfile && props.security_type !== 'none' && !password"
+          @click="hasSavedProfile && props.security_type !== 'none' ? connectUsingSavedProfile : confirmConnect"
         />
       </DialogFooter>
     </DialogContent>

@@ -474,6 +474,8 @@ components:
     passwordPlaceholder: Contraseña WiFi
     connectAction: Conectar
     connectError: "Error al conectar: {0}"
+    usingSavedProfile: "Usando perfil guardado"
+    forgetNetwork: "Olvidar red"
   NotificationCard:
     openHint: Hacé clic para abrirla
   NotificationArea:

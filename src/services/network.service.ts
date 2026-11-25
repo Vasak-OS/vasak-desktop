@@ -92,3 +92,11 @@ export const getVpnStatus = (): Promise<VpnStatus> => {
 export const getNetworkStats = (): Promise<NetworkStats> => {
 	return invoke<NetworkStats>('plugin:network-manager|get_network_stats');
 };
+
+export const getSavedWifiNetworks = (): Promise<NetworkInfo[]> => {
+	return invoke<NetworkInfo[]>('plugin:network-manager|get_saved_wifi_networks');
+};
+
+export const deleteWifiConnection = (ssid: string): Promise<void> => {
+	return invoke<void>('plugin:network-manager|delete_wifi_connection', { ssid });
+};
