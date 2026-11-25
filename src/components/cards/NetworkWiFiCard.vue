@@ -18,7 +18,6 @@ import { computed, nextTick, ref } from 'vue';
 import {
 	connectToWifi,
 	deleteWifiConnection,
-	getSavedWifiNetworks,
 	type NetworkInfo,
 	type WiFiConnectionConfig,
 } from '@/services/network.service';
