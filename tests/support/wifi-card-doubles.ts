@@ -5,4 +5,8 @@
  * la prueba anota qué comando y qué argumentos llegaron al plugin de red. Así
  * se ve lo que de verdad cruza hacia Rust, no una función doblada.
  */
-export { connectToWifi } from '../../src/services/network.service';
+export {
+	connectToWifi,
+	deleteWifiConnection,
+	getSavedWifiNetworks,
+} from '../../src/services/network.service';

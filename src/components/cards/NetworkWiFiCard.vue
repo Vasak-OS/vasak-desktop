@@ -17,6 +17,7 @@ import {
 import { computed, nextTick, ref } from 'vue';
 import {
 	connectToWifi,
+	deleteWifiConnection,
 	type NetworkInfo,
 	type WiFiConnectionConfig,
 } from '@/services/network.service';
@@ -28,9 +29,19 @@ const showModal = ref(false);
 const password = ref('');
 const connecting = ref(false);
 const errorMsg = ref('');
+const showManageSaved = ref(false); // Para gestionar perfil guardado en redes conectadas
 
 const connectToNetwork = async () => {
-	if (props.is_connected) return;
+	if (props.is_connected) {
+		// Red ya conectada: abrir diálogo para gestionar (olvidar)
+		showManageSaved.value = true;
+		showModal.value = true;
+		await nextTick();
+		return;
+	}
+
+	// Sin auto-conexión con perfil guardado (requiere cambio en plugin para activar perfil real).
+	// Siempre pedimos contraseña para redes no conectadas.
 	showModal.value = true;
 	await nextTick();
 };
@@ -56,6 +67,19 @@ const confirmConnect = async () => {
 	}
 };
 
+const forgetNetwork = async () => {
+	try {
+		await deleteWifiConnection(props.ssid);
+		showModal.value = false;
+		showManageSaved.value = false;
+	} catch (error) {
+		errorMsg.value = t('components.NetworkWiFiCard.connectError').replace(
+			'{0}',
+			String((error as any)?.message)
+		);
+	}
+};
+
 const securityLabelMap: Record<string, string> = {
 	wep: 'WEP',
 	'wpa-psk': 'WPA-PSK',
@@ -74,10 +98,6 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
 </script>
 
 <template>
-  <!-- La tarjeta de la librería tal cual —su superficie, su canto y su radio—:
-       antes se le pisaban el fondo, el borde y el radio con `custom-class`, y
-       dos clases de fondo pelean por el orden en que Tailwind las emite. La
-       conectada suma un anillo del color del éxito, que no pisa nada. -->
   <ListCard
     :clickable="true"
     :custom-class="props.is_connected ? 'flex-wrap ring-1 ring-status-success/40' : 'flex-wrap'"
@@ -111,7 +131,6 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         ></div>
       </div>
 
-      <!-- El candado es el del tema, no uno dibujado acá. -->
       <ThemeIcon
         v-if="props.security_type && String(props.security_type) !== 'none'"
         name="changes-prevent"
@@ -128,9 +147,6 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
     </div>
   </ListCard>
 
-  <!-- La contraseña se pide en el diálogo de la librería: su velo, su panel
-       flotante, su foco atrapado y Escape para cerrarlo, en lugar de una caja
-       fija sobre un velo negro escrito acá. -->
   <Dialog v-model:open="showModal">
     <DialogContent>
       <DialogHeader>
@@ -139,10 +155,11 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         </DialogTitle>
       </DialogHeader>
       <div class="flex flex-col gap-3">
-        <!-- `ariaLabel` además del marcador: un marcador no es un nombre —se
-             borra al escribir, y un lector de pantalla no tiene por qué leerlo—,
-             así que este campo no tenía ninguno. -->
+        <div v-if="showManageSaved" class="text-tx-muted text-label-m">
+          {{ t('components.NetworkWiFiCard.connectedManage') }}
+        </div>
         <PasswordField
+          v-if="!showManageSaved || props.security_type === 'none'"
           v-model="password"
           autocomplete="current-password"
           :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
@@ -154,9 +171,15 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
       <DialogFooter>
         <ActionButton :label="t('common.cancel')" variant="secondary" @click="showModal = false" />
         <ActionButton
+          v-if="showManageSaved"
+          :label="t('components.NetworkWiFiCard.forgetNetwork')"
+          variant="secondary"
+          @click="forgetNetwork"
+        />
+        <ActionButton
           :label="t('components.NetworkWiFiCard.connectAction')"
           :loading="connecting"
-          :disabled="!password"
+          :disabled="props.security_type !== 'none' && !password"
           @click="confirmConnect"
         />
       </DialogFooter>
