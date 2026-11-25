@@ -30,8 +30,6 @@ const showModal = ref(false);
 const password = ref('');
 const connecting = ref(false);
 const errorMsg = ref('');
-const hasSavedProfile = ref(false);
-const savedProfileSecurity = ref<'none' | string>('none');
 const showManageSaved = ref(false); // Para gestionar perfil guardado en redes conectadas
 
 const connectToNetwork = async () => {
@@ -43,51 +41,10 @@ const connectToNetwork = async () => {
 		return;
 	}
 
-	// Verificar si hay perfil guardado con secrets
-	try {
-		const savedNetworks = await getSavedWifiNetworks();
-		const saved = savedNetworks.find((n) => n.ssid === props.ssid);
-
-		if (saved && saved.security_type !== 'none') {
-			// Perfil guardado con contraseña: conectar directo
-			hasSavedProfile.value = true;
-			savedProfileSecurity.value = saved.security_type;
-			await connectUsingSavedProfile();
-		} else {
-			// Sin perfil guardado o red abierta: pedir contraseña
-			hasSavedProfile.value = false;
-			showModal.value = true;
-			await nextTick();
-		}
-	} catch {
-		// Fallo al buscar perfiles: caer a diálogo manual
-		hasSavedProfile.value = false;
-		showModal.value = true;
-		await nextTick();
-	}
-};
-
-const connectUsingSavedProfile = async () => {
-	connecting.value = true;
-	errorMsg.value = '';
-	try {
-		// connect_to_wifi sin password usa el perfil guardado
-		await connectToWifi({
-			ssid: props.ssid,
-			security_type: savedProfileSecurity.value as WiFiConnectionConfig['security_type'],
-		} as WiFiConnectionConfig);
-	} catch (error) {
-		errorMsg.value = t('components.NetworkWiFiCard.connectError').replace(
-			'{0}',
-			String((error as any)?.message)
-		);
-		// Si falla, limpiar estado de perfil guardado y caer a pedir contraseña
-		hasSavedProfile.value = false;
-		showModal.value = true;
-		await nextTick();
-	} finally {
-		connecting.value = false;
-	}
+	// Sin auto-conexión con perfil guardado (requiere cambio en plugin para activar perfil real).
+	// Siempre pedimos contraseña para redes no conectadas.
+	showModal.value = true;
+	await nextTick();
 };
 
 const confirmConnect = async () => {
@@ -199,14 +156,11 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         </DialogTitle>
       </DialogHeader>
       <div class="flex flex-col gap-3">
-        <div v-if="hasSavedProfile" class="text-tx-muted text-label-m">
-          {{ t('components.NetworkWiFiCard.usingSavedProfile') }}
-        </div>
-        <div v-else-if="showManageSaved" class="text-tx-muted text-label-m">
+        <div v-if="showManageSaved" class="text-tx-muted text-label-m">
           {{ t('components.NetworkWiFiCard.connectedManage') }}
         </div>
         <PasswordField
-          v-if="!hasSavedProfile && !showManageSaved || props.security_type === 'none'"
+          v-if="!showManageSaved || props.security_type === 'none'"
           v-model="password"
           autocomplete="current-password"
           :placeholder="t('components.NetworkWiFiCard.passwordPlaceholder')"
@@ -218,7 +172,7 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
       <DialogFooter>
         <ActionButton :label="t('common.cancel')" variant="secondary" @click="showModal = false" />
         <ActionButton
-          v-if="hasSavedProfile && props.security_type !== 'none' || showManageSaved"
+          v-if="showManageSaved"
           :label="t('components.NetworkWiFiCard.forgetNetwork')"
           variant="secondary"
           @click="forgetNetwork"
@@ -226,8 +180,8 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         <ActionButton
           :label="t('components.NetworkWiFiCard.connectAction')"
           :loading="connecting"
-          :disabled="!hasSavedProfile && !showManageSaved && props.security_type !== 'none' && !password"
-          @click="hasSavedProfile ? connectUsingSavedProfile() : confirmConnect()"
+          :disabled="props.security_type !== 'none' && !password"
+          @click="confirmConnect"
         />
       </DialogFooter>
     </DialogContent>
