@@ -476,6 +476,7 @@ components:
     connectError: "Error al conectar: {0}"
     usingSavedProfile: "Usando perfil guardado"
     forgetNetwork: "Olvidar red"
+    connectedManage: "Gestionar red conectada"
   NotificationCard:
     openHint: Hacé clic para abrirla
   NotificationArea:
