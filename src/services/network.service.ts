@@ -12,6 +12,7 @@ export interface NetworkInfo {
 	signal_strength: number;
 	security_type: WiFiSecurityType;
 	is_connected: boolean;
+	uuid?: string;
 }
 
 export type VpnConnectionState =
@@ -91,6 +92,10 @@ export const getVpnStatus = (): Promise<VpnStatus> => {
 
 export const getNetworkStats = (): Promise<NetworkStats> => {
 	return invoke<NetworkStats>('plugin:network-manager|get_network_stats');
+};
+
+export const activateSavedWifi = (ssid: string, uuid?: string): Promise<void> => {
+	return invoke<void>('plugin:network-manager|activate_saved_wifi', { ssid, uuid });
 };
 
 export const getSavedWifiNetworks = (): Promise<NetworkInfo[]> => {

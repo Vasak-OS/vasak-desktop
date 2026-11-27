@@ -16,8 +16,10 @@ import {
 } from '@vasakgroup/vue-libvasak';
 import { computed, nextTick, ref } from 'vue';
 import {
+	activateSavedWifi,
 	connectToWifi,
 	deleteWifiConnection,
+	getSavedWifiNetworks,
 	type NetworkInfo,
 	type WiFiConnectionConfig,
 } from '@/services/network.service';
@@ -40,10 +42,43 @@ const connectToNetwork = async () => {
 		return;
 	}
 
-	// Sin auto-conexión con perfil guardado (requiere cambio en plugin para activar perfil real).
-	// Siempre pedimos contraseña para redes no conectadas.
-	showModal.value = true;
-	await nextTick();
+	// Verificar si hay perfil guardado con secrets
+	try {
+		const savedNetworks = await getSavedWifiNetworks();
+		const saved = savedNetworks.find((n) => n.ssid === props.ssid);
+
+		if (saved && saved.security_type !== 'none') {
+			// Perfil guardado con contraseña: activar perfil real usando UUID
+			await activateUsingSavedProfile(saved.uuid);
+		} else {
+			// Sin perfil guardado o red abierta: pedir contraseña
+			showModal.value = true;
+			await nextTick();
+		}
+	} catch {
+		// Fallo al buscar perfiles: caer a diálogo manual
+		showModal.value = true;
+		await nextTick();
+	}
+};
+
+const activateUsingSavedProfile = async (uuid?: string) => {
+	connecting.value = true;
+	errorMsg.value = '';
+	try {
+		// activate_saved_wifi usa el perfil guardado con sus secrets
+		await activateSavedWifi(props.ssid, uuid);
+	} catch (error) {
+		errorMsg.value = t('components.NetworkWiFiCard.connectError').replace(
+			'{0}',
+			String((error as any)?.message)
+		);
+		// Si falla, limpiar estado y caer a pedir contraseña
+		showModal.value = true;
+		await nextTick();
+	} finally {
+		connecting.value = false;
+	}
 };
 
 const confirmConnect = async () => {
@@ -179,7 +214,7 @@ const signalLevel = Math.min(4, Math.max(0, Math.ceil((props.signal_strength || 
         <ActionButton
           :label="t('components.NetworkWiFiCard.connectAction')"
           :loading="connecting"
-          :disabled="props.security_type !== 'none' && !password"
+          :disabled="!showManageSaved && props.security_type !== 'none' && !password"
           @click="confirmConnect"
         />
       </DialogFooter>
